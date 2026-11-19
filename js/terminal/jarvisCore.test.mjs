@@ -107,3 +107,29 @@ test('watchDiff: a link breaking or healing and a market newly well past its noi
 test('memoryState: no limit is ok; 80 percent is high; 95 percent is critical', () => {
   assert.equal(memoryState(900, 0), 'ok'); assert.equal(memoryState(800, 1000), 'high'); assert.equal(memoryState(960, 1000), 'critical'); assert.equal(memoryState(500, 1000), 'ok');
 });
+
+import { GEO, THEME, REGIONS, llToVec, globeProject, greatArc, bubbleLayout, THEME_ORDER } from './jarvisCore.js';
+import { CHAIN_NODES } from '../macroChain.js';
+test('GEO and THEME place every chain node; every location is a real latitude and longitude', () => {
+  for (const k of Object.keys(CHAIN_NODES)) { assert.ok(GEO[k], `${k} has no place on the globe`); assert.ok(THEME[k], `${k} has no bubble theme`); assert.ok(THEME_ORDER.includes(THEME[k]), `${k} theme`); }
+  for (const [k, [la, lo]] of Object.entries(GEO)) assert.ok(Math.abs(la) <= 90 && Math.abs(lo) <= 180, `${k} out of range`);
+  for (const [k, r] of Object.entries(REGIONS)) assert.ok(r.length === 3 && r[2] >= 1, k);
+});
+test('globeProject: the centre point faces the viewer, the far side does not, and a turned globe moves a place', () => {
+  const c = globeProject(llToVec(10, 20), { lat: 10, lon: 20 }); assert.ok(Math.abs(c.x) < 1e-9 && Math.abs(c.y) < 1e-9 && c.z > 0.999);
+  assert.ok(globeProject(llToVec(-10, -160), { lat: 10, lon: 20 }).z < 0);
+  assert.ok(globeProject(llToVec(0, 30), { lat: 0, lon: 0 }).x > 0 && globeProject(llToVec(0, -30), { lat: 0, lon: 0 }).x < 0);
+  assert.ok(globeProject(llToVec(0, 0), { lat: 0, lon: 0 }, 0.3).z > 1.29);
+});
+test('greatArc: starts and ends on the two points, lifts in the middle, stays on a unit sphere at the ends', () => {
+  const a = llToVec(50, 8), b = llToVec(35, 139), s = greatArc(a, b, 0), e = greatArc(a, b, 1), m = greatArc(a, b, 0.5);
+  assert.ok(Math.hypot(s.v[0] - a[0], s.v[1] - a[1], s.v[2] - a[2]) < 1e-6 && Math.hypot(e.v[0] - b[0], e.v[1] - b[1], e.v[2] - b[2]) < 1e-6);
+  assert.ok(m.h > 0.05 && s.h < 1e-9);
+});
+test('bubbleLayout: every bubble placed, none overlapping, bigger moves are bigger bubbles', () => {
+  const keys = Object.keys(CHAIN_NODES), sizes = Object.fromEntries(keys.map((k, i) => [k, i % 4 === 0 ? 1 : 0.1])), L = bubbleLayout(keys, sizes);
+  assert.equal(Object.keys(L).length, keys.length);
+  let worst = 0; for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) { const A = L[keys[i]], B = L[keys[j]]; worst = Math.max(worst, A.r + B.r - Math.hypot(A.x - B.x, A.y - B.y)); }
+  assert.ok(worst < 0.004, `bubbles overlap by ${worst}`);
+  assert.ok(L[keys[0]].r > L[keys[1]].r);
+});

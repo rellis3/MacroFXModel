@@ -168,3 +168,67 @@ export function memoryState(rssMB, limitMB) {
   if (!(limitMB > 0) || rssMB == null) return 'ok';
   const r = rssMB / limitMB; return r >= 0.95 ? 'critical' : r >= 0.8 ? 'high' : 'ok';
 }
+
+// ───────────────────────── Globe: every market where it lives ─────────────────────────
+/**
+ * Where each chain node is plotted: [latitude, longitude, place]. Chosen to tell the story, not to be exact: bunds in Germany, oil in Saudi Arabia, gold in the Witwatersrand, copper in Chile.
+ * The United States has many nodes, so they sit in different cities (rates in Washington, equities in New York and the Valley, volatility in Chicago, energy in Houston) to keep it readable.
+ */
+export const GEO = {
+  oil: [26.0, 49.7, 'Saudi Arabia'], crack: [29.7, -95.0, 'Houston'], xle: [30.6, -97.0, 'Texas'],
+  bei: [39.6, -76.2, 'Washington'], us2y: [38.9, -77.0, 'Washington'], us10y: [37.6, -78.6, 'Washington'], us30y: [38.5, -75.4, 'Washington'], real: [40.2, -78.4, 'Washington'], funding: [40.7, -74.0, 'New York Fed'],
+  dxy: [41.3, -72.6, 'New York'], spx: [40.3, -73.6, 'New York'], hy: [42.4, -71.4, 'Boston'], ccc: [41.0, -75.4, 'New York'],
+  vix: [41.9, -87.6, 'Chicago'], move: [43.4, -86.0, 'Chicago'], nq: [37.8, -122.4, 'San Francisco'], smh: [37.3, -121.9, 'Silicon Valley'], xlre: [34.0, -118.2, 'Los Angeles'],
+  gold: [-26.2, 28.0, 'Witwatersrand'], copper: [-23.6, -68.9, 'Chile'], audusd: [-33.9, 151.2, 'Sydney'], usdcad: [45.4, -75.7, 'Ottawa'], usdjpy: [35.7, 139.7, 'Tokyo'], jgbgap: [37.2, 141.4, 'Japan'],
+  eurusd: [50.1, 8.7, 'Frankfurt'], bundgap: [52.5, 13.4, 'Berlin'], giltgap: [51.5, -0.1, 'London'], gbpusd: [53.2, -1.8, 'UK'],
+  emdollar: [-23.5, -46.6, 'Sao Paulo'], emoas: [19.1, 72.9, 'Mumbai'], btc: [13.7, -89.2, 'El Salvador'],
+};
+
+/** Where the globe turns to when you pick a region: [lat, lon, zoom]. */
+export const REGIONS = { world: [20, 20, 1], americas: [30, -85, 2.1], europe: [50, 12, 3.2], asia: [25, 115, 1.6], 'mideast-africa': [5, 35, 1.7] };
+
+export const llToVec = (lat, lon) => { const a = lat * Math.PI / 180, o = lon * Math.PI / 180; return [Math.cos(a) * Math.sin(o), Math.sin(a), Math.cos(a) * Math.cos(o)]; };
+
+/** Orthographic projection of a point on (or above) the unit sphere with the globe turned to centre (lat0, lon0). Returns { x, y, z } with z > 0 facing the viewer. h = height above the surface. */
+export function globeProject(vec, centre, h = 0) {
+  const l0 = (centre.lon ?? 0) * Math.PI / 180, p0 = (centre.lat ?? 0) * Math.PI / 180, k = 1 + h;
+  const x1 = vec[0] * Math.cos(l0) - vec[2] * Math.sin(l0), z1 = vec[0] * Math.sin(l0) + vec[2] * Math.cos(l0);
+  const y2 = vec[1] * Math.cos(p0) - z1 * Math.sin(p0), z2 = vec[1] * Math.sin(p0) + z1 * Math.cos(p0);
+  return { x: x1 * k, y: y2 * k, z: z2 * k };
+}
+
+/** A point along the great circle between two unit vectors, lifted off the surface by `lift` at the middle. t in 0..1. Returns { v, h }. */
+export function greatArc(a, b, t, lift = 0.25) {
+  const dot = Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])), om = Math.acos(dot);
+  const s = Math.sin(om) || 1e-9, A = Math.sin((1 - t) * om) / s, B = Math.sin(t * om) / s;
+  return { v: [A * a[0] + B * b[0], A * a[1] + B * b[1], A * a[2] + B * b[2]], h: lift * Math.sin(Math.PI * t) * Math.min(1, om / 1.2 + 0.25) };
+}
+
+// ───────────────────────── Bubbles: floating circles, no space ─────────────────────────
+/** The theme each chain node belongs to; the bubble view groups by it. */
+export const THEME = {
+  oil: 'Energy', crack: 'Energy', xle: 'Energy',
+  bei: 'Rates', us2y: 'Rates', us10y: 'Rates', us30y: 'Rates', real: 'Rates', funding: 'Rates', move: 'Rates', giltgap: 'Rates', bundgap: 'Rates', jgbgap: 'Rates',
+  dxy: 'Currencies', usdjpy: 'Currencies', audusd: 'Currencies', usdcad: 'Currencies', eurusd: 'Currencies', gbpusd: 'Currencies',
+  spx: 'Equities', nq: 'Equities', smh: 'Equities', xlre: 'Equities', vix: 'Risk', hy: 'Credit', ccc: 'Credit', emdollar: 'Credit', emoas: 'Credit',
+  gold: 'Metals and crypto', copper: 'Metals and crypto', btc: 'Metals and crypto',
+};
+export const THEME_ORDER = ['Energy', 'Rates', 'Currencies', 'Equities', 'Risk', 'Credit', 'Metals and crypto'];
+
+/**
+ * Deterministic bubble packing: a cluster per theme laid round an ellipse, bubbles spiralled round their cluster centre, then relaxed so none overlap.
+ * sizes = { key: 0..1 }; returns { key: { x, y, r } } in a unit box (-1..1 wide, -0.6..0.6 high), r = radius.
+ */
+export function bubbleLayout(keys, sizes = {}, iters = 160) {
+  const themes = THEME_ORDER.filter(t => keys.some(k => THEME[k] === t)), pos = {};
+  const centre = t => { const i = themes.indexOf(t), a = (i / themes.length) * Math.PI * 2 - Math.PI / 2; return [Math.cos(a) * 0.62, Math.sin(a) * 0.36]; };
+  keys.forEach(k => { const t = THEME[k] ?? 'Other', same = keys.filter(x => THEME[x] === THEME[k]), j = same.indexOf(k), c = centre(t), ang = j * 2.4, d = 0.07 * Math.sqrt(j + 0.5); pos[k] = { x: c[0] + Math.cos(ang) * d, y: c[1] + Math.sin(ang) * d, r: 0.035 + 0.05 * (sizes[k] ?? 0.1), c }; });
+  for (let it = 0; it < iters; it++) {
+    for (const a of keys) for (const b of keys) {
+      if (a >= b) continue; const A = pos[a], B = pos[b], dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 1e-6, min = A.r + B.r + 0.012;
+      if (d < min) { const push = (min - d) / 2, ux = dx / d, uy = dy / d; A.x -= ux * push; A.y -= uy * push; B.x += ux * push; B.y += uy * push; }
+    }
+    for (const k of keys) { const p = pos[k]; p.x += (p.c[0] - p.x) * 0.01; p.y += (p.c[1] - p.y) * 0.01; }     // a gentle pull back to the cluster keeps themes together
+  }
+  return Object.fromEntries(keys.map(k => [k, { x: pos[k].x, y: pos[k].y, r: pos[k].r }]));
+}

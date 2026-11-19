@@ -5,7 +5,7 @@
 // normal dashboard while Jarvis keeps watching the live chain and speaks / beeps / notifies when a link breaks or a market goes well beyond its noise (only while this tab is open).
 // DESCRIPTION ONLY: it shows what moved and which textbook links held or broke. Never a forecast, never a trade. Core: jarvisCore.js. Own canvas, no library, no new feed: the chain comes
 // from the Chain tab's loaders (globalThis.deskChainData), the voice is the browser's own (free).
-import { buildGraph, project, arcPoint, bootLines, VERDICT_WORD, radarRank, systemSummary, skyline, towerBox, pickVoice, wakeParse, watchSnapshot, watchDiff, memoryState } from './jarvisCore.js';
+import { buildGraph, project, arcPoint, bootLines, VERDICT_WORD, radarRank, systemSummary, skyline, towerBox, pickVoice, wakeParse, watchSnapshot, watchDiff, memoryState, GEO, REGIONS, llToVec, globeProject, greatArc, bubbleLayout, THEME, THEME_ORDER } from './jarvisCore.js';
 import { CHAIN_NODES } from '../macroChain.js';
 import { shortLabel } from './chainBoard.js';
 
@@ -30,6 +30,7 @@ const CSS = `#${ID}{position:fixed;inset:0;z-index:300;color:var(--tx);font-fami
 #${ID} button{font:inherit;font-size:11px;letter-spacing:.08em;color:var(--tx);background:color-mix(in srgb,var(--bg1) 70%,transparent);border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer}
 #${ID} button:hover{border-color:var(--blue2)}#${ID} button[aria-pressed="true"]{border-color:var(--blue2);color:var(--blue2);box-shadow:0 0 10px color-mix(in srgb,var(--blue2) 50%,transparent)}
 #${ID} .jv-hud{position:absolute;left:24px;top:70px;font-size:11px;line-height:1.7;color:var(--tx2);pointer-events:none;letter-spacing:.06em}#${ID} .jv-hud b{color:var(--tx);font-size:22px;letter-spacing:.1em;font-weight:400;display:block}#${ID} .jv-hud .am{color:var(--gold)}#${ID} .jv-hud .ok{color:var(--up)}
+#${ID} .jv-reg{position:absolute;left:50%;transform:translateX(-50%);top:62px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center}#${ID} .jv-reg[hidden]{display:none}
 #${ID} .jv-boot{position:absolute;left:24px;bottom:84px;max-width:min(460px,calc(100vw - 48px));font-size:12px;line-height:1.6;color:var(--tx2);pointer-events:none}
 #${ID} .jv-boot b{color:var(--tx)}#${ID} .jv-boot .jv-hl{color:var(--gold)}
 #${ID} .jv-card,#${ID} .jv-pane{position:absolute;right:24px;width:min(440px,calc(100vw - 48px));overflow:auto;padding:14px;border:1px solid var(--blue2);border-radius:12px;background:color-mix(in srgb,var(--bg1) 84%,transparent);backdrop-filter:blur(7px);font-size:12px;line-height:1.55;box-shadow:0 0 28px color-mix(in srgb,var(--blue2) 35%,transparent)}
@@ -60,9 +61,9 @@ export async function openJarvis(win = window) {
 <div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">desk intelligence · description only</span><span class="jv-sp"></span>
 <span id="${ID}-mods"></span><span id="${ID}-win"></span><span id="${ID}-view"></span>
 <button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></div>
-<div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
+<div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
 <div class="jv-scrub" id="${ID}-scrub"><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button></div>
-<div class="jv-foot">drag to turn · wheel to zoom · click a tower · Esc docks · none of this is a forecast</div>`;
+<div class="jv-foot">drag to turn · wheel to zoom · click a market · Esc docks · none of this is a forecast</div>`;
   doc.body.appendChild(root);
   const dock = doc.createElement('div'); dock.id = `${ID}-dock`; dock.hidden = true; doc.body.appendChild(dock);
   const $ = s => root.querySelector(`#${ID}-${s}`), cv = $('cv'), ctx = cv.getContext('2d');
@@ -72,8 +73,8 @@ export async function openJarvis(win = window) {
   readTheme();
 
   const names = Object.fromEntries(Object.entries(CHAIN_NODES).map(([k, n]) => [k, n.label]));
-  const st = { mod: 'chain', view: prefs.view ?? 'skyline', voice: false, sound: prefs.sound !== false, wake: false, watch: prefs.watch !== false, win: 5, graph: null, sum: null, sel: null, yaw: 0.55, pitch: -0.7, zoom: 1, spin: true, t0: performance.now() - (win.__jarvisNoBoot ? 5000 : 0), drag: null, w: 0, h: 0, proj: [], disp: {}, dates: [], idx: -1, play: 0, docked: false, alerts: [], snap: null, lastCheck: null, memLimit: prefs.memLimit ?? 0, mem: null };
-  const setCam = () => { if (st.view === 'skyline') Object.assign(st, { yaw: 0.55, pitch: -0.7, zoom: 1 }); else Object.assign(st, { yaw: 0.6, pitch: 0.28, zoom: 1 }); };
+  const st = { mod: 'chain', view: prefs.view ?? 'globe', gl: { lat: 20, lon: 15, zoom: 1, tlat: 20, tlon: 15, tzoom: 1 }, land: null, bl: null, region: 'world', voice: false, sound: prefs.sound !== false, wake: false, watch: prefs.watch !== false, win: 5, graph: null, sum: null, sel: null, yaw: 0.55, pitch: -0.7, zoom: 1, spin: true, t0: performance.now() - (win.__jarvisNoBoot ? 5000 : 0), drag: null, w: 0, h: 0, proj: [], disp: {}, dates: [], idx: -1, play: 0, docked: false, alerts: [], snap: null, lastCheck: null, memLimit: prefs.memLimit ?? 0, mem: null };
+  const setCam = () => { if (st.view === 'globe') { st.gl.zoom = st.gl.tzoom = 1; $('reg').hidden = false; } else $('reg').hidden = true; if (st.view === 'bubbles') st.bl = null; if (st.view === 'skyline') Object.assign(st, { yaw: 0.55, pitch: -0.7, zoom: 1 }); else Object.assign(st, { yaw: 0.6, pitch: 0.28, zoom: 1 }); };
   const resize = () => { const d = Math.min(2, win.devicePixelRatio || 1); st.w = root.clientWidth; st.h = root.clientHeight; cv.width = st.w * d; cv.height = st.h * d; ctx.setTransform(d, 0, 0, d, 0, 0); };
   resize(); win.addEventListener('resize', resize);
 
@@ -96,7 +97,7 @@ export async function openJarvis(win = window) {
     if (!r?.links?.length) return null;
     return { graph: buildGraph(r.links), sum: win.deskChainSummary?.(r.links, w) ?? null };
   }
-  function setGraph(g, sum) { st.graph = g; st.sum = sum; for (const n of g.nodes) if (st.disp[n.key] == null) st.disp[n.key] = n.style.size; renderHud(); }
+  function setGraph(g, sum) { st.graph = g; st.sum = sum; for (const n of g.nodes) if (st.disp[n.key] == null) st.disp[n.key] = n.style.size; st.bl = null; renderHud(); }
   async function load(w, date = null) {
     st.win = w; st.sel = null; $('card').hidden = true;
     for (const b of $('win').querySelectorAll('button')) b.setAttribute('aria-pressed', String(+b.dataset.w === w));
@@ -122,11 +123,14 @@ export async function openJarvis(win = window) {
 
   // ── controls ──
   $('win').innerHTML = [1, 5, 20].map(w => `<button type="button" data-w="${w}" aria-pressed="${w === st.win}">${w}D</button>`).join(' ');
-  $('view').innerHTML = [['skyline', 'SKYLINE'], ['orbit', 'ORBIT']].map(([id, l]) => `<button type="button" data-v="${id}" aria-pressed="${id === st.view}">${l}</button>`).join(' ');
+  $('view').innerHTML = [['globe', 'GLOBE'], ['bubbles', 'BUBBLES'], ['skyline', 'SKYLINE'], ['orbit', 'ORBIT']].map(([id, l]) => `<button type="button" data-v="${id}" aria-pressed="${id === st.view}">${l}</button>`).join(' ');
   $('win').onclick = e => { const b = e.target.closest('button[data-w]'); if (b) { blip(520, 0.05); load(+b.dataset.w, st.idx >= 0 ? st.dates[st.idx] : null); } };
   $('view').onclick = e => { const b = e.target.closest('button[data-v]'); if (!b) return; st.view = b.dataset.v; lsPut({ view: st.view }); setCam(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === st.view)); blip(720, 0.06); };
   $('snd').onclick = e => { st.sound = !st.sound; lsPut({ sound: st.sound }); e.currentTarget.setAttribute('aria-pressed', String(st.sound)); blip(600); };
 
+  const REGLAB = { world: 'WORLD', americas: 'AMERICAS', europe: 'EUROPE', asia: 'ASIA-PACIFIC', 'mideast-africa': 'MIDDLE EAST & AFRICA' };
+  $('reg').innerHTML = Object.keys(REGIONS).map(r => `<button type="button" data-r="${r}" aria-pressed="${r === st.region}">${REGLAB[r]}</button>`).join('');
+  $('reg').onclick = e => { const b = e.target.closest('button[data-r]'); if (!b) return; st.region = b.dataset.r; const [la, lo, z] = REGIONS[st.region]; st.gl.tlat = la; st.gl.tlon = lo; st.gl.tzoom = z; st.spin = st.region === 'world'; for (const x of $('reg').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.r === st.region)); blip(700, 0.05); };
   const MODS = [['chain', 'CHAIN'], ['ask', 'ASK'], ['radar', 'RADAR'], ['brief', 'BRIEF'], ['alerts', 'ALERTS'], ['system', 'SYSTEM']];
   $('mods').innerHTML = MODS.map(([id, l]) => `<button type="button" data-m="${id}" aria-pressed="${id === 'chain'}">${l}</button>`).join(' ');
 
@@ -198,9 +202,9 @@ export async function openJarvis(win = window) {
 
   // ── interaction ──
   cv.addEventListener('pointerdown', e => { st.drag = { x: e.clientX, y: e.clientY, moved: 0 }; cv.setPointerCapture?.(e.pointerId); });
-  cv.addEventListener('pointermove', e => { const d = st.drag; if (!d) return; const dx = e.clientX - d.x, dy = e.clientY - d.y; d.x = e.clientX; d.y = e.clientY; d.moved += Math.abs(dx) + Math.abs(dy); st.yaw += dx * 0.006; st.pitch = Math.max(-1.3, Math.min(1.2, st.pitch + dy * 0.004)); });
+  cv.addEventListener('pointermove', e => { const d = st.drag; if (!d) return; const dx = e.clientX - d.x, dy = e.clientY - d.y; d.x = e.clientX; d.y = e.clientY; d.moved += Math.abs(dx) + Math.abs(dy); if (st.view === 'globe') { const k = 0.35 / st.gl.zoom; st.gl.lon -= dx * k; st.gl.tlon = st.gl.lon; st.gl.lat = Math.max(-80, Math.min(80, st.gl.lat + dy * k)); st.gl.tlat = st.gl.lat; st.spin = false; } else if (st.view === 'bubbles') { /* flat: nothing to turn */ } else { st.yaw += dx * 0.006; st.pitch = Math.max(-1.3, Math.min(1.2, st.pitch + dy * 0.004)); } });
   cv.addEventListener('pointerup', e => { const d = st.drag; st.drag = null; if (d && d.moved < 5) pick(e.clientX, e.clientY); });
-  cv.addEventListener('wheel', e => { e.preventDefault(); st.zoom = Math.max(0.5, Math.min(2.6, st.zoom * (e.deltaY > 0 ? 0.92 : 1.08))); }, { passive: false });
+  cv.addEventListener('wheel', e => { e.preventDefault(); const f = e.deltaY > 0 ? 0.92 : 1.08; if (st.view === 'globe') st.gl.tzoom = Math.max(0.8, Math.min(5, st.gl.tzoom * f)); else st.zoom = Math.max(0.5, Math.min(2.6, st.zoom * f)); }, { passive: false });
   function pick(cx0, cy0) {
     const r = cv.getBoundingClientRect(); let best = null, bd = 30 * 30;
     for (const p of st.proj) { const dx = p.sx - (cx0 - r.left), dy = p.sy - (cy0 - r.top), d = dx * dx + dy * dy; if (d < bd) { bd = d; best = p.key; } }
@@ -306,16 +310,82 @@ export async function openJarvis(win = window) {
       st.proj.push({ key: o.n.key, sx: o.top.x, sy: o.top.y });
     }
   }
+
+  function drawGlobe(t, fade, dt) {
+    const g = st.gl; g.tzoom = Math.max(0.8, Math.min(5, g.tzoom)); if (st.spin && !st.drag) { g.tlon += dt * 4; g.lon += dt * 4; }
+    let dl = ((g.tlon - g.lon + 540) % 360) - 180; g.lon += dl * Math.min(1, dt * 3); g.lat += (g.tlat - g.lat) * Math.min(1, dt * 3); g.zoom += (g.tzoom - g.zoom) * Math.min(1, dt * 3);
+    const Rg = Math.min(st.w * 0.5, st.h) * 0.4 * g.zoom, X = st.w / 2 - (st.mod === 'chain' ? 0 : st.w * 0.1), Y = st.h / 2 + 8, ctr = { lat: g.lat, lon: g.lon };
+    const P = (vec, h = 0) => { const p = globeProject(vec, ctr, h); return { x: X + p.x * Rg, y: Y - p.y * Rg, z: p.z }; };
+    // the sea, a rim of light and a faint atmosphere
+    const atm = ctx.createRadialGradient(X, Y, Rg * 0.96, X, Y, Rg * 1.22); atm.addColorStop(0, C.blue); atm.addColorStop(1, 'transparent'); ctx.globalAlpha = 0.28 * fade; ctx.fillStyle = atm; ctx.beginPath(); ctx.arc(X, Y, Rg * 1.22, 0, 6.2832); ctx.fill();
+    const sea = ctx.createRadialGradient(X - Rg * 0.3, Y - Rg * 0.3, Rg * 0.1, X, Y, Rg); sea.addColorStop(0, C.blue); sea.addColorStop(1, 'transparent'); ctx.globalAlpha = 0.16 * fade; ctx.fillStyle = sea; ctx.beginPath(); ctx.arc(X, Y, Rg, 0, 6.2832); ctx.fill();
+    ctx.globalAlpha = 0.7 * fade; ctx.strokeStyle = C.blue; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(X, Y, Rg, 0, 6.2832); ctx.stroke();
+    // graticule
+    ctx.lineWidth = 0.6; ctx.globalAlpha = 0.14 * fade; ctx.strokeStyle = C.blue;
+    const line = pts => { let on = false; ctx.beginPath(); for (const p of pts) { if (p.z > 0) { on ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); on = true; } else on = false; } ctx.stroke(); };
+    for (let la = -60; la <= 60; la += 30) line(Array.from({ length: 73 }, (_, i) => P(llToVec(la, i * 5 - 180))));
+    for (let lo = -180; lo < 180; lo += 30) line(Array.from({ length: 37 }, (_, i) => P(llToVec(i * 5 - 90, lo))));
+    // the coastlines (loaded the first time the globe is drawn)
+    if (!st.land && !st.landLoading) { st.landLoading = true; import('./jarvisLand.js').then(m => { st.land = m.LAND; }).catch(() => { st.land = []; }); }
+    if (st.land) { ctx.lineWidth = 1.1; ctx.globalAlpha = 0.6 * fade; ctx.strokeStyle = C.blue; for (const ring of st.land) { let on = false; ctx.beginPath(); for (let i = 0; i < ring.length; i += 2) { const p = P(llToVec(ring[i + 1], ring[i])); if (p.z > 0) { on ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); on = true; } else on = false; } ctx.stroke(); } }
+    const gr = st.graph; if (!gr) return;
+    const by = Object.fromEntries(gr.nodes.map(n => [n.key, n])), selK = st.sel, vec = k => llToVec(GEO[k][0], GEO[k][1]);
+    // threads: great-circle arcs lifted off the surface, particles flowing cause -> effect
+    for (const e of gr.edges) {
+      if (!GEO[e.from] || !GEO[e.to]) continue; const hot = e.verdict === 'holding' || e.verdict === 'broken', touch = selK && (e.from === selK || e.to === selK); if (!hot && !touch) continue;
+      const colr = e.verdict === 'broken' ? C.gold : C.blue, a = vec(e.from), b = vec(e.to), N = 30, pts = []; for (let i = 0; i <= N; i++) { const q = greatArc(a, b, i / N, 0.3); pts.push(P(q.v, q.h)); }
+      ctx.beginPath(); let on = false; for (const p of pts) { if (p.z > 0) { on ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); on = true; } else on = false; } ctx.globalAlpha = (hot ? 0.75 : 0.5) * fade; ctx.strokeStyle = colr; ctx.lineWidth = e.verdict === 'broken' ? 2.4 : 1.5; ctx.stroke();
+      const spd = e.verdict === 'broken' ? 0.5 : 0.28; for (let k = 0; k < 3; k++) { const q = greatArc(a, b, (t * spd + k / 3) % 1, 0.3), p = P(q.v, q.h); if (p.z > 0) { ctx.globalAlpha = fade; ctx.fillStyle = colr; ctx.beginPath(); ctx.arc(p.x, p.y, e.verdict === 'broken' ? 3.2 : 2.4, 0, 6.2832); ctx.fill(); } }
+    }
+    // markers: a pillar standing on the surface, its height and glow the size of the move
+    const items = gr.nodes.filter(n => GEO[n.key]).map(n => { const v = vec(n.key), size = st.disp[n.key] ?? n.style.size, base = P(v, 0), tip = P(v, 0.04 + 0.26 * size); return { n, size, base, tip }; }).filter(o => o.base.z > 0.02).sort((a, b) => a.base.z - b.base.z);
+    for (const o of items) {
+      const c = tcol(o.n.style.tone), live = o.n.style.tone !== 'quiet' && o.n.style.tone !== 'none', fa = Math.min(1, o.base.z * 2.2) * fade, pulse = o.n.style.tone === 'wrong' ? 1 + 0.2 * Math.sin(t * 4) : 1, r = (3 + o.size * 7) * Math.sqrt(g.zoom) * pulse;
+      ctx.globalAlpha = 0.5 * fa; ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(o.base.x, o.base.y, 6 * Math.sqrt(g.zoom), 3 * Math.sqrt(g.zoom), 0, 0, 6.2832); ctx.fill();
+      ctx.globalAlpha = (live ? 0.85 : 0.35) * fa; ctx.strokeStyle = c; ctx.lineWidth = live ? 2 : 1; ctx.beginPath(); ctx.moveTo(o.base.x, o.base.y); ctx.lineTo(o.tip.x, o.tip.y); ctx.stroke();
+      if (live) { const gg = ctx.createRadialGradient(o.tip.x, o.tip.y, 0, o.tip.x, o.tip.y, r * 3); gg.addColorStop(0, c); gg.addColorStop(1, 'transparent'); ctx.globalAlpha = 0.5 * fa; ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(o.tip.x, o.tip.y, r * 3, 0, 6.2832); ctx.fill(); }
+      ctx.globalAlpha = fa; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(o.tip.x, o.tip.y, r, 0, 6.2832); ctx.fill();
+      if (selK === o.n.key) { ctx.strokeStyle = C.tx; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(o.tip.x, o.tip.y, r + 5, 0, 6.2832); ctx.stroke(); }
+      if (live || selK === o.n.key || g.zoom > 1.7) { ctx.globalAlpha = fa * (live ? 1 : 0.6); ctx.fillStyle = C.tx; ctx.font = `${Math.round(10 + 1.5 * Math.min(2, g.zoom))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[o.n.key] ? shortLabel(CHAIN_NODES[o.n.key]) : o.n.key, o.tip.x, o.tip.y - r - 8); if (g.zoom > 1.7 || selK === o.n.key) { ctx.globalAlpha = fa * 0.55; ctx.font = '9px ui-monospace,monospace'; ctx.fillText(GEO[o.n.key][2], o.tip.x, o.tip.y - r + 3); } }
+      st.proj.push({ key: o.n.key, sx: o.tip.x, sy: o.tip.y });
+    }
+  }
+  function drawBubbles(t, fade) {
+    const g = st.graph; if (!g) return; const keys = g.nodes.map(n => n.key);
+    if (!st.bl) st.bl = bubbleLayout(keys, Object.fromEntries(g.nodes.map(n => [n.key, n.style.size])));
+    const S = Math.min(st.w * 0.5, st.h * 0.95) * 0.92, X = st.w / 2 - (st.mod === 'chain' ? 0 : st.w * 0.1), Y = st.h / 2 + 10, by = Object.fromEntries(g.nodes.map(n => [n.key, n])), selK = st.sel;
+    ctx.globalAlpha = 0.06 * fade; ctx.strokeStyle = C.blue; ctx.lineWidth = 1;     // a blueprint grid, not a starfield
+    for (let x = X % 60; x < st.w; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, st.h); ctx.stroke(); } for (let y = Y % 60; y < st.h; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(st.w, y); ctx.stroke(); }
+    const pos = k => { const b = st.bl[k], i = keys.indexOf(k); return { x: X + (b.x + Math.sin(t * 0.7 + i) * 0.006) * S, y: Y + (b.y + Math.cos(t * 0.6 + i * 1.7) * 0.006) * S, r: (b.r + 0.005 * (st.disp[k] ?? 0)) * S }; };
+    // theme names over each cluster
+    ctx.font = '11px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillStyle = C.tx2;
+    for (const th of THEME_ORDER) { const ks = keys.filter(k => THEME[k] === th); if (!ks.length) continue; const ps = ks.map(pos), cxm = ps.reduce((a, p) => a + p.x, 0) / ps.length, top = Math.min(...ps.map(p => p.y - p.r)); ctx.globalAlpha = 0.55 * fade; ctx.fillText(th.toUpperCase(), cxm, top - 12); }
+    for (const e of g.edges) {
+      if (!st.bl[e.from] || !st.bl[e.to]) continue; const hot = e.verdict === 'holding' || e.verdict === 'broken', touch = selK && (e.from === selK || e.to === selK); if (!hot && !touch) continue;
+      const a = pos(e.from), b = pos(e.to), colr = e.verdict === 'broken' ? C.gold : C.blue, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - Math.hypot(a.x - b.x, a.y - b.y) * 0.18;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(mx, my, b.x, b.y); ctx.globalAlpha = (hot ? 0.6 : 0.4) * fade; ctx.strokeStyle = colr; ctx.lineWidth = e.verdict === 'broken' ? 2.4 : 1.5; ctx.stroke();
+      const spd = e.verdict === 'broken' ? 0.5 : 0.28; for (let k = 0; k < 3; k++) { const u = (t * spd + k / 3) % 1, x = (1 - u) * (1 - u) * a.x + 2 * (1 - u) * u * mx + u * u * b.x, y = (1 - u) * (1 - u) * a.y + 2 * (1 - u) * u * my + u * u * b.y; ctx.globalAlpha = fade; ctx.fillStyle = colr; ctx.beginPath(); ctx.arc(x, y, e.verdict === 'broken' ? 3.2 : 2.4, 0, 6.2832); ctx.fill(); }
+    }
+    for (const k of keys) {
+      const n = by[k], p = pos(k), c = tcol(n.style.tone), live = n.style.tone !== 'quiet' && n.style.tone !== 'none', pulse = n.style.tone === 'wrong' ? 1 + 0.06 * Math.sin(t * 4) : 1, R2 = p.r * pulse;
+      const gg = ctx.createRadialGradient(p.x - R2 * 0.35, p.y - R2 * 0.4, R2 * 0.1, p.x, p.y, R2); gg.addColorStop(0, C.tx); gg.addColorStop(0.25, c); gg.addColorStop(1, 'transparent');
+      ctx.globalAlpha = (live ? 0.55 : 0.22) * fade; ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(p.x, p.y, R2, 0, 6.2832); ctx.fill();
+      ctx.globalAlpha = (live ? 0.95 : 0.4) * fade; ctx.strokeStyle = c; ctx.lineWidth = selK === k ? 3 : 1.4; ctx.beginPath(); ctx.arc(p.x, p.y, R2, 0, 6.2832); ctx.stroke();
+      ctx.globalAlpha = (live ? 1 : 0.6) * fade; ctx.fillStyle = C.tx; ctx.font = `${live ? 11 : 10}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[k] ? shortLabel(CHAIN_NODES[k]) : k, p.x, p.y + (live ? -1 : 3));
+      if (live && n.end?.text) { ctx.globalAlpha = 0.8 * fade; ctx.font = '10px ui-monospace,monospace'; ctx.fillText(n.end.text, p.x, p.y + 12); }
+      st.proj.push({ key: k, sx: p.x, sy: p.y });
+    }
+  }
   let raf = 0, last = performance.now(), hudT = 0;
   function frame(now) {
     if (!open || st.docked) return; raf = win.requestAnimationFrame(frame);
     if (doc.hidden) return;
-    const dt = Math.min(0.05, (now - last) / 1000); last = now; if (st.spin && !st.drag) st.yaw += dt * (st.view === 'skyline' ? 0.07 : 0.12);
+    const dt = Math.min(0.05, (now - last) / 1000); last = now; if (st.spin && !st.drag && st.view !== 'globe') st.yaw += dt * (st.view === 'skyline' ? 0.07 : 0.12);
     const t = (now - st.t0) / 1000, bootT = t, fade = Math.min(1, Math.max(0, (bootT - 1.1) / 0.8));
     for (const k of Object.keys(st.disp)) { const tgt = st.graph?.nodes.find(n => n.key === k)?.style.size; if (tgt != null) st.disp[k] += (tgt - st.disp[k]) * Math.min(1, dt * 5); }
     ctx.clearRect(0, 0, st.w, st.h); st.proj = [];
     if (bootT < 2) drawBoot(bootT);
-    if (st.graph && fade > 0) { if (st.view === 'skyline') drawSkyline(t, fade); else drawOrbit(t, fade); }
+    if (st.graph && fade > 0) { if (st.view === 'globe') drawGlobe(t, fade, dt); else if (st.view === 'bubbles') drawBubbles(t, fade); else if (st.view === 'skyline') drawSkyline(t, fade); else drawOrbit(t, fade); }
     ctx.globalAlpha = 1; hudT += dt; if (hudT > 20) { hudT = 0; renderHud(); }
   }
 
@@ -388,7 +458,7 @@ export async function openJarvis(win = window) {
   const onKey = e => { if (e.key === 'Escape' && !st.docked) { e.preventDefault(); e.stopPropagation(); api.dock(); } };
   doc.addEventListener('keydown', onKey, true);
   open = api;
-  setCam(); bootChime(); raf = win.requestAnimationFrame(frame);
+  setCam(); $('reg').hidden = st.view !== 'globe'; bootChime(); raf = win.requestAnimationFrame(frame);
   await load(st.win);
   setWatch(st.watch);
   return true;
