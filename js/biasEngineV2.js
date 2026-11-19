@@ -327,7 +327,8 @@ function finish(name, c, extra = {}) {
 // ── bilateral drivers (F2 carry, F5 repricing) ───────────────────────────────────────────────────────────────────
 function policyRatesOf(X) {
   const t = X.extra?.policyRates, fetched = Date.parse(t?.fetchedAt ?? '');
-  const stale = !Number.isFinite(fetched) || fetched > X.issueMs || (X.issueMs - fetched) / DAY > C2.policyTableMaxAgeDays;
+  // the table is fetched during the issue's own gather, so a fetch up to 2 h after the issue time is the same reading; its rates are decisions in force
+  const stale = !Number.isFinite(fetched) || fetched > X.issueMs + 2 * 3600e3 || (X.issueMs - fetched) / DAY > C2.policyTableMaxAgeDays;
   const out = {};
   for (const c of CCYS) { const v = t?.rates?.[c]; out[c] = !stale && fin(v?.rate) ? v.rate : null; }
   return { rates: out, why: stale ? 'the policy-rate table is missing or older than its daily budget' : null, fetchedAt: t?.fetchedAt ?? null };
