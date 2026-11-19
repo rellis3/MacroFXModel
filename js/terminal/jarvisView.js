@@ -178,6 +178,12 @@ export async function openJarvis(win = window) {
       p.innerHTML = `<h3>ALERTS</h3><p>Jarvis checks the live chain every two minutes while this tab is open, and the server's memory every ten. He tells you when a textbook link breaks or heals, when a market goes well beyond its normal noise, and when memory crosses your limit. It is awareness, never a trade.</p>
 <div class="jv-row"><button type="button" id="${ID}-wt" aria-pressed="${st.watch}">WATCHING ${st.watch ? 'ON' : 'OFF'}</button><button type="button" id="${ID}-nt">DESKTOP NOTIFICATIONS</button></div>`
         + (st.alerts.length ? st.alerts.map(a => `<p><span class="jv-k ${a.level === 'warn' ? 'jv-broke' : 'jv-hold'}">${esc(a.time)}</span>${esc(a.text)}</p>`).join('') : '<p>Nothing yet this session.</p>');
+      jf('/api/jarvis/watch').then(w => {   // the server watcher (Telegram, tab closed); fails soft if the route is missing
+        if (!w?.ok || st.mod !== 'alerts' || !p.isConnected) return;
+        const hm = w.lastCheck ? new Date(w.lastCheck).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) : 'not yet';
+        const rows = (w.lastAlerts ?? []).map(a => `<p><span class="jv-k ${a.level === 'warn' ? 'jv-broke' : 'jv-hold'}">${esc(new Date(a.at).toLocaleString('en-GB', { timeZone: 'Europe/London', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }))}</span>${esc(a.text)}</p>`).join('');
+        p.insertAdjacentHTML('beforeend', `<h3 style="margin-top:12px">SENT TO YOUR PHONE</h3><p class="jv-sub">Server watcher: last check ${esc(hm)}${w.enabled ? '' : ' (switched off)'}</p>${rows || '<p>Nothing sent yet.</p>'}`);
+      }).catch(() => {});
       p.querySelector(`#${ID}-wt`).onclick = () => { setWatch(!st.watch); R.alerts(); };
       p.querySelector(`#${ID}-nt`).onclick = async () => { try { const r = await win.Notification?.requestPermission?.(); say(r === 'granted' ? 'Desktop notifications are on.' : 'Notifications were not allowed.', true); } catch (e) { /* unsupported */ } };
     },
