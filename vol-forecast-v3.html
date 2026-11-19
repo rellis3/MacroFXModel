@@ -951,6 +951,11 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
         <button class="vf-exp-item" id="vfLadderWkRevBtn" onclick="closeExpDropdown();exportLadder('weekly_rev')"   disabled title="Same paste format as Forecast Weekly (same indicator), but σ fades back to its 250-day level across the week/month instead of √-time scaling. Passed its pre-registered test 2026-10-05 (forge/HORIZON_REVERSION_PREREG.md): bands right after calm AND after stress, not just on average.">⬇ Forecast Weekly · Reverting <span style="font-size:9px;opacity:.55">σ fades back · test</span></button>
         <button class="vf-exp-item" id="vfLadderSessBtn" onclick="closeExpDropdown();exportLadder('daily',true)"     disabled>⬇ Forecast + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <div class="vf-exp-sep"></div>
+        <button class="vf-exp-item" id="vfL2FcCfdBtn" onclick="closeExpDropdown();exportLadderV2('forecast','cfd')" title="Shadow ladder-v2 (not live): each instrument&#39;s winning σ from the 2026-11-19 races (NQ har_rv_log on daily ranges; gold and EURUSD HAR-CJ on 5-minute RV), calibrated in every vol regime walk-forward 2018-2026. GOLD, EURUSD, NQ only. No event multiplier. Same paste format as Forecast.">⬇ v2 Forecast · CFD <span style="font-size:9px;opacity:.55">shadow · new σ</span></button>
+        <button class="vf-exp-item" id="vfL2FcFutBtn" onclick="closeExpDropdown();exportLadderV2('forecast','fut')" title="Shadow ladder-v2 (not live): each instrument&#39;s winning σ from the 2026-11-19 races (NQ har_rv_log on daily ranges; gold and EURUSD HAR-CJ on 5-minute RV), calibrated in every vol regime walk-forward 2018-2026. GOLD, EURUSD, NQ only. No event multiplier. Same paste format as Forecast. Futures paste: gold uses CME GC widths; NQ and EURUSD futures share the CFD ladder.">⬇ v2 Forecast · Futures <span style="font-size:9px;opacity:.55">GC1! 6E1! NQ1!</span></button>
+        <button class="vf-exp-item" id="vfL2ExCfdBtn" onclick="closeExpDropdown();exportLadderV2('exhaustion','cfd')" title="Shadow exhaustion zones (not live): per OH/OL line, how far price typically runs past it before its first 0.25σ pullback, and the chance a touch in each London time bucket goes on to the next line. Paste into pine/exhaustion_zones.pine.">⬇ v2 Exhaustion · CFD <span style="font-size:9px;opacity:.55">zones + next-line odds</span></button>
+        <button class="vf-exp-item" id="vfL2ExFutBtn" onclick="closeExpDropdown();exportLadderV2('exhaustion','fut')" title="Shadow exhaustion zones (not live): per OH/OL line, how far price typically runs past it before its first 0.25σ pullback, and the chance a touch in each London time bucket goes on to the next line. Paste into pine/exhaustion_zones.pine.">⬇ v2 Exhaustion · Futures <span style="font-size:9px;opacity:.55">zones + next-line odds</span></button>
+        <div class="vf-exp-sep"></div>
         <button class="vf-exp-item" id="vfCogBtn"        onclick="closeExpDropdown();exportCog()"                    disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
         <button class="vf-exp-item" id="vfCogWkBtn"      onclick="closeExpDropdown();exportCogWeekly()"              disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">√5 + √20 in one</span></button>
         <div class="vf-exp-sep"></div>
@@ -2714,6 +2719,24 @@ async function exportPersist(withSession = false) {
     btn.disabled = false;
     const date = (currentForecast && currentForecast.session_date) || 'latest';
     _emitCalibrated(btn.id, text, `vol-forecast-chosen${withSession ? '-session' : ''}-${date}.txt`);
+  } catch (e) {
+    btn.textContent = '✗ failed';
+    setTimeout(() => _btnRestore(btn), 2600);
+  }
+}
+
+// ladder-v2 shadow exports (js/ladderV2ShadowRoutes.js): forecast or exhaustion, CFD or futures paste.
+async function exportLadderV2(kind, track) {
+  const id = { 'forecast|cfd': 'vfL2FcCfdBtn', 'forecast|fut': 'vfL2FcFutBtn', 'exhaustion|cfd': 'vfL2ExCfdBtn', 'exhaustion|fut': 'vfL2ExFutBtn' }[`${kind}|${track}`];
+  const btn = document.getElementById(id);
+  _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;
+  try {
+    const r = await fetch(`/api/vol-forecast/ladder-v2/export?kind=${kind}&track=${track}`);
+    const text = await r.text();
+    if (!r.ok) { btn.textContent = '✗ failed'; setTimeout(() => _btnRestore(btn), 2600); return; }
+    btn.disabled = false;
+    const date = (text.match(/For session: (\w+ \d+ \w+ \d+)/) || [])[1]?.replace(/ /g, '-') || 'latest';
+    _emitCalibrated(id, text, `ladder-v2-${kind}-${track}-${date}.txt`);
   } catch (e) {
     btn.textContent = '✗ failed';
     setTimeout(() => _btnRestore(btn), 2600);
