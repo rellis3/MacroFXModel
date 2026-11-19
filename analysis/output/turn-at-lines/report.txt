@@ -1,0 +1,26 @@
+NQ C: chosen arm E6; 2229 sessions, 8916 turn rows
+NQ F: chosen arm E6; 2196 sessions, 4392 turn rows
+GOLD C: chosen arm HARCJ; 2229 sessions, 8916 turn rows
+GOLD F: chosen arm R5; 2165 sessions, 4330 turn rows
+EURUSD C: chosen arm HARCJ; 2240 sessions, 8960 turn rows
+EURUSD F: chosen arm HARCJ; 2181 sessions, 4362 turn rows
+
+== PRIMARY (CFD, pooled NQ+GOLD+EURUSD, k = 0.05): hit at line vs mean of 4 offset copies
+  chosen EXT   hit  13.3% vs offsets  12.8%  excess +0.59pp [-0.13,+1.07]  halves [-0.07,+1.45] [-0.70,+1.21]  BH no  -> UNDERPOWERED
+  chosen CLOSE hit  11.2% vs offsets  10.7%  excess +0.51pp [+0.01,+1.02]  halves [+0.25,+1.53] [-0.85,+0.59]  BH no  -> UNDERPOWERED
+  chosen PROJ  hit   6.7% vs offsets   6.9%  excess -0.25pp [-0.67,+0.16]  halves [-0.59,+0.51] [-1.10,+0.21]  BH no  -> NULL
+  chosen ALL   hit  21.6% vs offsets  21.2%  excess +0.34pp [-0.38,+0.89]  halves [-0.04,+1.59] [-1.52,+0.55]  BH no  -> NULL
+  A0     EXT   hit  12.9% vs offsets  12.6%  excess +0.38pp [-0.22,+0.91]  halves [-0.68,+0.85] [-0.32,+1.36]  BH no  -> NULL
+  A0     CLOSE hit  11.0% vs offsets  10.7%  excess +0.32pp [-0.16,+0.81]  halves [-0.13,+1.08] [-0.83,+0.67]  BH no  -> NULL
+  A0     PROJ  hit   6.4% vs offsets   6.7%  excess -0.25pp [-0.68,+0.16]  halves [-0.63,+0.51] [-1.11,+0.15]  BH no  -> NULL
+  A0     ALL   hit  20.7% vs offsets  20.4%  excess +0.26pp [-0.45,+0.91]  halves [-0.53,+1.20] [-1.06,+1.00]  BH no  -> NULL
+
+== Reported (no rule)
+  NQ     chosen, k=0.05: EXT 13.9/13.1  CLOSE 11.0/10.6  PROJ 7.1/7.1  ALL 24.0/23.1
+  GOLD   chosen, k=0.05: EXT 13.2/12.1  CLOSE 11.2/10.5  PROJ 6.1/6.9  ALL 20.4/20.2
+  EURUSD chosen, k=0.05: EXT 12.9/13.1  CLOSE 11.4/11.1  PROJ 6.8/6.8  ALL 20.3/20.3
+  k=0.03: EXT +0.49pp  CLOSE +0.13pp  PROJ -0.42pp  ALL -0.02pp
+  k=0.1: EXT +0.66pp  CLOSE +0.93pp  PROJ -0.40pp  ALL +0.48pp
+  turns after 00:15 only: EXT +0.62pp  CLOSE +0.55pp  PROJ -0.26pp  ALL +0.37pp
+  futures (chosen lines): EXT +0.35pp  CLOSE +0.46pp  PROJ +0.16pp  ALL +0.65pp
+  nearest line (ALL) / chance median, all turns: median 0.31; share of turns at <= 1/3 of chance 54.3% (screenshot days: her lines were at ~0.1-0.4 of chance on 6 of 8)

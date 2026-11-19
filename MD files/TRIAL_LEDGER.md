@@ -10,15 +10,15 @@ Generated 2026-11-19.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **430** |
+| claims tested (validated + null + underpowered) | **432** |
 | validated | 83 |
-| null | 206 |
-| underpowered | 141 |
+| null | 207 |
+| underpowered | 142 |
 | context (base rates, descriptions: not counted as tests) | 66 |
 | pre-registrations with no banked verdict (below) | 90 |
 
-**What the count says (Lesson 02 §05).** If none of the 430 claims were real, tests at the usual 5% size would still pass
-about **21.5** of them by luck. 83 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 432 claims were real, tests at the usual 5% size would still pass
+about **21.6** of them by luck. 83 passed, so most passes are unlikely to be luck alone, but
 **roughly 22 of the 83 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -523,6 +523,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-19 | ladder-v2-gold | volatility | validated | forge/LADDER_V2_GOLD_PREREG.md |
 | 2026-11-19 | ladder-v2-gold-cvf | volatility | context | forge/LADDER_V2_GOLD_PREREG.md |
 | 2026-11-19 | ladder-v2-gold-fut | volatility | validated | forge/LADDER_V2_GOLD_PREREG.md |
+| 2026-11-19 | turn-at-lines-close | price | underpowered | forge/TURN_AT_LINES_PREREG.md |
+| 2026-11-19 | turn-at-lines-proj | price | null | forge/TURN_AT_LINES_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
