@@ -1,0 +1,8 @@
+  NQ placeholder check: forecast for the last bar with a placeholder 2.077039 vs with the real bar 2.077039
+  NQ check: OANDA-bar har_rv_log vs banked research sigma, median |diff| 0.00% on 2744 sessions
+  GOLD check: 5-min features from OANDA M5 vs research M1, 60 overlapping days, worst median |diff| 0.0000 (log units)
+  EURUSD check: 5-min features from OANDA M5 vs research M1, 60 overlapping days, worst median |diff| 0.0000 (log units)
+  NQ        sigma 1.945%/day (30.88% ann) from har_rv_log (daily ranges), as of the NY close keyed 2026-11-18
+  GOLD      sigma 1.392%/day (22.10% ann) from HAR-CJ (5-min RV, jumps split), as of the NY close keyed 2026-11-18
+  EURUSD    sigma 0.356%/day (5.65% ann) from HAR-CJ (5-min RV, jumps split), as of the NY close keyed 2026-11-18
+  GOLD FUT  sigma 1.397%/day (22.18% ann) from HAR-RV 5-min (CME GC), as of the NY close keyed 2026-11-18
