@@ -66,3 +66,28 @@ export function bootLines(sum, win) {
 }
 
 export const VERDICT_WORD = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'no data', notlive: 'not live' };
+
+/**
+ * The radar: what is unusual right now, ranked by how big each move is against its own noise floor. Nodes only (the chain's ends), plus the broken links.
+ * Description of this window's tape: "unusual" means large against that series' normal 20-day noise, not that anything follows.
+ */
+export function radarRank(graph, names = {}) {
+  const items = [];
+  for (const n of graph?.nodes ?? []) {
+    const e = n.end; if (!e || e.delta == null || !(e.floor > 0)) continue;
+    const ratio = Math.abs(e.delta) / e.floor, wrong = n.style.tone === 'wrong';
+    if (!e.moved && !wrong) continue;
+    items.push({ key: n.key, label: names[n.key] ?? n.key, text: e.text, tone: n.style.tone, ratio, why: wrong ? `the wrong-way end of a broken link, ${ratio.toFixed(1)}x its normal noise` : `${ratio.toFixed(1)}x its normal noise` });
+  }
+  items.sort((a, b) => (b.tone === 'wrong') - (a.tone === 'wrong') || b.ratio - a.ratio);
+  const broken = (graph?.edges ?? []).filter(e => e.verdict === 'broken').map(e => ({ id: e.id, short: e.short, read: String(e.link?.read ?? '') }));
+  return { items, broken };
+}
+
+/** /api/services -> the few numbers worth reading: this process's memory (what Railway bills), uptime, and the services that used the most time today. */
+export function systemSummary(j) {
+  const m = j?.memory ?? {}, rows = Array.isArray(j?.services) ? j.services : [];
+  const top = rows.filter(r => (r.today?.totalMs ?? 0) > 0).sort((a, b) => b.today.totalMs - a.today.totalMs).slice(0, 8)
+    .map(r => ({ id: r.id, minutes: +(r.today.totalMs / 60000).toFixed(1), runs: r.today.runs ?? 0, errors: r.today.errors ?? 0 }));
+  return { ok: !!j?.ok, rssMB: m.rssMB ?? null, peakRssMB: m.peakRssMB ?? null, heapUsedMB: m.heapUsedMB ?? null, uptimeH: j?.uptimeSec != null ? +(j.uptimeSec / 3600).toFixed(1) : null, enabled: j?.counts?.enabled ?? null, total: j?.counts?.total ?? null, top };
+}

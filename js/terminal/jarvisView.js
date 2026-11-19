@@ -3,7 +3,7 @@
 // Drag to turn it, wheel to zoom, click a node for what it is and the links it sits on, 1D / 5D / 20D to change the window, Esc to leave.
 // DESCRIPTION ONLY: it shows what moved and which textbook links held or broke. Never a forecast, never a trade. Core: jarvisCore.js. Own canvas, no library, no new feed:
 // it reuses the Chain tab's loaders through globalThis.deskChainData (terminalTabs.js), so opening it adds no extra requests once the chain has loaded.
-import { buildGraph, project, arcPoint, bootLines, VERDICT_WORD } from './jarvisCore.js';
+import { buildGraph, project, arcPoint, bootLines, VERDICT_WORD, radarRank, systemSummary } from './jarvisCore.js';
 import { CHAIN_NODES } from '../macroChain.js';
 import { shortLabel } from './chainBoard.js';
 
@@ -25,6 +25,10 @@ const CSS = `#${ID}{position:fixed;inset:0;z-index:300;color:var(--tx);font-fami
 #${ID} .jv-k{display:inline-block;font-size:10px;letter-spacing:.1em;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-right:6px}
 #${ID} .jv-hold{color:var(--blue2);border-color:var(--blue2)}#${ID} .jv-broke{color:var(--gold);border-color:var(--gold)}
 #${ID} .jv-foot{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-size:10px;color:var(--tx2);opacity:.7;pointer-events:none}
+#${ID} .jv-pane{position:absolute;right:18px;top:64px;bottom:18px;width:min(440px,calc(100vw - 36px));overflow:auto;padding:14px;border:1px solid var(--blue2);border-radius:12px;background:color-mix(in srgb,var(--bg1) 86%,transparent);backdrop-filter:blur(6px);font-size:12px;line-height:1.55;box-shadow:0 0 24px color-mix(in srgb,var(--blue2) 35%,transparent)}
+#${ID} .jv-pane h3{margin:0 0 6px;font-size:13px;letter-spacing:.14em;color:var(--blue2)}#${ID} .jv-pane p{margin:6px 0;color:var(--tx2)}#${ID} .jv-pane textarea{width:100%;min-height:74px;box-sizing:border-box;font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
+#${ID} .jv-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}#${ID} .jv-ans{white-space:pre-wrap;color:var(--tx);margin:8px 0}#${ID} .jv-src{display:inline-block;font-size:10px;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin:2px 4px 2px 0;color:var(--tx2)}
+#${ID} .jv-item{display:block;width:100%;text-align:left;border-radius:8px;margin:4px 0;padding:6px 10px}#${ID} .jv-up{color:var(--up)}#${ID} .jv-dn{color:var(--dn)}#${ID} .jv-am{color:var(--gold)}#${ID} table{width:100%;border-collapse:collapse}#${ID} td{padding:2px 4px;border-bottom:1px solid var(--line)}#${ID} td:last-child{text-align:right}
 @media (max-width:640px){#${ID} .jv-boot{display:none}#${ID} .jv-title{font-size:14px}}
 @media (prefers-reduced-motion:reduce){#${ID}{animation:none}}`;
 
@@ -36,8 +40,8 @@ export async function openJarvis(win = window) {
   const root = doc.createElement('div'); root.id = ID; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', 'Jarvis: the macro chain in 3D');
   root.innerHTML = `<style>${CSS}</style><canvas id="${ID}-cv"></canvas>
 <div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">the macro chain · description only</span><span class="jv-sp"></span>
-<span id="${ID}-win"></span><button type="button" id="${ID}-spin" aria-pressed="true" title="Turn the chain by itself">AUTO-ROTATE</button><button type="button" id="${ID}-x" title="Esc">CLOSE ✕</button></div>
-<div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
+<span id="${ID}-mods"></span><span id="${ID}-win"></span><button type="button" id="${ID}-spin" aria-pressed="true" title="Turn the chain by itself">AUTO-ROTATE</button><button type="button" id="${ID}-x" title="Esc">CLOSE ✕</button></div>
+<div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
 <div class="jv-foot">drag to turn · wheel to zoom · click a node · Esc to leave · none of this is a forecast</div>`;
   doc.body.appendChild(root);
   const $ = s => root.querySelector(`#${ID}-${s}`), cv = $('cv'), ctx = cv.getContext('2d');
@@ -46,7 +50,7 @@ export async function openJarvis(win = window) {
   const readTheme = () => { C = { up: tok('up', 'green'), dn: tok('dn', 'red'), gold: tok('gold', 'orange'), blue: tok('blue2', 'dodgerblue'), tx: tok('tx', 'white'), tx2: tok('tx2', 'gray'), cy: tok('cy', 'cyan') }; };
   readTheme();
 
-  const st = { win: 5, graph: null, sum: null, sel: null, yaw: 0.6, pitch: 0.28, zoom: 1, spin: true, t0: performance.now(), drag: null, w: 0, h: 0, proj: [] };
+  const st = { mod: 'chain', voice: false, win: 5, graph: null, sum: null, sel: null, yaw: 0.6, pitch: 0.28, zoom: 1, spin: true, t0: performance.now(), drag: null, w: 0, h: 0, proj: [] };
   const resize = () => { const d = Math.min(2, win.devicePixelRatio || 1); st.w = root.clientWidth; st.h = root.clientHeight; cv.width = st.w * d; cv.height = st.h * d; ctx.setTransform(d, 0, 0, d, 0, 0); };
   resize(); win.addEventListener('resize', resize);
 
@@ -59,6 +63,7 @@ export async function openJarvis(win = window) {
     if (!r?.links?.length) { st.graph = null; $('boot').innerHTML = '<b>The chain feeds are not available right now.</b> Open the Chain tab once and try again.'; return; }
     st.graph = buildGraph(r.links); st.sum = win.deskChainSummary?.(r.links, w) ?? null;
     typeBoot(bootLines(st.sum, w));
+    if (st.mod !== 'chain' && st.mod !== 'ask') R[st.mod]?.();
   }
   let typing = 0;
   function typeBoot(lines) {
@@ -68,6 +73,67 @@ export async function openJarvis(win = window) {
   }
   $('win').onclick = e => { const b = e.target.closest('button[data-w]'); if (b) load(+b.dataset.w); };
   $('spin').onclick = () => { st.spin = !st.spin; $('spin').setAttribute('aria-pressed', String(st.spin)); };
+
+  // ── the modules: CHAIN (the 3D view), ASK, RADAR, BRIEF, SYSTEM. All reuse routes the terminal already has; nothing here trades or forecasts. ──
+  const MODS = [['chain', 'CHAIN'], ['ask', 'ASK'], ['radar', 'RADAR'], ['brief', 'BRIEF'], ['system', 'SYSTEM']];
+  $('mods').innerHTML = MODS.map(([id, l]) => `<button type="button" data-m="${id}" aria-pressed="${id === 'chain'}">${l}</button>`).join(' ');
+  const jf = (u, o) => win.fetch(u, o).then(r => r.json());
+  const say = t => { try { if (!st.voice || !win.speechSynthesis) return; win.speechSynthesis.cancel(); const u = new win.SpeechSynthesisUtterance(String(t).slice(0, 1200)); u.lang = 'en-GB'; win.speechSynthesis.speak(u); } catch (e) { /* no voice */ } };
+  const names = Object.fromEntries(Object.entries(CHAIN_NODES).map(([k, n]) => [k, n.label]));
+  const R = {
+    ask() {
+      const p = $('pane'), pre = st.sel && CHAIN_NODES[st.sel] ? `What is going on with ${CHAIN_NODES[st.sel].label} and the links around it today?` : '';
+      p.innerHTML = `<h3>ASK JARVIS</h3><p>One answer from today's book, the analysts' reports, the desk's memory and the Evidence Book. It cites what it used and says when the data does not answer. Each question is one model call, owner only, 60 a day.</p>
+<textarea id="${ID}-q" placeholder="Why is the desk short USD/JPY when the Fed is hawkish?">${esc(pre)}</textarea>
+<div class="jv-row"><button type="button" id="${ID}-go">ASK</button><button type="button" id="${ID}-mic" title="Speak your question">SPEAK</button><button type="button" id="${ID}-voice" aria-pressed="${st.voice}">VOICE REPLY</button><span id="${ID}-st" class="jv-sub"></span></div><div id="${ID}-ans"></div>`;
+      const q = p.querySelector(`#${ID}-q`), stt = p.querySelector(`#${ID}-st`), ans = p.querySelector(`#${ID}-ans`);
+      const go = async () => {
+        const text = q.value.trim(); if (text.length < 3) return;
+        stt.textContent = 'Thinking…'; ans.textContent = '';
+        const r = await jf('/api/desk-ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: text }) }).catch(e => ({ ok: false, error: e.message }));
+        stt.textContent = r.ok ? (r.model ?? '') : '';
+        ans.innerHTML = r.ok ? `<div class="jv-ans">${esc(r.answer)}</div>${(r.sources ?? []).map(x => `<span class="jv-src">${esc(x)}</span>`).join('')}` : `<p class="jv-dn">${esc(r.error ?? 'No answer')}</p>`;
+        if (r.ok) say(r.answer);
+      };
+      p.querySelector(`#${ID}-go`).onclick = go;
+      p.querySelector(`#${ID}-voice`).onclick = e => { st.voice = !st.voice; e.currentTarget.setAttribute('aria-pressed', String(st.voice)); if (!st.voice) win.speechSynthesis?.cancel(); };
+      p.querySelector(`#${ID}-mic`).onclick = () => {
+        const SRc = win.SpeechRecognition || win.webkitSpeechRecognition; if (!SRc) { stt.textContent = 'Voice input is not supported in this browser.'; return; }
+        const rec = new SRc(); rec.lang = 'en-GB'; rec.onresult = ev => { q.value = ev.results[0][0].transcript; st.voice = true; go(); }; rec.onerror = () => { stt.textContent = 'Could not hear that.'; }; stt.textContent = 'Listening…'; rec.start();
+      };
+    },
+    radar() {
+      const p = $('pane'), r = st.graph ? radarRank(st.graph, names) : { items: [], broken: [] };
+      p.innerHTML = `<h3>WHAT'S UNUSUAL · ${st.win}D</h3><p>Moves ranked by size against each series' own normal noise, broken links first. Unusual here means big for that series over this window. It describes the tape; it does not say what comes next.</p>`
+        + (r.broken.length ? `<p class="jv-am"><b>${r.broken.length} textbook link${r.broken.length === 1 ? '' : 's'} broken:</b> ${r.broken.map(b => esc(b.short)).join(' · ')}</p>` : '')
+        + (r.items.length ? r.items.map(i => `<button type="button" class="jv-item" data-k="${i.key}"><b class="${i.tone === 'wrong' ? 'jv-am' : i.tone === 'up' ? 'jv-up' : 'jv-dn'}">${esc(i.label)} ${esc(i.text)}</b><br><span class="jv-sub">${esc(i.why)}</span></button>`).join('') : '<p>Nothing is beyond its normal noise over this window.</p>');
+      p.onclick = e => { const b = e.target.closest('button[data-k]'); if (b) { st.sel = b.dataset.k; st.spin = false; $('spin').setAttribute('aria-pressed', 'false'); } };
+    },
+    async brief() {
+      const p = $('pane'); p.innerHTML = '<h3>BRIEFING</h3><p>Reading the stored chain read…</p>';
+      const d = await jf(`/api/chain-read?window=${st.win}`).catch(() => null), r = d?.read && typeof d.read === 'object' ? d.read : d;
+      if (!d?.ok || !r) { p.innerHTML = `<h3>BRIEFING · ${st.win}D</h3><p>No chain read has been written for the ${st.win}-day window today. Writing one is a model call: press Refresh on the Chain tab's read. Until then, the numbers are on the CHAIN and RADAR views.</p>`; return; }
+      const paras = String(r.read ?? '').split(/\n\s*\n|\n/).map(x => x.trim()).filter(Boolean);
+      p.innerHTML = `<h3>BRIEFING · ${st.win}D</h3>${r.hook ? `<p class="jv-ans"><b>“${esc(r.hook)}”</b></p>` : ''}${paras.map(x => `<p>${esc(x)}</p>`).join('')}${r.next ? `<p><b>Next:</b> ${esc(r.next)}</p>` : ''}<div class="jv-row"><button type="button" id="${ID}-say">READ IT TO ME</button></div><p class="jv-sub">Written ${esc(d.generatedAt ?? '')}. An opinion in a trader's voice, not backtested, not a forecast. One read per window per day, shared by everyone.</p>`;
+      p.querySelector(`#${ID}-say`).onclick = () => { const was = st.voice; st.voice = true; say([r.hook, ...paras].filter(Boolean).join('. ')); st.voice = was; };
+    },
+    async system() {
+      const p = $('pane'); p.innerHTML = '<h3>SYSTEM</h3><p>Reading the server…</p>';
+      const sm = systemSummary(await jf('/api/services').catch(() => null));
+      if (!sm.ok) { p.innerHTML = '<h3>SYSTEM</h3><p>The server did not answer the health route.</p>'; return; }
+      const n = v => (v == null ? 'n/a' : v);
+      p.innerHTML = `<h3>SYSTEM</h3><p>This is the web server only, not the whole Railway project. Memory is the biggest part of the Railway bill; the peak is the highest minute sample since the last deploy.</p>
+<table><tr><td>Memory now</td><td>${n(sm.rssMB)} MB</td></tr><tr><td>Memory peak since deploy</td><td>${n(sm.peakRssMB)} MB</td></tr><tr><td>JS heap in use</td><td>${n(sm.heapUsedMB)} MB</td></tr><tr><td>Up for</td><td>${n(sm.uptimeH)} h</td></tr><tr><td>Services switched on</td><td>${n(sm.enabled)} of ${n(sm.total)}</td></tr></table>
+<h3 style="margin-top:12px">BUSIEST TODAY</h3><table>${sm.top.map(t => `<tr><td>${esc(t.id)}</td><td>${t.minutes} min · ${t.runs} runs${t.errors ? ` · <span class="jv-am">${t.errors} errors</span>` : ''}</td></tr>`).join('') || '<tr><td>nothing measured yet</td><td></td></tr>'}</table>`;
+    },
+  };
+  function setMod(m) {
+    st.mod = m; win.speechSynthesis?.cancel();
+    for (const b of $('mods').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.m === m));
+    $('pane').hidden = m === 'chain'; $('pane').onclick = null; $('boot').style.display = m === 'chain' ? '' : 'none';
+    if (m === 'chain') showCard(); else { $('card').hidden = true; R[m]?.(); }
+  }
+  $('mods').onclick = e => { const b = e.target.closest('button[data-m]'); if (b) setMod(b.dataset.m); };
 
   // interaction
   cv.addEventListener('pointerdown', e => { st.drag = { x: e.clientX, y: e.clientY, moved: 0 }; cv.setPointerCapture?.(e.pointerId); });
@@ -80,7 +146,7 @@ export async function openJarvis(win = window) {
     st.sel = best; showCard();
   }
   function showCard() {
-    const card = $('card'), k = st.sel; if (!k || !st.graph) { card.hidden = true; return; }
+    const card = $('card'), k = st.sel; if (st.mod !== 'chain' || !k || !st.graph) { card.hidden = true; return; }
     const n = st.graph.nodes.find(x => x.key === k), meta = CHAIN_NODES[k]; if (!n || !meta) { card.hidden = true; return; }
     const links = st.graph.edges.filter(e => e.from === k || e.to === k);
     card.innerHTML = `<h3>${esc(meta.label)}</h3><div>${n.end?.delta == null ? 'no data over this window' : `<b>${esc(n.end.text)}</b> over ${st.win} day${st.win === 1 ? '' : 's'}${n.end.moved ? '' : ' · inside its noise'}`}</div><p>${esc(meta.what)}</p>`
@@ -140,7 +206,7 @@ export async function openJarvis(win = window) {
   }
 
   const close = () => {
-    if (!open) return; open = null; win.cancelAnimationFrame(raf); win.removeEventListener('resize', resize); doc.removeEventListener('keydown', onKey, true); root.remove();
+    if (!open) return; open = null; win.cancelAnimationFrame(raf); win.removeEventListener('resize', resize); win.speechSynthesis?.cancel(); doc.removeEventListener('keydown', onKey, true); root.remove();
   };
   const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } };
   doc.addEventListener('keydown', onKey, true);

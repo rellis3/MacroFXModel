@@ -59,3 +59,18 @@ test('the JARVIS command is an easter egg: typing the exact word finds it, nothi
   assert.ok(!grouped(all).flatMap(g => g.items).some(c => c.id === 'jarvis'));
   assert.ok(!buildCommands({ isOn: id => id !== 'widget.jarvis' }).some(c => c.id === 'jarvis'), 'a login without the surface never gets the command');
 });
+
+import { radarRank, systemSummary } from './jarvisCore.js';
+test('radarRank: ranks the moved ends by size against their noise, broken-link ends first, quiet ones left out', () => {
+  const g = buildGraph(evaluateChain({ oil: { delta: -9, last: 70 }, bei: { delta: 1, last: 230 }, us10y: { delta: 40, last: 4 }, real: { delta: -30, last: 2 } }));
+  const r = radarRank(g, { oil: 'Oil' });
+  assert.ok(r.items.length >= 2 && r.items.every(i => i.ratio > 0 && !(i.tone === 'quiet')));
+  for (let i = 1; i < r.items.length; i++) if (r.items[i - 1].tone !== 'wrong' || r.items[i].tone === 'wrong') assert.ok(r.items[i - 1].ratio >= r.items[i].ratio || r.items[i].tone === 'wrong');
+  assert.deepEqual(radarRank(null).items, []);
+});
+test('systemSummary: memory, uptime and the busiest services today; copes with an empty or failed payload', () => {
+  const s = systemSummary({ ok: true, uptimeSec: 7200, memory: { rssMB: 812.3, peakRssMB: 990, heapUsedMB: 400 }, counts: { enabled: 40, total: 60 },
+    services: [{ id: 'a', today: { totalMs: 120000, runs: 4, errors: 1 } }, { id: 'b', today: { totalMs: 0 } }, { id: 'c', today: { totalMs: 600000, runs: 2, errors: 0 } }] });
+  assert.equal(s.rssMB, 812.3); assert.equal(s.uptimeH, 2); assert.deepEqual(s.top.map(t => t.id), ['c', 'a']);
+  assert.equal(systemSummary(null).ok, false);
+});
