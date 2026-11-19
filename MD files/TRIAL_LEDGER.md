@@ -10,16 +10,16 @@ Generated 2026-11-19.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **423** |
-| validated | 77 |
+| claims tested (validated + null + underpowered) | **426** |
+| validated | 79 |
 | null | 206 |
-| underpowered | 140 |
-| context (base rates, descriptions: not counted as tests) | 65 |
-| pre-registrations with no banked verdict (below) | 90 |
+| underpowered | 141 |
+| context (base rates, descriptions: not counted as tests) | 66 |
+| pre-registrations with no banked verdict (below) | 91 |
 
-**What the count says (Lesson 02 §05).** If none of the 423 claims were real, tests at the usual 5% size would still pass
-about **21.2** of them by luck. 77 passed, so most passes are unlikely to be luck alone, but
-**roughly 21 of the 77 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 426 claims were real, tests at the usual 5% size would still pass
+about **21.3** of them by luck. 79 passed, so most passes are unlikely to be luck alone, but
+**roughly 21 of the 79 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -512,6 +512,10 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-18 | roc-stall-trend-filter | price | null | forge/ROC_STALL_TREND_FILTER_PREREG.md |
 | 2026-11-19 | exhaustion-v2-nq | volatility | validated | forge/EXHAUSTION_V2_NQ_PREREG.md |
 | 2026-11-19 | exhaustion-v2-nq-fut | volatility | validated | forge/EXHAUSTION_V2_NQ_PREREG.md |
+| 2026-11-19 | ladder-v2-eurusd | volatility | validated | forge/LADDER_V2_EURUSD_PREREG.md |
+| 2026-11-19 | ladder-v2-eurusd-cvf | volatility | context | forge/LADDER_V2_EURUSD_PREREG.md |
+| 2026-11-19 | ladder-v2-eurusd-fut | volatility | validated | forge/LADDER_V2_EURUSD_PREREG.md |
+| 2026-11-19 | ladder-v2-eurusd-iv | volatility | underpowered | forge/LADDER_V2_EURUSD_PREREG.md |
 | 2026-11-19 | ladder-v2-gold | volatility | validated | forge/LADDER_V2_GOLD_PREREG.md |
 | 2026-11-19 | ladder-v2-gold-cvf | volatility | context | forge/LADDER_V2_GOLD_PREREG.md |
 | 2026-11-19 | ladder-v2-gold-fut | volatility | validated | forge/LADDER_V2_GOLD_PREREG.md |
@@ -557,6 +561,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/ENTRY_TIMING_EURUSD_PREREG.md`: EURUSD Touch Book, part 2 — entry timing (pre-registration)
 - `forge/EURUSD_MODEL_PREREG.md`: EURUSD model step — pre-registration
 - `forge/EXHAUSTION_PLAYBOOK_EURUSD_PREREG.md`: The exhaustion playbook on EURUSD — pre-registration
+- `forge/EXHAUSTION_V2_GOLD_PREREG.md`: exhaustion-v2-gold — after gold touches a ladder line, which forecast of "further travel" is right?
 - `forge/EXITS_PREREG.md`: Study 1 — Exits driven by the range book (pre-registration)
 - `forge/FED_PATH_LEAD_PREREG.md`: FED-PATH-LEAD: does the Fed-path slope lead EURUSD / AUD / silver / DAX? (one confirmation test)
 - `forge/FLOW_COLUMNS_PREREG.md`: Flow and positioning columns at the vol lines — pre-registration

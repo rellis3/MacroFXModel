@@ -1,0 +1,3 @@
+positive control 1 (EURUSD C bars vs JS nyCloseDailyBars): 2758/2758 = 1.0000
+EURUSD C: 2757 sessions 2016-01-04 -> 2026-08-20
+EURUSD F: 2960 sessions 2014-12-08 -> 2026-08-21
