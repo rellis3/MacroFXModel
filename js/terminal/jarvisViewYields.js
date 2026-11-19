@@ -64,7 +64,7 @@ function draw(ctx, g, api) {
   for (let i = 0; i < T; i++) line(xOf(i), 0, zN, xOf(i), 0, zO, C.blue, 0.1, 1);
   for (let r = 0; r <= 6; r++) { const z = zN + (zO - zN) * r / 6; line(x0, 0, z, x1 + 0.1, 0, z, C.blue, 0.1, 1); }
   ctx.font = '10px ui-monospace,monospace'; ctx.textBaseline = 'middle';
-  for (let v = Math.ceil(lo * 2) / 2; v <= hi + 1e-6; v += 0.5) { const y = yOf(v); line(x0, y, zO, x1, y, zO, C.blue, 0.1, 1); line(x0, y, zO, x0, y, zN, C.blue, 0.06, 1); proj(x0 - 0.04, y, zO); ctx.globalAlpha = 0.85 * fade; ctx.fillStyle = C.tx2; ctx.textAlign = 'right'; ctx.fillText(`${v.toFixed(1)}%`, O.x, O.y); }
+  const vs = g.compact ? 1 : 0.5; for (let v = g.compact ? Math.ceil(lo) : Math.ceil(lo * 2) / 2; v <= hi + 1e-6; v += vs) { const y = yOf(v); line(x0, y, zO, x1, y, zO, C.blue, 0.1, 1); line(x0, y, zO, x0, y, zN, C.blue, 0.06, 1); proj(x0 - 0.04, y, zO); ctx.globalAlpha = 0.85 * fade; ctx.fillStyle = C.tx2; ctx.textAlign = 'right'; ctx.fillText(`${v.toFixed(1)}%`, O.x, O.y); }
   line(x0, 0, zO, x0, YS, zO, C.blue, 0.22, 1);
 
   // the surface, painted far to near: a dark glass quad, then the slope colours over it
@@ -90,7 +90,7 @@ function draw(ctx, g, api) {
   }
 
   // a scan line sweeps from the oldest session to the newest, lighting each curve as it passes (decoration; the row it is on is the one named in the corner)
-  if (!calm) { const sj = Math.floor((t * 14) % (n + 20)); if (sj < n) { ctx.beginPath(); for (let i = 0; i < T; i++) { const k = sj * T + i; i ? ctx.lineTo(PX[k], PY[k]) : ctx.moveTo(PX[k], PY[k]); } ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = C.tx; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.55 * fade; ctx.stroke(); ctx.globalCompositeOperation = 'source-over'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = '10px ui-monospace,monospace'; ctx.fillStyle = C.tx; ctx.fillText(`${dayWord(G.dates[sj])}  2s10s ${bpText(slopeBp(G, sj))}`, PX[sj * T + T - 1] + 10, PY[sj * T + T - 1]); } }
+  if (!calm) { const sj = Math.floor((t * 14) % (n + 20)); if (sj < n) { ctx.beginPath(); for (let i = 0; i < T; i++) { const k = sj * T + i; i ? ctx.lineTo(PX[k], PY[k]) : ctx.moveTo(PX[k], PY[k]); } ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = C.tx; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.55 * fade; ctx.stroke(); ctx.globalCompositeOperation = 'source-over'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = '10px ui-monospace,monospace'; ctx.fillStyle = C.tx; if (!g.compact) ctx.fillText(`${dayWord(G.dates[sj])}  2s10s ${bpText(slopeBp(G, sj))}`, PX[sj * T + T - 1] + 10, PY[sj * T + T - 1]); } }
   // ribbons beyond the 30Y edge
   const rs = visRibs(); ctx.font = '10px ui-monospace,monospace';
   rs.forEach(([k, label, tone], r) => {
@@ -98,7 +98,7 @@ function draw(ctx, g, api) {
     ctx.globalCompositeOperation = 'lighter'; ctx.beginPath(); ctx.strokeStyle = C[tone]; ctx.lineWidth = 2;
     for (let j = 0; j < n; j++) { if (a[j] !== a[j]) { started = false; continue; } proj(xr, yOf(a[j]), zOf(j)); started ? ctx.lineTo(O.x, O.y) : ctx.moveTo(O.x, O.y); started = true; }
     ctx.globalAlpha = 0.85 * fade; ctx.stroke(); ctx.globalCompositeOperation = 'source-over';
-    let last = n - 1; while (last > 0 && a[last] !== a[last]) last--; proj(xr, yOf(a[last]), zOf(last)); ctx.globalAlpha = fade; ctx.fillStyle = C[tone]; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(`${label} ${a[last].toFixed(2)}`, O.x + 8, O.y);
+    let last = n - 1; while (last > 0 && a[last] !== a[last]) last--; proj(xr, yOf(a[last]), zOf(last)); ctx.globalAlpha = fade; ctx.fillStyle = C[tone]; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(g.compact ? a[last].toFixed(2) : `${label} ${a[last].toFixed(2)}`, O.x + 8, O.y);
   });
 
   // the newest curve: a curtain to the floor, a glowing spline, a dot and a label per tenor
@@ -112,19 +112,21 @@ function draw(ctx, g, api) {
     ctx.globalAlpha = 0.22 * fade; ctx.strokeStyle = C.cy; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(O.x, O.y); ctx.stroke();
     ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.beginPath(); ctx.arc(x, y, key ? 4.6 : 3.4, 0, 6.2832); ctx.fill();
     if (key) { ctx.globalAlpha = (0.3 + 0.3 * pulse) * fade; ctx.strokeStyle = C.cy; ctx.beginPath(); ctx.arc(x, y, 8 + 3 * pulse, 0, 6.2832); ctx.stroke(); }
-    ctx.textBaseline = 'alphabetic'; ctx.font = '600 11px ui-monospace,monospace'; ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.fillText(G.v[k].toFixed(2), x, y - 16);
-    ctx.font = '10px ui-monospace,monospace'; ctx.fillStyle = C.tx2; ctx.fillText(TENORS[i].label, x, y - 28);
-    ctx.textBaseline = 'top'; ctx.fillText(TENORS[i].label, O.x, O.y + 4);
+    const lab = !g.compact || key;                                              // phone: value labels on 2Y / 10Y / 30Y only
+    if (lab) { ctx.textBaseline = 'alphabetic'; ctx.font = '600 11px ui-monospace,monospace'; ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.fillText(G.v[k].toFixed(2), x, y - 16); }
+    ctx.font = '10px ui-monospace,monospace'; ctx.fillStyle = C.tx2; if (!g.compact) ctx.fillText(TENORS[i].label, x, y - 28);
+    ctx.textBaseline = 'top'; if (!g.compact || i % 2 === 0 || key) ctx.fillText(TENORS[i].label, O.x, O.y + 4);
   }
   // time labels along the left edge
   ctx.textBaseline = 'middle'; ctx.textAlign = 'right'; ctx.font = '10px ui-monospace,monospace'; ctx.fillStyle = C.tx2;
-  for (const j of [0, Math.round((n - 1) / 3), Math.round((n - 1) * 2 / 3), n - 1]) { proj(x0 - 0.12, 0, zOf(j)); ctx.globalAlpha = 0.85 * fade; ctx.fillText(dayWord(G.dates[j]), O.x, O.y + 12); }
+  for (const j of g.compact ? [0, n - 1] : [0, Math.round((n - 1) / 3), Math.round((n - 1) * 2 / 3), n - 1]) { proj(x0 - 0.12, 0, zOf(j)); ctx.globalAlpha = 0.85 * fade; ctx.fillText(dayWord(G.dates[j]), O.x, O.y + 12); }
   ctx.restore(); hud(ctx, g, api);
 }
 
 function hud(ctx, g, api) {
   const { W, H, C, fade } = g, G = S.G, st = S.st; ctx.save(); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
   const panel = (x, y, w, h) => { ctx.globalAlpha = 0.07 * fade; ctx.fillStyle = C.blue; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 0.35 * fade; ctx.strokeStyle = C.blue; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); };
+  if (g.compact) return hudCompact(ctx, g, api);
   if (st) {
     const x = 24, y = 118, tone = st.inverted ? C.dn : st.flat ? C.gold : C.cy, word = st.inverted ? 'INVERTED' : st.flat ? 'ABOUT FLAT' : 'NORMAL';
     panel(x - 10, y - 18, 292, 176); ctx.globalAlpha = 0.9 * fade; ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace'; ctx.fillText(`US TREASURY CURVE  ·  as of ${dayWord(st.asOf)}`, x, y);
@@ -173,3 +175,21 @@ registerShowScene({
     return { title: 'The yield curve', view: 'yields', cam: null, text, enter: api => { Object.assign(api.st, { yaw: 0.05, pitch: -0.82, zoom: 1, spin: false }); S.p = 0; }, motion: (api, p) => { S.p = p; } };
   },
 });
+
+/** Phone: the readout is one line under the header, the legend one short line above the ribbon buttons. */
+function hudCompact(ctx, g, api) {
+  const { W, H, C, fade } = g, st = S.st; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  if (st) {
+    const tone = st.inverted ? C.dn : st.flat ? C.gold : C.cy, word = st.inverted ? 'INVERTED' : st.flat ? 'FLAT' : 'NORMAL';
+    ctx.globalAlpha = fade; ctx.fillStyle = tone; ctx.font = '600 15px ui-monospace,monospace'; ctx.fillText(`2s10s ${bpText(st.s)} ${word}`, 14, 96);
+    ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace'; ctx.fillText(`2Y ${st.y2.toFixed(2)}% · 10Y ${st.y10.toFixed(2)}% · 30Y ${st.y30.toFixed(2)}% · as of ${dayWord(st.asOf)}`, 14, 112);
+  }
+  const bw = Math.min(96, (W - 28) / 3 - 6), x0 = (W - (bw * 3 + 12)) / 2, cyy = H - 112; ctx.font = '10px ui-monospace,monospace';
+  RIBS.forEach(([k, label, tone], r) => {
+    const have = !!S.rib[k], on = have && S.on[k], cx = x0 + r * (bw + 6), top = cyy - 15;
+    ctx.globalAlpha = (have ? 0.9 : 0.35) * fade; ctx.strokeStyle = C[tone]; ctx.lineWidth = 1; ctx.strokeRect(cx + 0.5, top + 0.5, bw - 1, 29);
+    if (on) { ctx.globalAlpha = 0.25 * fade; ctx.fillStyle = C[tone]; ctx.fillRect(cx + 1, top + 1, bw - 2, 28); }
+    ctx.globalAlpha = (have ? 0.95 : 0.4) * fade; ctx.fillStyle = C.tx; ctx.textAlign = 'center'; ctx.fillText(have ? label : `${label} n/a`, cx + bw / 2, cyy + 4); if (have) g.hit(`yl:${k}`, cx + bw / 2, cyy);
+  });
+  ctx.textAlign = 'center'; ctx.fillStyle = C.tx2; ctx.globalAlpha = 0.8 * fade; ctx.fillText('Curve through time: description, not a forecast.', W / 2, H - 84);
+}

@@ -74,7 +74,7 @@ function draw(ctx, g, api) {
   // the centre the camera looks at drifts toward the highlighted nodes in the SHOW
   let fx = 0, fy = 0, fz = 0; if (show && focus > 0 && S.hl.size) { for (const i of S.hl) { fx += P[i * 3]; fy += P[i * 3 + 1]; fz += P[i * 3 + 2]; } fx = fx / S.hl.size * focus * 0.8; fy = fy / S.hl.size * focus * 0.8; fz = fz / S.hl.size * focus * 0.8; }
   const yaw = st.yaw - 0.55 + S.spin + (show ? S.showP * 1.6 : 0), pitch = clamp(-0.12 + (st.pitch + 0.7) * 0.7 + 0.12 * Math.sin(t * 0.21), -1.2, 1.2), zoom = clamp(st.zoom || 1, 0.5, 2.6) * (1 + 0.55 * focus);
-  const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), SCL = Math.min(W * 0.46, H * 0.62) * zoom, CD = 3.4, ox = W / 2 + (W > 900 ? 60 : 0), oy = H * 0.48;
+  const cyw = Math.cos(yaw), syw = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), SCL = (g.compact ? Math.min(W * 0.66, H * 0.5) : Math.min(W * 0.46, H * 0.62)) * zoom, CD = 3.4, ox = W / 2 + (W > 900 ? 60 : 0), oy = H * 0.48;
   const scr = S.scr;
   for (let i = 0; i < n; i++) {
     const x0 = P[i * 3] - fx, y0 = P[i * 3 + 1] - fy, z0 = P[i * 3 + 2] - fz;
@@ -97,7 +97,7 @@ function draw(ctx, g, api) {
     ctx.globalAlpha = fade * 0.2 * lit; ctx.strokeStyle = col; ctx.setLineDash([2, 6]); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(sx, sy, rad, 0, 6.2832); ctx.stroke(); ctx.setLineDash([]);
   }
   ctx.globalCompositeOperation = 'source-over';
-  for (const c of CLUSTERS) {
+  if (!g.compact) for (const c of CLUSTERS) {
     const mem = c.ids.map(k => net.ids.indexOf(k)).filter(i => i >= 0); if (mem.length < 2) continue;
     let sx = 0, sy = 0, top = 1e9; for (const i of mem) { sx += scr[i * 4]; sy += scr[i * 4 + 1]; top = Math.min(top, scr[i * 4 + 1]); } sx /= mem.length;
     let rad = 0, cy0 = 0; for (const i of mem) cy0 += scr[i * 4 + 1]; cy0 /= mem.length; for (const i of mem) rad = Math.max(rad, Math.hypot(scr[i * 4] - sx, scr[i * 4 + 1] - cy0)); rad = rad * 1.12 + 20;
@@ -133,6 +133,7 @@ function draw(ctx, g, api) {
   // ── the nodes, far to near ──
   const order = []; for (let i = 0; i < n; i++) order.push(i); order.sort((a, b) => scr[b * 4 + 2] - scr[a * 4 + 2]);
   ctx.textAlign = 'center';
+  let lab = null; if (g.compact) { lab = new Set(net.ids.map((id, i) => [i, S.sizes[id]?.size ?? 0]).sort((a, b) => b[1] - a[1]).slice(0, 5).map(a => a[0])); }   // phone: only the five biggest movers are named
   for (const i of order) {
     const id = net.ids[i], sz = S.sizes[id], x = scr[i * 4], y = scr[i * 4 + 1], k = scr[i * 4 + 3], z = scr[i * 4 + 2], on = !hl || S.hl.has(i) || (S.sel >= 0 && S.links.some(l => (l.a === S.sel && l.b === i) || (l.b === S.sel && l.a === i)));
     const col = !sz || sz.tone === 'quiet' ? C.tx2 : sz.tone === 'up' ? C.up : C.dn, size = sz ? sz.size : 0.18, a = depthA(z) * (on ? 1 : 0.22);
@@ -144,26 +145,28 @@ function draw(ctx, g, api) {
     ctx.globalAlpha = fade * a * 0.85; ctx.fillStyle = C.tx; ctx.beginPath(); ctx.arc(x - rad * 0.25, y - rad * 0.25, rad * 0.38, 0, 6.2832); ctx.fill();
     if (S.sel === i) { ctx.globalAlpha = fade; ctx.strokeStyle = C.tx; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(x, y, rad * 1.9 + Math.sin(t * 5) * 1.2, 0, 6.2832); ctx.stroke(); }
     g.hit('net:' + id, x, y);
+    if (lab && !lab.has(i) && !S.hl.has(i) && S.sel !== i) continue;
     ctx.globalAlpha = fade * a * (S.hl.has(i) ? 1 : 0.92); ctx.fillStyle = S.hl.has(i) ? C.tx : C.tx2; ctx.font = (S.hl.has(i) ? '13px' : '11px') + ' ui-monospace,monospace'; ctx.fillText(nameOf(net, id), x, y + rad + 13);
   }
 
   // ── the card for the clicked node ──
   ctx.textAlign = 'left'; ctx.font = '11px ui-monospace,monospace';
   if (S.sel >= 0) {
-    const id = net.ids[S.sel], sz = S.sizes[id], pt = partners(net.ids, net.m, S.sel, 3), x0 = 24, y0 = 150, w = 262, lines = 6 + pt.pos.length + pt.neg.length;
+    const cp = g.compact, id = net.ids[S.sel], sz = S.sizes[id], pt = partners(net.ids, net.m, S.sel, cp ? 2 : 3), x0 = cp ? 20 : 24, y0 = cp ? 112 : 150, w = cp ? Math.min(262, W - 20) : 262, lines = 6 + pt.pos.length + pt.neg.length;
     ctx.fillStyle = C.up; ctx.globalAlpha = fade * 0.07; ctx.fillRect(x0 - 10, y0 - 22, w, lines * 16 + 22); ctx.globalAlpha = fade * 0.5; ctx.strokeStyle = C.up; ctx.lineWidth = 1; ctx.strokeRect(x0 - 10, y0 - 22, w, lines * 16 + 22);
     ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.font = '14px ui-monospace,monospace'; ctx.fillText(nameOf(net, id), x0, y0 - 2); ctx.font = '11px ui-monospace,monospace';
     let y = y0 + 18; ctx.fillStyle = C.tx2; ctx.fillText(sz ? `today ${sz.move >= 0 ? '+' : ''}${sz.move.toFixed(2)}%, ${sz.ratio.toFixed(1)}x its usual move` : 'no move reading today', x0, y); y += 20;
     ctx.fillStyle = C.up; ctx.fillText('MOVED TOGETHER WITH', x0, y); y += 16;
-    for (const p of pt.pos) { ctx.fillStyle = C.tx; ctx.fillText(nameOf(net, p.k), x0 + 6, y); ctx.fillStyle = C.up; ctx.fillText(fmt(p.r), x0 + 170, y); y += 16; }
+    for (const p of pt.pos) { ctx.fillStyle = C.tx; ctx.fillText(nameOf(net, p.k), x0 + 6, y); ctx.fillStyle = C.up; ctx.fillText(fmt(p.r), x0 + (cp ? 150 : 170), y); y += 16; }
     if (!pt.pos.length) { ctx.fillStyle = C.tx2; ctx.fillText('none positive', x0 + 6, y); y += 16; }
     y += 4; ctx.fillStyle = C.dn; ctx.fillText('MOVED OPPOSITE TO', x0, y); y += 16;
-    for (const p of pt.neg) { ctx.fillStyle = C.tx; ctx.fillText(nameOf(net, p.k), x0 + 6, y); ctx.fillStyle = C.dn; ctx.fillText(fmt(p.r), x0 + 170, y); y += 16; }
+    for (const p of pt.neg) { ctx.fillStyle = C.tx; ctx.fillText(nameOf(net, p.k), x0 + 6, y); ctx.fillStyle = C.dn; ctx.fillText(fmt(p.r), x0 + (cp ? 150 : 170), y); y += 16; }
     if (!pt.neg.length) { ctx.fillStyle = C.tx2; ctx.fillText('none negative', x0 + 6, y); y += 16; }
   }
 
   // ── title and legend: what is drawn, over what window, and that it describes the past ──
   ctx.textAlign = 'left'; ctx.font = '11px ui-monospace,monospace';
+  if (g.compact) return netLegendCompact(ctx, g, net, L.length);
   const lx = 24, ly = H - 222, nl = L.length;
   ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.up; ctx.font = '12px ui-monospace,monospace'; ctx.fillText('NETWORK  ·  how markets have moved together', lx, ly); ctx.font = '11px ui-monospace,monospace';
   const rows = [
@@ -200,3 +203,15 @@ registerShowScene({
     return text ? { title: 'The correlation network', view: 'net', cam: { drift: true }, text, enter: api => { S.showP = 0; if (api?.st) { api.st.yaw = 0.55; api.st.zoom = 1; } }, motion: (api, p) => { S.showP = p; } } : null;
   },
 });
+
+/** Phone: the title, one caveat line, the link count and 28px threshold buttons, all inside the screen. */
+function netLegendCompact(ctx, g, net, nl) {
+  const { W, H, C, fade } = g, lx = 14, ly = H - 138; ctx.textAlign = 'left';
+  ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.up; ctx.font = '11px ui-monospace,monospace'; ctx.fillText('NETWORK · how markets moved together', lx, ly);
+  ctx.fillStyle = C.tx2; ctx.globalAlpha = fade * 0.85; ctx.font = '10px ui-monospace,monospace';
+  ctx.fillText(`${net.window}-day correlation to ${net.asOf}. Past picture, not a forecast.`, lx, ly + 16);
+  ctx.fillText(`green together · red opposite · |r| >= ${S.thr.toFixed(2)}: ${nl} of ${S.pairs}`, lx, ly + 32);
+  ctx.fillStyle = C.up; ctx.globalAlpha = fade * 0.9; ctx.strokeStyle = C.up; ctx.lineWidth = 1; ctx.font = '14px ui-monospace,monospace';
+  for (const [k, x] of [['-', W - 78], ['+', W - 42]]) { ctx.strokeRect(x, ly - 14, 30, 28); ctx.textAlign = 'center'; ctx.fillText(k, x + 15, ly + 5); g.hit('net:' + k, x + 15, ly); }
+  ctx.restore();
+}

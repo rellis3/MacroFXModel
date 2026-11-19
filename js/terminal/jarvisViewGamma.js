@@ -144,7 +144,7 @@ function cards(ctx, g, marks, cz, pj, out) {
   const { fade, W } = g; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   for (const m of marks) {
     const d = m.z - cz; if (d < -0.7 || d > 3.2) continue; const a = (d > 0 ? clampN((3.2 - d) / 1.4, 0, 1) : clampN(1 + d / 0.7, 0, 1)) * fade; if (a < 0.03) continue;
-    if (!pj(m.x, m.y, m.z)) continue; const [x, y] = out(), open = d > -0.5 && d < 1.3, small = m.small, bw = open ? 330 : 190, lx = clampN(x + 14, 8, W - bw - 8), ly = y - 24;
+    if (!pj(m.x, m.y, m.z)) continue; const [x, y] = out(), open = d > -0.5 && d < 1.3, small = m.small, bw = open ? Math.min(330, W - 16) : 190, lx = clampN(x + 14, 8, W - bw - 8), ly = y - 24;
     ctx.globalAlpha = a * 0.75; ctx.strokeStyle = m.col; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(lx, ly + 4); ctx.stroke(); ctx.fillStyle = m.col; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, tau); ctx.fill();
     ctx.globalAlpha = a * 0.78; ctx.fillStyle = S.bg || 'black'; ctx.fillRect(lx - 6, ly - 13, bw, open ? (small ? 56 : 56) : 20);
     ctx.globalAlpha = a; ctx.fillStyle = m.col; ctx.font = '600 12px ui-monospace,monospace'; ctx.fillText(m.title, lx, ly);
@@ -156,10 +156,10 @@ const clip = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
 
 // the in-canvas market picker and fly controls
 function buttons(ctx, g, meta) {
-  const { W, C, fade } = g, y = 128, items = [['prev', '‹', -150, 26], ['name', meta?.label ?? S.key ?? '', 0, 120], ['next', '›', 150, 26], ['pause', S.paused ? '▶ FLY' : '❚❚ PAUSE', 260, 92]];
+  const { W, C, fade } = g, cp = g.compact, y = cp ? 100 : 128, bh = cp ? 28 : 26, items = cp ? [['prev', '‹', -110, 44], ['name', meta?.label ?? S.key ?? '', 0, 120], ['next', '›', 110, 44], ['pause', S.paused ? '▶ FLY' : '❚❚ PAUSE', 184, 84]] : [['prev', '‹', -150, 26], ['name', meta?.label ?? S.key ?? '', 0, 120], ['next', '›', 150, 26], ['pause', S.paused ? '▶ FLY' : '❚❚ PAUSE', 260, 92]];
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '600 12px ui-monospace,monospace';
   for (const [k, label, dx, w] of items) {
-    const x = W / 2 + dx; ctx.globalAlpha = fade * 0.8; ctx.fillStyle = S.bg || 'black'; ctx.fillRect(x - w / 2, y - 13, w, 26); ctx.strokeStyle = C.blue; ctx.globalAlpha = fade * (k === 'name' ? 0.4 : 0.9); ctx.lineWidth = 1; ctx.strokeRect(x - w / 2, y - 13, w, 26);
+    const x = W / 2 + dx; ctx.globalAlpha = fade * 0.8; ctx.fillStyle = S.bg || 'black'; ctx.fillRect(x - w / 2, y - bh / 2, w, bh); ctx.strokeStyle = C.blue; ctx.globalAlpha = fade * (k === 'name' ? 0.4 : 0.9); ctx.lineWidth = 1; ctx.strokeRect(x - w / 2, y - bh / 2, w, bh);
     ctx.fillStyle = k === 'name' ? C.blue : C.tx; ctx.globalAlpha = fade; ctx.fillText(label, x, y + 1); if (k !== 'name') g.hit('gm:' + k, x, y);
   }
   ctx.textBaseline = 'alphabetic';
@@ -167,6 +167,7 @@ function buttons(ctx, g, meta) {
 
 function hud(ctx, g, L, meta, cz, n) {
   const { W, H, C, fade } = g; ctx.textAlign = 'left';
+  if (g.compact) return hudCompact(ctx, g, L, meta, cz, n);
   const x0 = 18, y0 = H - 222;
   ctx.globalAlpha = fade * 0.74; ctx.fillStyle = S.bg || 'black'; ctx.fillRect(x0 - 10, y0 - 16, 470, 178);
   ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.blue; ctx.fillText(`GAMMA  ·  ${meta?.label ?? ''}  ·  THE STRIKE LADDER`, x0, y0);
@@ -224,3 +225,13 @@ registerShowScene({
     return { title: 'The option strikes', view: 'gamma', cam: null, text, enter: api => { S.key = key; S.paused = false; S.p = 0; Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); }, motion: (api, p) => { S.showP = clampN(p, 0, 1); S.showAt = Date.now(); } };
   },
 });
+
+/** Phone: two short readout lines under the buttons and a one-line legend above the transport bar. No IV inset. */
+function hudCompact(ctx, g, L, meta, cz, n) {
+  const { W, H, C, fade } = g, i = clampN(Math.round(cz / DZ), 0, n - 1); ctx.textAlign = 'left'; ctx.font = '10px ui-monospace,monospace';
+  ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.blue; ctx.fillText(`${meta?.label ?? ''} · strike ${fmtPx(L.strikes[i])} · calls ${fmtOI(L.call[i])} puts ${fmtOI(L.put[i])}`, 14, 136);
+  ctx.fillStyle = C.tx2; ctx.fillText(`spot ${fmtPx(L.spot)}${L.flip != null ? ` · flip ${fmtPx(L.flip)}` : ''}${L.dte != null ? ` · ${L.dte} DTE` : ''}`, 14, 152);
+  if (L.long != null) { ctx.fillStyle = L.long ? C.cy : C.gold; ctx.fillText(`spot ${L.long ? 'above' : 'below'} flip: dealers net ${L.long ? 'long' : 'short'} gamma (modelled)`, 14, 168); }
+  ctx.fillStyle = C.tx2; ctx.globalAlpha = fade * 0.8; ctx.fillText('Green calls, red puts, ribbon = net gamma.', 14, H - 100);
+  ctx.fillStyle = C.gold; ctx.globalAlpha = fade * 0.9; ctx.fillText('Open interest and implied gamma: not a forecast.', 14, H - 84);
+}

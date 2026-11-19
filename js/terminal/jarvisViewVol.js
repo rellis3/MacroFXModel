@@ -112,7 +112,7 @@ function draw(ctx, g, api) {
     ctx.beginPath(); let started = false, ex = 0, ey = 0;
     for (let u = 0; u < nc; u++) { const k = sj * nc + u; if (PZ[k] < 0.22) { started = false; continue; } if (started) ctx.lineTo(PX[k], PY[k]); else { ctx.moveTo(PX[k], PY[k]); started = true; } ex = PX[k]; ey = PY[k]; }
     ctx.strokeStyle = C.gold; ctx.lineWidth = 6; ctx.globalAlpha = fade * 0.18; ctx.stroke(); ctx.lineWidth = 1.5; ctx.globalAlpha = fade * 0.95; ctx.stroke();
-    ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = C.gold; ctx.textAlign = 'left'; ctx.globalAlpha = fade * 0.9; if (ex > 0) ctx.fillText(fmtD(T.dates[sj]), Math.min(W - 60, ex + 8), ey);
+    ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = C.gold; ctx.textAlign = 'left'; ctx.globalAlpha = fade * 0.9; if (ex > 0 && !g.compact) ctx.fillText(fmtD(T.dates[sj]), Math.min(W - 60, ex + 8), ey);
   }
   ctx.globalCompositeOperation = 'source-over';
   // group names on the ground, ahead of the camera, and the newest edge
@@ -124,7 +124,7 @@ function draw(ctx, g, api) {
   // peak labels: the biggest ridges in view, named with market and date
   ctx.textAlign = 'left'; let shown = 0;
   for (const p of T.peaks) {
-    if (shown >= 5 || p.v < 1.6) break; const u = S.cols.indexOf(p.i) * SUB, j = p.j; if (u < 0 || j < j0 + 1 || j > j1) continue; const k = j * nc + u; if (PZ[k] < 0.5) continue;
+    if (shown >= (g.compact ? 2 : 5) || p.v < 1.6) break; const u = S.cols.indexOf(p.i) * SUB, j = p.j; if (u < 0 || j < j0 + 1 || j > j1) continue; const k = j * nc + u; if (PZ[k] < 0.5) continue;
     shown++; const x = PX[k], y = PY[k], tx = x + 14, ty = y - 26 - shown * 2;
     ctx.strokeStyle = C.tx; ctx.globalAlpha = fade * 0.6; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx - 3, ty + 3); ctx.stroke();
     ctx.fillStyle = C.tx; ctx.globalAlpha = fade; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, tau); ctx.fill();
@@ -136,6 +136,7 @@ function draw(ctx, g, api) {
 
 function drawLegend(ctx, g, T, V, sj) {
   const { W, H, C, fade } = g; ctx.textAlign = 'left';
+  if (g.compact) return legendCompact(ctx, g, T, V);
   const x0 = 18, y0 = H - 250, bw = 190;
   ctx.globalAlpha = fade * 0.72; ctx.fillStyle = S.bg || 'black'; ctx.fillRect(x0 - 10, y0 - 16, 440, 172); ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.blue; ctx.fillText('VOL  ·  RANGE USED', x0, y0);
   const rows = [
@@ -182,3 +183,14 @@ registerShowScene({
   prepare: api => loadVol(api),
   build: (inp, data) => { const text = data?.T ? volScript(data.T, data.V) : null; return text ? { title: 'The volatility landscape', view: 'vol', cam: { drift: true }, text, motion: (api, p) => { S.showP = clampN(p, 0, 1); S.showAt = Date.now(); } } : null; },
 });
+
+/** Phone: two readout lines at the top, a colour bar and one short caveat line above the transport bar. */
+function legendCompact(ctx, g, T, V) {
+  const { W, H, C, fade } = g; ctx.textAlign = 'left'; ctx.font = '10px ui-monospace,monospace';
+  ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.blue; ctx.fillText(`LATEST ${fmtD(T.dates[T.ns - 1])} · ${T.stretched} of ${T.nm} markets at 1.5x normal+`, 14, 96);
+  ctx.fillStyle = C.tx2; ctx.fillText(V ? `VIX ${V.vix.toFixed(1)}${V.vix3m != null ? ` · VIX3M ${V.vix3m.toFixed(1)} · ${V.inverted ? 'INVERTED' : 'upward'}` : ''}` : 'VIX curve: no feed', 14, 112);
+  const bw = Math.min(200, W - 28), x0 = 14, by = H - 112;
+  for (let i = 0; i < bw; i++) { ramp(i / (bw - 1) * CLIP); ctx.fillStyle = C[rA]; ctx.globalAlpha = fade * (1 - rF) * 0.85; ctx.fillRect(x0 + i, by, 1, 7); ctx.fillStyle = C[rB]; ctx.globalAlpha = fade * rF * 0.85; ctx.fillRect(x0 + i, by, 1, 7); }
+  ctx.fillStyle = C.tx2; ctx.globalAlpha = fade * 0.9; ctx.fillText('0x', x0, by + 19); ctx.textAlign = 'center'; ctx.fillText('1x normal', x0 + bw / 3 + 12, by + 19); ctx.textAlign = 'right'; ctx.fillText('3x+ of own range', x0 + bw + 2, by + 19);
+  ctx.textAlign = 'left'; ctx.globalAlpha = fade * 0.75; ctx.fillText('Range vs own normal; past days, not a forecast.', 14, by + 36);
+}

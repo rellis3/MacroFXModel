@@ -518,7 +518,7 @@ export async function openJarvis(win = window) {
     ctx.lineWidth = 1; ctx.strokeStyle = C.blue;
     for (let i = -11; i <= 11; i++) { const u = i * 0.19; for (const [a, b] of [[[-2.2, 0, u], [2.2, 0, u]], [[u, 0, -1.4], [u, 0, 1.4]]]) { const p = P(...a), q = P(...b); if (p.ok && q.ok) { ctx.globalAlpha = 0.08 * fade; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); } } }
     ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillStyle = C.tx2;
-    CD_ROWS.forEach(([title], ri) => { if (!title) return; const z = (ri - (CD_ROWS.length - 1) / 2) * 0.45, p = P(-1.55, 0, z); if (p.ok) { ctx.globalAlpha = 0.6 * fade; ctx.fillText(title, p.x, p.y); } });
+    CD_ROWS.forEach(([title], ri) => { if (!title || st.compact) return; const z = (ri - (CD_ROWS.length - 1) / 2) * 0.45, p = P(-1.55, 0, z); if (p.ok) { ctx.globalAlpha = 0.6 * fade; ctx.fillText(title, p.x, p.y); } });
     const items = cd.rows.map(r => { const pos = cd.layout[r.key]; if (!pos) return null; const b = candleBox(r, pos), pts = b.pts.map(q => P(q[0], q[1], q[2])), w0 = P(...b.wick[0]), w1 = P(...b.wick[1]), tip = P(b.tip[0], b.tip[1] + 0.1, b.tip[2]); return { r, b, pts, w0, w1, tip, depth: P(pos.x, 0, pos.z).z }; }).filter(o => o && o.tip.ok).sort((a, b) => b.depth - a.depth);
     const selK = st.sel, loud = new Set([...items].sort((a, b) => Math.abs(b.r.ratio) - Math.abs(a.r.ratio)).slice(0, st.compact ? 4 : 9).map(o => o.r.key));      // only the loudest candles carry a name, so the field stays readable
     for (const o of items) {
