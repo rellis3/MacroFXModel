@@ -43,6 +43,7 @@ SOURCES = {
     "SPX500": {"C": "portfolioBacktest/cache/spx500_m1.parquet", "F": "ES"},
     "US30": {"C": "portfolioBacktest/cache/us30_m1.parquet", "F": "YM"},
     "US2000": {"C": "portfolioBacktest/cache/us2000_m1.parquet", "F": "RTY"},
+    "EURUSD": {"C": "portfolioBacktest/cache/eurusd_m1.parquet", "F": "6E"},
 }
 
 

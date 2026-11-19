@@ -36,7 +36,11 @@ SYMS = {
     "SPX500": dict(c="portfolioBacktest/cache/spx500_m1.parquet", f="ES", iv="VIX", ref="SPX500", live="yz_10", invert=False),
     "US30": dict(c="portfolioBacktest/cache/us30_m1.parquet", f="YM", iv="VXD", ref="US30", live="yz_10", invert=False),
     "US2000": dict(c="portfolioBacktest/cache/us2000_m1.parquet", f="RTY", iv="RVX", ref="US2000", live="yz_10", invert=False),
+    # settlement IV starts 2020-09: IV arms only in the separate 2021+ race (`score EURUSD iv`)
+    "EURUSD": dict(c="portfolioBacktest/cache/eurusd_m1.parquet", f="6E", iv="SETTLE:eur_usd", ref="EURUSD", live="yz_10",
+                   invert=False, iv_main=False),
 }
+HALVES = {"half 2018-22": (2018, 2022), "half 2023-26": (2023, 2026)}
 SEED, B, BLOCK = 20261118, 2000, 63
 QS, TAUS = ("hl", "oc", "oh", "ol"), (50, 75, 90)
 TGT = {50: 0.50, 75: 0.25, 90: 0.10}
@@ -75,12 +79,21 @@ def har_col(sym):
     return "A0" if SYMS[sym]["live"] == "har_rv_log" else "E_har_rv_log"
 
 
-def arms_for(sym):
+def iv_series(code):
+    """CBOE index (annualised %) or CME settlement IV ('SETTLE:<pair>', iv30 as annualised %)."""
+    if code.startswith("SETTLE:"):
+        d = pd.read_parquet(ROOT / f"oi_research_book/data/iv_daily_{code.split(':')[1]}.parquet")
+        return pd.Series(d["iv30"].to_numpy() * 100, index=pd.to_datetime(d["date"])).sort_index()
+    return cboe(code)
+
+
+def arms_for(sym, iv_race=False):
     """Gold prereg A2 (pre-results) added the GARCH family, SHAR, HAR-CJ and two 50/50 blends."""
     cfg = SYMS[sym]
+    use_iv = cfg["iv"] and (iv_race or cfg.get("iv_main", True))
     a = ["A0"] + [f"E_{e}" for e in EST if e != cfg["live"]] + ["H8", "R5", "R15", "SHAR", "HARCJ"]
     a += list(GARCH) + ["B_har_garcht"]
-    return a + (["V3", "V4", "B_har_iv"] if cfg["iv"] else [])
+    return a + (["V3", "V4", "B_har_iv"] if use_iv else [])
 
 
 # ================================================================ build
@@ -197,7 +210,7 @@ def build(sym, track):
         s = pd.Series(V.ESTIMATORS[e](bb).astype(float), index=b.index)
         S["A0" if e == cfg["live"] else f"E_{e}"] = asof_before(D, s.dropna()) / V.SQRT252
     S["H8"] = asof_before(D, har800(sym, f"{sym}_{track}", b).dropna()) / V.SQRT252
-    S["iv"] = asof_before(D, cboe(cfg["iv"])) if cfg["iv"] else np.nan
+    S["iv"] = asof_before(D, iv_series(cfg["iv"])) if cfg["iv"] else np.nan
     if cfg["iv"]:
         S["V4"] = S["iv"] / V.SQRT252
     def lg(x, base):                                   # log with a floor at 1% of RV (a one-sided quiet day)
@@ -245,7 +258,8 @@ def fit_k(tr):
     return float((zs @ y) / (zs @ zs + 1.0)) / sd, mu
 
 
-def walk_forward(S, sym, track, arms, years=YEARS, quiet=False):
+def walk_forward(S, sym, track, arms, years=None, quiet=False):
+    years = YEARS if years is None else years
     S = S.copy()
     if "V3" in arms:
         S["x"] = np.log(S["iv"] / V.SQRT252 / S["A0"])
@@ -368,7 +382,7 @@ def score_track(sym, T, track, arms, rng, flags):
     chosen = run if (tie and pin[run] < pin[win]) else win
     fl = floor_dist(Wq, rng)
     checks = {}
-    for h, (y0, y1) in {"half 2018-22": (2018, 2022), "half 2023-26": (2023, 2026)}.items():
+    for h, (y0, y1) in HALVES.items():
         m = ((T["year"] >= y0) & (T["year"] <= y1)).to_numpy()
         c, p, _ = diff_ci(T[m].reset_index(drop=True), arms, elig, i0, rng, q=q[m])
         checks[h] = {"n": int(m.sum()), "ci90": c, "chosen": float(p[chosen]), "A0": float(p[i0])}
@@ -525,31 +539,54 @@ def cmd_build(sym):
     (OUT / "build.txt").write_text("\n".join(LOG) + "\n")
 
 
-def cmd_score(sym):
-    OUT = out_dir(sym); rng = np.random.default_rng(SEED); arms = arms_for(sym)
+def cmd_score(sym, race="main"):
+    """race 'main': both tracks, YEARS. race 'iv': CFD only, test years 2021+, IV arms included (EURUSD prereg)."""
+    global YEARS, HALVES
+    iv_race = race == "iv"
+    if iv_race:
+        YEARS = range(2021, 2027)
+        HALVES = {"half 2021-22": (2021, 2022), "half 2023-26": (2023, 2026)}
+    OUT = out_dir(sym); rng = np.random.default_rng(SEED); arms = arms_for(sym, iv_race)
+    sfx = "_iv" if iv_race else ""
+    tracks = ("C",) if iv_race else ("C", "F")
     flags_p = ROOT / f"analysis/output/data_screens/{sym}/flags.csv"
     flags = pd.read_csv(flags_p, parse_dates=["date"]) if flags_p.exists() else None
-    say(f"{sym}: arms {arms}; flags {'from ' + str(flags_p.relative_to(ROOT)) if flags is not None else 'MISSING'}")
+    say(f"{sym} ({race} race): arms {arms}; flags {'from ' + rel(flags_p) if flags is not None else 'MISSING'}")
     pc = positive_control(rng)
     if not pc["pass"]:
         raise SystemExit("positive control 2 FAILED: nothing scored")
     files = [m1_paths(sym, "C"), m1_paths(sym, "F", "unadj"), m1_paths(sym, "F", "ratio"),
              OUT / "rows_C.parquet", OUT / "rows_F.parquet"] + ([flags_p] if flags is not None else [])
-    res = {"symbol": sym, "seed": SEED, "B": B, "block": BLOCK, "arms": arms, "positive_control_2": pc,
-           "build": json.loads((OUT / "build.json").read_text()),
+    res = {"symbol": sym, "race": race, "test_years": [min(YEARS), max(YEARS)], "seed": SEED, "B": B, "block": BLOCK,
+           "arms": arms, "positive_control_2": pc, "build": json.loads((OUT / "build.json").read_text()),
            "input_sha256": input_hashes([rel(f) for f in files])}
-    for track in ("C", "F"):
+    for track in tracks:
         S = pd.read_parquet(OUT / f"rows_{track}.parquet")
         S["rel"] = S["A0"] / S["A0"].rolling(250, min_periods=60).median().shift(1)
         T = walk_forward(S, sym, track, arms)
-        T.to_parquet(OUT / f"test_{track}.parquet")
+        T.to_parquet(OUT / f"test_{track}{sfx}.parquet")
         res[track] = score_track(sym, T, track, arms, rng, flags)
         res[track]["mirror"] = mirror(sym, S, track, rng)
-    res["c_vs_f"] = c_vs_f(sym, rng)
-    res["same_winner_both_tracks"] = res["C"]["chosen"] == res["F"]["chosen"]
-    (OUT / "results.json").write_text(json.dumps(res, indent=1))
-    (OUT / "report.txt").write_text("\n".join(LOG) + "\n")
+        if iv_race:
+            ivs = [a for a in ("V3", "V4", "B_har_iv") if a in arms]
+            non = [a for a in arms if a not in ivs and res[track]["arms"][a]["eligible"]]
+            bi = min(ivs, key=lambda a: res[track]["arms"][a]["primary"])
+            bn = min(non, key=lambda a: res[track]["arms"][a]["primary"])
+            q = quintiles(T); Wq = np.eye(5)[q]; R, _ = exceed(T, [bi, bn]); BI = blocks(len(T), rng)
+            d = np.array([float(np.subtract(*primary(R, Wq, b_))) for b_ in BI])
+            out = {"iv": bi, "non_iv": bn, "point": res[track]["arms"][bi]["primary"] - res[track]["arms"][bn]["primary"],
+                   "ci90": [float(np.quantile(d, .05)), float(np.quantile(d, .95))]}
+            res[track]["best_iv_minus_best_non_iv"] = out
+            say(f"  best IV arm {bi} - best non-IV arm {bn}: {out['point']:+.2f}pp CI [{out['ci90'][0]:+.2f}, {out['ci90'][1]:+.2f}]")
+    if not iv_race:
+        res["c_vs_f"] = c_vs_f(sym, rng)
+        res["same_winner_both_tracks"] = res["C"]["chosen"] == res["F"]["chosen"]
+    (OUT / f"results{sfx}.json").write_text(json.dumps(res, indent=1))
+    (OUT / f"report{sfx}.txt").write_text("\n".join(LOG) + "\n")
 
 
 if __name__ == "__main__":
-    {"build": cmd_build, "score": cmd_score}[sys.argv[1]](sys.argv[2].upper())
+    if sys.argv[1] == "score":
+        cmd_score(sys.argv[2].upper(), sys.argv[3] if len(sys.argv) > 3 else "main")
+    else:
+        cmd_build(sys.argv[2].upper())
