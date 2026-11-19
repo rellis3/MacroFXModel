@@ -279,7 +279,23 @@ price outcome**:
 | (c) symmetry | share of days F > 0 within 50 ± 10% |
 | (d) coverage | F available on ≥ 95% of business days |
 
-If the gate fails, `v2` runs with F4 off and the failure is reported. **The open question of the roles' sign** (the
+If the gate fails, `v2` runs with F4 off and the failure is reported.
+
+**Gate result, 2026-11-19** (`scripts/bias-engine-v2/risk_gate.mjs` → `js/biasEngineV2RiskGate.json`; no outcome read):
+**FAIL.**
+
+| Period | (a) corr with PC1 | (b) mean F | (c) share F > 0 | (d) coverage | Pass |
+|---|---|---|---|---|---|
+| Discovery 2010-01-04 → 2024-08-20 (3 inputs; HY OAS held only from 2023-10) | 0.992 | +0.088 | **0.617** | 0.965 | no |
+| Confirm 2024-08-21 → 2026-08-20 (4 inputs) | 0.993 | −0.058 | 0.567 | 1.000 | yes |
+
+- **Why it failed:** F is one clean factor (PC1 77% and 71% of the variance), but it is skewed. Calm stretches are long
+  and fear spikes are short, so F sits slightly positive on most days although its mean is near zero.
+- **The threshold is not changed after seeing this.** So **F4 is off in every variant**: `v2` uses V1's R, and
+  `v2-noF4` equals `v2`.
+- **F is still computed and shown as context** (`riskFactorContext`) every day.
+- **What next is the owner's call.** A revised factor that is symmetric by construction (for example, a rank or
+  percentile transform of each input) would be a new version with its own gate, decided before it is run. **The open question of the roles' sign** (the
 backtest's FX risk-role −4.4 pp at 20 d) is not settled in V2. It needs its own pre-registered study (§10, D1).
 
 ### 4.5 F5: expected policy repricing (the priced 6-month path)

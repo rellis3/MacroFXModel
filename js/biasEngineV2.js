@@ -502,6 +502,8 @@ export function buildVariant(snap, sw) {
 
   const v = { switches: { ...sw }, ...(sw.F4 && !f4 ? { f4Blocked: 'the risk gate G-F4 has not passed: F4 is off in this variant' } : {}),
     risk: f4 ? { kind: 'F', ...F } : { kind: 'R', score: v1Risk.score, coverage: v1Risk.coverage, drivers: v1Risk.drivers },
+    // F is always computed and shown, so its reading can be watched even while the gate keeps it out of the score
+    riskFactorContext: snap?.extra?.riskSeries ? { ...riskFactorAt(snap.extra.riskSeries, X.issueDate), usedInScore: f4 } : null,
     currencies, markets };
   decorate(v, X, pr);
   Object.defineProperty(v, 'pairOf', { value: (b, q) => { const m = pairOf(b, q); decorate({ currencies: {}, markets: { [b + q]: m } }, X, pr); return m; } });
