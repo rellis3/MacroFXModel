@@ -536,3 +536,32 @@ of the same trades also clears the FTMO fee, so EV must be read against that cop
 
 - Already run: `overnight-hold-toolkit`, `portfolio-book-prop` (both CONTEXT). Check pack for his tool:
   `analysis/output/prop-toolkit-check/COMPARE.md`. Questions: `research-director/agendas/prop-ev.md`.
+
+---
+
+## 13. "The best forecaster will not result in the best system" (Jordan (CT), relayed by the owner, 2026-11-19)
+
+**Context:** the owner had spent the day racing σ forecasts for the daily ladder (ladder-v2) and testing whether the
+lines work as reversal or trade levels. Jordan, a fellow C.OG group member, sent this to the owner as a clue. It is
+Jordan's remark, not C.OG's.
+
+> Clue
+> The best forecaster will not result in the best system
+
+### Explanation (ours)
+
+How good a forecast is (calibration, pinball) and how good a system is (net P&L, Sharpe) are different objectives.
+The forecast sets distances, stops, targets and size. The system's edge has to come from the entry, timing and
+context, and the forecast should be **chosen by what it does to the system's net result**. Calibration score is the
+wrong yardstick for that choice. A deliberately wider or faster σ can make the better system even when it is the
+worse forecast.
+
+### How it maps to this repo
+
+- The ladder-v2 races picked σ on calibration and reached the luck floor (`ladder-v2-*`, `ladder-mix-2020s`).
+- Trading the lines alone lost after costs (`trade-at-lines`, NULL).
+- The lines are not turning levels (`turn-at-lines`, `reversal-zones`).
+- **Next step this points to:** a system-level race. Existing line-using systems (NQ noise-area momentum, rule A
+  rich-day breaks, Jordan's impulse / VWAP findings as entries) are run with each forecast variant, and the variant
+  is scored on system net R.
+
