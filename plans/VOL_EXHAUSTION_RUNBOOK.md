@@ -181,7 +181,9 @@ P(extreme ≥ X+δ) ÷ P(extreme ≥ X). Prior evidence:
 - [ ] Distance from session VWAP, and volume at the touch.
 - [ ] Prior art: `futures-exhaustion-vwap` was UNDERPOWERED as a fade trade. This step is a conditioner on the probability, not a trade.
 
-### 2.3 Build walk-forward, validate OOS, lockbox  `[ ]`
+### 2.3 Build walk-forward, validate OOS, lockbox  `[~]`
+- [x] NQ 2026-11-19 (`exhaustion-v2-nq`, VALIDATED C and F): plain ladder odds are time-blind; clock-aware forecast
+      cuts the calibration miss 10.6 → 3.4pp (logistic blend X7; X4 vol clock + hot/cold day tied and best calibrated).
 
 ### 2.4 Export + indicator  `[ ]`
 - [ ] Each rung carries an exhaustion figure for the current time bucket, e.g. `OL p75 … · exhaust 62% after 14:00`.
