@@ -73,6 +73,9 @@ const h = CB.esc;
 globalThis.ttReactionsHtml = p => reactionsHtml(p, h);
 // the Calendar tab's "Live surprises" card opens with this per-currency strip of the last 24 h (js/terminal/surpriseRollup.js)
 // the Macro tab's Rates section draws the rate-line-over-price chart (js/terminal/legChartView.js) and mounts it after the section paints
+// Jarvis (owner-only easter egg, js/terminal/jarvisView.js) draws the chain from the Chain tab's own loaders: nothing extra is requested
+globalThis.deskChainData = async w => { await loadChain(); const inputs = { ...T.chain.inputs, live: null }; return { links: CB.chainLinks(inputs, w), vals: CB.chainVals(inputs, w) }; };
+globalThis.deskChainSummary = (links, w) => CB.summariseChain(links, w);
 globalThis.ttLegChartHtml = legChartHtml; globalThis.ttLegChartMount = mountLegChart;
 globalThis.ttAnalogueHtml = analogueHtml; globalThis.ttAnalogueMount = mountAnalogue;   // Macro > Markets & FX: "Has this happened before?"
 globalThis.ttEarningsReportedHtml = p => reportedHtml(p?.items, { note: p?.note });   // Calendar tab: big companies that have reported, EPS vs consensus

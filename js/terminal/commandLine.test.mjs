@@ -85,7 +85,7 @@ test('an error is shown in words and nothing runs', () => {
 
 test('? lists EVERY command with its help and an example; clicking an example types it', () => {
   const { doc, input } = setup(); press(doc, '/'); type(doc, input, '?');
-  const all = buildCommands({ now: () => Date.parse('2026-11-15T12:00:00Z') });
+  const all = buildCommands({ now: () => Date.parse('2026-11-15T12:00:00Z') }).filter(c => !c.secret);
   const fills = doc.querySelectorAll('[data-fill]'); assert.equal(fills.length, all.length);
   const main = doc.getElementById('cmdk-main').textContent;
   for (const c of all.slice(0, 40)) { assert.ok(main.includes(c.name), `${c.name} is listed`); }
