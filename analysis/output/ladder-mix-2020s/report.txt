@@ -1,0 +1,33 @@
+NQ: 12 arms; lines 2021-01-04 -> 2026-08-20 (1456 rows, fitted from 2020)
+  2022: S1 E3 | S2 p75 E3 p90 E4 | S3 ['E4', 'A0', 'E6', 'A0', 'V3'] | S4 8 distinct arms
+  2023: S1 E6 | S2 p75 E3 p90 E6 | S3 ['E3', 'A0', 'R15', 'H8', 'E6'] | S4 9 distinct arms
+  2024: S1 E6 | S2 p75 E3 p90 E6 | S3 ['E6', 'V3', 'E3', 'H8', 'E6'] | S4 10 distinct arms
+  2025: S1 E6 | S2 p75 R5 p90 E6 | S3 ['E6', 'V3', 'A0', 'R15', 'H8'] | S4 10 distinct arms
+  2026: S1 H8 | S2 p75 E3 p90 H8 | S3 ['E6', 'A0', 'A0', 'E3', 'E2'] | S4 10 distinct arms
+GOLD: 20 arms; lines 2021-01-04 -> 2026-08-20 (1454 rows, fitted from 2020)
+  2022: S1 V4 | S2 p75 V4 p90 V4 | S3 ['G_egarch', 'SHAR', 'B_har_garcht', 'E_ewma_090', 'G_gjr'] | S4 13 distinct arms
+  2023: S1 V4 | S2 p75 V4 p90 V4 | S3 ['G_gjr', 'E_ewma_090', 'B_har_iv', 'A0', 'G_garch_t'] | S4 12 distinct arms
+  2024: S1 E_yz_30 | S2 p75 E_yz_30 p90 E_yz_30 | S3 ['E_yz_30', 'E_yz_30', 'V3', 'B_har_iv', 'G_garch_t'] | S4 14 distinct arms
+  2025: S1 G_garch | S2 p75 G_garch p90 G_garch_t | S3 ['E_yz_30', 'B_har_garcht', 'G_garch', 'B_har_garcht', 'E_ewma_094'] | S4 15 distinct arms
+  2026: S1 E_yz_30 | S2 p75 B_har_garcht p90 E_yz_30 | S3 ['E_yz_30', 'B_har_garcht', 'G_garch', 'E_yz_30', 'E_ewma_094'] | S4 13 distinct arms
+EURUSD: 17 arms; lines 2021-01-04 -> 2026-08-20 (1462 rows, fitted from 2020)
+  2022: S1 R15 | S2 p75 R15 p90 SHAR | S3 ['R15', 'E_yz_20', 'R15', 'SHAR', 'R15'] | S4 8 distinct arms
+  2023: S1 E_yz_30 | S2 p75 E_yz_30 p90 E_yz_20 | S3 ['SHAR', 'A0', 'G_gjr', 'E_yz_30', 'R15'] | S4 10 distinct arms
+  2024: S1 E_yz_20 | S2 p75 H8 p90 E_ewma_090 | S3 ['E_ewma_090', 'R15', 'HARCJ', 'E_ewma_090', 'E_ewma_090'] | S4 10 distinct arms
+  2025: S1 H8 | S2 p75 H8 p90 E_ewma_094 | S3 ['E_ewma_090', 'E_ewma_094', 'HARCJ', 'G_garch', 'E_ewma_094'] | S4 13 distinct arms
+  2026: S1 H8 | S2 p75 H8 p90 H8 | S3 ['E_har_rv_log', 'R15', 'HARCJ', 'E_yz_20', 'H8'] | S4 11 distinct arms
+
+== per instrument, test years 2022 -> 2026-08 (30-cell regime miss pp; pinball vs S1)
+  NQ     n=1197  S0 2.72 (1.036)  S1 1.74 (1.000)  S2 1.50 (1.004)  S3 2.35 (1.016)  S4 1.65 (1.008)
+  GOLD   n=1196  S0 3.53 (0.998)  S1 2.02 (1.000)  S2 2.15 (0.977)  S3 1.95 (0.996)  S4 1.80 (0.989)
+  EURUSD n=1202  S0 3.06 (1.012)  S1 2.02 (1.000)  S2 2.18 (1.002)  S3 1.95 (1.006)  S4 1.94 (1.004)
+
+== pooled (mean of NQ, GOLD, EURUSD), difference vs S1 (one sigma), 90% CI
+  S0: miss 3.10pp  minus S1 +1.18 [+0.30,+1.43]
+  S1: miss 1.93pp  minus S1 +0.00 [+0.00,+0.00]
+  S2: miss 1.95pp  minus S1 +0.02 [-0.14,+0.23]
+  S3: miss 2.08pp  minus S1 +0.15 [-0.29,+0.64]
+  S4: miss 1.80pp  minus S1 -0.13 [-0.36,+0.37]
+  S2 -> NULL
+  S3 -> UNDERPOWERED
+  S4 -> UNDERPOWERED
