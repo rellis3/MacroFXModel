@@ -1,0 +1,473 @@
+{
+ "2026-11-16T07:04:24.801Z": {
+  "R": -0.5,
+  "currencies": {
+   "USD": {
+    "score": 1.0769,
+    "dir": "BULLISH",
+    "coverage": 0.684,
+    "max_wNorm": 0.3077,
+    "n_drivers": 5,
+    "abs_share": {
+     "rates": 0.57,
+     "data": 0.29,
+     "trend": 0.14
+    }
+   },
+   "EUR": {
+    "score": 0.2857,
+    "dir": "NEUTRAL",
+    "coverage": 0.737,
+    "max_wNorm": 0.2857,
+    "n_drivers": 6,
+    "abs_share": {
+     "data": 0.5,
+     "realYield": 0.25,
+     "positioning": 0.25
+    }
+   },
+   "GBP": {
+    "score": 0.6667,
+    "dir": "BULLISH",
+    "coverage": 0.632,
+    "max_wNorm": 0.3333,
+    "n_drivers": 5,
+    "abs_share": {
+     "data": 1.0
+    }
+   },
+   "JPY": {
+    "score": 0.75,
+    "dir": "BULLISH",
+    "coverage": 0.632,
+    "max_wNorm": 0.3333,
+    "n_drivers": 5,
+    "abs_share": {
+     "rates": 0.36,
+     "data": 0.36,
+     "risk": 0.18,
+     "positioning": 0.09
+    }
+   },
+   "AUD": {
+    "score": -0.0769,
+    "dir": "NEUTRAL",
+    "coverage": 0.65,
+    "max_wNorm": 0.3077,
+    "n_drivers": 6,
+    "abs_share": {
+     "rates": 0.47,
+     "data": 0.24,
+     "risk": 0.12,
+     "commodity": 0.06,
+     "positioning": 0.06,
+     "trend": 0.06
+    }
+   },
+   "NZD": {
+    "score": -0.125,
+    "dir": "NEUTRAL",
+    "coverage": 0.4,
+    "max_wNorm": 0.5,
+    "n_drivers": 4,
+    "abs_share": {
+     "risk": 0.67,
+     "positioning": 0.33
+    }
+   },
+   "CAD": {
+    "score": -0.0769,
+    "dir": "NEUTRAL",
+    "coverage": 0.65,
+    "max_wNorm": 0.3077,
+    "n_drivers": 6,
+    "abs_share": {
+     "rates": 0.36,
+     "data": 0.36,
+     "commodity": 0.18,
+     "positioning": 0.09
+    }
+   },
+   "CHF": {
+    "score": -0.2857,
+    "dir": "NEUTRAL",
+    "coverage": 0.737,
+    "max_wNorm": 0.2857,
+    "n_drivers": 6,
+    "abs_share": {
+     "rates": 0.44,
+     "data": 0.22,
+     "realYield": 0.11,
+     "risk": 0.11,
+     "positioning": 0.06,
+     "trend": 0.06
+    }
+   }
+  },
+  "pairs_called": {
+   "USDCAD": {
+    "score": 0.5769,
+    "dir": "BULLISH",
+    "strength": 3,
+    "risk_contrib": 0,
+    "risk_abs_share": 0.0,
+    "score_without_risk": 0.577
+   },
+   "USDCHF": {
+    "score": 0.6813,
+    "dir": "BULLISH",
+    "strength": 3,
+    "risk_contrib": -0.071,
+    "risk_abs_share": 0.06,
+    "score_without_risk": 0.753
+   },
+   "CHFJPY": {
+    "score": -0.5179,
+    "dir": "BEARISH",
+    "strength": 3,
+    "risk_contrib": -0.012,
+    "risk_abs_share": 0.14,
+    "score_without_risk": -0.506
+   }
+  },
+  "n_pairs_called": 3,
+  "pair_abs_contrib_share_by_driver": {
+   "data": 0.354,
+   "rates": 0.347,
+   "risk": 0.101,
+   "positioning": 0.082,
+   "trend": 0.043,
+   "realYield": 0.041,
+   "commodity": 0.033
+  },
+  "pairs_where_risk_decides_call_or_sign": [
+   "GBPJPY",
+   "AUDNZD",
+   "NZDUSD",
+   "NZDCAD"
+  ],
+  "AUDJPY": {
+   "score": -0.4135,
+   "dir": "NEUTRAL",
+   "strength": 2,
+   "risk_contrib": -0.16,
+   "risk_abs_share": 0.14,
+   "score_without_risk": -0.253
+  },
+  "NZDJPY": {
+   "score": -0.4375,
+   "dir": "NEUTRAL",
+   "strength": 2,
+   "risk_contrib": -0.208,
+   "risk_abs_share": 0.32,
+   "score_without_risk": -0.229
+  }
+ },
+ "2026-11-17T05:34:55.760Z": {
+  "R": -1,
+  "currencies": {
+   "USD": {
+    "score": 0.8889,
+    "dir": "BULLISH",
+    "coverage": 1,
+    "max_wNorm": 0.2778,
+    "n_drivers": 6,
+    "abs_share": {
+     "rates": 0.5,
+     "data": 0.25,
+     "risk": 0.12,
+     "trend": 0.12
+    }
+   },
+   "EUR": {
+    "score": 0.3889,
+    "dir": "NEUTRAL",
+    "coverage": 0.947,
+    "max_wNorm": 0.2778,
+    "n_drivers": 6,
+    "abs_share": {
+     "policy": 0.45,
+     "data": 0.36,
+     "realYield": 0.18
+    }
+   },
+   "GBP": {
+    "score": 0.8235,
+    "dir": "BULLISH",
+    "coverage": 1,
+    "max_wNorm": 0.2941,
+    "n_drivers": 6,
+    "abs_share": {
+     "policy": 0.71,
+     "data": 0.29
+    }
+   },
+   "JPY": {
+    "score": 0.8125,
+    "dir": "BULLISH",
+    "coverage": 0.941,
+    "max_wNorm": 0.3125,
+    "n_drivers": 5,
+    "abs_share": {
+     "rates": 0.31,
+     "data": 0.31,
+     "risk": 0.31,
+     "trend": 0.08
+    }
+   },
+   "AUD": {
+    "score": 0.0556,
+    "dir": "NEUTRAL",
+    "coverage": 1,
+    "max_wNorm": 0.2778,
+    "n_drivers": 7,
+    "abs_share": {
+     "policy": 0.2,
+     "rates": 0.32,
+     "data": 0.16,
+     "risk": 0.16,
+     "commodity": 0.08,
+     "positioning": 0.04,
+     "trend": 0.04
+    }
+   },
+   "NZD": {
+    "score": -0.5,
+    "dir": "NEUTRAL",
+    "coverage": 0.444,
+    "max_wNorm": 0.5,
+    "n_drivers": 4,
+    "abs_share": {
+     "risk": 0.67,
+     "positioning": 0.17,
+     "trend": 0.17
+    }
+   },
+   "CAD": {
+    "score": -0.1765,
+    "dir": "NEUTRAL",
+    "coverage": 0.944,
+    "max_wNorm": 0.2941,
+    "n_drivers": 6,
+    "abs_share": {
+     "policy": 0.38,
+     "rates": 0.31,
+     "risk": 0.15,
+     "commodity": 0.15
+    }
+   },
+   "CHF": {
+    "score": 0.1579,
+    "dir": "NEUTRAL",
+    "coverage": 1,
+    "max_wNorm": 0.2632,
+    "n_drivers": 7,
+    "abs_share": {
+     "policy": 0.2,
+     "rates": 0.32,
+     "data": 0.16,
+     "realYield": 0.08,
+     "risk": 0.16,
+     "positioning": 0.04,
+     "trend": 0.04
+    }
+   }
+  },
+  "pairs_called": {
+   "GBPCAD": {
+    "score": 0.5,
+    "dir": "BULLISH",
+    "strength": 3,
+    "risk_contrib": 0.059,
+    "risk_abs_share": 0.07,
+    "score_without_risk": 0.441
+   }
+  },
+  "n_pairs_called": 1,
+  "pair_abs_contrib_share_by_driver": {
+   "rates": 0.244,
+   "policy": 0.231,
+   "risk": 0.192,
+   "data": 0.185,
+   "trend": 0.055,
+   "positioning": 0.032,
+   "commodity": 0.031,
+   "realYield": 0.029
+  },
+  "pairs_where_risk_decides_call_or_sign": [
+   "GBPNZD",
+   "GBPUSD",
+   "GBPCAD",
+   "AUDCHF",
+   "NZDUSD",
+   "NZDCAD",
+   "NZDCHF",
+   "NZDJPY",
+   "USDCAD"
+  ],
+  "AUDJPY": {
+   "score": -0.3785,
+   "dir": "NEUTRAL",
+   "strength": 2,
+   "risk_contrib": -0.236,
+   "risk_abs_share": 0.21,
+   "score_without_risk": -0.142
+  },
+  "NZDJPY": {
+   "score": -0.6563,
+   "dir": "NEUTRAL",
+   "strength": 3,
+   "risk_contrib": -0.375,
+   "risk_abs_share": 0.48,
+   "score_without_risk": -0.281
+  }
+ },
+ "2026-11-18T05:32:08.966Z": {
+  "R": -1.5,
+  "currencies": {
+   "USD": {
+    "score": 0.8333,
+    "dir": "BULLISH",
+    "coverage": 1,
+    "max_wNorm": 0.2778,
+    "n_drivers": 6,
+    "abs_share": {
+     "rates": 0.53,
+     "data": 0.27,
+     "risk": 0.13,
+     "trend": 0.07
+    }
+   },
+   "EUR": {
+    "score": 0.1111,
+    "dir": "NEUTRAL",
+    "coverage": 0.947,
+    "max_wNorm": 0.2778,
+    "n_drivers": 6,
+    "abs_share": {
+     "data": 0.67,
+     "realYield": 0.33
+    }
+   },
+   "GBP": {
+    "score": 0.4706,
+    "dir": "NEUTRAL",
+    "coverage": 1,
+    "max_wNorm": 0.2941,
+    "n_drivers": 6,
+    "abs_share": {
+     "policy": 0.42,
+     "data": 0.33,
+     "risk": 0.17,
+     "trend": 0.08
+    }
+   },
+   "JPY": {
+    "score": 0.8125,
+    "dir": "BULLISH",
+    "coverage": 0.941,
+    "max_wNorm": 0.3125,
+    "n_drivers": 5,
+    "abs_share": {
+     "rates": 0.31,
+     "data": 0.31,
+     "risk": 0.31,
+     "trend": 0.08
+    }
+   },
+   "AUD": {
+    "score": 0.0556,
+    "dir": "NEUTRAL",
+    "coverage": 1,
+    "max_wNorm": 0.2778,
+    "n_drivers": 7,
+    "abs_share": {
+     "policy": 0.2,
+     "rates": 0.32,
+     "data": 0.16,
+     "risk": 0.16,
+     "commodity": 0.08,
+     "positioning": 0.04,
+     "trend": 0.04
+    }
+   },
+   "NZD": {
+    "score": -0.5,
+    "dir": "NEUTRAL",
+    "coverage": 0.444,
+    "max_wNorm": 0.5,
+    "n_drivers": 4,
+    "abs_share": {
+     "risk": 0.67,
+     "positioning": 0.17,
+     "trend": 0.17
+    }
+   },
+   "CAD": {
+    "score": -0.1765,
+    "dir": "NEUTRAL",
+    "coverage": 0.944,
+    "max_wNorm": 0.2941,
+    "n_drivers": 6,
+    "abs_share": {
+     "policy": 0.38,
+     "rates": 0.31,
+     "risk": 0.15,
+     "commodity": 0.15
+    }
+   },
+   "CHF": {
+    "score": -0.0526,
+    "dir": "NEUTRAL",
+    "coverage": 1,
+    "max_wNorm": 0.2632,
+    "n_drivers": 7,
+    "abs_share": {
+     "rates": 0.42,
+     "data": 0.21,
+     "realYield": 0.11,
+     "risk": 0.21,
+     "positioning": 0.05
+    }
+   }
+  },
+  "pairs_called": {},
+  "n_pairs_called": 0,
+  "pair_abs_contrib_share_by_driver": {
+   "rates": 0.272,
+   "risk": 0.232,
+   "data": 0.207,
+   "policy": 0.131,
+   "trend": 0.054,
+   "positioning": 0.035,
+   "commodity": 0.035,
+   "realYield": 0.033
+  },
+  "pairs_where_risk_decides_call_or_sign": [
+   "EURAUD",
+   "GBPJPY",
+   "NZDUSD",
+   "NZDCAD",
+   "NZDCHF",
+   "NZDJPY",
+   "USDCAD",
+   "CADCHF"
+  ],
+  "AUDJPY": {
+   "score": -0.3785,
+   "dir": "NEUTRAL",
+   "strength": 2,
+   "risk_contrib": -0.236,
+   "risk_abs_share": 0.21,
+   "score_without_risk": -0.142
+  },
+  "NZDJPY": {
+   "score": -0.6563,
+   "dir": "NEUTRAL",
+   "strength": 3,
+   "risk_contrib": -0.375,
+   "risk_abs_share": 0.48,
+   "score_without_risk": -0.281
+  }
+ }
+}

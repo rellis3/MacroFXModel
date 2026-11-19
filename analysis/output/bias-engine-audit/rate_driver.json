@@ -1,0 +1,151 @@
+{
+ "note": "Exploratory, not pre-registered. Latest-vintage FRED monthly short rates, observations before 2026-08-01.",
+ "sample": [
+  "2010-01-01",
+  "2026-07-01"
+ ],
+ "currency_months": 1586,
+ "currency_level": {
+  "share_d_nonzero": 0.838,
+  "share_dz_nonzero": 0.862,
+  "share_dgap_nonzero": 0.217,
+  "share_z_and_gap_parts_opposed": 0.101,
+  "share_z_is_flat_floor_pm4": 0.0,
+  "abs_z_ge_0p5_share": 0.862,
+  "abs_z_ge_1p5_share": 0.405,
+  "spearman_d_vs_level_gap": 0.264,
+  "spearman_d_vs_z": 0.937,
+  "d_month_to_month_change_share": 0.237
+ },
+ "by_ccy": {
+  "AUD": {
+   "share_d_pos": 0.392,
+   "share_d_neg": 0.442,
+   "mean_gap_pp": 1.37,
+   "share_flat_floor": 0.0,
+   "share_z_gap_opposed": 0.201
+  },
+  "CAD": {
+   "share_d_pos": 0.447,
+   "share_d_neg": 0.437,
+   "mean_gap_pp": 0.22,
+   "share_flat_floor": 0.0,
+   "share_z_gap_opposed": 0.0
+  },
+  "CHF": {
+   "share_d_pos": 0.246,
+   "share_d_neg": 0.457,
+   "mean_gap_pp": -1.48,
+   "share_flat_floor": 0.0,
+   "share_z_gap_opposed": 0.176
+  },
+  "EUR": {
+   "share_d_pos": 0.196,
+   "share_d_neg": 0.719,
+   "mean_gap_pp": -0.77,
+   "share_flat_floor": 0.0,
+   "share_z_gap_opposed": 0.015
+  },
+  "GBP": {
+   "share_d_pos": 0.451,
+   "share_d_neg": 0.409,
+   "mean_gap_pp": 0.15,
+   "share_flat_floor": 0.0,
+   "share_z_gap_opposed": 0.062
+  },
+  "JPY": {
+   "share_d_pos": 0.291,
+   "share_d_neg": 0.452,
+   "mean_gap_pp": -1.25,
+   "share_flat_floor": 0.0,
+   "share_z_gap_opposed": 0.166
+  },
+  "NZD": {
+   "share_d_pos": 0.352,
+   "share_d_neg": 0.492,
+   "mean_gap_pp": 1.38,
+   "share_flat_floor": 0.0,
+   "share_z_gap_opposed": 0.181
+  },
+  "USD": {
+   "share_d_pos": 0.503,
+   "share_d_neg": 0.417,
+   "mean_gap_pp": 0.38,
+   "share_flat_floor": 0.0,
+   "share_z_gap_opposed": 0.005
+  }
+ },
+ "pair_level": {
+  "pair_months": 5194,
+  "share_engine_rates_term_nonzero": 0.711,
+  "sign_agree_with_bilateral_level_when_nonzero": 0.635,
+  "sign_agree_with_3m_change_when_both_nonzero": 0.756,
+  "sign_agree_with_12m_change_when_both_nonzero": 0.864,
+  "spearman_dd_vs_level": 0.315,
+  "spearman_dd_vs_chg3": 0.499,
+  "spearman_dd_vs_chg12": 0.663,
+  "share_wrong_way_vs_level_with_gap_ge_2pp": 0.232,
+  "share_zero_engine_term_with_gap_ge_2pp": 0.235
+ },
+ "last_month": {
+  "date": "2026-07-01",
+  "rows": {
+   "USD": {
+    "level": 4.22,
+    "z": 1.23,
+    "gap": 1.8,
+    "dz": 1.0,
+    "dg": 1,
+    "d": 2.0
+   },
+   "EUR": {
+    "level": 2.18,
+    "z": -0.4,
+    "gap": -0.24,
+    "dz": 0.0,
+    "dg": 0,
+    "d": 0.0
+   },
+   "JPY": {
+    "level": 0.98,
+    "z": 2.54,
+    "gap": -1.44,
+    "dz": 2.0,
+    "dg": 0,
+    "d": 2.0
+   },
+   "AUD": {
+    "level": 4.48,
+    "z": 1.24,
+    "gap": 2.06,
+    "dz": 1.0,
+    "dg": 1,
+    "d": 2.0
+   },
+   "CAD": {
+    "level": 2.27,
+    "z": -0.89,
+    "gap": -0.15,
+    "dz": -1.0,
+    "dg": 0,
+    "d": -1.0
+   },
+   "CHF": {
+    "level": -0.04,
+    "z": -0.75,
+    "gap": -2.46,
+    "dz": -1.0,
+    "dg": -1,
+    "d": -2.0
+   },
+   "NZD": {
+    "level": 2.85,
+    "z": -0.64,
+    "gap": 0.43,
+    "dz": -1.0,
+    "dg": 0,
+    "d": -1.0
+   }
+  }
+ }
+}
