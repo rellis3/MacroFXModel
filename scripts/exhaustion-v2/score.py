@@ -365,7 +365,7 @@ def positive_control(clock, mult, rng):
         idx = pd.date_range(pd.Timestamp(D).tz_localize("Europe/London"), periods=1320, freq="1min").tz_convert("UTC")
         g = pd.DataFrame({"open": o * np.exp(start), "high": o * np.exp(hi), "low": o * np.exp(lo),
                           "close": o * np.exp(cl)}, index=idx)
-        row = {"date": pd.Timestamp(D), "year": D.year, "E6": sig[i], "rel": rel[i]}
+        row = {"date": pd.Timestamp(D), "year": D.year, TT.LINE_ARM: sig[i], "rel": rel[i]}
         for k, v in mult.items():
             row[k] = v * sig[i]
         rows += TT.touches_for_session(g, pd.Series(row), "C", pd.DatetimeIndex([], tz="UTC"))
@@ -393,6 +393,7 @@ def main(sym):
     out = ROOT / f"analysis/output/exhaustion-v2-{sym.lower()}"
     rng = np.random.default_rng(SEED)
     T = pd.read_parquet(ROOT / f"analysis/output/ladder-v2-{sym.lower()}/test_C.parquet")
+    TT.LINE_ARM = TT.line_arm(sym, "C")
     mult = {c: float((T[c] / T[TT.LINE_ARM]).median()) for c in T.columns if c.startswith(f"{TT.LINE_ARM}_")}
     clockC = pd.read_parquet(out / "clock_C.parquet")
     pc = positive_control(clockC[2019] if 2019 in clockC.columns else clockC["2019"], mult, rng)
