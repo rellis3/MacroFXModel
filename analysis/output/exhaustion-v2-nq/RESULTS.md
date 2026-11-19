@@ -71,3 +71,21 @@ The 0.25σ target shows the same shape: 82.7% before 07:00 and 53.1% after 16:00
 The exhaustion figure on the shadow export (runbook 2.4) becomes the chosen forecast's probability for each rung at
 the current time, e.g. `OH p75 · next rung 31% now`. It gets a forward record before anything goes live. Gold and the
 other indices follow on this harness once their σ race is done.
+
+## Post-hoc note (2026-11-19, descriptive; cannot change the verdict): the clustered noise floor
+
+Gold exhaustion (A2, pre-results there) found that the "noise floor" used above draws every touch as an independent
+coin flip. Several lines touched on the same day share one price path, so a perfect forecaster's miss is larger than
+that floor allows. Re-measured for NQ the gold way (20 synthetic histories on NQ's vol clock and lines,
+`clustered_floor.json`):
+- X2 pooled bias +0.21pp (next rung) and +0.10pp (0.25σ).
+- Plain odds' worst time-bucket miss 14.2pp.
+- **Clustered floor: median 2.64pp, p90 3.16pp**, against 2.51 for the independent floor above.
+
+Against it:
+- **X4** (vol clock + hot/cold day, 2.73pp on both tracks) **is calibrated to noise**.
+- The chosen blend X7 (3.37 C / 3.24 F) sits just above.
+
+The registered verdict (VALIDATED, X7 by the tie rule) stands. The "not calibrated to noise" line above was judged
+against a floor that was too tight.
+
