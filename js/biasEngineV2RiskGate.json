@@ -1,0 +1,93 @@
+{
+  "gate": "G-F4",
+  "spec": "plans/BIAS_ENGINE_V2_SPEC.md §4.4",
+  "computedAt": "2026-11-19T01:03:06.606Z",
+  "lockbox": "2026-08-21",
+  "outcomesRead": false,
+  "thresholds": {
+    "corrPC1": 0.9,
+    "meanAbs": 0.1,
+    "posShare": [
+      0.4,
+      0.6
+    ],
+    "coverage": 0.95
+  },
+  "periods": {
+    "discovery": {
+      "from": "2010-01-04",
+      "to": "2024-08-20",
+      "businessDays": 3817,
+      "Fdays": 3684,
+      "inputs": {
+        "fourInputDays": 10,
+        "threeInputDays": 3674
+      },
+      "checks": {
+        "a_corrPC1": {
+          "value": 0.9922,
+          "pass": true,
+          "on": "3684 days with vix, term, equity",
+          "pc1Share": 0.772,
+          "loadings": {
+            "vix": 0.592,
+            "term": 0.602,
+            "equity": 0.537
+          }
+        },
+        "b_meanF": {
+          "value": 0.0877,
+          "pass": true
+        },
+        "c_posShare": {
+          "value": 0.6173,
+          "pass": false
+        },
+        "d_coverage": {
+          "value": 0.9652,
+          "pass": true
+        }
+      },
+      "pass": false
+    },
+    "confirm": {
+      "from": "2024-08-21",
+      "to": "2026-08-20",
+      "businessDays": 522,
+      "Fdays": 522,
+      "inputs": {
+        "fourInputDays": 522,
+        "threeInputDays": 0
+      },
+      "checks": {
+        "a_corrPC1": {
+          "value": 0.9925,
+          "pass": true,
+          "on": "522 days with vix, term, credit, equity",
+          "pc1Share": 0.707,
+          "loadings": {
+            "vix": 0.512,
+            "term": 0.52,
+            "credit": 0.462,
+            "equity": 0.504
+          }
+        },
+        "b_meanF": {
+          "value": -0.0581,
+          "pass": true
+        },
+        "c_posShare": {
+          "value": 0.567,
+          "pass": true
+        },
+        "d_coverage": {
+          "value": 1,
+          "pass": true
+        }
+      },
+      "pass": true
+    }
+  },
+  "pass": false,
+  "note": "F fails at least one construction check: F4 stays off in every variant until a revised factor passes (a new version)."
+}

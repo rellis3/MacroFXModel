@@ -22,6 +22,7 @@ import * as CSV from './chainStatsView.js';
 import { reactionsHtml } from './reactionPanel.js';
 import { surpriseRollup, rollupHtml, pairStripHtml } from './surpriseRollup.js';
 import { legChartHtml, mountLegChart } from './legChartView.js';
+import { trimInputs } from './jarvisCore.js';
 import { analogueHtml, mountAnalogue } from './analogueView.js';
 import { reportedHtml } from '../earningsReported.js';
 import { reviewState, stateChip, unreviewedNote } from './reviewState.js';
@@ -73,6 +74,14 @@ const h = CB.esc;
 globalThis.ttReactionsHtml = p => reactionsHtml(p, h);
 // the Calendar tab's "Live surprises" card opens with this per-currency strip of the last 24 h (js/terminal/surpriseRollup.js)
 // the Macro tab's Rates section draws the rate-line-over-price chart (js/terminal/legChartView.js) and mounts it after the section paints
+// Jarvis (owner-only easter egg, js/terminal/jarvisView.js) draws the chain from the Chain tab's own loaders: nothing extra is requested
+globalThis.deskChainData = async (w, asOf) => {      // w = 1 | 5 | 20 | 'live'; asOf = a past date (trimInputs: nothing after it is used)
+  await loadChain(); let inputs = { ...T.chain.inputs, live: null };
+  if (w === 'live') { try { await loadLive(); } catch (e) { /* the last live read stands */ } inputs = { ...T.chain.inputs, live: T.chain.live }; } else if (asOf) inputs = trimInputs(inputs, asOf);
+  return { links: CB.chainLinks(inputs, w), vals: CB.chainVals(inputs, w) };
+};
+globalThis.deskChainDates = async () => { await loadChain(); return (T.chain.inputs?.ohlc?.nq ?? []).map(p => p.date).slice(-61); };
+globalThis.deskChainSummary = (links, w) => CB.summariseChain(links, w);
 globalThis.ttLegChartHtml = legChartHtml; globalThis.ttLegChartMount = mountLegChart;
 globalThis.ttAnalogueHtml = analogueHtml; globalThis.ttAnalogueMount = mountAnalogue;   // Macro > Markets & FX: "Has this happened before?"
 globalThis.ttEarningsReportedHtml = p => reportedHtml(p?.items, { note: p?.note });   // Calendar tab: big companies that have reported, EPS vs consensus
@@ -962,6 +971,7 @@ globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp,
 globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
 globalThis.macroMoreBoard = (key, E, extra) => macroMoreBoard(key, E, extra);
 globalThis.macroSubs = MacroSubs;
+globalThis.bev2Mount = el => import('./biasEngineV2View.js').then(V => V.mount(el, { getJson })).catch(e => { el.innerHTML = `<p class="muted">The V2 shadow panel did not load: ${h(e.message)}</p>`; });   // owner-only Bias Engine V2 shadow (panel.macro.bev2)
 globalThis.biasEngineView = BEV;                                   // the bias engine on the Assets, Currencies, Overview and Macro cards (desk-terminal.html beOf / beOverview)
 globalThis.paperBoardById = (surface, E) => paperBoardById(surface, E);                // the paper-ideas boards (js/terminal/paperBoardsView.js): FOMC day, path gap, JGB, inflation, auctions, coverage, connectedness ...
 globalThis.volClockHtml = VCV.boardHtml;                           // the Assets tab's vol clock board (js/terminal/volClockView.js)

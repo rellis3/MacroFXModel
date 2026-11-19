@@ -70,6 +70,7 @@ export const STORES = {
   yield2y_daily_v1: R('2y government yields, 8 currencies, daily from FRED / ECB / BoE / MoF / SNB / BoC / RBA / RBNZ (js/yield2y.js): the bias engine\'s policy fallback', 1),
   desk_bias_process_index: R('Desk Bias Process: index of the write-once morning issues desk_bias_process_<date> (06:00-06:30 London, weekdays; js/deskBiasProcess.js, plans/DESK_BIAS_PROCESS_SPEC.md)', 1),
   fundabias_log_index: L('FundaBias log: the dates with owner-logged FundaBias readings (fundabias_log_<date>, POST /api/fundabias-log; written only when the owner logs)', 30, { market: false }),
+  bias_engine_v2_index: R('Bias Engine V2 (shadow): index of the write-once records bias_engine_v2_<date> and snapshots bias_engine_v2_snap_<date> (05:30-06:00 London, weekdays; js/biasEngineV2.js, plans/BIAS_ENGINE_V2_SPEC.md)', 1),
   bias_engine_index: R('Bias engine: index of the write-once morning issues bias_engine_<date> (05:30-06:00 London, weekdays; js/biasEngine.js, plans/BIAS_ENGINE_SPEC.md)', 1),
   thesis_reality_v1: L('Morning thesis vs evening reality: the book\'s claims laid against the day (written after the evening score on days with a desk run)', 5),
   cb_speech_log_v1: L('Central-bank speech log: each speech scored on the statement scale (js/cbSpeeches.js)', 7, { market: false }),

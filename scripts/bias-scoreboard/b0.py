@@ -7,6 +7,10 @@ Lockbox: M1 is cut at 2026-08-22 00:00 UTC and a row counts only if its END time
 so no post-lockbox minute is read. Writes js/biasScoreboardBaselines.json (version b0-sameday-20260821).
 
     python scripts/bias-scoreboard/b0.py            # needs the research M1 cache (FX + gold) and portfolioBacktest/cache (indices)
+    python scripts/bias-scoreboard/b0.py --d20      # the d20 base rates only (Bias Engine V2 file, prereg A7): 07:00 London on D
+                                                    # to 07:00 on the 20th London weekday on, a row counted only if that end is on
+                                                    # or before 2026-08-21; writes js/biasScoreboardBaselinesD20.json, version
+                                                    # b0-sameday-d20-20260821. The existing baselines file is not touched.
 
 If any file is missing the script stops and writes nothing: the registered fallback (version b0-coin, p0 = 0.5) stays.
 Seed 20261114 (not used: no resampling here).
@@ -33,6 +37,7 @@ SOURCES = {
     "eurjpy": (FX_ROOT, "eurjpy"),
 }
 OUT = ROOT / "js/biasScoreboardBaselines.json"
+OUT_D20 = ROOT / "js/biasScoreboardBaselinesD20.json"
 
 
 def london(date, hh):
@@ -42,6 +47,33 @@ def london(date, hh):
 def mid_at(close: pd.Series, t):
     w = close[(close.index >= t - pd.Timedelta(minutes=5)) & (close.index < t)]
     return float(w.iloc[-1]) if len(w) else np.nan
+
+
+def main_d20():
+    """d20 only: share of London weekdays D (2016-01-04 on) with mid(07:00 on the 20th weekday after D) > mid(07:00 on D)."""
+    if (FX_ROOT / "gold_m1.parquet").exists():
+        SOURCES["gold"] = (FX_ROOT, "gold")
+    missing = [f"{r}/{k}_m1.parquet" for r, k in SOURCES.values() if not (r / f"{k}_m1.parquet").exists()]
+    if missing:
+        sys.exit(f"b0.py --d20: M1 not available ({len(missing)} files missing, e.g. {missing[0]}); nothing written")
+    days = [d.strftime("%Y-%m-%d") for d in pd.bdate_range(START, END)]
+    out = {}
+    for inst, (root, key) in SOURCES.items():
+        m1 = load_m1(key, root)
+        close = m1["close"][m1.index < pd.Timestamp("2026-08-22", tz="UTC")]
+        ys = []
+        for i, d in enumerate(days):
+            if i + 20 >= len(days):            # the end would fall after the lockbox day: not counted
+                break
+            a, e = mid_at(close, london(d, 7)), mid_at(close, london(days[i + 20], 7))
+            if np.isfinite(a) and np.isfinite(e):
+                ys.append(1 if e > a else 0)
+        out[inst] = {"d20": {"p0": round(float(np.mean(ys)), 6), "n": len(ys)}} if ys else {}
+        print(inst, out[inst])
+    OUT_D20.write_text(json.dumps({"version": "b0-sameday-d20-20260821", "prereg": "forge/BIAS_SCOREBOARD_PREREG.md (amendment A7)",
+                                   "window": [START, END], "rule": "share of mid(07:00 London, 20th weekday on) > mid(07:00 London), London weekdays; end on or before the lockbox day",
+                                   "instruments": out}, indent=1) + "\n")
+    print("wrote", OUT_D20)
 
 
 def main():
@@ -79,4 +111,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main_d20() if "--d20" in sys.argv[1:] else main()

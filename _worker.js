@@ -141,7 +141,7 @@ function isAllowedKVKey(key) {
     'spread_profile_v1',
     'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',
     'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log',
-    'bot_allocations', 'paper_record_v1', 'daily_read_v1', 'surface_lab_v1', 'forecast_scorecard_v1', 'forecast_audit_v1', 'forecast_audit_bt_v1', 'signal_journal_v1', 'bias_engine_index', 'desk_bias_process_index', 'fundabias_log_index']);
+    'bot_allocations', 'paper_record_v1', 'daily_read_v1', 'surface_lab_v1', 'forecast_scorecard_v1', 'forecast_audit_v1', 'forecast_audit_bt_v1', 'signal_journal_v1', 'bias_engine_index', 'bias_engine_v2_index', 'desk_bias_process_index', 'fundabias_log_index']);
   const PREFIXES = ['expect_', 'ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_', 'oi_raw_', 'cboe_raw_', 'bot_daily_recon_', 'sched_lastrun_', 'desk_paper_', 'bias_engine_', 'desk_bias_process_', 'fundabias_log_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
@@ -1139,6 +1139,7 @@ export default {
             'thesis_reality_v1',
             // desk_paper_record_v1: paper trades on the trade watcher's own rules, one summary row per day (js/deskPaperTrades.js).
             'desk_paper_record_v1',
+            'bias_engine_v2_index',   // Bias Engine V2 shadow's index; the dated records are kept by the 'bias_engine_' prefix
             // bias_engine_index: the bias engine's issue index (js/biasEngine.js); the dated issues are kept by PERMANENT_PREFIXES 'bias_engine_'.
             'bias_engine_index',
             // desk_bias_process_index / fundabias_log_index: the Desk Bias Process issue index and the FundaBias log's dates; the dated keys are kept by PERMANENT_PREFIXES.

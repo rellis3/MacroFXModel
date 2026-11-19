@@ -12,5 +12,11 @@ screenshots are kept alongside.
 | 04 · Why the Logic Stays Private | `LESSON_04_why-the-logic-stays-private.md` | `screenshots/lesson-04/` (39: 27 page + 12 formula close-ups) |
 | 05 · Data: Why Futures | `LESSON_05_data-why-futures.md` | `screenshots/lesson-05/` (42: 28 page + 14 formula close-ups) |
 | 06 · From One Idea to a Portfolio | `LESSON_06_from-one-idea-to-a-portfolio.md` | `screenshots/lesson-06/` (40: 31 page + 9 formula close-ups) |
+| 07 · How the System Evolved | `LESSON_07_how-the-system-evolved.md` | `screenshots/lesson-07/` (21: 18 page + 3 formula close-ups) |
+| 08 · The Historical Track Record | `LESSON_08_the-historical-track-record.md` | `screenshots/lesson-08/` (36: 32 page + 4 formula close-ups) |
 
 The series has 17 lessons; more are added as they are released.
+
+The lessons are also readable on the site at `cog/hub.html` → "Case Study: The
+Forecaster Portfolio". Those pages are generated from these files; after adding
+or editing a lesson, run `node scripts/build-forecaster-case-study.mjs`.

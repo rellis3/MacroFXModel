@@ -107,6 +107,7 @@ footer{color:var(--muted);font-size:13px}
     <div><time>2026-11-17</time><p><b>Exhaustion test, VWAP target (pre-registered).</b> <span>Fade only when price looks spent at the touch (VWAP stretch, range used, approach speed, approach volume, repeat touch), target the session VWAP frozen at the touch, stop 0.25σ. 117 cells, fit 2016–22, holdout 2023–26. None passes; 115 of 117 lose after cost. Verdict UNDERPOWERED (p90 too thin to rule out); p50/p75 rule out a 0.10R edge.</span></p></div>
     <div><time>2026-11-18</time><p><b>VWAP target with the median-MAE stop.</b> <span>Checked that VWAP really replaced the MFE target in the exhaustion test (it did, on every fade), then re-ran the fade with test 3&rsquo;s stop: the median 60-minute MAE (NQ 103, 6E 18, GC 28 ticks), the end-of-day median, and the median in &sigma;. Nothing changes: the stop only trades win rate for payoff, VWAP is hit first within 1&ndash;3 points of random-walk odds, gross &asymp; 0, net negative. Exploratory.</span></p></div>
     <div><time>2026-11-18</time><p><b>Stored as the Futures Line Lab.</b> <span>All five steps are now presets of one runner (<code>scripts/futures-line-lab/lab.py</code>), so a stop, target, VWAP anchor (London, Globex or cash session), stack rule or filter can be swapped and re-run in about a minute. The presets reproduce every number above. Each run is saved under <code>analysis/output/futures-line-lab/runs/</code>.</span></p></div>
+    <div><time>2026-11-18</time><p><b>Lessons review (amendment).</b> <span>Mapped the futures work onto the Forecaster Portfolio layers: futures data (L05, rolls checked: no session spans one), the touch-bar tilt (measurement), a futures replication of the path map, size tables for targets and stops. See section 3.</span></p></div>
   </div>
 </section>
 
@@ -188,6 +189,23 @@ footer{color:var(--muted);font-size:13px}
     <div class="scroll"><table id="t-exbase"></table></div>
     <h3>Why it comes out at zero</h3>
     <p class="note">VWAP sits about twice the stop distance away (NQ p50: target 142 ticks, stop 105). The fade reaches the target 28–31% of the time and the stop 54%; 15–19% are still open at 22:00. On a random walk the chance of reaching a target twice the stop first is one in three, and here target ÷ (target + stop) = 34–36%. So the bigger payoff is cancelled exactly by the lower hit rate: gross R is −0.004 to −0.013 on all three markets, and cost makes it negative. None of the exhaustion signs tilts the race; the placebo lines and the mirror (continuation) trade come out the same.</p>
+  </div>
+</section>
+
+<section>
+  <h2>3 · How this fits the Forecaster lessons <span class="verdict">Amendment · 2026-11-18</span></h2>
+  <p>A review of this work against the Forecaster Portfolio lessons (Lessons 01–06, <code>plans/FORECASTER_SYSTEM_BLUEPRINT.md</code>). It maps what the futures work adds to each layer. It changes no result above, and the lesson track itself is unchanged.</p>
+  <div class="panel">
+    <div class="method">
+      <div><b>Layer 1 · Data (L05)</b><span>The first end-to-end use of lesson-standard futures data: real exchange volume, end-stamp fix, lockbox kept, lines point-in-time. Rolls checked against the blueprint's open L05 item: none of the 7,514 London sessions spans a contract change (rolls fall in the 22:00–24:00 gap; an NQ roll jumps a median 45 points, so this matters).</span></div>
+      <div><b>Layer 2 · Measurement</b><span>New: the touch-bar tilt. On 1-minute bars the touch bar's move beyond the line counts but its move back cannot (order inside the bar is unknown), so the through side gets a one-bar head start worth about 2–3 points in any race. This applies to every touch study, CFD ones included.</span></div>
+      <div><b>Layer 4 · Path dynamics (L01, L04)</b><span>An independent replication of the path map on a different data source (futures, not OANDA CFDs), which Lesson 04 counts as evidence. It also adds what the map never measured: stacked lines (quieter reactions, even in σ), the better-level rule, first-passage races against a random-walk benchmark, and VWAP with real volume.</span></div>
+      <div><b>Layers 5 and 7 · Targets and stops (L03 §01)</b><span>The MAE/MFE tables by line, hour and touch number are size tables in the form both layers use. Swapping the stop (0.25σ vs median MAE, 60-minute and end-of-day) showed the stop as its own layer: it trades win rate for payoff and leaves the race unchanged, which is the separation Lesson 03 asks for.</span></div>
+      <div><b>Volatility is how much (L03 §02)</b><span>Move size scales with σ and time of day (13–15 London about 2× the morning). Direction at the touch minute stays near even across every line, family, touch number and stack.</span></div>
+      <div><b>Open leads</b><span>NQ at p90 keeps going on both sides (exploratory, about 4–5 points), which points the same way as rule A's break. The fade has been measured at the touch minute only; confirmation after the touch, order flow and a state-selected entry are untested.</span></div>
+      <div><b>Tooling</b><span>The Futures Line Lab (<code>scripts/futures-line-lab/</code>) holds every step as a preset, so one layer's choice (stop, target, VWAP anchor, stack rule, filter) can be swapped with the others held fixed, as the layered design intends.</span></div>
+      <div><b>To make it count (L01, L02, L04)</b><span>Feed lab runs into the trial ledger so the search breadth is recorded; add intervals to the race tables; keep stops in σ rather than fixed ticks (a fixed-tick stop drifts as price levels change across regimes). One further option alongside this work: rule A on futures as a pre-registered second pass.</span></div>
+    </div>
   </div>
 </section>
 

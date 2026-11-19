@@ -787,3 +787,7 @@ analysis/output/raw-level-mfe-mae/touches.parquet
 analysis/output/raw-level-mfe-mae/grid_real.npy
 analysis/output/raw-level-mfe-mae/grid_placebo.npy
 analysis/output/raw-line-touch-clock/touches.parquet
+
+# root scratch files (kept local)
+/p.out
+/boe_ois.zip
