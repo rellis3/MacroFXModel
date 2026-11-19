@@ -1,0 +1,97 @@
+{
+ "symbol": "EURUSD",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "portfolioBacktest/cache/eurusd_m1.parquet": "c076fd06419cfddbad617b8c9815f302533396bb88065641d0caf4a83ef70f2c",
+  "analysis/output/nt8/continuous/6E_1m_unadj.parquet": "90e2b442030678685af48cb7e0a473ab13083273a0a44ebda56efba63ec4376a",
+  "analysis/output/nt8/continuous/6E_1m_ratio.parquet": "0ed1e8d909a766571c6aed5392385be678c6d421c732c59dc15df802daaba86f",
+  "analysis/output/nt8/continuous/6E_rolls.csv": "acde8b225415d83e2191edda740ace536c8824647a51bf6afd003ac324d6df71"
+ },
+ "sessions": {
+  "C": [
+   "2016-01-04",
+   "2026-08-21",
+   2758
+  ],
+  "F": [
+   "2014-12-08",
+   "2026-11-19",
+   3035
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "gap",
+   "n": 2
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 768
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 2
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 1
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 73
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 50
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 798
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 3
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 58
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 13
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 6
+  }
+ ]
+}

@@ -17,7 +17,7 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
-INST = {"GOLD": "XAU_USD", "NQ": "NAS100_USD", "SPX500": "SPX500_USD", "US30": "US30_USD", "US2000": "US2000_USD"}
+INST = {"GOLD": "XAU_USD", "NQ": "NAS100_USD", "SPX500": "SPX500_USD", "US30": "US30_USD", "US2000": "US2000_USD", "EURUSD": "EUR_USD"}
 
 
 def get(inst, start, end):
