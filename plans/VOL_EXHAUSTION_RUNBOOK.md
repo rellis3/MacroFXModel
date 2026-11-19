@@ -69,12 +69,17 @@ bars; "thin" means 60–999 bars.
 
 IBKR is **not** needed for M1. NT8 history already reaches 2015, while IBKR expired-contract history is short.
 
-### 0.2 Repair futures M1  (F)  `[~]` started 2026-11-18
+### 0.2 Repair futures M1  (F)  `[x]` 2026-11-19
 Runner (in order): backfill missing/new contract files on all roots → gapfill liquid roots at MIN_BARS 5000 → PL/BZ/PA at
 2500 → grains/FDAX at 2000 (their exchange hours cap a normal week below 5000) → indices to today → stitch.
-- [~] Run `nt8_bridge/nt8_gapfill.py` on every non-index root (6A 6B 6C 6E 6J 6N 6S GC SI HG PL CL BZ NG ZS ZW ZC FDAX), then `nt8_stitch.py`. The gapfill has only been run on the index roots so far (DATA_SPEC #24).
-- [ ] Extend all roots to today (NT8 must be connected).
-- [ ] Re-run the 0.1 table. Acceptance: missing weekday sessions vs the CME calendar < 2% per root, outside known holidays.
+- [x] (2026-11-19, all roots incl. rates ZN/ZB/ZT/ZF/ZQ; GC Dec lead-in fix for the missing GC Oct) Run `nt8_bridge/nt8_gapfill.py` on every non-index root (6A 6B 6C 6E 6J 6N 6S GC SI HG PL CL BZ NG ZS ZW ZC FDAX), then `nt8_stitch.py`. The gapfill has only been run on the index roots so far (DATA_SPEC #24).
+- [x] Extend all roots to today (2026-11-19). BTC partial (31 contracts timed out), MBT failed: retry `nt8_backfill.py --retry-failed` later.
+- [x] Re-run (2026-11-19), missing London weekday sessions 2016 → today (Christmas/New Year excluded):
+      indices ES 1.8%, NQ 1.8%, YM 1.9%, RTY 2.0%; FX 6A/6B/6E/6J/6N/6S 2.1–2.2%, 6C 2.4%; GC 3.3%, SI 2.9%, HG 2.8%, PL 3.0%,
+      PA 3.9%; CL 0.9%, NG 1.0%, BZ 1.5%; rates 1.0–2.8%; FDAX 5.2%; grains ZC 5.6%, ZW 5.7%, ZS 12.7%; BTC 13%, MBT 13%.
+      The ~2% floor is Good Friday plus NT8's own feed holes (23–26 of Jan/Apr/Jul/Oct, every root, not recoverable).
+      Thin (<600 bars) days are expected on illiquid roots (ZQ 97%, PA 67%). Indices, FX and metals pass for the race;
+      grains/FDAX/crypto need a look before they're raced.
 
 ### 0.3 Pull missing roots  (F)
 - [~] PA (from 2015), BTC (from 2017), MBT (from 2021) added to `nt8_backfill.py` ROOTS 2026-11-18. A test week
@@ -155,9 +160,11 @@ Lean version agreed with the owner: no separate site page; the signature plot wa
 
 ### 1.6 Lockbox, one shot  `[ ]`
 
-### 1.7 Shadow export  `[ ]`
-- [ ] C and F ladders published side by side with the live one, in the same text format. F blocks are headed `<SYM> FUT`.
-- [ ] Indicator: an input to choose CFD or FUT blocks.
+### 1.7 Shadow export  `[x]` 2026-11-19 (NQ, GOLD, EURUSD)
+- [x] vol-forecast-v3 Export menu: ⬇ v2 Forecast · CFD / · Futures (route `/api/vol-forecast/ladder-v2/export`, `js/ladderV2Shadow.js`,
+      parity test vs Python exact). CFD and futures are separate pastes, not `<SYM> FUT` blocks (the indicator takes the first match).
+      Gold futures on the site: spot HAR-CJ σ with GC-fitted widths (GC intraday data isn't on Railway).
+- [x] Indicator: no change needed (paste the matching export).
 
 ### 1.8 Forward scoring  `[ ]`
 - [ ] Daily scorecard: shadow vs live, both tracks.
@@ -195,9 +202,13 @@ P(extreme ≥ X+δ) ÷ P(extreme ≥ X). Prior evidence:
 - [x] EURUSD 2026-11-19 (`exhaustion-v2-eurusd`, VALIDATED C and F): same clock shape; X7 10.6 → 3.8pp.
       Three pilots (index, metal, FX) done on both halves: owner review before rolling to more instruments.
 
-### 2.4 Export + indicator  `[ ]`
-- [ ] Each rung carries an exhaustion figure for the current time bucket, e.g. `OL p75 … · exhaust 62% after 14:00`.
-- [ ] The indicator parses and labels it, with older exports still working.
+### 2.4 Export + indicator  `[x]` 2026-11-19 (NQ, GOLD, EURUSD)
+- [x] ⬇ v2 Exhaustion · CFD / · Futures on vol-forecast-v3: per OH/OL p50/75/90 line the run-past zone (`reversal-zones`) and
+      the next-line odds by London bucket (`exhaustion-v2-*`, empirical, shrunk to the 3-instrument pool).
+- [x] New indicator `pine/exhaustion_zones.pine` (separate paste; the vol indicator is unchanged). Not yet compiled in TradingView.
+- Context banked the same day: lines aren't turning or reversal levels (`turn-at-lines`, `reversal-zones` NULL) and don't trade
+  after costs on their own (`trade-at-lines` NULL); mixing σ per rung or regime adds nothing (`ladder-mix-2020s`).
+  The ladder is a sizing / target / stop / late-day tool.
 
 ### 2.5 Shadow forward test, owner sign-off, live  `[ ]`
 
