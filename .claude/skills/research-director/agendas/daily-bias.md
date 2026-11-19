@@ -383,6 +383,8 @@ weighting over its forecasters is scored against the equal-weight blend (forward
 Score: value 1 (a card wording), answerable 2, mechanism 1, novelty 1 (variant of a banked underpowered cell), cost 3
 (a re-score of existing outputs). Source: PODCAST_INSIGHTS T01, R16.
 
+**Answered 2026-11-18 → NULL** (`roc-stall-trend-filter`, `forge/ROC_STALL_TREND_FILTER_PREREG.md`): +0.040 z [−0.063, +0.140] against same-state uptrend controls, 666 events, placebo 81st percentile; a rise of the 0.15 bar is ruled out. 83% of the parent's stall events were already above a rising SMA200, so the filter is nearly implied by the stall. Per the card's "if no": **the agenda stops carrying the ROC stall in any form.** Candidate only (not carded): the month after a reset inside an uptrend runs ~5.5% calmer (BH, both halves), agreeing with `roc-stall-50d` C3.
+
 ## Parked
 
 - **Slow priors as daily direction** (carry, time-series momentum, 1–12 months: Moskowitz, Ooi & Pedersen 2012;

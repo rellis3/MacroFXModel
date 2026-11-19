@@ -3326,6 +3326,13 @@ export const DESK_EVIDENCE = [
     use: 'One percent ladder serves both CFD and futures charts for NQ; no separate futures fit needed for range.',
     instruments: ['NQ'],
   },
+  {
+    id: 'roc-stall-trend-filter', domain: 'price', verdict: 'null', date: '2026-11-18', doc: 'forge/ROC_STALL_TREND_FILTER_PREREG.md', also: ['analysis/output/roc-stall-trend-filter/RESULTS.md'],
+    claim: 'Jordi Visser\'s filtered rule: a 50-session rate-of-change reset after a strong run, taken only when price is above a rising 200-day average, is followed by higher 20-session returns than ordinary uptrend sessions of the same market ("consolidated and wants to go higher")',
+    result: 'Pre-registered 2026-11-18 (one scored cell), 30 daily series, 666 de-clustered events on the 2013-01 to 2026-08-21 holdout, 20-session return in units of a typical 20-session move against same-trend-state controls: +0.040 [-0.063, +0.140] (bar +0.15, needed lower edge > +0.02); discovery +0.046, halves +0.016 / +0.080, rotated-flag placebo 81st percentile, p 0.43; 0 of 30 series and 0 of 6 groups survive BH. The interval excludes a rise of the bar size, so NULL (MDE 0.143). 83% of the parent stall events were already above a rising 200-day, so the filter is nearly implied by the stall and the estimate equals the unconditioned +0.05. Same holdout as roc-stall-50d (conditional re-cut). Reported candidate only: the month after such a reset ran about 5.5% calmer than ordinary uptrend sessions (-0.057 [-0.089, -0.024], both halves, beats every rotation), agreeing with the parent C3.',
+    use: 'Do not say a rate-of-change reset inside an uptrend is a continuation entry or a "wants to go higher" read: on 30 markets over 13 years it was followed by returns about the same as any other uptrend session. The 200-day filter adds nothing to the banked stall. The educator\'s own stack (single stocks, fundamentals, catalysts, sentiment) is not tested here.',
+    instruments: ['SPX', 'NDX', 'RUT', 'DJI', 'DAX', 'FTSE', 'N225', 'HSI', 'XLK', 'XLF', 'XLE', 'XLV', 'XLY', 'XLP', 'XLI', 'XLU', 'XLB', 'GOLD', 'SILVER', 'COPPER', 'WTI', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'TLT', 'BTC'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -3414,6 +3421,7 @@ const POWER = {
   'roc-stall-50d-bottom20': { n: '587 events, same design', note: 'MDE 0.135 z vs a 0.15 bar; CI reaches the bar' },
   'roc-accel-down-20': { n: '1,076 events, same design', note: 'MDE 0.097 z vs a 0.15 bar; CI wider than the bar' },
   'roc-accel-down-vol': { n: '1,076 events, same design', note: 'MDE 0.031 log vol-ratio vs a 0.10 bar; fails Holm (p 0.0135 vs 0.0083)' },
+  'roc-stall-trend-filter': { n: '666 de-clustered events above a rising SMA200, 30 daily series, holdout 2013-01 to 2026-08-21 (month-block bootstrap, 500-rotation placebo)', note: 'MDE 0.143 z vs a 0.15 bar, powered; CI upper +0.140 below the bar' },
   'vol-layer-state-confirm-over': { n: 'about 940 dates 2023-01 to 2026-08-20, 34 instruments (date-block bootstrap)', note: 'MDE 0.146 vs bar 0.17, powered' },
   'vol-layer-state-confirm-chosen': { n: 'about 940 dates 2023-01 to 2026-08-20, 34 instruments (date-block bootstrap)', note: 'realised MDE 0.113 vs bar 0.10: underpowered' },
   'vol-layer-state-confirm-nudge': { n: 'about 940 dates 2023-01 to 2026-08-20, 34 instruments (date-block bootstrap)', note: 'MDE 0.0022 vs bar 0.005, powered' },
