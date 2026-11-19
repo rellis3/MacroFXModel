@@ -178,7 +178,7 @@ registerJarvisModule({
 });
 
 registerShowScene({
-  id: 'vol', after: 'weather',
+  id: 'vol', after: 'lean',
   prepare: api => loadVol(api),
   build: (inp, data) => { const text = data?.T ? volScript(data.T, data.V) : null; return text ? { title: 'The volatility landscape', view: 'vol', cam: { drift: true }, text, motion: (api, p) => { S.showP = clampN(p, 0, 1); S.showAt = Date.now(); } } : null; },
 });

@@ -13,7 +13,7 @@ const list = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} an
 // enter?(api) and motion?(api, p) (p runs 0..1 over the line's estimated length) so it can steer its own view. buildScenes() never throws because of a hook.
 export const SHOW_HOOKS = [];
 /** The scenes of the quick MORNING BRIEF (about two minutes). Everything else is in the FULL TOUR. */
-export const QUICK_IDS = new Set(['wake', 'movers', 'candles', 'lean', 'book', 'weather', 'chain', 'ahead', 'close']);
+export const QUICK_IDS = new Set(['wake', 'movers', 'candles', 'lean', 'book', 'chain', 'ahead', 'close']);
 export const registerShowScene = h => { if (h?.id && typeof h.build === 'function' && !SHOW_HOOKS.some(x => x.id === h.id)) SHOW_HOOKS.push(h); return h; };
 
 /** Reading time in seconds for a line when nobody is speaking it (about 2.6 words a second, never under 2 seconds). */
