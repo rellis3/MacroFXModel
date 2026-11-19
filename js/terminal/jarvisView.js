@@ -25,7 +25,7 @@ const CSS = `#${ID}{position:fixed;inset:0;z-index:300;color:var(--tx);font-fami
 #${ID} .jv-br.tl{left:10px;top:10px;border-right:0;border-bottom:0}#${ID} .jv-br.tr{right:10px;top:10px;border-left:0;border-bottom:0}#${ID} .jv-br.bl{left:10px;bottom:10px;border-right:0;border-top:0}#${ID} .jv-br.brr{right:10px;bottom:10px;border-left:0;border-top:0}
 #${ID} .jv-top{position:absolute;left:0;right:0;top:0;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:16px 24px;pointer-events:none}
 #${ID} .jv-top>*{pointer-events:auto}#${ID} .jv-title{font-size:19px;letter-spacing:.46em;color:var(--blue2);text-shadow:0 0 14px var(--blue2);animation:jv-glitch 7s infinite}
-@keyframes jv-glitch{0%,93%,100%{transform:none;text-shadow:0 0 14px var(--blue2)}94%{transform:translateX(2px);text-shadow:-3px 0 var(--dn),3px 0 var(--cy)}96%{transform:translateX(-2px);text-shadow:3px 0 var(--dn),-3px 0 var(--cy)}}
+@keyframes jv-glitch{0%,93%,100%{transform:none;text-shadow:0 0 14px var(--blue2)}94%{transform:translateX(2px);text-shadow:-3px 0 var(--dn),3px 0 var(--blue2)}96%{transform:translateX(-2px);text-shadow:3px 0 var(--dn),-3px 0 var(--blue2)}}
 #${ID} .jv-sub{font-size:11px;color:var(--tx2);letter-spacing:.08em}#${ID} .jv-sp{flex:1}
 #${ID} button{font:inherit;font-size:11px;letter-spacing:.08em;color:var(--tx);background:color-mix(in srgb,var(--bg1) 70%,transparent);border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer}
 #${ID} button:hover{border-color:var(--blue2)}#${ID} button[aria-pressed="true"]{border-color:var(--blue2);color:var(--blue2);box-shadow:0 0 10px color-mix(in srgb,var(--blue2) 50%,transparent)}
