@@ -7,5 +7,5 @@
 // Everything a module draws is DESCRIPTION ONLY: never a forecast, never a trade. A module that spends money (a model call) must be owner-only on the server and capped.
 export const EXTRA = [];
 export const registerJarvisModule = m => { if (m?.id && typeof m.render === 'function' && !EXTRA.some(x => x.id === m.id)) EXTRA.push(m); return m; };
-export const MODULE_FILES = ['./jarvisModPrecedent.js', './jarvisModPapers.js', './jarvisModExplain.js', './jarvisModFilm.js', './jarvisModMarkets.js'];
+export const MODULE_FILES = ['./jarvisModPrecedent.js', './jarvisModPapers.js', './jarvisModExplain.js', './jarvisModFilm.js', './jarvisModMarkets.js', './jarvisModShow.js'];
 export async function loadModules() { await Promise.all(MODULE_FILES.map(f => import(f).catch(() => null))); return EXTRA; }

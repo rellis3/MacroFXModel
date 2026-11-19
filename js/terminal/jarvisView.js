@@ -7,6 +7,7 @@
 // from the Chain tab's loaders (globalThis.deskChainData), the voice is the browser's own (free).
 import { buildGraph, project, arcPoint, bootLines, VERDICT_WORD, radarRank, systemSummary, skyline, towerBox, pickVoice, wakeParse, watchSnapshot, watchDiff, memoryState, GEO, REGIONS, llToVec, globeProject, greatArc, bubbleLayout, THEME, THEME_ORDER } from './jarvisCore.js';
 import { CHAIN_NODES } from '../macroChain.js';
+import { candleRows, candleLayout, candleBox, boardSummary, ROWS as CD_ROWS } from './jarvisCandles.js';
 import { EXTRA, loadModules } from './jarvisModules.js';
 import { shortLabel } from './chainBoard.js';
 
@@ -57,6 +58,11 @@ const CSS = `#${ID}{--jvtop:62px;position:fixed;inset:0;z-index:300;color:var(--
 #${ID} .jv-bs-b{position:absolute;left:50%;transform:translateX(-50%);bottom:9%;width:min(440px,80vw)}
 #${ID} .jv-bs-log{font-size:12px;line-height:1.75;color:var(--tx2);min-height:136px;letter-spacing:.04em}#${ID} .jv-bs-log .ok{color:var(--up);float:right}#${ID} .jv-bs-log div{overflow:hidden}#${ID} .jv-bs-log b{font-weight:400;color:var(--tx)}
 #${ID} .jv-bar{height:3px;background:color-mix(in srgb,var(--blue2) 20%,transparent);border-radius:2px;margin-top:8px;overflow:hidden}#${ID} .jv-bar i{display:block;height:100%;width:0;background:var(--blue2);box-shadow:0 0 10px var(--blue2);transition:width .5s ease}
+#${ID} .jv-cap{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);width:min(960px,92vw);text-align:center;pointer-events:none;z-index:4;transition:opacity .5s ease}#${ID} .jv-cap[hidden]{display:none}
+#${ID} .jv-cap .t{font-size:12px;letter-spacing:.42em;color:var(--blue2);text-shadow:0 0 12px var(--blue2);margin-bottom:10px}#${ID} .jv-cap .x{font-size:clamp(16px,2.1vw,25px);line-height:1.55;color:var(--tx);text-shadow:0 0 18px var(--bg),0 0 6px var(--bg)}
+#${ID} .jv-cinexit{position:absolute;right:24px;top:20px;z-index:6;display:none}
+#${ID}.jv-cinema .jv-top,#${ID}.jv-cinema .jv-hud,#${ID}.jv-cinema .jv-reg,#${ID}.jv-cinema .jv-scrub,#${ID}.jv-cinema .jv-foot,#${ID}.jv-cinema .jv-boot,#${ID}.jv-cinema .jv-pane,#${ID}.jv-cinema .jv-card{opacity:0;pointer-events:none}
+#${ID}.jv-cinema .jv-cinexit{display:block}
 @media (max-width:1560px){#${ID} .jv-top .jv-sub{display:none}}
 @media (max-width:640px){#${ID} .jv-boot,#${ID} .jv-hud{display:none}#${ID} .jv-title{font-size:14px}#${ID} .jv-scrub{bottom:34px}}
 @media (prefers-reduced-motion:reduce){#${ID},#${ID} .jv-scan,#${ID} .jv-title{animation:none}}`;
@@ -73,7 +79,7 @@ export async function openJarvis(win = window) {
 <div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">desk intelligence · description only</span><span class="jv-sp"></span>
 <span id="${ID}-mods"></span><span id="${ID}-win"></span><span id="${ID}-view"></span>
 <button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></div>
-<div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
+<div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
 <div class="jv-scrub" id="${ID}-scrub"><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button><button type="button" id="${ID}-expl" title="Describe what was going on around this day (one model call)">EXPLAIN THIS DAY</button></div>
 <div class="jv-foot">drag to turn · wheel to zoom · click a market · Esc docks · none of this is a forecast</div>`;
   doc.body.appendChild(root);
@@ -88,8 +94,20 @@ export async function openJarvis(win = window) {
   const fitTop = () => { try { const tp = root.querySelector('.jv-top'); if (tp) root.style.setProperty('--jvtop', `${tp.offsetHeight}px`); } catch (e) { /* layout only */ } };
   const noBoot = !!win.__jarvisNoBoot, calm = !!win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches, BOOT = noBoot ? 0 : calm ? 0.8 : 4.2;
   if (BOOT) root.classList.add('jv-booting'); else $('bs').remove();
-  const st = { mod: 'chain', view: prefs.view ?? 'globe', gl: { lat: 20, lon: 15, zoom: 1, tlat: 20, tlon: 15, tzoom: 1 }, land: null, bl: null, region: 'world', voice: false, sound: prefs.sound !== false, wake: false, watch: prefs.watch !== false, win: 5, graph: null, sum: null, sel: null, yaw: 0.55, pitch: -0.7, zoom: 1, spin: true, t0: performance.now() - (win.__jarvisNoBoot ? 5000 : 0), drag: null, w: 0, h: 0, proj: [], disp: {}, dates: [], idx: -1, play: 0, docked: false, alerts: [], snap: null, lastCheck: null, memLimit: prefs.memLimit ?? 0, mem: null };
+  const st = { cd: null, cdBusy: null, cdCam: { x: 0, z: 0 }, cdTarget: { x: 0, z: 0 }, cinemaStop: null, speakStop: null, mod: 'chain', view: prefs.view ?? 'globe', gl: { lat: 20, lon: 15, zoom: 1, tlat: 20, tlon: 15, tzoom: 1 }, land: null, bl: null, region: 'world', voice: false, sound: prefs.sound !== false, wake: false, watch: prefs.watch !== false, win: 5, graph: null, sum: null, sel: null, yaw: 0.55, pitch: -0.7, zoom: 1, spin: true, t0: performance.now() - (win.__jarvisNoBoot ? 5000 : 0), drag: null, w: 0, h: 0, proj: [], disp: {}, dates: [], idx: -1, play: 0, docked: false, alerts: [], snap: null, lastCheck: null, memLimit: prefs.memLimit ?? 0, mem: null };
   const setCam = () => { if (st.view === 'globe') { st.gl.zoom = st.gl.tzoom = 1; $('reg').hidden = false; } else $('reg').hidden = true; if (st.view === 'bubbles') st.bl = null; if (st.view === 'skyline') Object.assign(st, { yaw: 0.55, pitch: -0.7, zoom: 1 }); else Object.assign(st, { yaw: 0.6, pitch: 0.28, zoom: 1 }); };
+  const setCamAll = () => { setCam(); if (st.view === 'candles') { Object.assign(st, { yaw: 0.3, pitch: -0.5, zoom: 1 }); st.cdTarget = { x: 0, z: 0 }; st.cdCam = { x: 0, z: 0 }; ensureCandles(); } };
+  async function ensureCandles(force = false) {
+    if (!force && st.cd && Date.now() - st.cd.at < 60_000) return st.cd;
+    if (st.cdBusy) return st.cdBusy;
+    st.cdBusy = (async () => {
+      try { const [v, b] = await Promise.all([jf('/api/vol-forecast/live'), jf('/api/bias-engine').catch(() => null)]); const rows = candleRows(v?.instruments ?? {}, b?.markets ?? {}); st.cd = { at: Date.now(), rows, layout: candleLayout(rows.map(r => r.key)), board: boardSummary(rows), ok: rows.length > 0 }; }
+      catch (e) { st.cd = { at: Date.now(), rows: [], layout: {}, board: null, ok: false }; }
+      finally { st.cdBusy = null; }
+      return st.cd;
+    })();
+    return st.cdBusy;
+  }
   const resize = () => { const d = Math.min(2, win.devicePixelRatio || 1); st.w = root.clientWidth; st.h = root.clientHeight; cv.width = st.w * d; cv.height = st.h * d; ctx.setTransform(d, 0, 0, d, 0, 0); };
   resize(); win.addEventListener('resize', () => { resize(); fitTop(); }); fitTop();
 
@@ -126,6 +144,21 @@ export async function openJarvis(win = window) {
   let voice = null; const loadVoice = () => { voice = pickVoice(win.speechSynthesis?.getVoices?.() ?? []); }; loadVoice(); win.speechSynthesis?.addEventListener?.('voiceschanged', loadVoice);
   const say = (t, force = false) => { try { if ((!st.voice && !force) || !win.speechSynthesis) return; win.speechSynthesis.cancel(); const u = new win.SpeechSynthesisUtterance(String(t).slice(0, 1200)); if (voice) u.voice = voice; u.lang = voice?.lang ?? 'en-GB'; u.rate = 1.02; u.pitch = 0.82; win.speechSynthesis.speak(u); } catch (e) { /* no voice */ } };
 
+  // the voice LEADS: speakAsync resolves when the narration has finished (or, with the voice off, after a reading-speed pause), so a director moves the picture on only then
+  function speakAsync(text, rate = 1) {
+    return new Promise(res => {
+      const t = String(text ?? ''), est = Math.max(2, t.split(/\s+/).filter(Boolean).length / 2.6) * 1000 / rate; let done = false;
+      const fin = () => { if (!done) { done = true; st.speakStop = null; res(); } };
+      if (!st.voice || !win.speechSynthesis) { const id = win.setTimeout(fin, est); st.speakStop = () => { win.clearTimeout(id); fin(); }; return; }
+      try {
+        win.speechSynthesis.cancel(); const u = new win.SpeechSynthesisUtterance(t.slice(0, 1200)); if (voice) u.voice = voice; u.lang = voice?.lang ?? 'en-GB'; u.rate = 1.02 * rate; u.pitch = 0.82; u.onend = fin; u.onerror = fin; win.speechSynthesis.speak(u);
+        const id = win.setTimeout(fin, est * 2.5 + 4000); st.speakStop = () => { win.clearTimeout(id); try { win.speechSynthesis.cancel(); } catch (e) { /* idle */ } fin(); };
+      } catch (e) { win.setTimeout(fin, est); }
+    });
+  }
+  const setCaption = (text, title = '') => { const c = $('cap'); if (!text) { c.hidden = true; return; } $('capt').textContent = title; $('capx').textContent = text; c.hidden = false; };
+  const setCinema = (on, stop = null) => { root.classList.toggle('jv-cinema', !!on); st.cinemaStop = on ? stop : null; if (!on) setCaption(null); };
+
   // ── data ──
   const jf = (u, o) => win.fetch(u, o).then(r => r.json());
   async function loadAt(w, date = null) {
@@ -159,9 +192,10 @@ export async function openJarvis(win = window) {
 
   // ── controls ──
   $('win').innerHTML = [1, 5, 20].map(w => `<button type="button" data-w="${w}" aria-pressed="${w === st.win}">${w}D</button>`).join(' ');
-  $('view').innerHTML = [['globe', 'GLOBE'], ['bubbles', 'BUBBLES'], ['skyline', 'SKYLINE'], ['orbit', 'ORBIT']].map(([id, l]) => `<button type="button" data-v="${id}" aria-pressed="${id === st.view}">${l}</button>`).join(' ');
+  $('view').innerHTML = [['globe', 'GLOBE'], ['candles', 'CANDLES'], ['bubbles', 'BUBBLES'], ['skyline', 'SKYLINE'], ['orbit', 'ORBIT']].map(([id, l]) => `<button type="button" data-v="${id}" aria-pressed="${id === st.view}">${l}</button>`).join(' ');
   $('win').onclick = e => { const b = e.target.closest('button[data-w]'); if (b) { blip(520, 0.05); load(+b.dataset.w, st.idx >= 0 ? st.dates[st.idx] : null); } };
-  $('view').onclick = e => { const b = e.target.closest('button[data-v]'); if (!b) return; st.view = b.dataset.v; lsPut({ view: st.view }); setCam(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === st.view)); blip(720, 0.06); };
+  const switchView = v => { st.view = v; lsPut({ view: v }); setCamAll(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); blip(720, 0.06); };
+  $('view').onclick = e => { const b = e.target.closest('button[data-v]'); if (b) switchView(b.dataset.v); };
   $('snd').onclick = e => { st.sound = !st.sound; lsPut({ sound: st.sound }); e.currentTarget.setAttribute('aria-pressed', String(st.sound)); blip(600); };
 
   const REGLAB = { world: 'WORLD', americas: 'AMERICAS', europe: 'EUROPE', asia: 'ASIA-PACIFIC', 'mideast-africa': 'MIDDLE EAST & AFRICA' };
@@ -241,7 +275,8 @@ export async function openJarvis(win = window) {
     if (m === 'chain') showCard(); else { $('card').hidden = true; R[m]?.(); }
   }
   $('mods').onclick = e => { const b = e.target.closest('button[data-m]'); if (b) setMod(b.dataset.m); };
-  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
+  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), caption: (t, title) => setCaption(t, title), cinema: (on, stop) => setCinema(on, stop),
+    globeTo: (lat, lon, zoom = 1) => { Object.assign(st.gl, { tlat: lat, tlon: lon, tzoom: zoom }); st.spin = false; }, flyTo: (x, z) => { st.cdTarget = { x, z }; }, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
   loadModules().then(list => {
     win.setTimeout(fitTop, 0);
     for (const m of list) { R[m.id] = () => m.render($('pane'), xapi); if (!$('mods').querySelector(`[data-m="${m.id}"]`)) $('mods').insertAdjacentHTML('beforeend', ` <button type="button" data-m="${esc(m.id)}" aria-pressed="false">${esc(m.label)}</button>`); }
@@ -405,6 +440,36 @@ export async function openJarvis(win = window) {
     }
     for (const m of EXTRA) { try { m.drawGlobe?.(ctx, { P, X, Y, Rg, ctr, t, fade, zoom: g.zoom }, xapi); } catch (e) { /* a layer must never stop the frame */ } }
   }
+
+  function drawCandles(t, fade) {
+    const cd = st.cd;
+    if (!cd?.ok) { ctx.globalAlpha = fade; ctx.fillStyle = C.tx2; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText(cd ? 'The market feed is not available right now.' : 'Reading the markets...', st.w / 2, st.h / 2); return; }
+    const cam2 = { yaw: st.yaw, pitch: st.pitch, zoom: st.zoom, f: 2.3 }, scC = Math.min(st.w * 0.5, st.h * 0.95) * 0.3, fx = st.cdCam.x, fz = st.cdCam.z;
+    const P = (x, y, z) => { const p = project([x - fx, y, z - fz], cam2); return { x: cx() + p.x * scC, y: cy() + p.y * scC, s: p.s, z: p.z, ok: 2.3 + p.z > 0.35 }; };
+    // the floor: a grid and the row names; the centre line of the day is the floor itself
+    ctx.lineWidth = 1; ctx.strokeStyle = C.blue;
+    for (let i = -11; i <= 11; i++) { const u = i * 0.19; for (const [a, b] of [[[-2.2, 0, u], [2.2, 0, u]], [[u, 0, -1.4], [u, 0, 1.4]]]) { const p = P(...a), q = P(...b); if (p.ok && q.ok) { ctx.globalAlpha = 0.08 * fade; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); } } }
+    ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillStyle = C.tx2;
+    CD_ROWS.forEach(([title], ri) => { if (!title) return; const z = (ri - (CD_ROWS.length - 1) / 2) * 0.45, p = P(-1.55, 0, z); if (p.ok) { ctx.globalAlpha = 0.6 * fade; ctx.fillText(title, p.x, p.y); } });
+    const items = cd.rows.map(r => { const pos = cd.layout[r.key]; if (!pos) return null; const b = candleBox(r, pos), pts = b.pts.map(q => P(q[0], q[1], q[2])), w0 = P(...b.wick[0]), w1 = P(...b.wick[1]), tip = P(b.tip[0], b.tip[1] + 0.1, b.tip[2]); return { r, b, pts, w0, w1, tip, depth: P(pos.x, 0, pos.z).z }; }).filter(o => o && o.tip.ok).sort((a, b) => b.depth - a.depth);
+    const selK = st.sel, loud = new Set([...items].sort((a, b) => Math.abs(b.r.ratio) - Math.abs(a.r.ratio)).slice(0, 9).map(o => o.r.key));      // only the loudest candles carry a name, so the field stays readable
+    for (const o of items) {
+      const c = tcol(o.r.tone === 'up' ? 'up' : o.r.tone === 'dn' ? 'dn' : 'quiet'), live = o.r.tone !== 'quiet', fa = fade * Math.min(1, Math.max(0.25, o.tip.s * 0.9));
+      ctx.globalAlpha = (live ? 0.9 : 0.4) * fa; ctx.strokeStyle = c; ctx.lineWidth = Math.max(1, 1.6 * o.tip.s); ctx.beginPath(); ctx.moveTo(o.w0.x, o.w0.y); ctx.lineTo(o.w1.x, o.w1.y); ctx.stroke();    // the wick
+      for (const sd of o.b.faces.sides) poly(sd, o.pts, c, (live ? 0.38 : 0.16) * fa, c);
+      poly(o.b.faces.top, o.pts, c, (live ? 0.75 : 0.28) * fa, c);
+      if (live) { const gr = ctx.createRadialGradient(o.tip.x, o.tip.y, 1, o.tip.x, o.tip.y, 22 * o.tip.s); gr.addColorStop(0, c); gr.addColorStop(1, 'transparent'); ctx.globalAlpha = 0.35 * fa; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(o.tip.x, o.tip.y, 22 * o.tip.s, 0, 6.2832); ctx.fill(); }
+      // the bias engine's lean: a chevron over the candle (up = bullish, down = bearish, a dot = neutral); blue so it is never mistaken for what has happened
+      if (o.r.haveLean) {
+        const sz = (4 + Math.min(3, o.r.strength) * 2.2) * o.tip.s, x0 = o.tip.x, y0 = o.tip.y - 8 * o.tip.s; ctx.globalAlpha = 0.9 * fa; ctx.strokeStyle = C.blue; ctx.fillStyle = C.blue; ctx.lineWidth = 1.6;
+        if (o.r.lean === 0) { ctx.beginPath(); ctx.arc(x0, y0, 2 * o.tip.s, 0, 6.2832); ctx.fill(); } else { const d = o.r.lean > 0 ? -1 : 1; ctx.beginPath(); ctx.moveTo(x0 - sz, y0 - d * sz * 0.5); ctx.lineTo(x0, y0 + d * sz * 0.5); ctx.lineTo(x0 + sz, y0 - d * sz * 0.5); ctx.stroke(); }
+      }
+      if (selK === o.r.key || (live && loud.has(o.r.key) && Math.abs(o.r.ratio) > 1)) { ctx.globalAlpha = fa * (live ? 1 : 0.6); ctx.fillStyle = C.tx; ctx.font = `${Math.round(9 + 3 * Math.min(1.6, o.tip.s))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(o.r.key, o.tip.x, o.tip.y - 16 * o.tip.s - 4); }
+      st.proj.push({ key: o.r.key, sx: o.tip.x, sy: o.tip.y });
+    }
+    ctx.globalAlpha = 0.7 * fade; ctx.fillStyle = C.tx2; ctx.font = '11px ui-monospace,monospace'; ctx.textAlign = 'left';
+    ctx.fillText('CANDLES  ·  today\'s session against each market\'s usual move  ·  green above the floor, red below', 24, st.h - 215); ctx.fillText('CHEVRONS  ·  the bias engine\'s lean (back-test: no proven skill)', 24, st.h - 199);
+  }
   function drawBubbles(t, fade) {
     const g = st.graph; if (!g) return; const keys = g.nodes.map(n => n.key);
     if (!st.bl) st.bl = bubbleLayout(keys, Object.fromEntries(g.nodes.map(n => [n.key, n.style.size])));
@@ -437,10 +502,11 @@ export async function openJarvis(win = window) {
     if (doc.hidden) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now; if (st.spin && !st.drag && st.view !== 'globe') st.yaw += dt * (st.view === 'skyline' ? 0.07 : 0.12);
     const t = (now - st.t0) / 1000, bootT = t, fade = Math.min(1, Math.max(0, (bootT - (BOOT - 1.0)) / 0.9));
+    { const e = Math.min(1, dt * 2.2); st.cdCam.x += (st.cdTarget.x - st.cdCam.x) * e; st.cdCam.z += (st.cdTarget.z - st.cdCam.z) * e; }
     for (const k of Object.keys(st.disp)) { const tgt = st.graph?.nodes.find(n => n.key === k)?.style.size; if (tgt != null) st.disp[k] += (tgt - st.disp[k]) * Math.min(1, dt * 5); }
     ctx.clearRect(0, 0, st.w, st.h); st.proj = [];
     if (BOOT && bootT < BOOT + 0.3) drawBoot(bootT);
-    if (st.graph && fade > 0) { if (st.view === 'globe') drawGlobe(t, fade, dt); else if (st.view === 'bubbles') drawBubbles(t, fade); else if (st.view === 'skyline') drawSkyline(t, fade); else drawOrbit(t, fade); }
+    if (st.graph && fade > 0) { if (st.view === 'globe') drawGlobe(t, fade, dt); else if (st.view === 'candles') drawCandles(t, fade); else if (st.view === 'bubbles') drawBubbles(t, fade); else if (st.view === 'skyline') drawSkyline(t, fade); else drawOrbit(t, fade); }
     ctx.globalAlpha = 1; hudT += dt; if (hudT > 20) { hudT = 0; renderHud(); }
   }
 
@@ -477,7 +543,7 @@ export async function openJarvis(win = window) {
     if (flash) { dock.classList.remove('al'); void dock.offsetWidth; dock.classList.add('al'); }
   }
   dock.onclick = e => { const b = e.target.closest('button[data-d]'); if (!b) return; const d = b.dataset.d; if (d === 'open') api.undock(); else if (d === 'alerts') { api.undock(); setMod('alerts'); } else if (d === 'mic') setWake(!st.wake); else if (d === 'off') api.off(); };
-  $('dockb').onclick = () => api.dock();
+  $('dockb').onclick = () => api.dock(); $('stop').onclick = () => st.cinemaStop?.();
   $('off').onclick = () => api.off();
 
   // ── voice in: "Jarvis, ..." hands-free (Chrome's recognition; this tab only; stops when you switch it off) ──
@@ -510,10 +576,10 @@ export async function openJarvis(win = window) {
       win.removeEventListener('resize', resize); doc.removeEventListener('keydown', onKey, true); win.speechSynthesis?.cancel(); root.remove(); dock.remove();
     },
   };
-  const onKey = e => { if (e.key === 'Escape' && !st.docked) { e.preventDefault(); e.stopPropagation(); api.dock(); } };
+  const onKey = e => { if (e.key === 'Escape' && st.cinemaStop) { e.preventDefault(); e.stopPropagation(); st.cinemaStop(); return; } if (e.key === 'Escape' && !st.docked) { e.preventDefault(); e.stopPropagation(); api.dock(); } };
   doc.addEventListener('keydown', onKey, true);
   open = api;
-  setCam(); $('reg').hidden = st.view !== 'globe'; runBoot(); raf = win.requestAnimationFrame(frame);
+  setCamAll(); $('reg').hidden = st.view !== 'globe'; runBoot(); raf = win.requestAnimationFrame(frame);
   await load(st.win);
   setWatch(st.watch);
   return true;
