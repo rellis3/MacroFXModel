@@ -33,3 +33,10 @@ test('the view registers a view, a quick-brief scene after candles, and a scene 
   const h = SHOW_HOOKS.find(x => x.id === 'wx'); assert.equal(h.after, 'candles'); assert.equal(h.build({}, null), null);
   const r = candleRows(vol, {}), sc = h.build({}, { ok: true, at: 1, rows: r }); assert.equal(sc.view, 'wx'); assert.ok(sc.text.length > 20);
 });
+
+test('pickRecorderType: MP4 first where the browser can write it, else WebM, else null; a throwing check counts as unsupported', async () => {
+  const { pickRecorderType, RECORD_TYPES } = await import('./showCore.js');
+  assert.deepEqual(pickRecorderType(() => true), { mime: RECORD_TYPES[0], ext: 'mp4' });
+  assert.equal(pickRecorderType(t => t.startsWith('video/webm') && !t.includes('vp9')).ext, 'webm');
+  assert.equal(pickRecorderType(() => false), null); assert.equal(pickRecorderType(() => { throw new Error('x'); }), null);
+});

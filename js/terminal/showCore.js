@@ -49,3 +49,11 @@ export function buildScenes(inp = {}) {
   sc.push({ id: 'close', title: 'Standing by', view: 'globe', cam: { region: 'world' }, text: 'That is the picture. Description, not advice. I am watching.' });
   return inp.mode === 'full' ? sc : sc.filter(x => QUICK_IDS.has(x.id));
 }
+
+/** Recorder formats to try, best first: MP4 (plays everywhere: WhatsApp, Telegram, phones) where the browser can write it, else WebM. */
+export const RECORD_TYPES = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+/** The first type the browser supports (isSupported = MediaRecorder.isTypeSupported), with its file extension; null when it supports none. */
+export function pickRecorderType(isSupported) {
+  const t = RECORD_TYPES.find(x => { try { return isSupported(x); } catch (e) { return false; } });
+  return t ? { mime: t, ext: t.startsWith('video/mp4') ? 'mp4' : 'webm' } : null;
+}

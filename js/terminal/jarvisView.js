@@ -66,6 +66,7 @@ const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-ind
 #${ID} .jv-cine span{min-width:44px;text-align:center;color:var(--tx)}
 #${ID}.jv-cinema .jv-top,#${ID}.jv-cinema .jv-hud,#${ID}.jv-cinema .jv-reg,#${ID}.jv-cinema .jv-scrub,#${ID}.jv-cinema .jv-foot,#${ID}.jv-cinema .jv-boot,#${ID}.jv-cinema .jv-pane,#${ID}.jv-cinema .jv-card{opacity:0;pointer-events:none}
 #${ID}.jv-cinema .jv-cinexit{display:block}
+#${ID}.jv-rec .jv-cinexit,#${ID}.jv-rec .jv-cine{opacity:0}
 @media (max-width:1560px){#${ID} .jv-top .jv-sub{display:none}}
 @media (max-width:640px){#${ID} .jv-boot,#${ID} .jv-hud{display:none}#${ID} .jv-title{font-size:14px}#${ID} .jv-scrub{bottom:34px}}
 @media (prefers-reduced-motion:reduce){#${ID},#${ID} .jv-scan,#${ID} .jv-title{animation:none}}
