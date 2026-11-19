@@ -2033,6 +2033,7 @@ const TG_SENDERS = {
   qmrIndices:        'SPX/DOW/DAX QMR gates',
   cogShadow:         'COG shadow gates',
   levelsV2:          'Telegram-v2 zone alerts',
+  jarvis:            'Jarvis (owner only): a chain link broke or healed, a market went well past its noise, server memory high, the morning digest (awareness, never a trade)',
   volLevels:         'Vol-forecast level proximity (superseded, off by default)',
   surprise:          'Forecast-path surprise pings',
   ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
@@ -36913,6 +36914,20 @@ _mountGhostWalk(app, {
   fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },
   kvGet: key => kv.get(key),
 });
+// Jarvis (owner-only intelligence layer, js/terminal/jarvisView.js): its server pieces live in js/jarvis/<name>.js, each exporting mount(app, deps). A missing file is skipped and a file that throws
+// is logged and skipped, so Jarvis can never stop the server from booting. deps carries only what they need; every route they add is owner-only and read-only unless it says otherwise.
+{
+  const deps = {
+    kv, PORT, express, ownerOnly: _ownerOnly, aiAnyKey: _aiAnyKey, callModel, parseModelJson: _parseModelJson,
+    tgOn, tgSend: async text => { if (!tgOn('jarvis') || !state.tg?.token || !state.tg?.chatId) return false; return sendTelegram(state.tg.token, state.tg.chatId, text); },
+    svcInterval, svcTimeout, svcEnabled, londonDate: _dpLondonDate,
+    selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
+  };
+  for (const name of ['jarvisWatch', 'jarvisExplain', 'jarvisPrecedent', 'jarvisPapers', 'jarvisMorning']) {
+    try { const m = await import(`./js/jarvis/${name}.js`); await m.mount?.(app, deps); }
+    catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') console.warn(`[jarvis] ${name} not mounted:`, e.message); }
+  }
+}
 // OI over time (js/oiTimeRoutes.js): read-only, daily candles + the option-OI history; no model call, nothing is written.
 _mountOiTime(app, {
   fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },

@@ -7,6 +7,7 @@
 // from the Chain tab's loaders (globalThis.deskChainData), the voice is the browser's own (free).
 import { buildGraph, project, arcPoint, bootLines, VERDICT_WORD, radarRank, systemSummary, skyline, towerBox, pickVoice, wakeParse, watchSnapshot, watchDiff, memoryState, GEO, REGIONS, llToVec, globeProject, greatArc, bubbleLayout, THEME, THEME_ORDER } from './jarvisCore.js';
 import { CHAIN_NODES } from '../macroChain.js';
+import { EXTRA, loadModules } from './jarvisModules.js';
 import { shortLabel } from './chainBoard.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -199,6 +200,10 @@ export async function openJarvis(win = window) {
     if (m === 'chain') showCard(); else { $('card').hidden = true; R[m]?.(); }
   }
   $('mods').onclick = e => { const b = e.target.closest('button[data-m]'); if (b) setMod(b.dataset.m); };
+  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
+  loadModules().then(list => {
+    for (const m of list) { R[m.id] = () => m.render($('pane'), xapi); if (!$('mods').querySelector(`[data-m="${m.id}"]`)) $('mods').insertAdjacentHTML('beforeend', ` <button type="button" data-m="${esc(m.id)}" aria-pressed="false">${esc(m.label)}</button>`); }
+  });
 
   // ── interaction ──
   cv.addEventListener('pointerdown', e => { st.drag = { x: e.clientX, y: e.clientY, moved: 0 }; cv.setPointerCapture?.(e.pointerId); });
@@ -349,6 +354,7 @@ export async function openJarvis(win = window) {
       if (live || selK === o.n.key || g.zoom > 1.7) { ctx.globalAlpha = fa * (live ? 1 : 0.6); ctx.fillStyle = C.tx; ctx.font = `${Math.round(10 + 1.5 * Math.min(2, g.zoom))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[o.n.key] ? shortLabel(CHAIN_NODES[o.n.key]) : o.n.key, o.tip.x, o.tip.y - r - 8); if (g.zoom > 1.7 || selK === o.n.key) { ctx.globalAlpha = fa * 0.55; ctx.font = '9px ui-monospace,monospace'; ctx.fillText(GEO[o.n.key][2], o.tip.x, o.tip.y - r + 3); } }
       st.proj.push({ key: o.n.key, sx: o.tip.x, sy: o.tip.y });
     }
+    for (const m of EXTRA) { try { m.drawGlobe?.(ctx, { P, X, Y, Rg, ctr, t, fade, zoom: g.zoom }, xapi); } catch (e) { /* a layer must never stop the frame */ } }
   }
   function drawBubbles(t, fade) {
     const g = st.graph; if (!g) return; const keys = g.nodes.map(n => n.key);
