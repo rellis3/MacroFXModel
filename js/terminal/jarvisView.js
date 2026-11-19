@@ -8,7 +8,7 @@
 import { buildGraph, project, arcPoint, bootLines, VERDICT_WORD, radarRank, systemSummary, skyline, towerBox, pickVoice, wakeParse, watchSnapshot, watchDiff, memoryState, GEO, REGIONS, llToVec, globeProject, greatArc, bubbleLayout, THEME, THEME_ORDER } from './jarvisCore.js';
 import { CHAIN_NODES } from '../macroChain.js';
 import { candleRows, candleLayout, candleBox, boardSummary, ROWS as CD_ROWS } from './jarvisCandles.js';
-import { EXTRA, loadModules } from './jarvisModules.js';
+import { EXTRA, loadModules, viewsOf } from './jarvisModules.js';
 import { shortLabel } from './chainBoard.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -96,7 +96,8 @@ export async function openJarvis(win = window) {
   if (BOOT) root.classList.add('jv-booting'); else $('bs').remove();
   const st = { cd: null, cdBusy: null, cdCam: { x: 0, z: 0 }, cdTarget: { x: 0, z: 0 }, cinemaStop: null, speakStop: null, mod: 'chain', view: prefs.view ?? 'globe', gl: { lat: 20, lon: 15, zoom: 1, tlat: 20, tlon: 15, tzoom: 1 }, land: null, bl: null, region: 'world', voice: false, sound: prefs.sound !== false, wake: false, watch: prefs.watch !== false, win: 5, graph: null, sum: null, sel: null, yaw: 0.55, pitch: -0.7, zoom: 1, spin: true, t0: performance.now() - (win.__jarvisNoBoot ? 5000 : 0), drag: null, w: 0, h: 0, proj: [], disp: {}, dates: [], idx: -1, play: 0, docked: false, alerts: [], snap: null, lastCheck: null, memLimit: prefs.memLimit ?? 0, mem: null };
   const setCam = () => { if (st.view === 'globe') { st.gl.zoom = st.gl.tzoom = 1; $('reg').hidden = false; } else $('reg').hidden = true; if (st.view === 'bubbles') st.bl = null; if (st.view === 'skyline') Object.assign(st, { yaw: 0.55, pitch: -0.7, zoom: 1 }); else Object.assign(st, { yaw: 0.6, pitch: 0.28, zoom: 1 }); };
-  const setCamAll = () => { setCam(); if (st.view === 'candles') { Object.assign(st, { yaw: 0.3, pitch: -0.5, zoom: 1 }); st.cdTarget = { x: 0, z: 0 }; st.cdCam = { x: 0, z: 0 }; ensureCandles(); } };
+  const extraViews = {};
+  const setCamAll = () => { setCam(); $('reg').hidden = st.view !== 'globe'; if (extraViews[st.view]) { Object.assign(st, { yaw: 0.35, pitch: -0.45, zoom: 1 }); try { extraViews[st.view].onEnter?.(xapi); } catch (e) { /* a view must never break the HUD */ } } if (st.view === 'candles') { Object.assign(st, { yaw: 0.3, pitch: -0.5, zoom: 1 }); st.cdTarget = { x: 0, z: 0 }; st.cdCam = { x: 0, z: 0 }; ensureCandles(); } };
   async function ensureCandles(force = false) {
     if (!force && st.cd && Date.now() - st.cd.at < 60_000) return st.cd;
     if (st.cdBusy) return st.cdBusy;
@@ -136,6 +137,29 @@ export async function openJarvis(win = window) {
   let ac = null;
   const blip = (f = 660, d = 0.08, type = 'sine', g = 0.03, at = 0) => {
     if (!st.sound) return; try { ac ??= new (win.AudioContext || win.webkitAudioContext)(); const o = ac.createOscillator(), v = ac.createGain(), t = ac.currentTime + at; o.type = type; o.frequency.setValueAtTime(f, t); v.gain.setValueAtTime(g, t); v.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(v); v.connect(ac.destination); o.start(t); o.stop(t + d + 0.02); } catch (e) { /* no audio */ }
+  };
+  // ambience and whooshes for the SHOW: a low drone with a slow swell and a breath of filtered noise, and a swept-noise whoosh on a scene change (all WebAudio, no files)
+  let amb = null;
+  const noiseBuf = () => { const n = ac.sampleRate * 2, b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; return b; };
+  const sfx = {
+    ambient(on) {
+      try {
+        if (!on) { if (amb) { const a = amb; amb = null; a.g.gain.cancelScheduledValues(ac.currentTime); a.g.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 1.2); win.setTimeout(() => { try { a.nodes.forEach(n => n.stop?.()); } catch (e) { /* done */ } }, 1400); } return; }
+        if (!st.sound || amb) return; ac ??= new (win.AudioContext || win.webkitAudioContext)();
+        const g = ac.createGain(), lp = ac.createBiquadFilter(), o1 = ac.createOscillator(), o2 = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), nz = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();
+        o1.type = 'sine'; o1.frequency.value = 55; o2.type = 'triangle'; o2.frequency.value = 82.6; lp.type = 'lowpass'; lp.frequency.value = 420; lfo.frequency.value = 0.12; lg.gain.value = 0.012; lfo.connect(lg); lg.connect(g.gain);
+        nz.buffer = noiseBuf(); nz.loop = true; nf.type = 'bandpass'; nf.frequency.value = 260; ng.gain.value = 0.008; nz.connect(nf); nf.connect(ng); ng.connect(g);
+        o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.0001, ac.currentTime); g.gain.linearRampToValueAtTime(0.045, ac.currentTime + 3);
+        [o1, o2, lfo, nz].forEach(n => n.start()); amb = { g, nodes: [o1, o2, lfo, nz] };
+      } catch (e) { /* no audio */ }
+    },
+    whoosh() {
+      if (!st.sound) return; try {
+        ac ??= new (win.AudioContext || win.webkitAudioContext)(); const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        s.buffer = noiseBuf(); f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(220, t); f.frequency.exponentialRampToValueAtTime(2600, t + 0.45); f.frequency.exponentialRampToValueAtTime(300, t + 1.0);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07, t + 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.05); s.connect(f); f.connect(g); g.connect(ac.destination); s.start(t); s.stop(t + 1.1);
+      } catch (e) { /* no audio */ }
+    },
   };
   const bootChime = () => { blip(440, 0.1, 'triangle'); blip(660, 0.1, 'triangle', 0.03, 0.1); blip(880, 0.18, 'triangle', 0.03, 0.2); };
   const alertChime = () => { blip(880, 0.12, 'square', 0.025); blip(660, 0.18, 'square', 0.025, 0.14); };
@@ -275,10 +299,12 @@ export async function openJarvis(win = window) {
     if (m === 'chain') showCard(); else { $('card').hidden = true; R[m]?.(); }
   }
   $('mods').onclick = e => { const b = e.target.closest('button[data-m]'); if (b) setMod(b.dataset.m); };
-  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), caption: (t, title) => setCaption(t, title), cinema: (on, stop) => setCinema(on, stop),
+  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), caption: (t, title) => setCaption(t, title), cinema: (on, stop) => setCinema(on, stop),
     globeTo: (lat, lon, zoom = 1) => { Object.assign(st.gl, { tlat: lat, tlon: lon, tzoom: zoom }); st.spin = false; }, flyTo: (x, z) => { st.cdTarget = { x, z }; }, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
   loadModules().then(list => {
     win.setTimeout(fitTop, 0);
+    for (const v of viewsOf()) { if (!$('view').querySelector(`[data-v="${v.id}"]`)) $('view').insertAdjacentHTML('beforeend', ` <button type="button" data-v="${esc(v.id)}" aria-pressed="${v.id === st.view}">${esc(v.label)}</button>`); extraViews[v.id] = v; }
+    if (extraViews[st.view]) setCamAll();
     for (const m of list) { R[m.id] = () => m.render($('pane'), xapi); if (!$('mods').querySelector(`[data-m="${m.id}"]`)) $('mods').insertAdjacentHTML('beforeend', ` <button type="button" data-m="${esc(m.id)}" aria-pressed="false">${esc(m.label)}</button>`); }
     fitTop();
   });
@@ -441,6 +467,11 @@ export async function openJarvis(win = window) {
     for (const m of EXTRA) { try { m.drawGlobe?.(ctx, { P, X, Y, Rg, ctr, t, fade, zoom: g.zoom }, xapi); } catch (e) { /* a layer must never stop the frame */ } }
   }
 
+  function drawExtra(v, t, fade, dt) {
+    const SC = Math.min(st.w * 0.5, st.h * 0.95) * 0.3, g = { t, fade, dt, W: st.w, H: st.h, cx: cx(), cy: cy(), SC, C, poly, hit: (key, x, y) => st.proj.push({ key, sx: x, sy: y }),
+      proj: (p, c) => { const q = project(p, c ?? cam()); return { x: cx() + q.x * SC, y: cy() + q.y * SC, s: q.s, z: q.z }; } };
+    try { v.draw(ctx, g, xapi); } catch (e) { /* a view must never stop the frame */ }
+  }
   function drawCandles(t, fade) {
     const cd = st.cd;
     if (!cd?.ok) { ctx.globalAlpha = fade; ctx.fillStyle = C.tx2; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText(cd ? 'The market feed is not available right now.' : 'Reading the markets...', st.w / 2, st.h / 2); return; }
@@ -506,7 +537,7 @@ export async function openJarvis(win = window) {
     for (const k of Object.keys(st.disp)) { const tgt = st.graph?.nodes.find(n => n.key === k)?.style.size; if (tgt != null) st.disp[k] += (tgt - st.disp[k]) * Math.min(1, dt * 5); }
     ctx.clearRect(0, 0, st.w, st.h); st.proj = [];
     if (BOOT && bootT < BOOT + 0.3) drawBoot(bootT);
-    if (st.graph && fade > 0) { if (st.view === 'globe') drawGlobe(t, fade, dt); else if (st.view === 'candles') drawCandles(t, fade); else if (st.view === 'bubbles') drawBubbles(t, fade); else if (st.view === 'skyline') drawSkyline(t, fade); else drawOrbit(t, fade); }
+    if (st.graph && fade > 0) { if (st.view === 'globe') drawGlobe(t, fade, dt); else if (st.view === 'candles') drawCandles(t, fade); else if (extraViews[st.view]) drawExtra(extraViews[st.view], t, fade, dt); else if (st.view === 'bubbles') drawBubbles(t, fade); else if (st.view === 'skyline') drawSkyline(t, fade); else drawOrbit(t, fade); }
     ctx.globalAlpha = 1; hudT += dt; if (hudT > 20) { hudT = 0; renderHud(); }
   }
 

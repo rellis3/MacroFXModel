@@ -2,7 +2,7 @@
 // only when its narration has finished, never on a timer. The camera drifts and flies while he talks (the world, today's candles with a fly-through, the bias lean, the chain, the day ahead).
 // With the voice off the same words appear as subtitles and the pace is reading speed. Esc ends it. DESCRIPTION ONLY: nothing in it is a forecast or a trade. Words come from showCore.js (templates, no model call).
 import { registerJarvisModule } from './jarvisModules.js';
-import { buildScenes, readSeconds } from './showCore.js';
+import { buildScenes, readSeconds, SHOW_HOOKS } from './showCore.js';
 import { boardSummary, topMovers } from './jarvisCandles.js';
 import { REGIONS } from './jarvisCore.js';
 import { buildMarketGeo } from './jarvisMarkets.js';
@@ -27,7 +27,7 @@ registerJarvisModule({
     q('rate').onchange = e => lsPut({ rate: +e.target.value });
 
     const sleep = ms => new Promise(r => setTimeout(r, ms));
-    function stop() { token++; cancelAnimationFrame(raf); api.st.speakStop?.(); api.caption(null); api.cinema(false); api.st.spin = true; }
+    function stop() { token++; cancelAnimationFrame(raf); api.sfx.ambient(false); api.st.speakStop?.(); api.caption(null); api.cinema(false); api.st.spin = true; }
 
     // the camera moves WHILE he talks; how far it gets is tied to how long the line should take, and it holds its last pose if he runs on
     function motion(scene, dur, my) {
@@ -36,6 +36,7 @@ registerJarvisModule({
         if (my !== token) return; const p = Math.min(1, (performance.now() - t0) / (dur * 1000));
         if (scene.cam?.fly) { const k = ease(p), z = scene.cam.lean ? lerp(zMax + 0.4, zMin - 0.4, k) : lerp(zMin - 0.4, zMax + 0.4, k); api.flyTo(Math.sin(k * 5) * 0.55, z); }
         if (scene.cam?.drift) st.zoom = 1 + 0.25 * ease(p);
+        try { scene.motion?.(api, p); } catch (e) { /* a scene's camera must never stop the show */ }
         raf = requestAnimationFrame(tick);
       };
       tick();
@@ -48,6 +49,7 @@ registerJarvisModule({
         else { const [la, lo, z] = REGIONS[scene.cam?.region ?? 'world']; api.globeTo(la, st.gl.tlon, z); st.spin = true; st.gl.tlat = la; }
       }
       if (scene.view === 'candles') { st.cdTarget = { x: 0, z: -1.6 }; st.cdCam = { x: 0, z: -1.6 }; }
+      try { scene.enter?.(api); } catch (e) { /* ignore */ }
     }
 
     async function run() {
@@ -55,17 +57,19 @@ registerJarvisModule({
       const cd = await api.candles(), rows = cd?.rows ?? [];
       let events = null; try { const m = await api.jf('/api/jarvis/morning'); if (m?.ok && Array.isArray(m.events)) events = m.events.map(e => (typeof e === 'string' ? e : e.title ?? e.event ?? e.name ?? '')).filter(Boolean); } catch (e) { /* the digest is optional */ }
       if (my !== token) return;
+      const extra = {}; await Promise.all(SHOW_HOOKS.map(async h => { try { extra[h.id] = (await h.prepare?.(api)) ?? null; } catch (e) { extra[h.id] = null; } }));
+      if (my !== token) return;
       const chain = st.sum ? { holding: st.sum.holding, broken: st.sum.broken, quiet: st.sum.quiet, headline: st.sum.headline } : null;
-      const scenes = buildScenes({ now: new Date(), movers: topMovers(rows, 5), board: rows.length ? boardSummary(rows) : null, chain, events });
+      const scenes = buildScenes({ now: new Date(), movers: topMovers(rows, 5), board: rows.length ? boardSummary(rows) : null, chain, events, extra });
       const rate = +q('rate').value || 1; st.voice = lsGet().voice !== false;
-      api.cinema(true, () => { stop(); status('Ended.'); });
+      api.cinema(true, () => { stop(); status('Ended.'); }); api.sfx.ambient(true);
       for (let i = 0; i < scenes.length && my === token; i++) {
-        const sc = scenes[i]; enter(sc); api.caption(sc.text, `${sc.title.toUpperCase()}   ·   ${i + 1} / ${scenes.length}`);
+        const sc = scenes[i]; if (i) api.sfx.whoosh(); enter(sc); api.caption(sc.text, `${sc.title.toUpperCase()}   ·   ${i + 1} / ${scenes.length}`);
         motion(sc, readSeconds(sc.text) / rate, my);
         await api.speak(sc.text, rate);            // the voice leads: nothing moves on until he has finished the line
         cancelAnimationFrame(raf); if (my === token) await sleep(650);
       }
-      if (my === token) { api.caption(null); api.cinema(false); api.setView('globe'); status('Finished. Press START to watch again.'); }
+      if (my === token) { api.sfx.ambient(false); api.caption(null); api.cinema(false); api.setView('globe'); status('Finished. Press START to watch again.'); }
     }
     q('go').onclick = () => { stop(); run(); };
     // leaving the panel never ends a show in progress (cinema hides the panel anyway); closing Jarvis does, via cinemaStop

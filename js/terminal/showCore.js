@@ -9,6 +9,11 @@ const dayWord = d => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London
 const greeting = d => { const h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(d); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; };
 const list = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
 
+// Extra scenes: a module registers { id, after, prepare?(api) -> data, build(inp, data) -> scene | null }. `after` is the id of the scene it follows ('candles', 'lean', 'chain' ...). The scene may carry
+// enter?(api) and motion?(api, p) (p runs 0..1 over the line's estimated length) so it can steer its own view. buildScenes() never throws because of a hook.
+export const SHOW_HOOKS = [];
+export const registerShowScene = h => { if (h?.id && typeof h.build === 'function' && !SHOW_HOOKS.some(x => x.id === h.id)) SHOW_HOOKS.push(h); return h; };
+
 /** Reading time in seconds for a line when nobody is speaking it (about 2.6 words a second, never under 2 seconds). */
 export const readSeconds = text => Math.max(2, String(text ?? '').split(/\s+/).filter(Boolean).length / 2.6);
 
@@ -33,6 +38,12 @@ export function buildScenes(inp = {}) {
     sc.push({ id: 'chain', title: 'The chain', view: 'skyline', cam: { drift: true }, text: `Now the chain, the story of how one market feeds the next. ${head}` });
   }
   if (ev.length) sc.push({ id: 'ahead', title: 'The day ahead', view: 'globe', cam: { region: 'world' }, text: `Looking ahead today: ${list(ev.slice(0, 4))}.` });
+  for (const h of SHOW_HOOKS) {
+    try {
+      const x = h.build(inp, inp.extra?.[h.id] ?? null); if (!x || !x.text) continue;
+      let at = sc.findIndex(y => y.id === h.after); at = at < 0 ? sc.length : at + 1; sc.splice(at, 0, { id: h.id, title: x.title ?? h.id, view: x.view ?? 'globe', cam: x.cam ?? null, text: x.text, enter: x.enter, motion: x.motion });
+    } catch (e) { /* a scene must never stop the show */ }
+  }
   sc.push({ id: 'close', title: 'Standing by', view: 'globe', cam: { region: 'world' }, text: 'That is the picture. This is description, not advice, and none of it is a forecast. I am watching, and I will tell you if anything breaks.' });
   return sc;
 }
