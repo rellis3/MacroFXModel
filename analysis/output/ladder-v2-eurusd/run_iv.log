@@ -1,0 +1,68 @@
+EURUSD (iv race): arms ['A0', 'E_ewma_094', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht', 'V3', 'V4', 'B_har_iv']; flags from analysis/output/data_screens/EURUSD/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 1462 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    B_har_iv       -0.6729  0.287
+    V4             -0.6697  0.280
+    V3             -0.6691  0.281
+    HARCJ          -0.6691  0.284
+    SHAR           -0.6651  0.279
+    R15            -0.6651  0.282
+    R5             -0.6629  0.273
+    E_har_rv_log   -0.6580  0.266
+    B_har_garcht   -0.6545  0.255
+    H8             -0.6528  0.261
+    E_yz_30        -0.6447  0.216
+    A0             -0.6444  0.228
+    E_yz_20        -0.6389  0.209
+    G_garch        -0.6374  0.214
+    G_garch_t      -0.6371  0.214
+    G_gjr          -0.6355  0.226
+    G_egarch       -0.6320  0.217
+    E_ewma_094     -0.6266  0.219
+    E_ewma_090     -0.6064  0.214
+    E_naive        -0.5346  0.000
+
+== EURUSD C: 1462 test sessions 2021-01-04 -> 2026-08-20   noise floor median 1.71pp, p90 2.03pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  R5                 1.28   0.64   0.9836   0.99
+  HARCJ              1.29   0.63   0.9796   1.01
+  R15                1.34   0.85   0.9836   1.01
+  E_yz_20            1.37   0.61   1.0020   0.85
+  SHAR               1.39   0.60   0.9820   0.99
+  E_yz_30            1.48   0.56   1.0009   0.88
+  E_ewma_094         1.49   1.14   1.0058   0.84
+  E_ewma_090         1.61   1.01   1.0195   0.73
+  H8                 1.84   1.40   0.9925   0.96
+  V3                 1.85   0.86   0.9828   1.10
+  B_har_garcht       1.86   0.68   0.9907   1.06
+  E_har_rv_log       2.05   1.64   0.9916   0.99
+  B_har_iv           2.08   0.92   0.9848   1.13
+  A0                 2.54   0.76   1.0000   0.81
+  V4                 2.65   0.85   0.9878   1.16
+  G_garch_t          2.86   1.21   1.0025   1.03
+  G_gjr              2.96   1.15   1.0003   1.14
+  G_egarch           3.06   0.85   1.0044   1.11
+  G_garch            3.06   1.16   1.0031   1.08
+  E_naive            8.95   1.92*   1.1300   0.77
+  winner R5, runner-up HARCJ, tie=True, chosen HARCJ; chosen - A0 CI [-1.81, -0.33]pp; calibrated to noise True
+    half 2021-22                       n=  519  chosen 3.75 vs A0 3.72  CI [-2.25,+0.00]  <-- FAILS
+    half 2023-26                       n=  943  chosen 1.72 vs A0 3.38  CI [-2.33,-0.91]
+    without 2018Q4                     n= 1462  chosen 1.29 vs A0 2.54  CI [-1.81,-0.37]
+    without covid                      n= 1462  chosen 1.29 vs A0 2.54  CI [-1.82,-0.38]
+    without bear2022                   n= 1203  chosen 1.47 vs A0 3.36  CI [-2.45,-0.96]
+    without tariff2025                 n= 1397  chosen 1.73 vs A0 2.88  CI [-1.97,-0.46]
+    without hi1_202208                 n= 1399  chosen 1.72 vs A0 3.05  CI [-2.12,-0.66]
+    without hi2_202205                 n= 1399  chosen 1.62 vs A0 3.13  CI [-2.10,-0.76]
+    without hi3_202503                 n= 1399  chosen 1.78 vs A0 2.87  CI [-1.92,-0.45]
+    without hi4_202211                 n= 1399  chosen 1.44 vs A0 2.50  CI [-1.80,-0.30]
+    fault flags out                    n= 1420  chosen 1.49 vs A0 2.72  CI [-1.87,-0.47]
+    any flag out (descriptive)         n= 1002  chosen 3.98 vs A0 4.19  CI [-1.86,-0.40]
+  HL>p75/p90 by quintile A0            : Q1 30.4/15.4  Q2 30.1/11.3  Q3 20.2/ 8.9  Q4 20.9/10.6  Q5 17.7/ 7.8
+  HL>p75/p90 by quintile HARCJ         : Q1 27.3/11.3  Q2 25.0/12.0  Q3 22.9/ 9.9  Q4 24.7/13.0  Q5 25.9/10.6
+  HL>p75/p90 by quintile R5            : Q1 25.9/10.6  Q2 22.9/11.6  Q3 22.3/ 9.9  Q4 23.6/13.0  Q5 27.0/ 9.9
+  HL>p75/p90 by quintile H8            : Q1 28.3/10.6  Q2 28.1/10.3  Q3 23.3/10.6  Q4 25.3/13.4  Q5 30.0/13.3
+  VERDICT EURUSD C: UNDERPOWERED
+  MIRROR C (20 draws): A0 primary median 1.65pp [1.30, 2.35] vs floor median 1.70 / p90 2.03; HL>p75 Q1-Q5 median -0.9pp [-6.1, +9.9]
+  best IV arm V3 - best non-IV arm R5: +0.57pp CI [-0.18, +0.97]
