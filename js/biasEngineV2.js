@@ -175,7 +175,10 @@ export function futuresReading(bank, policyRate, issueDate) {
   if (!fin(r.rate4wAgo)) return fail('C1: no price 4 weeks ago for this contract');
   const gap = (Date.parse(`${isoDay(r.date)}T12:00:00Z`) - Date.parse(`${isoDay(r.date4wAgo)}T12:00:00Z`)) / DAY;
   if (!fin(gap) || gap < C2.repricing.win4wDays[0] || gap > C2.repricing.win4wDays[1]) return fail(`C2: the 4-week bar is ${fin(gap) ? Math.round(gap) : '?'} days back (needs ${C2.repricing.win4wDays.join('-')})`);
-  if (isoDay(r.date) >= issueDate || weekdaysBetween(isoDay(r.date), issueDate) > C2.repricing.futuresMaxAgeBd) return fail(`C3: the contract's last close ${isoDay(r.date)} is not within ${C2.repricing.futuresMaxAgeBd} business days before the issue`);
+  // C3: the last close within 3 business days of the issue. An exchange's trading-day label can be the issue's own date or the next weekday
+  // (Osaka's evening session belongs to the next day), so a later LABEL is allowed; knowability is the pull's own time (removeLookahead).
+  const nextWd = (() => { let t = Date.parse(`${issueDate}T12:00:00Z`) + DAY; while (!(new Date(t).getUTCDay() % 6)) t += DAY; return new Date(t).toISOString().slice(0, 10); })();
+  if (isoDay(r.date) > nextWd || (isoDay(r.date) < issueDate && weekdaysBetween(isoDay(r.date), issueDate) > C2.repricing.futuresMaxAgeBd)) return fail(`C3: the contract's last close ${isoDay(r.date)} is not within ${C2.repricing.futuresMaxAgeBd} business days of the issue`);
   if (ymOf(r.month) < ymFromIso(issueDate) + C2.repricing.minDeliveryMonths) return fail(`C4: contract month ${r.month} is within ${C2.repricing.minDeliveryMonths} months of delivery`);
   if (r.firstTrade && isoDay(r.date4wAgo) < isoDay(r.firstTrade)) return fail('C5: the contract did not trade 4 weeks ago');
   const dP = (r.rate - r.rate4wAgo) * 100;
@@ -576,7 +579,9 @@ export function removeLookahead(snap) {
   const e = structuredClone(snap?.extra ?? {});
   if (e.riskSeries) for (const k of Object.keys(e.riskSeries)) e.riskSeries[k] = cut(e.riskSeries[k], `risk ${k}`);
   if (e.y2) for (const c of Object.keys(e.y2)) e.y2[c] = { ...e.y2[c], points: cut(e.y2[c].points, `2y ${c}`) };
-  if (e.futures?.banks) for (const [c, b] of Object.entries(e.futures.banks)) b.rungs = (b.rungs ?? []).filter(r => { const ok = !r.date || isoDay(r.date) < date; if (!ok) removed.push(`futures ${c} ${r.local ?? r.month} ${r.date}`); return ok; });
+  // futures: knowable when the laptop PULLED them (futures.asOf). A rung's own date is the exchange's trading-day label, which can be
+  // the next day for an Asian evening session, so it is not the test. A pull stamped after the issue is removed whole.
+  if (e.futures?.banks && Number.isFinite(Date.parse(e.futures.asOf ?? '')) && Date.parse(e.futures.asOf) > issueMs) { removed.push(`futures pull ${e.futures.asOf}`); e.futures = { asOf: e.futures.asOf, banks: {} }; }
   if (e.scorecard) for (const [c, row] of Object.entries(e.scorecard)) for (const [dim, d] of Object.entries(row.asOf ?? {})) if (d && Date.parse(d) > issueMs) { removed.push(`scorecard ${c} ${dim} ${d}`); row.dims[dim] = null; }
   return { snap: { ...snap, extra: e }, removed };
 }

@@ -36,9 +36,8 @@ ok('A3 lookahead: readings dated on or after the issue are removed and change no
   const clean = buildV2Record(snapshot()), dirty = snapshot();
   dirty.extra.riskSeries.vix.push({ date: ISSUE_DATE, value: 80 });
   dirty.extra.y2.NZD.points.push({ date: '2026-11-20', value: 9 });
-  dirty.extra.futures.banks.USD.rungs.push({ local: 'X', month: '202705', rate: 9, date: '2026-11-14', rate4wAgo: 1, date4wAgo: '2026-10-16' });
   const r = buildV2Record(dirty);
-  assert.equal(r.snapshot.removedLookahead.length, 3);
+  assert.equal(r.snapshot.removedLookahead.length, 2);
   for (const id of Object.keys(VARIANTS)) assert.equal(canonicalJson(r.variants[id].markets), canonicalJson(clean.variants[id].markets), id);
 });
 
@@ -257,6 +256,17 @@ ok('the policy-rate table fetched during the issue\'s own gather (just after the
   assert.equal(buildVariant(s, ON(['F2'])).markets.AUDJPY.drivers.find(x => x.key === 'carry').d, 2);
   s.extra.policyRates.fetchedAt = new Date(Date.parse(s.v1.asOf) + 3 * DAY).toISOString();
   assert.equal(buildVariant(s, ON(['F2'])).markets.AUDJPY.drivers.find(x => x.key === 'carry'), undefined);
+});
+
+ok('futures are knowable by the pull time, not the trading-day label: an Osaka next-day label is kept; a pull after the issue is removed', () => {
+  const s = snapshot(); for (const r of s.extra.futures.banks.JPY.rungs) r.date = '2026-11-16';   // next weekday after Friday 11-13
+  const v = buildVariant(removeLookahead(s).snap, ON(['F5']));
+  assert.notEqual(v.markets.USDJPY.drivers.find(x => x.key === 'repricing').proxy, true);
+  const late = snapshot(); late.extra.futures.asOf = '2026-11-13T09:00:00.000Z';
+  const r = removeLookahead(late);
+  assert.deepEqual(r.removed, ['futures pull 2026-11-13T09:00:00.000Z']); assert.deepEqual(r.snap.extra.futures.banks, {});
+  const far = snapshot(); for (const x of far.extra.futures.banks.EUR.rungs) x.date = '2026-11-18';
+  assert.match(futuresReading(far.extra.futures.banks.EUR, 2.5, ISSUE_DATE).why, /^C3/);
 });
 
 ok('the risk gate: F4 is off in every variant until the gate has passed', () => {
