@@ -44,7 +44,7 @@ def frame(cands):
 def main(syms):
     out = ROOT / "analysis/output/ladder-v2-data"
     out.mkdir(parents=True, exist_ok=True)
-    now = dt.datetime.utcnow().replace(second=0, microsecond=0)
+    now = dt.datetime.now(dt.UTC).replace(tzinfo=None, second=0, microsecond=0)
     for s in syms:
         parts, a = [], dt.datetime(2015, 1, 1)
         while a < now:
@@ -56,7 +56,7 @@ def main(syms):
         d = d[~d.index.duplicated()]
         d.to_parquet(out / f"{s}_d1_recent.parquet")
         msg = f"{s}: {len(d)} NY-close bars {d.index.min().date()} -> {d.index.max().date()}"
-        if s in ("GOLD", "EURUSD"):
+        if s in ("GOLD", "EURUSD", "NQ"):
             parts, a = [], M5_START
             while a < now:
                 b = min(a + dt.timedelta(days=15), now)
