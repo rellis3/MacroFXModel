@@ -1823,6 +1823,8 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
+     "js/terminal/jarvisSessionCore.js",
+     "js/terminal/jarvisViewSession.js",
      "js/terminal/legChartCore.js",
      "js/terminal/legChartView.js"
     ],
@@ -2325,6 +2327,8 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/flowView.js",
+     "js/terminal/jarvisViewWeather.js",
+     "js/terminal/jarvisWeatherCore.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/whatChanged.js"
     ],
@@ -2505,6 +2509,15 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/jarvisCandles.js",
+     "js/terminal/jarvisMarkets.js",
+     "js/terminal/jarvisModMarkets.js",
+     "js/terminal/jarvisSessionCore.js",
+     "js/terminal/jarvisView.js",
+     "js/terminal/jarvisViewBook.js",
+     "js/terminal/jarvisViewSession.js",
+     "js/terminal/jarvisViewWeather.js",
+     "js/terminal/jarvisWeatherCore.js",
      "js/terminal/monitorCore.js",
      "js/terminal/monitorView.js",
      "js/terminal/reachCore.js",
@@ -3139,6 +3152,7 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/analogueView.js",
      "js/terminal/monitorView.js",
+     "js/terminal/tabGroupsCore.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -3295,6 +3309,7 @@ export const DERIVED = {
      "js/terminal/calendarDrillsCore.js",
      "js/terminal/calendarDrillsView.js",
      "js/terminal/releasesBoardView.js",
+     "js/terminal/tabGroupsCore.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/traderReadView.js"
     ],
@@ -5000,6 +5015,7 @@ export const DERIVED = {
      "js/terminal/eventReplay.js",
      "js/terminal/flagStrip.js",
      "js/terminal/ghostWalk.js",
+     "js/terminal/jarvisFilmCore.js",
      "js/terminal/kchartCore.js",
      "js/terminal/kchartView.js",
      "js/terminal/linkedSelection.js",
@@ -5430,5 +5446,5 @@ export const DERIVED = {
  ],
  "rootPageCount": 261,
  "packFeeds": 115,
- "generatedAt": "2026-11-18"
+ "generatedAt": "2026-11-19"
 };
