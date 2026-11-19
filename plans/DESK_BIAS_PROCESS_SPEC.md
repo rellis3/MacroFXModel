@@ -114,6 +114,48 @@ a service flag, and the deskSnapshot / infoMap entries.
 **Judgement:** a running table, with intervals, from day 1. A formal verdict at 60 and 120 shared days (as the
 bias-scoreboard prereg). The record decides which competitor the desk trusts on which market.
 
+## Intraday rechecks (added 2026-11-18, `desk-bias-recheck-v1`)
+
+Owner, 2026-11-18: a morning snapshot, then re-check during the day whether the bias is changing. The morning call is
+never edited: each recheck is stored beside it, write-once per slot (KV `desk_bias_process_rc_<date>`), and scored as
+its own competitor, so the record shows whether rechecking helps.
+
+**Slots (London, weekdays).** Each runs once inside [slot, slot + 30 min); a missed window is a gap.
+
+| Slot | Markets | Why |
+|---|---|---|
+| 30 min after each tier-1 release (between the morning issue and 20:30) | the markets that release touches | the PRE-EVENT stand-aside lifts; the reaction is known |
+| 08:05 London open | all | London has traded |
+| 14:35 New York open | all | US data and the open |
+| 21:00 review | all | carry the position overnight or go flat |
+
+**Rules** (`js/deskBiasRecheck.js` `systemUpdate`; the same six layers on fresh data, the morning's engine issue):
+
+| Prior call | Fresh rules say | Status → call |
+|---|---|---|
+| any directional | price traded through its invalidation since the last state | INVALIDATED → Neutral; that side may not come back the same day |
+| Neutral | a side | ACTIVE → that side, the fresh invalidation |
+| Neutral | Neutral | STAND_ASIDE |
+| a side | the same side | CONFIRMED (WEAKENED if conviction fell); the stop is not moved |
+| a side | Neutral | WEAKENED: side kept, conviction − 1 (a stand-aside is not an exit; intraday churn tested costly) |
+| a side | the other side | FLIPPED → the other side, fresh invalidation |
+| a side, at 21:00 | the same side / anything else | HOLD overnight / CLOSE (flat) |
+
+Both tracks run: process-system follows its own previous state; process-ai follows the AI's. **The AI step**
+(`process-recheck-v1`) reviews only updates that change something (ACTIVE, FLIPPED, WEAKENED, HOLD, CLOSE). It gets the
+morning pack's keys on fresh data plus the slot, the prior call, the morning call, the update and, after a release, the
+reaction (move and range since the release in σ_day). It accepts or overrides under the morning validator. INVALIDATED is
+mechanical.
+
+**Scoring.** Head to head, the same trade rule: `process-ai+rc` and `process-system+rc` (the morning call, then each
+update at its own time; a flip or Neutral exits then) beside `process-ai` and `process-system` (morning call only, held
+to the next morning's call). Descriptive, forward only (prereg amendment A6).
+
+**Desk Terminal.** Each card shows a "Now" line once a recheck has run and a "Today" timeline (time, slot, status,
+direction, the reason, the rules' view when the AI differs, the release reaction). A strip shows the day's schedule
+(done, due, missed, later). Route `GET /api/desk-bias-process/rechecks?date=`; same surface as the cards; invalidation
+keys are removed for the desk login.
+
 ## Weekly review (the "learn from misses" loop, forward data only)
 
 A page lists the week's wrong calls. For each: which layer pointed the wrong way, whether an AI override helped or hurt,

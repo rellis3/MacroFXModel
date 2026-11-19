@@ -396,3 +396,20 @@ before the desk's 06:45 London run.
     90 minutes less information than before, never more.
   - The `<D>_engine.json` and `<D>_process.json` rows are written on the first tick in [07:00, 10:00) London, as before.
   - Engine rows from before 2026-11-18 stand as issued (07:00–07:30). No process row existed before this amendment.
+
+### A6 — 2026-11-18 — PRE-RESULTS (descriptive head-to-head competitors only)
+
+**Added `process-ai+rc` and `process-system+rc` to the head to head, forward from the first stored recheck; no
+back-issue.**
+- **What they are:** the Desk Bias Process's intraday rechecks (`js/deskBiasRecheck.js`, `desk-bias-recheck-v1`,
+  prompt `process-recheck-v1`; spec "Intraday rechecks"). Each is the morning call followed by every stored update, each
+  at its own issue time. They are written once per slot in KV `desk_bias_process_rc_<D>`, and a missed slot is a gap.
+- **Scoring:** the head to head's one fixed trade rule (`js/deskBiasH2H.js`). An update to Neutral or the other side
+  exits at its time; an update to the same side holds, with the stop unchanged.
+- **The comparison of interest** is `+rc` against the same track without rechecks on the same market-days: does
+  rechecking add R net of spread?
+- **Status:** descriptive only. They are not rows in the direction ledger and not Holm cells. No existing cell, mapping
+  or anchor changes.
+- **Prior:** no gain expected from direction rechecks. The 2026-11-14 h4-trend-hold test found a 21:00 "same trend"
+  hold worse than a day exit (−0.11R vs −0.04R a trade). Any benefit is expected from post-release activation and
+  invalidation exits.

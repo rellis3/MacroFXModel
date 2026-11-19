@@ -139,6 +139,11 @@ export function structureSide(st) {
 // ── layer 1: event state ─────────────────────────────────────────────────────────────────────────────────────────
 const countriesOf = ccys => new Set(ccys.flatMap(c => CCY_COUNTRY[c] ?? []));
 const isTier1 = e => String(e?.impact ?? '').toLowerCase() === 'high';
+/** True when a calendar event is a tier-1 release for one of the market's currencies (the rule eventLayer uses). */
+export function eventTouches(market, e) {
+  const ccys = ccysOf(market);
+  return isTier1(e) && (countriesOf(ccys).has(String(e?.country ?? '').toUpperCase()) || ccys.includes(String(e?.ccy ?? '').toUpperCase()));
+}
 const evRow = e => ({ ccy: e.ccy ?? null, country: e.country ?? null, event: String(e.event ?? e.title ?? ''), time: new Date(e.ms).toISOString() });
 /**
  * `calendar` = { ok, events: [{ country, ccy?, event, impact, ms }], source, coversFrom? (ISO date the feed starts) } as
@@ -456,12 +461,13 @@ export function parseReplyJson(txt) {
  * errors quoted back (js/deskRun.js askValidated), then the system call stands. Never throws.
  * callModel({ task, system, prompt, maxTokens, label, temperature }) -> { text, usage?, model?, truncated? }
  */
-export async function runProcessAi({ pack, callModel, parseJson = parseReplyJson, task = 'desk-analyst', maxTokens = 6000, retryDelayMs = 4000 }) {
+export async function runProcessAi({ pack, callModel, parseJson = parseReplyJson, task = 'desk-analyst', maxTokens = 6000, retryDelayMs = 4000,
+  system = AI_SYSTEM_PROMPT, prompt = promptOf(pack), label = `bias-process:${pack.market}` }) {
   const ask = checkpointed(null);
   let r;
   try {
-    r = await ask({ callModel: a => callModel({ ...a, temperature: AI_TEMPERATURE }), parseJson: t => parseJson(t), task, system: AI_SYSTEM_PROMPT, prompt: promptOf(pack),
-      maxTokens, validate: o => validateAiReply(o, pack), label: `bias-process:${pack.market}`, retryDelayMs });
+    r = await ask({ callModel: a => callModel({ ...a, temperature: AI_TEMPERATURE }), parseJson: t => parseJson(t), task, system, prompt,
+      maxTokens, validate: o => validateAiReply(o, pack), label, retryDelayMs });
   } catch (e) { r = { ok: false, errors: [e.message], attempts: [] }; }
   const attempts = (r.attempts ?? []).map(a => ({ ok: a.ok ?? false, errors: a.errors ?? (a.error ? [a.error] : undefined), model: a.model ?? null, usage: a.usage ?? null }));
   return r.ok ? { ok: true, ...r.value, attempts } : { ok: false, errors: r.errors ?? ['failed'], attempts };

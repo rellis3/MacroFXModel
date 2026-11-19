@@ -8455,15 +8455,19 @@ function _renderScLife(st, age, okS) {
   const now = Date.now() / 1000;
   const msgAge = tg.last_msg_at ? now - tg.last_msg_at : null;
   const resAge = life.last_resolve_at ? now - life.last_resolve_at : null;
+  // the bot re-reads the topic every ~60s because Telegram's live push can go quiet for days
+  const pollAge = tg.last_poll_at ? now - tg.last_poll_at : null;
   const dec = life.decisions_today || {};
   const up = life.uptime_s != null ? (life.uptime_s >= 3600 ? `${(life.uptime_s / 3600).toFixed(1)}h` : `${Math.round(life.uptime_s / 60)}m`) : '—';
   el.innerHTML = [
     _mtBox('Bot process', _mtDot(age, okS, okS * 4), [
       ['Last status push', _mtFmtAgo(age)], ['Uptime', up], ['Loop ticks', life.ticks ?? '—'],
       ['Mode', (st.mode || '—').toUpperCase()]]),
-    _mtBox('Telegram listener', tg.state === 'connected' ? _mtDot(0, 1, 2) : _mtDot(9e9, 1, 2), [
+    _mtBox('Telegram listener', tg.state !== 'connected' ? _mtDot(9e9, 1, 2) : pollAge == null ? _mtDot(0, 1, 2) : _mtDot(pollAge, 180, 600), [
       ['State', (SC_TG_STATE[tg.state] || [0, tg.state || '—'])[1]], ['Messages this run', tg.msgs ?? 0],
-      ['Last message', _mtFmtAgo(msgAge)], ['Topic', tg.topic ?? 'all']]),
+      ['Last live message', _mtFmtAgo(msgAge)], ['Topic', tg.topic ?? 'all'],
+      ['Safety poll', pollAge == null ? '—' : `${_mtFmtAgo(pollAge)}${tg.poll_error ? ' · error' : ''}`],
+      ['Recovered by poll', tg.poll_recovered ?? 0]]),
     _mtBox('Outcome resolver', _mtDot(resAge, 180, 900), [
       ['Last run', _mtFmtAgo(resAge)], ['Runs', life.resolves ?? 0],
       ['Signals open / total', `${st.signals_open ?? 0} / ${st.signals_total ?? 0}`], ['Bars from', st.data_source === 'mt5' ? 'MT5' : 'sampled prices']]),

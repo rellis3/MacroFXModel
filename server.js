@@ -451,6 +451,7 @@ import { buildBiasRecord as _beBuild, marketView as _beMarket, fillPolicyFallbac
 import { YIELD2Y_KV as _Y2_KV, buildYield2yPayload as _y2Payload, yieldWeekChange as _y2Week } from './js/yield2y.js';   // 2y government yields: the bias engine's policy fallback
 import { biasEngine as _bsBiasEngine, h4Trend as _bsH4Trend, deskRating as _bsDeskRating, deskCcy as _bsDeskCcy, maxSignals as _bsMaxSignals, surpriseRule as _bsSurpriseRule, fundabias as _bsFundabias, FUNDABIAS_ENABLED as _BS_FUNDABIAS_ON, processAi as _bsProcessAi, processSystem as _bsProcessSystem, instOfMarket as _bsInstOf, DESK_NAME as _BS_DESK_NAME } from './js/biasForecasters.js';
 import { PROCESS_MARKETS as _DBP_MARKETS, OANDA as _DBP_OANDA, buildLayers as _dbpLayers, buildPack as _dbpPack, historyFor as _dbpHistory, runProcessAi as _dbpAi, finishCard as _dbpFinish, dayRecord as _dbpDay, PROCESS_VERSION as _DBP_VERSION, AI_PROMPT_VERSION as _DBP_PROMPT } from './js/deskBiasProcess.js';   // Desk Bias Process (plans/DESK_BIAS_PROCESS_SPEC.md)
+import { slotsFor as _rcSlots, dueSlot as _rcDue, stateFor as _rcState, invalidationHit as _rcInvalid, reactionOf as _rcReaction, systemUpdate as _rcUpdate, needsAi as _rcNeedsAi, buildRecheckPack as _rcPack, RECHECK_SYSTEM_PROMPT as _RC_SYSTEM, recheckPromptOf as _rcPrompt, slotRow as _rcRow, slotRecord as _rcRecord, recheckCalls as _rcCalls, timeline as _rcTimeline, RECHECK_VERSION as _RC_VERSION, RECHECK_PROMPT_VERSION as _RC_PROMPT, SLOT_WINDOW_MS as _RC_WINDOW } from './js/deskBiasRecheck.js';   // Desk Bias Process intraday rechecks
 import { headToHead as _h2hRun, processCalls as _h2hProcessCalls, ledgerCalls as _h2hLedgerCalls, callOutcome as _h2hOutcome, H2H_VERSION as _H2H_VERSION } from './js/deskBiasH2H.js';   // the Desk Bias Process head to head (GET /api/desk-bias-process/h2h)
 import { weeklyReview as _dbpWeeklyReview } from './js/terminal/deskBiasProcessView.js';   // its weekly review of wrong calls (pure)
 import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
@@ -30571,20 +30572,36 @@ const _dbpBars = xs => xs.map(b => ({ t: Date.parse(b.time), o: b.open, h: b.hig
 /** The Sunday the ForexFactory "this week" feed starts from (it cannot see the previous week's Friday). */
 const _dbpWeekStart = date => { const d = new Date(`${date}T12:00:00Z`); return new Date(d.getTime() - d.getUTCDay() * 864e5).toISOString().slice(0, 10); };
 async function _dbpLoadIndex() { try { const raw = await kv.get(_DBP_INDEX_KV); const p = raw ? JSON.parse(raw) : []; return Array.isArray(p) ? p : []; } catch { return []; } }
+/** _fetchOandaCandles with up to 3 retries (1.5 s, 4 s, 9 s) on a timeout or a 5xx/429; any other error is thrown at once. */
+async function _dbpCandles(inst, gran, count, { waits = [1500, 4000, 9000] } = {}) {
+  for (let i = 0; ; i++) {
+    try { return await _fetchOandaCandles(inst, gran, count); }
+    catch (e) {
+      const retryable = /\b(5\d\d|429)\b|abort|timeout|fetch failed|ECONNRESET/i.test(String(e?.message ?? e));
+      if (!retryable || i >= waits.length) throw e;
+      await new Promise(r => setTimeout(r, waits[i]));
+    }
+  }
+}
 /** Everything the layers read, as of `issueMs`. `engineRec` = the stored bias-engine issue (or a live one for a live read). */
-async function _dbpGather(issueMs, engineRec) {
+async function _dbpGather(issueMs, engineRec, { markets = _DBP_MARKETS, m5From = null } = {}) {
   const date = _dpLondonDate(issueMs), status = {}, prices = {}, vol = {};
   let calendar = null;
   try { const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); calendar = { ok: r.ok !== false, events: r.events ?? [], source: r.source ?? 'ForexFactory', error: r.error ?? null, coversFrom: _dbpWeekStart(date) }; status.calendar = calendar.ok ? `ok (${calendar.events.length} events)` : `error: ${calendar.error}`; }
   catch (e) { calendar = { ok: false, error: e.message }; status.calendar = `error: ${e.message}`; }
-  try { const raw = await kv.get(`vol_forecast_${date}`); const fc = raw ? JSON.parse(raw).instruments ?? {} : {}; for (const m of _DBP_MARKETS) { const k = Object.keys(fc).find(x => x.toUpperCase() === m); if (k) vol[m] = fc[k]; } status.vol = raw ? `ok (${Object.keys(vol).length})` : `no vol_forecast_${date}`; }
+  try { const raw = await kv.get(`vol_forecast_${date}`); const fc = raw ? JSON.parse(raw).instruments ?? {} : {}; for (const m of markets) { const k = Object.keys(fc).find(x => x.toUpperCase() === m); if (k) vol[m] = fc[k]; } status.vol = raw ? `ok (${Object.keys(vol).length})` : `no vol_forecast_${date}`; }
   catch (e) { status.vol = `error: ${e.message}`; }
   const errs = [];
-  for (let i = 0; i < _DBP_MARKETS.length; i += 4) {   // four markets (16 pulls) at a time: polite to OANDA
-    await Promise.all(_DBP_MARKETS.slice(i, i + 4).map(async m => {
+  // 2026-11-18: the first stored issue lost 20 of 52 pulls to OANDA 504s (blank structure on 9 markets), so each pull
+  // is retried up to 3 more times with backoff, and two markets (8 pulls) run at a time instead of four.
+  // rechecks (m5From) also pull the M5 path since the last state: the invalidation check and the release reaction
+  const m5n = m5From != null ? Math.min(400, Math.ceil((issueMs - m5From) / 300_000) + 4) : 0;
+  const grans = [['W', 60, 'w1'], ['D', 300, 'd1'], ['H4', 120, 'h4'], ['H1', 30, 'h1'], ...(m5n > 0 ? [['M5', m5n, 'm5']] : [])];
+  for (let i = 0; i < markets.length; i += 2) {
+    await Promise.all(markets.slice(i, i + 2).map(async m => {
       const p = prices[m] = {};
-      for (const [g, n, k] of [['W', 60, 'w1'], ['D', 300, 'd1'], ['H4', 120, 'h4'], ['H1', 30, 'h1']]) {
-        try { p[k] = _dbpBars(await _fetchOandaCandles(_DBP_OANDA[m], g, n)); } catch (e) { errs.push(`${m} ${g}: ${e.message}`); p[k] = []; }
+      for (const [g, n, k] of grans) {
+        try { p[k] = _dbpBars(await _dbpCandles(_DBP_OANDA[m], g, n)); } catch (e) { errs.push(`${m} ${g}: ${e.message}`); p[k] = []; }
       }
     }));
   }
@@ -30649,6 +30666,92 @@ async function _deskBiasProcessTick() {
   } finally { _dbpIssuing = false; }
 }
 svcInterval('deskBiasProcess', () => _deskBiasProcessTick().catch(e => console.error('[desk-bias-process]', e.message)), 5 * 60_000);
+
+// ── Desk Bias Process intraday rechecks (js/deskBiasRecheck.js; plans/DESK_BIAS_PROCESS_SPEC.md "Intraday rechecks") ──────
+// Weekdays after the morning issue: 30 min after each tier-1 release (for the markets it touches), 08:05, 14:35 and the 21:00
+// review. Each slot is computed once inside [slot, slot + 30 min) on fresh data (the same six layers, the morning's engine
+// issue, OANDA bars to now, the M5 path since the last state) and written once into KV desk_bias_process_rc_<date>.slots[id];
+// a missed window is a gap. The morning issue is never edited. The AI reviews only the updates that change something.
+// Scored in the head to head as process-ai+rc and process-system+rc (prereg amendment A6).
+const _DBP_RC_KEY = date => `desk_bias_process_rc_${date}`;
+async function _dbpRcLoad(date) { try { const raw = await kv.get(_DBP_RC_KEY(date)); return raw ? JSON.parse(raw) : null; } catch { return null; } }
+async function _dbpCalendarNow() {
+  try { const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); return { ok: r.ok !== false, events: r.events ?? [], error: r.error ?? null }; }
+  catch (e) { return { ok: false, events: [], error: e.message }; }
+}
+/** One slot for its markets: fresh layers, the two tracks' updates, the AI where an update changes something. */
+async function _dbpRcCompute(slot, nowMs, morning, rc, engineRec) {
+  const asOf = new Date(nowMs).toISOString();
+  const states = Object.fromEntries(slot.markets.map(m => [m, _rcState(morning, rc, m, nowMs)]).filter(([, s]) => s));
+  const markets = Object.keys(states);
+  if (!markets.length) return _rcRecord({ slot, asOf, issuedAt: new Date().toISOString(), rows: {}, inputsStatus: { note: 'no market of this slot is in the morning issue' } });
+  const since = Math.min(...markets.flatMap(m => [states[m].ai.atMs, states[m].system.atMs]), slot.releaseMs ?? Infinity) - 10 * 60_000;
+  const g = await _dbpGather(nowMs, engineRec, { markets, m5From: since });
+  const rows = {};
+  let next = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (next < markets.length) {
+      const m = markets[next++], st = states[m], P = g.prices[m] ?? {};
+      const d1 = P.d1 ?? [], today = d1.find(b => _dpLondonDate(b.t) === g.date && b.t <= nowMs);
+      const fresh = _dbpLayers({ date: g.date, asOf, market: m, engine: engineRec, prices: P, calendar: g.calendar, vol: g.vol[m] ?? null,
+        todayRange: today ? { open: today.o, high: today.h, low: today.l } : null });
+      const m5 = (P.m5 ?? []).filter(b => b.complete !== false);
+      const invSys = _rcInvalid(st.system, m5, nowMs), invAi = _rcInvalid(st.ai, m5, nowMs);
+      const kind = slot.kind === 'review' ? 'review' : 'fixed';
+      const sysU = _rcUpdate(st.system, fresh, { invalid: invSys, kind }), aiU = _rcUpdate(st.ai, fresh, { invalid: invAi, kind });
+      const reaction = slot.releaseMs ? _rcReaction(m5, slot.releaseMs, nowMs, fresh.layers.range.sigmaDay) : null;
+      let ai = null;
+      if (_rcNeedsAi(aiU)) {
+        const pack = _rcPack(fresh, { slot, prior: st.ai, morning: morning.markets[m]?.call, update: aiU, reaction, invalid: invAi });
+        ai = await _dbpAi({ pack, callModel: _dbpCallModel, parseJson: t => _parseModelJson(t, `bias-recheck:${m}`), system: _RC_SYSTEM, prompt: _rcPrompt(pack), label: `bias-recheck:${slot.id}:${m}` });
+      }
+      rows[m] = _rcRow({ fresh, sysU, aiU, ai, reaction, invalidSys: invSys, invalidAi: invAi });
+    }
+  }));
+  return _rcRecord({ slot, asOf, issuedAt: new Date().toISOString(), rows, inputsStatus: g.status, code: process.env.RAILWAY_GIT_COMMIT_SHA || null });
+}
+let _dbpRcBusy = false;
+async function _deskBiasRecheckTick() {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (!_bsIsWeekday(date) || now < _bsLondonMs(date, 6, 30) || now > _bsLondonMs(date, 21, 35) || _dbpRcBusy) return;
+  _dbpRcBusy = true;
+  try {
+    const raw = await kv.get(_DBP_KEY(date)).catch(() => null);
+    const morning = raw ? JSON.parse(raw) : null;
+    if (!morning?.markets || morning.date !== date) return;                     // no morning issue: nothing to recheck
+    const rc = (await _dbpRcLoad(date)) ?? { date, version: _RC_VERSION, prompt: _RC_PROMPT, morningIssuedAt: morning.issuedAt, slots: {} };
+    const slots = _rcSlots(date, await _dbpCalendarNow(), Date.parse(morning.issuedAt ?? morning.asOf));
+    const slot = _rcDue(slots, now, Object.keys(rc.slots));
+    if (!slot) return;
+    const eRaw = await kv.get(_BE_KEY(date)).catch(() => null), engineRec = eRaw ? JSON.parse(eRaw) : null;
+    if (!engineRec?.markets) return;
+    const rec = await _dbpRcCompute(slot, now, morning, rc, engineRec);
+    if (Date.now() >= slot.atMs + _RC_WINDOW) { console.warn(`[desk-bias-recheck] ${date} ${slot.id}: finished after its window, not stored`); return; }
+    const cur = (await _dbpRcLoad(date)) ?? rc;
+    if (cur.slots[slot.id]) return;                                              // write-once per slot
+    cur.slots[slot.id] = rec;
+    await kv.put(_DBP_RC_KEY(date), JSON.stringify(cur));
+    console.log(`[desk-bias-recheck] ${date} ${slot.id} at ${rec.issuedAt}: ${Object.entries(rec.markets).map(([m, r]) => `${m} ${r.ai.status}${r.ai.dir !== 'NEUTRAL' ? ` ${r.ai.dir[0]}${r.ai.conviction ?? ''}` : ''}`).join(' ')}`);
+  } finally { _dbpRcBusy = false; }
+}
+svcInterval('deskBiasRecheck', () => _deskBiasRecheckTick().catch(e => console.error('[desk-bias-recheck]', e.message)), 2 * 60_000);
+// GET /api/desk-bias-process/rechecks?date=D   the day's stored rechecks, the schedule (done / due / missed / later) and each market's
+// current call and timeline. Computed from stored records only; nothing is written here.
+app.get('/api/desk-bias-process/rechecks', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const today = _dpLondonDate(Date.now()), date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : today;
+    const raw = await kv.get(_DBP_KEY(date)).catch(() => null), morning = raw ? JSON.parse(raw) : null;
+    if (!morning?.markets) return res.json({ ok: true, date, empty: true, note: `no stored morning issue for ${date}: rechecks start after it` });
+    const rc = (await _dbpRcLoad(date)) ?? { slots: {} }, now = Date.now();
+    const slots = date === today ? _rcSlots(date, await _dbpCalendarNow(), Date.parse(morning.issuedAt ?? morning.asOf)) : Object.values(rc.slots).map(s => ({ id: s.id, kind: s.kind, atMs: Date.parse(s.at), markets: Object.keys(s.markets) }));
+    const schedule = slots.map(s => ({ id: s.id, kind: s.kind, at: new Date(s.atMs).toISOString(), markets: s.markets.length, events: s.events ?? null,
+      state: rc.slots[s.id] ? 'done' : now < s.atMs ? 'later' : now < s.atMs + _RC_WINDOW ? 'due' : 'missed', issuedAt: rc.slots[s.id]?.issuedAt ?? null }));
+    const markets = Object.fromEntries(Object.keys(morning.markets).map(m => { const st = _rcState(morning, rc, m); return [m, { now: { ai: st.ai, system: st.system }, timeline: _rcTimeline(morning, rc, m) }]; }));
+    res.json({ ok: true, date, version: _RC_VERSION, prompt: _RC_PROMPT, morningIssuedAt: morning.issuedAt, schedule, markets,
+      note: 'Intraday rechecks of the morning call: stored beside it, never editing it; scored as process-ai+rc and process-system+rc. Not a validated trade signal.' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // GET /api/desk-bias-process            today's stored issue, or (none yet) a live system-only read marked live: true, not stored
 // GET /api/desk-bias-process?date=D     the stored issue for D (404 when none: nothing is back-issued)
 // GET /api/desk-bias-process?market=X   one market's card (and the cleanest FX expressions)
@@ -30751,7 +30854,10 @@ async function _dbpH2HCompute() {
     ledger = (await Promise.all(keys.map(k => _r2GetJSON(k).catch(() => null)))).filter(Boolean);
     status.ledger = `ok, ${ledger.length} record(s)`;
   } catch (e) { status.ledger = `error: ${e.message}`; }
-  const calls = [..._h2hProcessCalls(records), ..._h2hLedgerCalls(ledger, _BS_DESK_NAME)].filter(c => c.date >= first);
+  const rcRecs = [];
+  for (const r of records) { const rc = await _dbpRcLoad(r.date); if (rc) rcRecs.push({ ...rc, date: r.date }); }
+  status.rechecks = `${rcRecs.length} day(s) with rechecks`;
+  const calls = [..._h2hProcessCalls(records), ..._rcCalls(records, rcRecs), ..._h2hLedgerCalls(ledger, _BS_DESK_NAME)].filter(c => c.date >= first);
   const bars = {}, errs = [];
   if (process.env.OANDA_KEY) {
     const from = Date.parse(`${first}T00:00:00Z`) - 864e5, to = Math.min(Date.now(), Date.parse(`${last}T00:00:00Z`) + 4 * 864e5);

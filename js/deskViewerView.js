@@ -252,6 +252,7 @@ export function sanitizeBiasProcess(body, on) {
 }
 export const VIEWER_SANITISERS = {
   '/api/desk-bias-process': sanitizeBiasProcess,    // invalidation levels are a 'trade' surface (panel.bp.invalid)
+  '/api/desk-bias-process/rechecks': sanitizeBiasProcess,   // the rechecks carry the same invalidation keys (each track's current call)
   '/api/bias-engine': sanitizeBiasEngine,           // the engine's flip lines are a 'trade' surface (panel.asset.beflip)
   '/api/desk-run': sanitizeRun,
   '/api/desk-run/index': body => sanitizeRunIndex(body),

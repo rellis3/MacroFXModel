@@ -84,6 +84,7 @@ DEFAULT_CFG = {
     "limit_through": "market",      # limit already traded through (better price): "market" = take it now, "skip"
     "use_set_and_forget_tp": False, # his "Set and forget option: TP …" -- off = hold for his close, as he recommends
     "catchup_on_start": True,       # at start, read the topic back to the session start for messages missed while off
+    "tg_poll_secs": 60,             # also read the topic's newest messages this often: Telegram's push can go quiet
     "tg_chat": DEFAULT_CHAT,
     "tg_topic": None,               # "Signals" topic id; None = whole group
     "tg_senders": "",               # comma list of trusted sender names/ids; blank = everyone
@@ -1013,6 +1014,7 @@ async def run(base_url, force_live, backfill_since=None, parse_only=False):
              f"{'PAPER' if cp.paper else 'LIVE'}, risk {cfg['risk_pct']}%/signal")
 
     last_status = last_resolve = last_manual = 0.0
+    last_poll = _now()
     while True:
         try:
             cp.tick()
@@ -1028,6 +1030,13 @@ async def run(base_url, force_live, backfill_since=None, parse_only=False):
                     await catch_up(cp, client, chat, ok, since, "button")
                 if len(cp.manual_results) != before:
                     cp.push_status()                  # show the result on the page straight away
+            # Safety poll: Telethon's live update stream can go quiet on a client left
+            # running for days (2026-11-18: nothing pushed after 17 Nov 16:16 UTC, the
+            # 07:00 message never arrived). Read the topic's newest messages and apply
+            # any the book hasn't seen.
+            if now - last_poll >= float(cp.cfg.get("tg_poll_secs", 60) or 60):
+                last_poll = now
+                await catch_up(cp, client, chat, ok, None, "poll", limit=30)
             if now - last_resolve >= cp.cfg.get("resolve_secs", 60):
                 cp.resolve_open()
                 last_resolve = now
@@ -1056,18 +1065,29 @@ async def run(base_url, force_live, backfill_since=None, parse_only=False):
         await asyncio.sleep(cp.cfg.get("poll_secs", 5))
 
 
-async def catch_up(cp: Copier, client, chat, ok, since_ts: float, why: str):
-    """Read the topic back from `since_ts` and apply every message the book has
-    not seen (the bot was off, or Telegram dropped an update). Timers run in
-    message order; still-valid signals are entered, older ones are logged as
-    missed for "Send to MT5" (Copier.apply_missed)."""
+async def catch_up(cp: Copier, client, chat, ok, since_ts: float | None, why: str, limit: int | None = None):
+    """Read the topic back from `since_ts` (or its newest `limit` messages) and
+    apply every message the book has not seen (the bot was off, or Telegram
+    stopped pushing updates). Timers run in message order; still-valid signals
+    are entered, older ones are logged as missed for "Send to MT5"
+    (Copier.apply_missed)."""
     topic = cp.cfg.get("tg_topic")
     kw = {"reply_to": int(topic)} if topic and int(topic) != 1 else {}
     tally = {"signals": 0, "placed": 0, "skipped": 0, "missed": 0}
     scanned = new = 0
-    start = datetime.fromtimestamp(since_ts, timezone.utc)
+    if limit:
+        msgs = []
+    start = datetime.fromtimestamp(since_ts or _now(), timezone.utc)
     try:
-        async for msg in client.iter_messages(chat, reverse=True, offset_date=start, **kw):
+        if limit:                                   # newest first from Telegram; apply oldest first
+            msgs = [m async for m in client.iter_messages(chat, limit=limit, **kw)]
+            msgs.sort(key=lambda m: (m.date, m.id))
+            if msgs:
+                start = msgs[0].date
+            source = _aiter(msgs)
+        else:
+            source = client.iter_messages(chat, reverse=True, offset_date=start, **kw)
+        async for msg in source:
             if not ok(msg):
                 continue
             scanned += 1
@@ -1080,18 +1100,32 @@ async def catch_up(cp: Copier, client, chat, ok, since_ts: float, why: str):
     except Exception as e:
         err = str(e)
         log.exception(f"catch-up failed: {e}")
-    cp.catchup_last = {"at": int(_now()), "since": int(since_ts), "why": why, "scanned": scanned,
+    since_uk = start.astimezone(ZoneInfo("Europe/London")).strftime("%a %H:%M")
+    if why == "poll":
+        # the safety poll: silent unless Telegram's live push really missed something
+        cp.tg["last_poll_at"], cp.tg["poll_error"] = int(_now()), err
+        if not new:
+            return
+        cp.tg["poll_recovered"] = cp.tg.get("poll_recovered", 0) + new
+        log.warning(f"poll found {new} message(s) Telegram did not push live -- applied now")
+        cp.alert(f"🔁 Picked up {new} message(s) Telegram didn't deliver live: {tally['signals']} new signal(s) — "
+                 f"{tally['placed']} placed, {tally['missed']} too old (Send to MT5 on the bot page){cp.mode_tag()}")
+    cp.catchup_last = {"at": int(_now()), "since": int(start.timestamp()), "why": why, "scanned": scanned,
                        "new_messages": new, **tally, "error": err}
     cp.dirty["state"] = True
-    since_uk = start.astimezone(ZoneInfo("Europe/London")).strftime("%a %H:%M")
     log.info(f"catch-up ({why}) since {since_uk} UK: {scanned} messages, {new} new, {tally['signals']} signals "
              f"({tally['placed']} placed, {tally['missed']} missed, {tally['skipped']} skipped)")
-    if new or why == "button" or err:
+    if why != "poll" and (new or why == "button" or err):
         cp.alert(f"🔁 Caught up since {since_uk} UK: {new} missed message(s), {tally['signals']} new signal(s) — "
                  f"{tally['placed']} placed, {tally['missed']} too old (Send to MT5 on the bot page)"
                  + (f"\n⚠️ stopped early: {err}" if err else "") + cp.mode_tag())
     cp.push_status()
     cp.flush()
+
+
+async def _aiter(items):
+    for x in items:
+        yield x
 
 
 def replay_history(cp: Copier, messages, record=True):
