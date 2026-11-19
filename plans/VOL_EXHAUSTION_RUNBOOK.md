@@ -137,11 +137,14 @@ Lean version agreed with the owner: no separate site page; the signature plot wa
 
 ### 1.2 Run C  `[~]`
 - [x] NQ 2026-11-18 (`ladder-v2-nq`, VALIDATED): har_rv_log, regime miss 2.40 → 1.49pp, within the noise floor.
+- [x] GOLD 2026-11-19 (`ladder-v2-gold`, VALIDATED): HAR-CJ (5-min RV, jumps split), 3.53 → 1.55pp, within noise.
 ### 1.3 Run F  `[~]`
 - [x] NQ 2026-11-18 (`ladder-v2-nq-fut`, VALIDATED): har_rv_log, 2.50 → 1.82pp.
+- [x] GOLD 2026-11-19 (`ladder-v2-gold-fut`, VALIDATED): HAR-RV 5-min, 3.08 → 1.44pp, within noise.
 
 ### 1.4 C vs F per underlying  `[~]`
 - [x] NQ: same distribution (ratios 0.994–1.007), so F reuses the C spec (`ladder-v2-nq-cvf`).
+- [x] GOLD: different (futures ranges 2–6% wider), so GC keeps its own widths and winner (`ladder-v2-gold-cvf`).
 - [ ] Same London session: are OH/OL/HL/OC % distributions and σ the same within noise? If yes, F reuses the C spec. If no, F keeps its own spec.
 
 ### 1.5 Event multipliers  (C+F)  `[ ]`
