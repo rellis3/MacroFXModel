@@ -1,0 +1,37 @@
+**EXHAUSTION ZONES — SHADOW ladder-v2 (not live)**
+**For session: Thu 19 Nov 2026 (London 00:00–22:00)**
+Zone = how far price typically runs past a line before its first 0.25σ pullback (any level, not a line effect).
+Odds = chance a line touched in that time bucket goes on to the next line (p90: a further 0.25σ).
+
+──── GOLD ────────────────────
+Sigma daily             : 1.392%
+Zone past line          : 0.245% median · 0.485% 75th  (0.18σ · 0.35σ)
+Time buckets (London)   : 00-07 · 07-12 · 12-16 · 16-22
+OH p50                  : 0.87% | next 62% · 55% · 45% · 25%
+OH p75                  : 1.50% | next 56% · 58% · 42% · 20%
+OH p90                  : 2.32% | +0.25σ 79% · 74% · 71% · 44%
+OL p50                  : 0.80% | next 62% · 55% · 45% · 25%
+OL p75                  : 1.48% | next 56% · 58% · 42% · 20%
+OL p90                  : 2.27% | +0.25σ 79% · 74% · 71% · 44%
+
+──── EURUSD ──────────────────
+Sigma daily             : 0.356%
+Zone past line          : 0.060% median · 0.122% 75th  (0.17σ · 0.34σ)
+Time buckets (London)   : 00-07 · 07-12 · 12-16 · 16-22
+OH p50                  : 0.21% | next 60% · 57% · 46% · 24%
+OH p75                  : 0.37% | next 57% · 50% · 38% · 23%
+OH p90                  : 0.56% | +0.25σ 83% · 80% · 70% · 47%
+OL p50                  : 0.22% | next 60% · 57% · 46% · 24%
+OL p75                  : 0.38% | next 57% · 50% · 38% · 23%
+OL p90                  : 0.55% | +0.25σ 83% · 80% · 70% · 47%
+
+──── NQ ──────────────────────
+Sigma daily             : 1.945%
+Zone past line          : 0.349% median · 0.721% 75th  (0.18σ · 0.37σ)
+Time buckets (London)   : 00-07 · 07-12 · 12-16 · 16-22
+OH p50                  : 1.17% | next 69% · 60% · 53% · 31%
+OH p75                  : 1.98% | next 60% · 52% · 45% · 22%
+OH p90                  : 2.85% | +0.25σ 81% · 80% · 79% · 52%
+OL p50                  : 1.05% | next 69% · 60% · 53% · 31%
+OL p75                  : 2.03% | next 60% · 52% · 45% · 22%
+OL p90                  : 3.30% | +0.25σ 81% · 80% · 79% · 52%

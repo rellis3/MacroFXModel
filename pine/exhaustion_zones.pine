@@ -1,0 +1,135 @@
+//@version=6
+// Exhaustion Zones (shadow ladder-v2) — paste the EXHAUSTION export (scripts/ladder-v2/export_exhaustion.py).
+// For each OH/OL line (p50/p75/p90, % of the London-midnight open) it draws:
+//   - the line
+//   - an inner zone: line -> + median run-past before the first 0.25σ pullback (darker)
+//   - an outer zone: -> + 75th-percentile run-past (lighter)
+//   - a label with the chance a touch NOW goes on to the next line (p90: a further 0.25σ), from the current
+//     London time bucket (00-07 / 07-12 / 12-16 / 16-22).
+// Research behind it: reversal-zones (zones are how price behaves past ANY level, not a line effect) and
+// exhaustion-v2 (next-line odds fall through the day). Shadow only.
+indicator("Exhaustion Zones (ladder-v2 shadow)", overlay=true, max_lines_count=100, max_boxes_count=100, max_labels_count=100)
+
+exText = input.text_area("", "Paste EXHAUSTION export")
+symSel = input.string("Auto", "Symbol block", options=["Auto", "GOLD", "NQ", "EURUSD"])
+showOuter = input.bool(true, "Show outer (75th) zone")
+colUp = input.color(color.new(color.orange, 0), "Upside colour")
+colDn = input.color(color.new(color.red, 0), "Downside colour")
+
+f_auto() =>
+    u = str.upper(syminfo.ticker)
+    r = str.upper(syminfo.root)
+    string s = ""
+    if str.contains(u, "XAU") or str.contains(u, "GOLD") or r == "GC" or r == "MGC"
+        s := "GOLD"
+    else if str.contains(u, "EURUSD") or r == "6E" or r == "M6E"
+        s := "EURUSD"
+    else if str.contains(u, "NAS100") or str.contains(u, "US100") or str.contains(u, "USTEC") or str.contains(u, "NDX") or r == "NQ" or r == "MNQ"
+        s := "NQ"
+    s
+
+f_num(string t) =>
+    str.tonumber(str.replace_all(str.replace_all(str.trim(t), "%", ""), "+", ""))
+
+// first number in a string
+f_first(string src) =>
+    float v = na
+    parts = str.split(str.trim(src), " ")
+    for p in parts
+        x = f_num(p)
+        if na(v) and not na(x)
+            v := x
+    v
+
+// all % numbers after the "|" (the four bucket odds)
+f_odds(string src) =>
+    arr = array.new_float()
+    if str.contains(src, "|")
+        tail = array.get(str.split(src, "|"), 1)
+        for p in str.split(tail, " ")
+            if str.endswith(p, "%")
+                array.push(arr, f_num(p))
+    arr
+
+var string sym = ""
+var float z50 = na
+var float z75 = na
+var array<float> lvl = array.new_float(6, na)          // OH50 OH75 OH90 OL50 OL75 OL90 (%)
+var matrix<float> odds = matrix.new<float>(6, 4, na)
+var array<string> names = array.from("OH p50", "OH p75", "OH p90", "OL p50", "OL p75", "OL p90")
+
+if barstate.isfirst
+    sym := symSel == "Auto" ? f_auto() : symSel
+    bool inBlock = false
+    for row in str.split(exText, "\n")
+        r = str.trim(row)
+        ru = str.upper(r)
+        if str.startswith(r, "────")
+            inBlock := str.contains(ru, " " + sym + " ")
+            continue
+        if not inBlock or not str.contains(r, ":")
+            continue
+        kv = str.split(r, ":")
+        key = str.upper(str.trim(array.get(kv, 0)))
+        rest = array.get(kv, 1)
+        if str.startswith(key, "ZONE")
+            z50 := f_first(rest)
+            if str.contains(rest, "·")
+                z75 := f_first(array.get(str.split(rest, "·"), 1))
+        for i = 0 to 5
+            if key == str.upper(array.get(names, i))
+                array.set(lvl, i, f_first(array.get(str.split(rest, "|"), 0)))
+                o = f_odds(rest)
+                if array.size(o) > 0
+                    for j = 0 to math.min(3, array.size(o) - 1)
+                        matrix.set(odds, i, j, array.get(o, j))
+
+// London-midnight session
+lonDay = dayofmonth(time, "Europe/London")
+newDay = ta.change(lonDay) != 0 or barstate.isfirst
+var float dOpen = na
+var int t0 = na
+var array<line> lns = array.new_line()
+var array<box> bxs = array.new_box()
+var array<label> lbs = array.new_label()
+
+if newDay and not na(z50) and sym != ""
+    for l in lns
+        line.delete(l)
+    for b in bxs
+        box.delete(b)
+    for lb in lbs
+        label.delete(lb)
+    array.clear(lns)
+    array.clear(bxs)
+    array.clear(lbs)
+    dOpen := open
+    t0 := time
+    t1 = t0 + 22 * 3600 * 1000
+    for i = 0 to 5
+        p = array.get(lvl, i)
+        if not na(p)
+            up = i < 3
+            sgn = up ? 1.0 : -1.0
+            c = up ? colUp : colDn
+            L = dOpen * (1 + sgn * p / 100)
+            Li = dOpen * (1 + sgn * (p + z50) / 100)
+            Lo = dOpen * (1 + sgn * (p + (na(z75) ? z50 : z75)) / 100)
+            array.push(lns, line.new(t0, L, t1, L, xloc=xloc.bar_time, color=c, width=i % 3 == 1 ? 2 : 1))
+            array.push(bxs, box.new(t0, math.max(L, Li), t1, math.min(L, Li), xloc=xloc.bar_time, bgcolor=color.new(c, 82), border_color=color.new(c, 100)))
+            if showOuter
+                array.push(bxs, box.new(t0, math.max(Li, Lo), t1, math.min(Li, Lo), xloc=xloc.bar_time, bgcolor=color.new(c, 93), border_color=color.new(c, 100)))
+            array.push(lbs, label.new(t1, L, "", xloc=xloc.bar_time, style=label.style_label_left, color=color.new(c, 85), textcolor=c, size=size.small))
+
+// refresh label text with the current London time bucket
+if barstate.islast and array.size(lbs) > 0
+    h = hour(time, "Europe/London")
+    b = h < 7 ? 0 : h < 12 ? 1 : h < 16 ? 2 : 3
+    k = 0
+    for i = 0 to 5
+        p = array.get(lvl, i)
+        if not na(p) and k < array.size(lbs)
+            od = matrix.get(odds, i, b)
+            word = i % 3 == 2 ? "+0.25σ" : "next"
+            label.set_text(array.get(lbs, k), array.get(names, i) + " " + str.tostring(p, "#.##") + "%  " + word + " " + str.tostring(od, "#") + "% now")
+            k += 1
