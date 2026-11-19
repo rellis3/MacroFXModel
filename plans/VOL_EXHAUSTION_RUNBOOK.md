@@ -192,6 +192,8 @@ P(extreme ≥ X+δ) ÷ P(extreme ≥ X). Prior evidence:
       cuts the calibration miss 10.6 → 3.4pp (logistic blend X7; X4 vol clock + hot/cold day tied and best calibrated).
 - [x] GOLD 2026-11-19 (`exhaustion-v2-gold`, VALIDATED C and F): same clock shape; X7 11.4 → 3.7pp. Control
       fixed pre-results: the noise floor must include same-day clustering of touches (20 synthetic histories).
+- [x] EURUSD 2026-11-19 (`exhaustion-v2-eurusd`, VALIDATED C and F): same clock shape; X7 10.6 → 3.8pp.
+      Three pilots (index, metal, FX) done on both halves: owner review before rolling to more instruments.
 
 ### 2.4 Export + indicator  `[ ]`
 - [ ] Each rung carries an exhaustion figure for the current time bucket, e.g. `OL p75 … · exhaust 62% after 14:00`.
