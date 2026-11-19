@@ -70,6 +70,7 @@ against our code; where his code shows the failure mode, the note says so. That 
 | "Lack of evidence ≠ absence" | UNDERPOWERED vs NULL | QG quant vs discretionary |
 | Gate each layer on full understanding before the next | forecaster blueprint; lessons ground-up | QG how to learn |
 | LLM defaults aren't truth | check-the-catalogue rule; learn-intake step 4 | QG model tier list, how to learn |
+| Paper-trade a research pipeline for a period before trusting it; the gatherers (agents) never decide | `desk-analyst-pipeline` forward record from 2026-11-04 (`plans/DESK_ANALYST_PIPELINE.md` rule 1: LLM layers add context, never a signal); the forecast ledger | JV, Titans of Tomorrow (2026-11-18) |
 
 ## Disagree
 

@@ -245,6 +245,10 @@ headlines, not much market volatility.
   bazooka becomes credible.
 
 ### Pattern J: Find the variable that would make it "go bananas", then watch its rate of change (AP)
+- **Second source (2026-11-18): Jordi Visser (*Titans of Tomorrow*) watches the same thing on price:** the 50-day rate
+  of change and its turn, "when that second derivative changes". The desk tested that price version two days earlier
+  (`roc-stall-50d`): no forward return at 20 sessions on 30 markets, a small vol footprint, a 60-session bounce lead.
+  The habit transfers; the price signature does not (PODCAST_INSIGHTS T01).
 - Alfonso's question isn't "is debt high?" but **"what's the tail risk, and is it showing up?"**
 - History: developed-market crises come from **private-sector** leverage (2008 housing, the 1997
   Asian corporates, Eurozone property in Ireland and Spain), not from governments borrowing in

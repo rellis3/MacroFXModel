@@ -11,6 +11,7 @@ Add a row the first time a new creator turns up (ask the owner which lane).
 | Marilee Cordova | informational | `marilee-cordova` | none yet |
 | Aleks Rosme | informational | `aleks-rosme` | none yet |
 | The Macro Trading Floor (Brent Donnelly, Alfonso Peccarelli) | informational | `macro-trading-floor` | `education/podcast_transcripts/` |
+| Titans of Tomorrow (guest Jordi Visser: ex-Morgan Stanley MD, ex-president of a USD 4bn hedge fund) | informational | `titans-of-tomorrow` | `education/podcast_transcripts/PODCAST_INSIGHTS.md` (T-series), `HOW_THEY_THINK.md` |
 | QuantGuild, quantguild (Quant Guild, Roman Paolucci) | technical | `quant-guild` | `education/intake/technical/quant-guild/PLAYBOOK.md` |
 
 Singletons in the library (OrderFlowAlchemy, IQCapital_io, LowLevelTV, Foot Clan Trading, RobinhoodApp, fabervaaleEng):
