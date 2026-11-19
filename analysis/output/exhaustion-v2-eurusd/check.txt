@@ -1,0 +1,11 @@
+Major release times (United States, Euro Area): 1645 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+EURUSD C: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 10028 first touches
+EURUSD C: 1987 sessions, 9506 first touches; extraction check 90/90 match on 20 sessions
+  touches per family x rung: OCd50 1153, OCd75 551, OCd90 220, OCu50 1081, OCu75 537, OCu90 213, OH50 1072, OH75 541, OH90 203, OL50 1121, OL75 557, OL90 215, PH50 599, PH75 294, PH90 123, PL50 630, PL75 288, PL90 108
+  wrong-side dynamic touches: 89; release still to come: 2314
+EURUSD F: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 9774 first touches
+EURUSD F: 1939 sessions, 9237 first touches; extraction check 102/102 match on 20 sessions
+  touches per family x rung: OCd50 1130, OCd75 549, OCd90 204, OCu50 1074, OCu75 517, OCu90 199, OH50 1033, OH75 535, OH90 186, OL50 1098, OL75 547, OL90 209, PH50 586, PH75 276, PH90 112, PL50 613, PL75 272, PL90 97
+  wrong-side dynamic touches: 87; release still to come: 2258
