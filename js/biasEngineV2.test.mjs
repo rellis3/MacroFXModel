@@ -12,6 +12,8 @@ import { snapshot, strip, riskSeries, ISSUE_DATE, DAY } from './biasEngineV2.fix
 import { biasEngineV2 as biasEngineV2Views } from './biasForecasters.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// file hashes ignore line endings: Windows checkouts (core.autocrlf) turn LF into CRLF, which is not a change
+const fileSha = rel => sha256(fs.readFileSync(path.join(ROOT, rel), 'utf8').replace(/\r\n/g, '\n'));
 let passed = 0;
 const ok = (name, fn) => { fn(); passed++; console.log('  ok ', name); };
 const near = (a, b, eps = 1e-9, msg = '') => assert.ok(Math.abs(a - b) <= eps, `${msg} ${a} != ${b}`);
@@ -141,7 +143,7 @@ ok('A12 the twelve variants and their switch sets', () => {
 });
 
 ok('A13 V1 untouched: js/biasEngine.js matches its pinned hash', () => {
-  assert.equal(sha256(fs.readFileSync(path.join(ROOT, 'js/biasEngine.js'), 'utf8')), 'b704c67d12c63634b0608e6e1e3d25c69749689c811833c8674a1e860b685e28',
+  assert.equal(fileSha('js/biasEngine.js'), 'b704c67d12c63634b0608e6e1e3d25c69749689c811833c8674a1e860b685e28',
     'js/biasEngine.js changed: V1 is the production control and must stay untouched (spec G1)');
 });
 
@@ -245,8 +247,8 @@ ok('A21 freeze: after the freeze the spec, the config and the engine match the m
   const f = path.join(ROOT, 'forge/BIAS_ENGINE_V2_FREEZE.json');
   if (!fs.existsSync(f)) { assert.equal(CONFIG.FORWARD_START, null, 'a forward start without a freeze manifest'); return; }
   const m = JSON.parse(fs.readFileSync(f, 'utf8'));
-  assert.equal(sha256(fs.readFileSync(path.join(ROOT, 'plans/BIAS_ENGINE_V2_SPEC.md'), 'utf8')), m.specSha256, 'the spec changed after the freeze');
-  assert.equal(sha256(fs.readFileSync(path.join(ROOT, 'js/biasEngineV2.js'), 'utf8')), m.engineSha256, 'the engine changed after the freeze');
+  assert.equal(fileSha('plans/BIAS_ENGINE_V2_SPEC.md'), m.specSha256, 'the spec changed after the freeze');
+  assert.equal(fileSha('js/biasEngineV2.js'), m.engineSha256, 'the engine changed after the freeze');
   assert.equal(CONFIG_HASH, m.configHash, 'the constants or config changed after the freeze');
   assert.equal(CONFIG.FORWARD_START, m.forwardStart);
 });
