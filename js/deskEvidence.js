@@ -3446,6 +3446,13 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ', 'GOLD', 'EURUSD'],
   },
   {
+    id: 'trade-at-lines', domain: 'price', verdict: 'null', date: '2026-11-19', doc: 'forge/TRADE_AT_LINES_PREREG.md', also: ['analysis/output/trade-at-lines/RESULTS.md'],
+    claim: 'Fading or following the v2 ladder lines (zone-sized stops, exhaustion-odds time filter) makes money after real OANDA bid/ask and beats the same rules at shifted lines',
+    result: 'Pre-registered, 18 cells, NQ+GOLD+EURUSD CFD 2018-2026.08, bid/ask M1 fills. Every cell net negative: fade at line -0.10 to -0.12R, fade at zone -0.11 to -0.16R, follow -0.06 to -0.20R; gross ~0 (follow p75 +0.06R = NQ drift); no cell beats shifted lines; odds filter no help even in-sample. Lone pointer: NQ follow p75 +0.13R net (single instrument, drift-aligned).',
+    use: 'The levels are context (day size, realistic targets/stops, late-day exhaustion), not an entry signal.',
+    instruments: ['NQ', 'GOLD', 'EURUSD'],
+  },
+  {
     id: 'roc-stall-trend-filter', domain: 'price', verdict: 'null', date: '2026-11-18', doc: 'forge/ROC_STALL_TREND_FILTER_PREREG.md', also: ['analysis/output/roc-stall-trend-filter/RESULTS.md'],
     claim: 'Jordi Visser\'s filtered rule: a 50-session rate-of-change reset after a strong run, taken only when price is above a rising 200-day average, is followed by higher 20-session returns than ordinary uptrend sessions of the same market ("consolidated and wants to go higher")',
     result: 'Pre-registered 2026-11-18 (one scored cell), 30 daily series, 666 de-clustered events on the 2013-01 to 2026-08-21 holdout, 20-session return in units of a typical 20-session move against same-trend-state controls: +0.040 [-0.063, +0.140] (bar +0.15, needed lower edge > +0.02); discovery +0.046, halves +0.016 / +0.080, rotated-flag placebo 81st percentile, p 0.43; 0 of 30 series and 0 of 6 groups survive BH. The interval excludes a rise of the bar size, so NULL (MDE 0.143). 83% of the parent stall events were already above a rising 200-day, so the filter is nearly implied by the stall and the estimate equals the unconditioned +0.05. Same holdout as roc-stall-50d (conditional re-cut). Reported candidate only: the month after such a reset ran about 5.5% calmer than ordinary uptrend sessions (-0.057 [-0.089, -0.024], both halves, beats every rotation), agreeing with the parent C3.',
@@ -3537,6 +3544,7 @@ const POWER = {
   'turn-at-lines-proj': { n: '13,396 turns', note: 'NULL bar 1pp; observed -0.25pp' },
   'reversal-zones-race': { n: '21,567 real + 90,630 placebo touches, 63-session blocks within instrument', note: 'NULL bar 2pp; all |excess| < 0.35pp' },
   'reversal-zones-overshoot': { n: 'same touches', note: 'NULL bar 0.05 sigma; all |diff| < 0.006 sigma' },
+  'trade-at-lines': { n: '~45,000 real trades over 18 cells + shifted-line placebo, 63-session blocks within instrument', note: 'NULL bar +0.05R; every cell CI below 0' },
   'bias-engine-backtest-sameday': { n: '98 21-session clusters 2016-10 to 2024-08 (16,826 called rows)', note: 'MDE 2.9 pp (FX), 6.7 (gold), 3.5 (idx) vs a 2 pp bar' },
   'bias-engine-backtest-5d': { n: '182 21-session clusters 2010-01 to 2024-08 (31,144 called rows)', note: 'MDE 3.6 / 8.5 / 6.3 pp vs a 3 pp bar' },
   'bias-engine-backtest-20d': { n: '182 21-session clusters 2010-01 to 2024-08 (31,155 called rows)', note: 'MDE 5.5 / 11.5 / 8.2 pp vs a 5 pp bar; FX CI upper +0.1 pp excludes the bar' },

@@ -1,0 +1,28 @@
+NQ: arm E6; 2229 sessions with bid/ask
+GOLD: arm HARCJ; 2229 sessions with bid/ask
+EURUSD: arm HARCJ; 2240 sessions with bid/ask
+
+== cells (pooled NQ+GOLD+EURUSD; net R on bid/ask; placebo = same rule at the line moved +/-0.15, 0.30 sigma)
+  FADE-L  p50 ALL  n= 6580  net -0.099R [-0.115,-0.079]  gross -0.048R  win 47.2%  vs placebo -0.017R [-0.033,-0.000]  -> NULL
+  FADE-L  p50 ODDS n=  920  net -0.118R [-0.155,-0.070]  gross -0.080R  win 42.3%  vs placebo -0.039R [-0.060,+0.009]  -> NULL
+  FADE-L  p75 ALL  n= 3322  net -0.105R [-0.126,-0.083]  gross -0.056R  win 46.7%  vs placebo +0.009R [-0.012,+0.028]  -> NULL
+  FADE-L  p75 ODDS n=  930  net -0.113R [-0.151,-0.064]  gross -0.069R  win 44.2%  vs placebo -0.011R [-0.045,+0.028]  -> NULL
+  FADE-L  p90 ALL  n= 1302  net -0.108R [-0.152,-0.063]  gross -0.060R  win 45.6%  vs placebo -0.013R [-0.043,+0.025]  -> NULL
+  FADE-L  p90 ODDS n=    0  net +0.000R [+0.000,+0.000]  gross +nanR  win  nan%  vs placebo +0.000R [+0.000,+0.000]  -> NULL
+  FADE-Z  p50 ALL  n= 5152  net -0.146R [-0.165,-0.123]  gross -0.070R  win 52.2%  vs placebo -0.034R [-0.052,-0.014]  -> NULL
+  FADE-Z  p50 ODDS n=  579  net -0.160R [-0.208,-0.116]  gross -0.114R  win 47.3%  vs placebo -0.022R [-0.064,+0.013]  -> NULL
+  FADE-Z  p75 ALL  n= 2499  net -0.140R [-0.163,-0.110]  gross -0.065R  win 51.9%  vs placebo -0.009R [-0.033,+0.020]  -> NULL
+  FADE-Z  p75 ODDS n=  593  net -0.131R [-0.183,-0.082]  gross -0.080R  win 49.4%  vs placebo -0.015R [-0.081,+0.025]  -> NULL
+  FADE-Z  p90 ALL  n=  930  net -0.106R [-0.152,-0.051]  gross -0.021R  win 53.7%  vs placebo -0.010R [-0.045,+0.037]  -> NULL
+  FADE-Z  p90 ODDS n=    0  net +0.000R [+0.000,+0.000]  gross +nanR  win  nan%  vs placebo +0.000R [+0.000,+0.000]  -> NULL
+  FOLLOW  p50 ALL  n= 6716  net -0.092R [-0.116,-0.071]  gross +0.011R  win 34.3%  vs placebo +0.004R [-0.016,+0.023]  -> NULL
+  FOLLOW  p50 ODDS n= 3244  net -0.111R [-0.152,-0.075]  gross -0.000R  win 32.4%  vs placebo -0.005R [-0.040,+0.028]  -> NULL
+  FOLLOW  p75 ALL  n= 3404  net -0.056R [-0.093,-0.019]  gross +0.055R  win 33.2%  vs placebo -0.002R [-0.029,+0.029]  -> NULL
+  FOLLOW  p75 ODDS n=  417  net -0.201R [-0.301,-0.121]  gross -0.017R  win 24.9%  vs placebo -0.032R [-0.118,+0.039]  -> NULL
+  FOLLOW  p90 ALL  n= 1329  net -0.089R [-0.137,-0.035]  gross +0.009R  win 46.0%  vs placebo -0.001R [-0.046,+0.054]  -> NULL
+  FOLLOW  p90 ODDS n=  762  net -0.097R [-0.147,-0.020]  gross +0.014R  win 46.2%  vs placebo -0.008R [-0.065,+0.060]  -> NULL
+
+== per instrument (ALL variant, net R)
+  NQ     FADE-L -0.05/-0.09/-0.10  FADE-Z -0.12/-0.14/-0.06  FOLLOW -0.01/+0.13/+0.00
+  GOLD   FADE-L -0.11/-0.13/-0.10  FADE-Z -0.15/-0.16/-0.17  FOLLOW -0.13/-0.12/-0.13
+  EURUSD FADE-L -0.14/-0.09/-0.13  FADE-Z -0.17/-0.12/-0.08  FOLLOW -0.14/-0.19/-0.14
