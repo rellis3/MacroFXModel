@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-19.
+Generated 2026-11-20.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **436** |
-| validated | 83 |
+| claims tested (validated + null + underpowered) | **438** |
+| validated | 84 |
 | null | 210 |
-| underpowered | 143 |
+| underpowered | 144 |
 | context (base rates, descriptions: not counted as tests) | 66 |
 | pre-registrations with no banked verdict (below) | 90 |
 
-**What the count says (Lesson 02 §05).** If none of the 436 claims were real, tests at the usual 5% size would still pass
-about **21.8** of them by luck. 83 passed, so most passes are unlikely to be luck alone, but
-**roughly 22 of the 83 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 438 claims were real, tests at the usual 5% size would still pass
+about **21.9** of them by luck. 84 passed, so most passes are unlikely to be luck alone, but
+**roughly 22 of the 84 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -529,6 +529,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-19 | trade-at-lines | price | null | forge/TRADE_AT_LINES_PREREG.md |
 | 2026-11-19 | turn-at-lines-close | price | underpowered | forge/TURN_AT_LINES_PREREG.md |
 | 2026-11-19 | turn-at-lines-proj | price | null | forge/TURN_AT_LINES_PREREG.md |
+| 2026-11-20 | exhaustion-v2-lockbox | volatility | validated | forge/LADDER_V2_LOCKBOX_PREREG.md |
+| 2026-11-20 | ladder-v2-lockbox | volatility | underpowered | forge/LADDER_V2_LOCKBOX_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 

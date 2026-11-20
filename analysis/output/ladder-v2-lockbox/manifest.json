@@ -1,0 +1,22 @@
+{
+ "holdout": [
+  "2026-08-24",
+  "2026-11-18"
+ ],
+ "fit_end": "2026-08-21",
+ "input_sha256": {
+  "analysis/output/ladder-v2-data/NQ_d1_recent.parquet": "7458c03f4654c601daf26993bed2f355fb99c9c8727d3bbf988197f73b79e98d",
+  "analysis/output/ladder-v2-data/NQ_m5_recent.parquet": "f313d0a12638cc16667b05c5eb28ea0430b8f6266ea0d09dd59f8996fa0bc463",
+  "analysis/output/ladder-v2-data/GOLD_d1_recent.parquet": "50e327d122bd940eca866cb00529883f987b6f5395fc4e7d1e92d60b6896ef20",
+  "analysis/output/ladder-v2-data/GOLD_m5_recent.parquet": "976c94cff55d9fb5b1b11d47787a4a934bbf91f63dc1a903d4ba80cf4142eae7",
+  "analysis/output/ladder-v2-data/EURUSD_d1_recent.parquet": "e89f413cfd7b06e5e78a9d4f491cffe295adf1b7ecfe97276c06e2abafb05930",
+  "analysis/output/ladder-v2-data/EURUSD_m5_recent.parquet": "df1e09d65a637ce2f2819aabaed5ff007ea7c9affe84a877f20afb4d11a8eb9d",
+  "analysis/output/nt8/continuous/NQ_1m_unadj.parquet": "69526de144d5853beba2ec20a375f97e9cecf67b4c9b4f7e0c1a916173b05b6d",
+  "analysis/output/nt8/continuous/NQ_1m_ratio.parquet": "2a4f07eb3b035e23d67a71d6a7fc5e373ed5e9c21a79d759682c44ade511b1be",
+  "analysis/output/nt8/continuous/GC_1m_unadj.parquet": "4f4f370cd44c4d5b27b8e730a3b08327b06f4c15ee1335224f5c7648670e505f",
+  "analysis/output/nt8/continuous/GC_1m_ratio.parquet": "08237c15657ed9fdbc652ea58831cd76909bf99298cfbf1f65b38df24f45c84f",
+  "analysis/output/nt8/continuous/6E_1m_unadj.parquet": "90e2b442030678685af48cb7e0a473ab13083273a0a44ebda56efba63ec4376a",
+  "analysis/output/nt8/continuous/6E_1m_ratio.parquet": "0ed1e8d909a766571c6aed5392385be678c6d421c732c59dc15df802daaba86f",
+  "js/ladderV2Params.json": "4d326f3c336947573d6ebccf6c32dd05e988add8d6cb2e68401e44b20c1f1a98"
+ }
+}

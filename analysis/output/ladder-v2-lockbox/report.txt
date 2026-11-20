@@ -1,0 +1,22 @@
+NQ     C: 63 sessions, arm E6; HL p75 hit v2 25% (yz_10 30%), OH/OL p75 v2 19/32%; touches 269
+GOLD   C: 63 sessions, arm HARCJ; HL p75 hit v2 29% (yz_10 29%), OH/OL p75 v2 24/33%; touches 296
+EURUSD C: 63 sessions, arm HARCJ; HL p75 hit v2 21% (yz_10 24%), OH/OL p75 v2 17/33%; touches 269
+NQ     F: 62 sessions, arm E6; HL p75 hit v2 24% (yz_10 29%), OH/OL p75 v2 18/31%; touches 261
+GOLD   F: 62 sessions, arm R5; HL p75 hit v2 31% (yz_10 31%), OH/OL p75 v2 23/35%; touches 291
+EURUSD F: 62 sessions, arm HARCJ; HL p75 hit v2 21% (yz_10 27%), OH/OL p75 v2 19/34%; touches 276
+
+== L1 forecast (pooled per track; fifths from the holdout pool)
+  C: 189 sessions  30-cell miss v2 5.76 vs yz_10 5.39  |  12-rung miss v2 4.33 vs yz_10 4.39  -> v2 NOT better
+     v2 hit rates (target 50/25/10): hl_p50 53%  hl_p75 25%  hl_p90 11%  oh_p50 42%  oh_p75 20%  oh_p90 5%  ol_p50 59%  ol_p75 33%  ol_p90 16%
+  F: 186 sessions  30-cell miss v2 5.33 vs yz_10 5.63  |  12-rung miss v2 4.65 vs yz_10 4.75  -> v2 better
+     v2 hit rates (target 50/25/10): hl_p50 54%  hl_p75 25%  hl_p90 11%  oh_p50 40%  oh_p75 20%  oh_p90 6%  ol_p50 59%  ol_p75 33%  ol_p90 17%
+
+== L2 exhaustion (pooled per track: 4 London buckets x 2 targets; X7 vs plain odds X0)
+  C next n= 732  observed / X0 / X7 by London bucket: 00-07 59/48/65  07-12 56/47/56  12-16 43/44/48  16-22 25/45/28
+  C sig  n= 834  observed / X0 / X7 by London bucket: 00-07 80/69/81  07-12 76/68/76  12-16 71/66/70  16-22 50/66/52
+  C: miss X7 2.4 vs X0 9.9  |  log loss X7 0.6179 vs X0 0.6451  -> X7 better
+  F next n= 722  observed / X0 / X7 by London bucket: 00-07 63/48/64  07-12 57/46/55  12-16 43/44/48  16-22 27/44/28
+  F sig  n= 828  observed / X0 / X7 by London bucket: 00-07 82/70/83  07-12 75/68/76  12-16 72/67/70  16-22 50/66/53
+  F: miss X7 2.1 vs X0 10.7  |  log loss X7 0.6133 vs X0 0.6447  -> X7 better
+
+VERDICT forecast UNDERPOWERED (C False, F True); exhaustion VALIDATED (C True, F True)
