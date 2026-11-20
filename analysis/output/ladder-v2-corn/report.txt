@@ -1,0 +1,127 @@
+CORN (main race): arms ['A0', 'E_ewma_094', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht']; flags from analysis/output/data_screens/CORN/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 586 (dropped 36 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    B_har_garcht   2.1574  0.194
+    E_har_rv_log   2.1638  0.189
+    G_garch        2.1639  0.181
+    G_gjr          2.1642  0.177
+    SHAR           2.1650  0.205
+    A0             2.1658  0.141
+    E_ewma_090     2.1674  0.199
+    HARCJ          2.1684  0.210
+    G_garch_t      2.1690  0.177
+    G_egarch       2.1698  0.183
+    R5             2.1726  0.201
+    H8             2.1744  0.183
+    E_ewma_094     2.1914  0.167
+    R15            2.1952  0.178
+    E_yz_20        2.1980  0.122
+    E_yz_30        2.2454  0.091
+    E_naive        2.5709  0.006
+
+== CORN C: 586 test sessions 2020-12-31 -> 2026-08-21   noise floor median 2.68pp, p90 3.21pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  R5                 3.25   3.00   0.9578   0.93
+  H8                 3.25   2.69   0.9809   0.83
+  R15                3.36   3.11   0.9712   0.88
+  B_har_garcht       3.40   3.23   0.9792   0.81
+  SHAR               3.46   3.15   0.9566   0.93
+  E_har_rv_log       3.53   2.63   0.9743   0.86
+  HARCJ              3.60   3.11   0.9614   0.90
+  G_garch            3.68   3.33   0.9967   0.72
+  G_garch_t          3.72   3.34   1.0047   0.69
+  G_gjr              3.74   3.36   0.9981   0.71
+  E_ewma_094         3.96   3.30   1.0281   0.61
+  E_yz_30            3.98   4.07*   1.0798   0.54
+  E_ewma_090         3.99   2.45   0.9978   0.61
+  G_egarch           4.00   3.72   0.9846   0.81
+  E_yz_20            4.21   3.50   1.0271   0.64
+  A0                 4.58   2.79   1.0000   0.67
+  E_naive            8.96   6.42*   1.0933  -0.90
+  winner R5, runner-up H8, tie=True, chosen R5; chosen - A0 CI [-1.67, -0.01]pp; calibrated to noise False
+    half 2018-22                       n=  445  chosen 4.62 vs A0 5.27  CI [-1.40,-0.04]
+    half 2023-26                       n=  141  chosen 6.19 vs A0 7.59  CI [-5.47,-1.13]
+    without 2018Q4                     n=  586  chosen 3.25 vs A0 4.58  CI [-1.68,-0.01]
+    without covid                      n=  586  chosen 3.25 vs A0 4.58  CI [-1.68,-0.00]
+    without bear2022                   n=  366  chosen 3.32 vs A0 4.71  CI [-2.21,+0.00]  <-- FAILS
+    without tariff2025                 n=  576  chosen 3.33 vs A0 4.65  CI [-1.58,+0.00]  <-- FAILS
+    without hi1_202104                 n=  523  chosen 3.20 vs A0 4.35  CI [-1.77,+0.00]  <-- FAILS
+    without hi2_202304                 n=  523  chosen 3.88 vs A0 5.21  CI [-2.00,-0.20]
+    without hi3_202205                 n=  523  chosen 3.21 vs A0 4.28  CI [-1.74,+0.00]  <-- FAILS
+    without hi4_202201                 n=  523  chosen 3.49 vs A0 4.58  CI [-1.69,+0.00]  <-- FAILS
+    fault flags out                    n=  540  chosen 3.88 vs A0 5.07  CI [-1.71,-0.14]
+    any flag out (descriptive)         n=  488  chosen 5.55 vs A0 5.95  CI [-1.61,-0.08]
+  HL>p75/p90 by quintile A0            : Q1 33.9/14.4  Q2 19.7/ 4.3  Q3 20.5/ 6.0  Q4 16.2/ 9.4  Q5 18.8/ 7.7
+  HL>p75/p90 by quintile R5            : Q1 25.4/10.2  Q2 18.8/ 5.1  Q3 18.8/ 8.5  Q4 17.9/ 8.5  Q5 20.5/ 9.4
+  HL>p75/p90 by quintile H8            : Q1 25.4/11.9  Q2 17.9/ 6.0  Q3 19.7/ 6.8  Q4 19.7/ 7.7  Q5 21.4/10.3
+  VERDICT CORN C: UNDERPOWERED
+  MIRROR C (20 draws): A0 primary median 3.37pp [2.30, 5.13] vs floor median 2.68 / p90 3.20; HL>p75 Q1-Q5 median +1.1pp [-4.5, +13.5]
+  F: test rows 1861 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    HARCJ          1.6212  0.254
+    B_har_garcht   1.6221  0.249
+    SHAR           1.6241  0.246
+    R5             1.6251  0.240
+    R15            1.6344  0.222
+    G_gjr          1.6369  0.228
+    G_garch        1.6370  0.232
+    G_garch_t      1.6376  0.229
+    E_har_rv_log   1.6377  0.237
+    G_egarch       1.6413  0.229
+    H8             1.6446  0.235
+    A0             1.6552  0.209
+    E_ewma_094     1.6568  0.222
+    E_yz_30        1.6624  0.191
+    E_ewma_090     1.6664  0.242
+    E_yz_20        1.6693  0.210
+    E_naive        1.7717  0.001
+
+== CORN F: 1861 test sessions 2018-01-03 -> 2026-08-21   noise floor median 1.50pp, p90 1.80pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  E_yz_20            1.88   0.65   1.0018   0.79
+  E_har_rv_log       2.02   0.68   0.9800   0.96
+  E_yz_30            2.03   0.86   1.0082   0.81
+  H8                 2.08   0.82   0.9823   0.93
+  E_ewma_090         2.14   1.13   1.0017   0.75
+  B_har_garcht       2.18   0.87   0.9782   1.05
+  E_ewma_094         2.44   1.28   1.0035   0.81
+  G_garch_t          2.47   1.36   0.9957   0.97
+  G_garch            2.50   1.50   0.9951   1.03
+  G_gjr              2.53   1.46   0.9957   1.03
+  HARCJ              2.56   1.25   0.9808   1.18
+  R15                2.58   1.31   0.9900   1.11
+  SHAR               2.59   1.50   0.9848   1.19
+  R5                 2.66   1.51   0.9854   1.19
+  G_egarch           2.84   1.12   0.9946   1.03
+  A0                 3.00   0.91   1.0000   0.77
+  E_naive            8.68   2.26*   1.1241   0.81
+  winner E_yz_20, runner-up E_har_rv_log, tie=True, chosen E_har_rv_log; chosen - A0 CI [-2.14, -0.75]pp; calibrated to noise False
+    half 2018-22                       n= 1054  chosen 2.18 vs A0 2.91  CI [-2.22,-0.47]
+    half 2023-26                       n=  807  chosen 2.82 vs A0 3.89  CI [-3.19,-1.01]
+    without 2018Q4                     n= 1818  chosen 1.88 vs A0 3.08  CI [-2.14,-0.75]
+    without covid                      n= 1768  chosen 2.04 vs A0 2.98  CI [-2.28,-0.74]
+    without bear2022                   n= 1641  chosen 1.93 vs A0 3.18  CI [-2.43,-0.89]
+    without tariff2025                 n= 1799  chosen 2.00 vs A0 2.75  CI [-1.97,-0.70]
+    without hi1_202104                 n= 1798  chosen 1.84 vs A0 3.07  CI [-2.38,-0.86]
+    without hi2_202305                 n= 1798  chosen 1.88 vs A0 3.06  CI [-2.34,-0.81]
+    without hi3_202205                 n= 1798  chosen 1.98 vs A0 2.72  CI [-2.09,-0.71]
+    without hi4_202201                 n= 1798  chosen 2.05 vs A0 2.96  CI [-2.13,-0.71]
+    fault flags out                    n= 1778  chosen 1.96 vs A0 3.28  CI [-2.63,-1.09]
+    any flag out (descriptive)         n= 1650  chosen 2.80 vs A0 4.03  CI [-2.59,-1.26]
+  HL>p75/p90 by quintile A0            : Q1 36.7/16.9  Q2 24.2/10.5  Q3 26.6/11.3  Q4 20.4/ 7.3  Q5 18.0/ 6.5
+  HL>p75/p90 by quintile E_har_rv_log  : Q1 29.0/11.3  Q2 19.4/ 8.1  Q3 26.3/10.2  Q4 21.8/ 7.0  Q5 28.0/11.0
+  HL>p75/p90 by quintile E_yz_20       : Q1 31.4/13.4  Q2 22.3/10.8  Q3 29.0/11.3  Q4 20.4/ 7.5  Q5 26.1/ 9.1
+  HL>p75/p90 by quintile H8            : Q1 29.0/11.3  Q2 20.4/ 8.1  Q3 27.2/10.5  Q4 22.0/ 6.7  Q5 26.9/12.1
+  VERDICT CORN F: VALIDATED
+  MIRROR F (20 draws): A0 primary median 1.54pp [0.91, 1.97] vs floor median 1.50 / p90 1.78; HL>p75 Q1-Q5 median +0.7pp [-5.2, +6.6]
+
+== CORN C vs F on 589 common London dates: F/C ratio (90% CI)
+  hl_p50  1.0110 [0.9862, 1.0285] ok
+  hl_p75  1.0140 [0.9874, 1.0277] ok
+  oh_p50  1.0202 [0.9855, 1.0921] OUTSIDE
+  oh_p75  0.9899 [0.9698, 1.0608] OUTSIDE
+  ol_p50  1.0508 [0.9686, 1.0761] OUTSIDE
+  ol_p75  1.0058 [0.9513, 1.0419] ok
+  -> DIFFERENT (F keeps its own winner)

@@ -1,0 +1,44 @@
+{
+ "symbol": "SUGAR",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "analysis/output/ladder-v2-data/m1_commod/sugar_m1.parquet": "ff5040ccd1b977eebed902671d6b0583b4037e9f1f3c5ee2d92a3d6bfb77d47f"
+ },
+ "sessions": {
+  "C": [
+   "2015-12-30",
+   "2026-11-20",
+   2741
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 65
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 2741
+  }
+ ]
+}

@@ -1,0 +1,127 @@
+WHEAT (main race): arms ['A0', 'E_ewma_094', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht']; flags from analysis/output/data_screens/WHEAT/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 1694 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    HARCJ          2.2923  0.213
+    R5             2.2935  0.211
+    SHAR           2.2940  0.208
+    B_har_garcht   2.3009  0.203
+    R15            2.3028  0.195
+    G_gjr          2.3060  0.230
+    G_garch        2.3063  0.221
+    G_garch_t      2.3066  0.220
+    G_egarch       2.3081  0.243
+    A0             2.3094  0.178
+    E_har_rv_log   2.3149  0.158
+    H8             2.3179  0.154
+    E_ewma_094     2.3196  0.229
+    E_yz_20        2.3223  0.150
+    E_ewma_090     2.3303  0.267
+    E_yz_30        2.3377  0.112
+    E_naive        2.4610  0.000
+
+== WHEAT C: 1694 test sessions 2018-03-02 -> 2026-08-21   noise floor median 1.59pp, p90 1.87pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  R15                1.51   0.77   0.9700   0.93
+  G_garch            1.60   0.78   0.9873   0.77
+  H8                 1.62   1.04   0.9855   0.84
+  SHAR               1.63   0.75   0.9661   0.93
+  G_garch_t          1.65   0.82   0.9881   0.76
+  E_har_rv_log       1.66   1.26   0.9832   0.90
+  HARCJ              1.68   0.70   0.9649   0.92
+  R5                 1.69   0.69   0.9659   0.93
+  B_har_garcht       1.70   0.93   0.9773   0.88
+  G_gjr              1.77   0.88   0.9868   0.77
+  E_yz_30            1.79   1.45   1.0182   0.63
+  G_egarch           1.83   0.77   0.9844   0.81
+  E_yz_20            2.07   1.13   1.0096   0.66
+  E_ewma_094         2.08   0.59   1.0012   0.66
+  E_ewma_090         2.63   0.74   1.0066   0.61
+  A0                 3.21   1.04   1.0000   0.68
+  E_naive            7.18   3.91*   1.0779   0.23
+  winner R15, runner-up G_garch, tie=True, chosen R15; chosen - A0 CI [-2.05, -0.79]pp; calibrated to noise True
+    half 2018-22                       n=  905  chosen 2.29 vs A0 3.71  CI [-1.96,-0.68]
+    half 2023-26                       n=  789  chosen 1.97 vs A0 3.43  CI [-2.56,-1.00]
+    without 2018Q4                     n= 1688  chosen 1.44 vs A0 3.20  CI [-2.09,-0.82]
+    without covid                      n= 1611  chosen 1.49 vs A0 3.50  CI [-2.19,-1.04]
+    without bear2022                   n= 1451  chosen 1.76 vs A0 3.00  CI [-1.99,-0.70]
+    without tariff2025                 n= 1634  chosen 1.61 vs A0 3.35  CI [-2.06,-0.85]
+    without hi1_202202                 n= 1631  chosen 1.24 vs A0 2.98  CI [-2.02,-0.71]
+    without hi2_202206                 n= 1631  chosen 1.30 vs A0 3.16  CI [-2.06,-0.88]
+    without hi3_202305                 n= 1631  chosen 1.41 vs A0 3.27  CI [-2.15,-0.85]
+    without hi4_201805                 n= 1631  chosen 1.25 vs A0 2.87  CI [-1.97,-0.70]
+    fault flags out                    n= 1675  chosen 1.57 vs A0 3.32  CI [-2.11,-0.86]
+    any flag out (descriptive)         n= 1495  chosen 2.33 vs A0 3.31  CI [-1.71,-0.48]
+  HL>p75/p90 by quintile A0            : Q1 31.9/14.5  Q2 27.1/10.3  Q3 22.5/ 7.4  Q4 25.1/ 7.7  Q5 13.9/ 5.9
+  HL>p75/p90 by quintile R15           : Q1 24.5/10.6  Q2 25.1/ 8.8  Q3 21.6/ 8.3  Q4 26.0/ 8.3  Q5 24.2/ 9.1
+  HL>p75/p90 by quintile H8            : Q1 23.9/10.9  Q2 24.8/ 8.6  Q3 21.3/ 7.1  Q4 24.8/ 8.8  Q5 26.5/ 9.4
+  VERDICT WHEAT C: VALIDATED
+  MIRROR C (20 draws): A0 primary median 1.75pp [1.53, 2.26] vs floor median 1.58 / p90 1.89; HL>p75 Q1-Q5 median +0.0pp [-8.0, +8.6]
+  F: test rows 1904 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    HARCJ          2.2310  0.241
+    R5             2.2325  0.242
+    SHAR           2.2331  0.240
+    R15            2.2467  0.221
+    B_har_garcht   2.2530  0.201
+    G_egarch       2.2603  0.280
+    G_garch        2.2657  0.250
+    G_garch_t      2.2663  0.247
+    E_har_rv_log   2.2683  0.137
+    G_gjr          2.2685  0.257
+    H8             2.2735  0.129
+    E_ewma_094     2.2784  0.263
+    A0             2.2799  0.238
+    E_yz_20        2.2826  0.190
+    E_ewma_090     2.2907  0.300
+    E_yz_30        2.2918  0.146
+    E_naive        2.3719  0.004
+
+== WHEAT F: 1904 test sessions 2018-01-03 -> 2026-08-21   noise floor median 1.48pp, p90 1.78pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  E_har_rv_log       1.20   0.47   0.9837   0.96
+  R15                1.23   1.08   0.9695   1.08
+  SHAR               1.25   1.10   0.9640   1.10
+  R5                 1.26   1.09   0.9637   1.10
+  H8                 1.28   0.64   0.9933   0.84
+  E_yz_30            1.30   0.76   1.0142   0.73
+  HARCJ              1.39   1.15   0.9628   1.10
+  E_ewma_094         1.50   1.00   1.0011   0.74
+  G_egarch           1.60   1.02   0.9883   0.95
+  B_har_garcht       1.60   0.77   0.9792   1.02
+  E_yz_20            1.77   0.69   1.0062   0.73
+  E_ewma_090         2.02   0.82   1.0080   0.67
+  G_garch_t          2.04   1.17   0.9941   0.89
+  G_garch            2.11   1.23   0.9933   0.91
+  G_gjr              2.19   1.21   0.9933   0.91
+  A0                 3.00   0.43   1.0000   0.71
+  E_naive            7.34   2.38*   1.0871   0.81
+  winner E_har_rv_log, runner-up R15, tie=True, chosen R15; chosen - A0 CI [-2.53, -0.92]pp; calibrated to noise True
+    half 2018-22                       n= 1099  chosen 1.92 vs A0 3.32  CI [-2.44,-0.80]
+    half 2023-26                       n=  805  chosen 2.13 vs A0 3.57  CI [-3.05,-0.88]
+    without 2018Q4                     n= 1855  chosen 1.34 vs A0 3.20  CI [-2.60,-0.95]
+    without covid                      n= 1811  chosen 1.24 vs A0 3.01  CI [-2.54,-0.90]
+    without bear2022                   n= 1689  chosen 1.61 vs A0 3.66  CI [-2.64,-1.21]
+    without tariff2025                 n= 1843  chosen 1.23 vs A0 3.09  CI [-2.55,-0.97]
+    without hi1_202202                 n= 1841  chosen 1.27 vs A0 3.23  CI [-2.60,-1.14]
+    without hi2_202206                 n= 1841  chosen 1.21 vs A0 3.32  CI [-2.73,-1.09]
+    without hi3_202305                 n= 1841  chosen 1.24 vs A0 3.12  CI [-2.54,-0.99]
+    without hi4_201805                 n= 1841  chosen 1.11 vs A0 3.18  CI [-2.65,-1.10]
+    fault flags out                    n= 1868  chosen 1.17 vs A0 3.18  CI [-2.63,-1.13]
+    any flag out (descriptive)         n= 1671  chosen 1.73 vs A0 3.01  CI [-2.34,-0.67]
+  HL>p75/p90 by quintile A0            : Q1 33.3/15.0  Q2 27.8/11.5  Q3 27.4/ 8.4  Q4 23.1/ 8.7  Q5 15.0/ 5.5
+  HL>p75/p90 by quintile R15           : Q1 24.9/ 9.7  Q2 24.9/ 9.7  Q3 27.4/ 8.7  Q4 25.5/ 9.7  Q5 28.1/10.8
+  HL>p75/p90 by quintile E_har_rv_log  : Q1 24.7/10.5  Q2 21.8/ 9.2  Q3 25.8/ 7.6  Q4 25.5/ 9.7  Q5 26.5/11.8
+  HL>p75/p90 by quintile H8            : Q1 23.9/ 9.7  Q2 21.8/ 8.4  Q3 23.4/ 7.1  Q4 24.7/10.0  Q5 25.7/12.1
+  VERDICT WHEAT F: VALIDATED
+  MIRROR F (20 draws): A0 primary median 1.40pp [1.14, 1.90] vs floor median 1.49 / p90 1.78; HL>p75 Q1-Q5 median +0.0pp [-7.1, +5.5]
+
+== WHEAT C vs F on 1579 common London dates: F/C ratio (90% CI)
+  hl_p50  1.0202 [1.0157, 1.0319] ok
+  hl_p75  1.0191 [1.0096, 1.0254] ok
+  oh_p50  0.9918 [0.9595, 1.0225] ok
+  oh_p75  1.0041 [0.9751, 1.0231] ok
+  ol_p50  1.0547 [1.0241, 1.0691] OUTSIDE
+  ol_p75  1.0411 [1.0190, 1.0572] OUTSIDE
+  -> DIFFERENT (F keeps its own winner)

@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+CORN C: lines from ladder arm R5
+  placebo (lines from a random same-year session): 2558 first touches
+CORN C: 522 sessions, 2409 first touches; extraction check 79/79 match on 20 sessions
+  touches per family x rung: OCd50 264, OCd75 153, OCd90 67, OCu50 308, OCu75 168, OCu90 68, OH50 308, OH75 139, OH90 63, OL50 250, OL75 120, OL90 45, PH50 149, PH75 63, PH90 22, PL50 134, PL75 62, PL90 26
+  wrong-side dynamic touches: 18; release still to come: 458
+CORN F: lines from ladder arm E_har_rv_log
+  placebo (lines from a random same-year session): 8702 first touches
+CORN F: 1693 sessions, 8138 first touches; extraction check 64/64 match on 20 sessions
+  touches per family x rung: OCd50 912, OCd75 431, OCd90 158, OCu50 985, OCu75 479, OCu90 191, OH50 928, OH75 472, OH90 175, OL50 957, OL75 493, OL90 178, PH50 542, PH75 263, PH90 101, PL50 539, PL75 245, PL90 89
+  wrong-side dynamic touches: 129; release still to come: 1256

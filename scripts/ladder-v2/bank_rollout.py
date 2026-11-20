@@ -62,25 +62,33 @@ def collect():
     for sym in L.SYMS:
         if sym in PILOTS:
             continue
-        tr = L.tracks_for(sym)
         lp = ROOT / f"analysis/output/ladder-v2-{sym.lower()}/results.json"
         ep = ROOT / f"analysis/output/exhaustion-v2-{sym.lower()}/results.json"
-        if not tr or not lp.exists() or not ep.exists():
-            pending.append((sym, tr))
+        if not lp.exists() or not ep.exists():
+            pending.append((sym, L.tracks_for(sym, include_failed=True)))
             continue
         r, e = json.loads(lp.read_text()), json.loads(ep.read_text())
-        d = {"sym": sym, "tracks": tr, "fut": L.SYMS[sym].get("f"), "lad": {}, "exh": {}}
+        tr = [t for t in L.tracks_for(sym, include_failed=True) if t in r]     # every scored track is banked
+        d = {"sym": sym, "tracks": tr, "fut": L.SYMS[sym].get("f"), "lad": {}, "exh": {}, "inv_fail": {}}
         for t in tr:
             x = r[t]; c = x["chosen"]
-            d["lad"][t] = {"verdict": x["verdict"], "chosen": c, "A0": x["arms"]["A0"]["primary"],
+            inv = L.INVENTORY_FAIL.get((sym, t))
+            d["lad"][t] = {"verdict": "UNDERPOWERED" if inv else x["verdict"], "raw_verdict": x["verdict"], "chosen": c,
+                           "A0": x["arms"]["A0"]["primary"],
                            "chosen_primary": x["arms"][c]["primary"], "ci": x["chosen_minus_A0_ci90_reselected"],
                            "n": x["n"], "floor_p90": x["floor_p90"], "within_noise": x["chosen_calibrated_to_noise"],
-                           "fails": failing(x["checks"]), "live": L.SYMS[sym]["live"]}
+                           "fails": failing(x["checks"]) + ([f"inventory: {inv:.0f}% of sessions thin (A2)"] if inv else []),
+                           "live": L.SYMS[sym]["live"]}
+            if inv:
+                d["inv_fail"][t] = inv
+            if t not in e:
+                continue
             y = e[t]; c2 = y["chosen"]
-            d["exh"][t] = {"verdict": y["verdict"], "chosen": c2, "X0": y["cands"]["X0"]["primary"],
+            d["exh"][t] = {"verdict": "UNDERPOWERED" if inv else y["verdict"], "raw_verdict": y["verdict"], "chosen": c2, "X0": y["cands"]["X0"]["primary"],
                            "chosen_primary": y["cands"][c2]["primary"], "ci": y["chosen_minus_X0_ci90"],
                            "ll": y["cands"][c2]["logloss_vs_X0"], "n_sessions": y["n_sessions"],
-                           "touches": y["n_touches"], "fails": failing(y["checks"])}
+                           "touches": y["n_touches"],
+                           "fails": failing(y["checks"]) + ([f"inventory: {inv:.0f}% of sessions thin (A2)"] if inv else [])}
         if "c_vs_f" in r:
             rat = [v["ratio"] for v in r["c_vs_f"]["ratios"].values()]
             d["cvf"] = {"same": r["c_vs_f"]["same"], "n": r["c_vs_f"]["n"], "lo": min(rat), "hi": max(rat)}
@@ -96,6 +104,8 @@ def fut_arm(d):
     """The arm the futures lines use: H3 'same' reuses the CFD spec."""
     if "F" not in d["lad"]:
         return None
+    if "C" in d["inv_fail"] or "C" not in d["lad"]:
+        return d["lad"]["F"]["chosen"]
     return d["lad"]["C"]["chosen"] if d.get("cvf", {}).get("same") else d["lad"]["F"]["chosen"]
 
 
@@ -123,11 +133,11 @@ def entries(rows):
             out.append(f"""  {{
     id: 'ladder-v2-{s}-cvf', domain: 'volatility', verdict: 'context', date: '{TODAY}', doc: '{DOC}', {also},
     claim: '{d["fut"]} futures and the {S} CFD have the same daily range distribution in percent of the London open',
-    result: '{"SAME" if c["same"] else "DIFFERENT"}: {c["n"]:,} common dates, F/C ratios {c["lo"]:.3f}-{c["hi"]:.3f}.',
-    use: '{f"One percent ladder serves {S} CFD and {d['fut']} charts." if c["same"] else f"{d['fut']} keeps its own widths and winner ({arm(d['lad']['F']['chosen'])})."}',
+    result: '{"SAME" if c["same"] else "DIFFERENT"}: {c["n"]:,} common dates, F/C ratios {c["lo"]:.3f}-{c["hi"]:.3f}.{" The CFD side fails the inventory bar (A2), so the common dates are its busy days only." if "C" in d["inv_fail"] else ""}',
+    use: '{f"{d['fut']} keeps its own widths and winner ({arm(d['lad']['F']['chosen'])}); the CFD fails inventory." if "C" in d["inv_fail"] else f"One percent ladder serves {S} CFD and {d['fut']} charts." if c["same"] else f"{d['fut']} keeps its own widths and winner ({arm(d['lad']['F']['chosen'])})."}',
     instruments: ['{S}'],
   }},""")
-        for t in d["tracks"]:
+        for t in [t for t in d["tracks"] if t in d["exh"]]:
             y = d["exh"][t]; fid = f"exhaustion-v2-{s}" + ("-fut" if t == "F" else "")
             src = "CFD" if t == "C" else f"{d['fut']} futures"
             fails = f" Fails: {', '.join(y['fails'])}." if y["fails"] else " Every check below 0."
@@ -146,9 +156,10 @@ def power(rows):
     for d in rows:
         s = d["sym"].lower()
         for t in d["tracks"]:
-            x, y = d["lad"][t], d["exh"][t]; sf = "-fut" if t == "F" else ""
+            x, y = d["lad"][t], d["exh"].get(t); sf = "-fut" if t == "F" else ""
             out.append(f"  'ladder-v2-{s}{sf}': {{ n: '{x['n']:,} sessions, 63-session blocks, winner re-selected per draw', note: 'observed {x['chosen_primary'] - x['A0']:+.2f}pp' }},")
-            out.append(f"  'exhaustion-v2-{s}{sf}': {{ n: '{y['touches']['next']:,} / {y['touches']['sig']:,} touches on {y['n_sessions']:,} sessions', note: 'NULL bar 1pp; observed {y['chosen_primary'] - y['X0']:+.2f}pp' }},")
+            if y:
+                out.append(f"  'exhaustion-v2-{s}{sf}': {{ n: '{y['touches']['next']:,} / {y['touches']['sig']:,} touches on {y['n_sessions']:,} sessions', note: 'NULL bar 1pp; observed {y['chosen_primary'] - y['X0']:+.2f}pp' }},")
         if "cvf" in d:
             out.append(f"  'ladder-v2-{s}-cvf': {{ n: '{d['cvf']['n']:,} common London dates', note: 'ratios {d['cvf']['lo']:.3f}-{d['cvf']['hi']:.3f}' }},")
     return "\n".join(out)
@@ -181,7 +192,7 @@ def main():
     rows, pending = collect()
     # multiplicity (prereg §3)
     lad = [(d["sym"], t, d["lad"][t]) for d in rows for t in d["tracks"]]
-    exh = [(d["sym"], t, d["exh"][t]) for d in rows for t in d["tracks"]]
+    exh = [(d["sym"], t, d["exh"][t]) for d in rows for t in d["tracks"] if t in d["exh"]]
     lp = [p_approx(x["ci"]) for _, _, x in lad]; ep = [p_approx(x["ci"]) for _, _, x in exh]
     lk, ek = bh(lp), bh(ep)
     n = len(lad)
@@ -210,7 +221,16 @@ def main():
           f"under the 90% CI rule. BH q = 0.10 over approximate one-sided p-values (normal approximation from each 90% CI; "
           f"conservative where the re-selected CI is clipped at 0) keeps {sum(lk)}/{n} sigma races and {sum(ek)}/{n} exhaustion "
           "races. Errors are correlated across instruments (about 0.47 for sigma), so the effective number of tries is smaller.",
-          "- Pending (no data yet): " + (", ".join(f"{s}" for s, _ in pending) or "none") + ".", "",
+          "- Not scored: " + (", ".join(f"{s}" + (" (CFD fails inventory: 100% thin, A2)" if (s, "C") in L.INVENTORY_FAIL else "")
+                                           for s, _ in pending) or "none") + ".",
+          "- **Inventory (amendment A2, post-hoc, demote-only):** the commodity CFDs were downloaded for this study and skipped the "
+          "0.1 inventory screen. Applied afterwards with the harness's own session floor (600 London bars), "
+          + ", ".join(f"{s} CFD {v:.0f}%" for (s, t), v in L.INVENTORY_FAIL.items()) +
+          " of present sessions are thin, so their scored sessions are the busy days only. Their CFD verdicts are demoted to "
+          "UNDERPOWERED and stay off the exports; their futures (NG, ZW, ZC) passed the 0.1 screen and stand. Read literally, "
+          "0.1's futures threshold (1,000 of 1,320 bars) would also flag SPX500 (21% thin), DE30 (28%), SILVER (26%), PLATINUM "
+          "(25%) and PALLADIUM (54%) CFDs; under the harness floor they drop at most 2% of sessions, so their samples are not "
+          "activity-selected and they stand, flagged here.", "",
           "## Sigma race (regime miss, pp; lower is better)", "",
           "| Instrument | Track | Verdict | Chosen | Chosen | Live | CI (chosen − live) | Fails | BH |",
           "|---|---|---|---|---|---|---|---|---|"]

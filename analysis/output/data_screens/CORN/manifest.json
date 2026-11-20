@@ -1,0 +1,97 @@
+{
+ "symbol": "CORN",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "analysis/output/ladder-v2-data/m1_commod/corn_m1.parquet": "6bf5edb4974fc9d678ce05224761a49f88dc12b6cefa043ac098a4919908c8cd",
+  "analysis/output/nt8/continuous/ZC_1m_unadj.parquet": "124bd0a116eda6b579230750fbdff9f323b77973fa32aa0fc848214d114cc72e",
+  "analysis/output/nt8/continuous/ZC_1m_ratio.parquet": "5ed1d8c4c66b8e165f15ae8bcc16f9fe1164c4483a61be69018821c27ab2cb62",
+  "analysis/output/nt8/continuous/ZC_rolls.csv": "085588b1ab11fb15771e8a2e89e6a8793f7ae79aca60bbad23d42adecb845cd1"
+ },
+ "sessions": {
+  "C": [
+   "2015-12-30",
+   "2026-11-20",
+   2748
+  ],
+  "F": [
+   "2014-12-08",
+   "2026-11-19",
+   2913
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 154
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 4
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 2074
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 46
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 19
+  },
+  {
+   "track": "F",
+   "screen": "frozen",
+   "n": 24
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 182
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 6
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 26
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 417
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 34
+  }
+ ]
+}

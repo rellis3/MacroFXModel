@@ -84,3 +84,26 @@ RTY's NT8 history starts 2017-07, so its first ladder test year is 2019 and its 
 before 2019 the plain-ladder baseline X0 was undefined and the fitted candidates were fitted on no rows, and the scorer
 stopped with an error. RTY F's exhaustion is therefore scored on **2020+**. A check over every touches file written so
 far found no other instrument-track whose touches start after 2018, so no other result changes.
+
+### A2 — 2026-11-20, POST-HOC (results seen; demote-only): the inventory bar for the commodity CFDs
+
+§1 says an instrument failing the 0.1 inventory bar is reported and skipped. The commodity CFDs were downloaded for this
+study, and the queue never ran that screen on them. That was an omission in the run, found when sugar produced zero
+sessions and corn produced 646. The screen was applied afterwards with the harness's own session floor (600 London
+bars; shorter sessions are dropped before scoring). The shares of present London weekday sessions (2016-01 → 2026-08)
+below that floor:
+- NATGAS 22.3%
+- SOYBEAN 22.7%
+- WHEAT 34.5%
+- CORN 75.9%
+- SUGAR 100% (OANDA quotes sugar about 6½ hours a day)
+
+Their scored sessions are therefore the busy days only. The CFD verdicts for NATGAS, SOYBEAN and WHEAT (sigma and
+exhaustion) and CORN (sigma) are **demoted to UNDERPOWERED**. They stay off the exports. SUGAR and CORN CFD exhaustion
+are not scored. Their futures (NG, ZW, ZC) passed the 0.1 screen and stand. With the CFD side excluded, ZC's exhaustion
+uses its own F lines and an F-clock positive control.
+
+Read literally, 0.1's futures threshold (1,000 of 1,320 bars) would also flag the SPX500, DE30, SILVER, PLATINUM and
+PALLADIUM CFDs. These are flagged because those CFDs quote fewer minutes overnight, not because their data is
+incomplete. Under the harness floor they drop at most 2% of sessions, so they stand. RESULTS.md reports them. This
+amendment can only demote, so it changes no other verdict.

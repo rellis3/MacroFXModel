@@ -1,0 +1,6 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+SOYBEAN C: lines from ladder arm R5
+  placebo (lines from a random same-year session): 8157 first touches
+SOYBEAN C: 1678 sessions, 7781 first touches; extraction check 78/78 match on 20 sessions
+  touches per family x rung: OCd50 873, OCd75 407, OCd90 148, OCu50 954, OCu75 465, OCu90 168, OH50 906, OH75 433, OH90 161, OL50 957, OL75 472, OL90 184, PH50 496, PH75 245, PH90 101, PL50 504, PL75 226, PL90 81
+  wrong-side dynamic touches: 95; release still to come: 1487

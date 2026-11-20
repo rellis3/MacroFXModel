@@ -562,14 +562,55 @@
   }
  },
  "SOYBEAN": {
-  "state": "running",
+  "state": "done",
   "tracks": [
    "C"
   ],
   "steps": {
    "screens": "ok 13s",
    "build": "ok 33s",
-   "score": "running"
+   "score": "ok 290s",
+   "touches": "ok 34s",
+   "exhaustion": "ok 334s"
+  }
+ },
+ "WHEAT": {
+  "state": "running",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 18s",
+   "build": "ok 53s",
+   "score": "ok 485s",
+   "touches": "ok 64s",
+   "exhaustion": "running"
+  }
+ },
+ "SUGAR": {
+  "state": "failed at score",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 8s",
+   "build": "ok 29s",
+   "score": "FAILED rc=1"
+  }
+ },
+ "CORN": {
+  "state": "failed at exhaustion",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 17s",
+   "build": "ok 53s",
+   "score": "ok 344s",
+   "touches": "ok 42s",
+   "exhaustion": "FAILED rc=1"
   }
  }
 }

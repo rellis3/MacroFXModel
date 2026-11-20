@@ -79,10 +79,18 @@ for _n, _k, _r, _inv, _iv, _ref in _ROLLOUT:
     SYMS.setdefault(_n, dict(c=_cfd_path(_k), f=_r, iv=_iv, ref=_ref, live=_LIVE.get(_n, "yz_10"), invert=_inv))
 
 
-def tracks_for(sym):
-    """The tracks this instrument has data for: C needs its OANDA cache, F its NT8 continuous files."""
+# Rollout amendment A2 (post-hoc, demote-only): commodity CFDs whose OANDA M1 fails the inventory bar — more than 15% of
+# present London weekday sessions below the harness's own 600-bar session floor, so the scored sessions are an
+# activity-selected subset. Share dropped, 2016-01 -> 2026-08.
+INVENTORY_FAIL = {("NATGAS", "C"): 22.3, ("SOYBEAN", "C"): 22.7, ("WHEAT", "C"): 34.5, ("CORN", "C"): 75.9,
+                  ("SUGAR", "C"): 100.0}
+
+
+def tracks_for(sym, include_failed=False):
+    """The tracks this instrument has data for: C needs its OANDA cache, F its NT8 continuous files. Tracks that fail
+    the inventory bar (INVENTORY_FAIL) are left out unless include_failed."""
     cfg, out = SYMS[sym], []
-    if cfg.get("c") and (ROOT / cfg["c"]).exists():
+    if cfg.get("c") and (ROOT / cfg["c"]).exists() and (include_failed or (sym, "C") not in INVENTORY_FAIL):
         out.append("C")
     if cfg.get("f") and (ROOT / f"analysis/output/nt8/continuous/{cfg['f']}_1m_unadj.parquet").exists():
         out.append("F")

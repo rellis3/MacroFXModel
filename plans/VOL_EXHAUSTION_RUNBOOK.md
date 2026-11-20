@@ -144,7 +144,7 @@ Lean version agreed with the owner: no separate site page; the signature plot wa
 - [x] NQ 2026-11-18 (`ladder-v2-nq`, VALIDATED): har_rv_log, regime miss 2.40 → 1.49pp, within the noise floor.
 - [x] GOLD 2026-11-19 (`ladder-v2-gold`, VALIDATED): HAR-CJ (5-min RV, jumps split), 3.53 → 1.55pp, within noise.
 - [x] EURUSD 2026-11-19 (`ladder-v2-eurusd`, VALIDATED): HAR-CJ, 2.81 → 1.38pp, within noise. IV race 2021+ UNDERPOWERED, IV arms don't win.
-- [x] Rollout 2026-11-20 (`ladder-v2-rollout`, 42 instruments, 58 tracks): sigma 51 VALIDATED, 7 UNDERPOWERED (US2000 C, USDJPY C, USDJPY F, CHFJPY C, GBPJPY C, UK100 C, ZT F), 0 NULL. Table: `analysis/output/ladder-v2-rollout/RESULTS.md`.
+- [x] Rollout 2026-11-20 (`ladder-v2-rollout`, 45 instruments, 63 tracks): sigma 52 VALIDATED, 11 UNDERPOWERED (US2000 C, USDJPY C, USDJPY F, CHFJPY C, GBPJPY C, UK100 C, NATGAS C, SOYBEAN C, WHEAT C, CORN C, ZT F), 0 NULL. Table: `analysis/output/ladder-v2-rollout/RESULTS.md`.
 ### 1.3 Run F  `[~]`
 - [x] NQ 2026-11-18 (`ladder-v2-nq-fut`, VALIDATED): har_rv_log, 2.50 → 1.82pp.
 - [x] GOLD 2026-11-19 (`ladder-v2-gold-fut`, VALIDATED): HAR-RV 5-min, 3.08 → 1.44pp, within noise.
@@ -154,7 +154,7 @@ Lean version agreed with the owner: no separate site page; the signature plot wa
 - [x] NQ: same distribution (ratios 0.994–1.007), so F reuses the C spec (`ladder-v2-nq-cvf`).
 - [x] GOLD: different (futures ranges 2–6% wider), so GC keeps its own widths and winner (`ladder-v2-gold-cvf`).
 - [x] EURUSD: same (ratios 1.003–1.012), so 6E reuses the CFD spec (`ladder-v2-eurusd-cvf`).
-- [x] Rollout 2026-11-20: C vs F different for DE30, SILVER, BRENT, NATGAS; every other pair reuses the CFD spec.
+- [x] Rollout 2026-11-20: C vs F different for DE30, SILVER, BRENT, NATGAS, WHEAT, CORN; every other pair reuses the CFD spec.
 - [ ] Same London session: are OH/OL/HL/OC % distributions and σ the same within noise? If yes, F reuses the C spec. If no, F keeps its own spec.
 
 ### 1.5 Event multipliers  (C+F)  `[ ]`
@@ -202,7 +202,7 @@ P(extreme ≥ X+δ) ÷ P(extreme ≥ X). Prior evidence:
 - [x] GOLD 2026-11-19 (`exhaustion-v2-gold`, VALIDATED C and F): same clock shape; X7 11.4 → 3.7pp. Control
       fixed pre-results: the noise floor must include same-day clustering of touches (20 synthetic histories).
 - [x] EURUSD 2026-11-19 (`exhaustion-v2-eurusd`, VALIDATED C and F): same clock shape; X7 10.6 → 3.8pp.
-- [x] Rollout 2026-11-20: exhaustion 58/58 VALIDATED across the rollout (`exhaustion-v2-<sym>`).
+- [x] Rollout 2026-11-20: exhaustion 59/63 VALIDATED across the rollout (`exhaustion-v2-<sym>`).
       Three pilots (index, metal, FX) done on both halves: owner review before rolling to more instruments.
 
 ### 2.4 Export + indicator  `[x]` 2026-11-19 (NQ, GOLD, EURUSD)
