@@ -1,0 +1,6 @@
+Major release times (Euro Area): 267 (2014-01-09 10:00:00+00:00 -> 2026-11-13 10:00:00+00:00)
+EURJPY C: lines from ladder arm SHAR
+  placebo (lines from a random same-year session): 10395 first touches
+EURJPY C: 2006 sessions, 9757 first touches; extraction check 80/80 match on 20 sessions
+  touches per family x rung: OCd50 1132, OCd75 615, OCd90 260, OCu50 1106, OCu75 543, OCu90 203, OH50 1150, OH75 557, OH90 210, OL50 1090, OL75 547, OL90 216, PH50 655, PH75 283, PH90 113, PL50 650, PL75 296, PL90 131
+  wrong-side dynamic touches: 172; release still to come: 385

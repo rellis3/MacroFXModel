@@ -1,0 +1,54 @@
+{
+ "symbol": "AUDNZD",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "portfolioBacktest/cache/audnzd_m1.parquet": "712b66fcf691283979ce5a8dc3cab60618195346f69ef5ea3e8b347ddfdd7b3f"
+ },
+ "sessions": {
+  "C": [
+   "2016-01-04",
+   "2026-08-21",
+   2760
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "gap",
+   "n": 3
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 901
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 4
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 3
+  }
+ ]
+}

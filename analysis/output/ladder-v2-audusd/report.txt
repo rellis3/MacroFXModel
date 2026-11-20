@@ -1,0 +1,126 @@
+AUDUSD (main race): arms ['A0', 'E_ewma_094', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht']; flags from analysis/output/data_screens/AUDUSD/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 2238 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    HARCJ          -0.0923  0.208
+    SHAR           -0.0908  0.201
+    R15            -0.0898  0.195
+    R5             -0.0897  0.197
+    E_har_rv_log   -0.0827  0.189
+    H8             -0.0778  0.206
+    A0             -0.0727  0.206
+    B_har_garcht   -0.0691  0.177
+    E_yz_30        -0.0685  0.084
+    E_yz_20        -0.0679  0.123
+    G_egarch       -0.0382  0.146
+    G_garch_t      -0.0356  0.135
+    G_garch        -0.0352  0.143
+    G_gjr          -0.0346  0.180
+    E_ewma_094     -0.0195  0.142
+    E_ewma_090     0.0022  0.194
+    E_naive        0.0483  0.001
+
+== AUDUSD C: 2238 test sessions 2018-01-02 -> 2026-08-20   noise floor median 1.37pp, p90 1.63pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  R15                1.42   0.91   0.9727   1.00
+  E_yz_30            1.51   0.85   1.0132   0.77
+  E_har_rv_log       1.51   0.88   0.9788   0.96
+  E_yz_20            1.53   0.72   1.0075   0.76
+  SHAR               1.53   0.98   0.9707   1.01
+  H8                 1.55   1.07   0.9782   0.95
+  R5                 1.61   1.04   0.9722   1.01
+  B_har_garcht       1.66   0.86   0.9831   1.03
+  HARCJ              1.67   0.94   0.9688   1.01
+  G_garch_t          2.01   0.77   1.0008   0.99
+  E_ewma_090         2.10   0.83   1.0155   0.71
+  G_garch            2.10   0.78   1.0008   0.97
+  E_ewma_094         2.18   0.83   1.0063   0.79
+  G_gjr              2.27   0.74   0.9994   0.98
+  G_egarch           2.49   0.70   1.0017   0.96
+  A0                 3.13   0.73   1.0000   0.74
+  E_naive            6.88   4.33*   1.1056   1.78
+  winner R15, runner-up E_yz_30, tie=True, chosen R15; chosen - A0 CI [-2.20, -0.95]pp; calibrated to noise True
+    half 2018-22                       n= 1295  chosen 2.32 vs A0 4.09  CI [-2.71,-0.95]
+    half 2023-26                       n=  943  chosen 2.12 vs A0 3.61  CI [-2.17,-0.72]
+    without 2018Q4                     n= 2173  chosen 1.45 vs A0 3.11  CI [-2.20,-0.89]
+    without covid                      n= 2143  chosen 1.61 vs A0 3.24  CI [-2.36,-1.15]
+    without bear2022                   n= 1979  chosen 1.61 vs A0 3.98  CI [-2.87,-1.71]
+    without tariff2025                 n= 2173  chosen 1.46 vs A0 3.23  CI [-2.33,-0.98]
+    without hi1_202003                 n= 2175  chosen 1.48 vs A0 3.23  CI [-2.33,-1.10]
+    without hi2_202209                 n= 2175  chosen 1.47 vs A0 3.25  CI [-2.30,-1.05]
+    without hi3_202204                 n= 2175  chosen 1.43 vs A0 3.30  CI [-2.34,-1.14]
+    without hi4_202502                 n= 2175  chosen 1.46 vs A0 3.26  CI [-2.35,-1.00]
+    fault flags out                    n= 2128  chosen 1.36 vs A0 3.13  CI [-2.20,-0.98]
+    any flag out (descriptive)         n= 1568  chosen 2.96 vs A0 4.03  CI [-2.27,-0.84]
+  HL>p75/p90 by quintile A0            : Q1 36.4/16.5  Q2 26.2/11.4  Q3 22.1/10.7  Q4 23.0/ 7.4  Q5 20.3/ 7.1
+  HL>p75/p90 by quintile R15           : Q1 29.7/12.3  Q2 25.7/10.5  Q3 24.1/11.4  Q4 25.1/ 8.9  Q5 26.3/11.2
+  HL>p75/p90 by quintile H8            : Q1 32.8/13.2  Q2 24.8/10.3  Q3 25.4/11.6  Q4 27.1/10.1  Q5 26.1/ 9.4
+  VERDICT AUDUSD C: VALIDATED
+  MIRROR C (20 draws): A0 primary median 1.49pp [1.01, 1.99] vs floor median 1.37 / p90 1.63; HL>p75 Q1-Q5 median +1.9pp [-7.1, +6.7]
+  F: test rows 2182 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    HARCJ          -0.0565  0.210
+    SHAR           -0.0561  0.205
+    R5             -0.0549  0.201
+    R15            -0.0532  0.197
+    E_har_rv_log   -0.0501  0.177
+    H8             -0.0443  0.179
+    B_har_garcht   -0.0362  0.166
+    A0             -0.0321  0.198
+    E_yz_20        -0.0273  0.120
+    E_yz_30        -0.0250  0.083
+    G_egarch       -0.0036  0.142
+    G_garch_t      -0.0005  0.132
+    G_garch        -0.0003  0.140
+    G_gjr          -0.0001  0.174
+    E_ewma_094     0.0172  0.137
+    E_ewma_090     0.0388  0.186
+    E_naive        0.0837  0.002
+
+== AUDUSD F: 2182 test sessions 2018-01-02 -> 2026-08-21   noise floor median 1.39pp, p90 1.65pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  R15                1.46   0.58   0.9739   1.01
+  E_yz_30            1.51   0.81   1.0146   0.78
+  B_har_garcht       1.56   0.78   0.9847   1.03
+  R5                 1.74   0.77   0.9732   1.00
+  E_yz_20            1.77   0.67   1.0078   0.78
+  H8                 1.78   0.99   0.9816   0.94
+  SHAR               1.80   0.75   0.9717   1.00
+  E_ewma_094         1.85   0.84   1.0103   0.79
+  HARCJ              1.89   0.65   0.9701   1.00
+  G_garch            1.91   1.24   1.0042   0.97
+  E_har_rv_log       2.09   1.35   0.9815   0.95
+  G_garch_t          2.12   1.24   1.0042   0.98
+  E_ewma_090         2.21   0.78   1.0202   0.71
+  G_gjr              2.22   1.35   1.0041   0.98
+  G_egarch           2.28   1.16   1.0062   0.95
+  A0                 3.23   0.73   1.0000   0.76
+  E_naive            6.46   0.72   1.0951   2.20
+  winner R15, runner-up E_yz_30, tie=True, chosen R15; chosen - A0 CI [-2.25, -1.08]pp; calibrated to noise True
+    half 2018-22                       n= 1267  chosen 1.71 vs A0 3.54  CI [-2.20,-0.73]
+    half 2023-26                       n=  915  chosen 2.36 vs A0 4.14  CI [-2.79,-1.07]
+    without 2018Q4                     n= 2121  chosen 1.42 vs A0 3.26  CI [-2.19,-1.03]
+    without covid                      n= 2088  chosen 1.67 vs A0 3.30  CI [-2.41,-1.14]
+    without bear2022                   n= 1928  chosen 1.68 vs A0 3.76  CI [-2.66,-1.54]
+    without tariff2025                 n= 2118  chosen 1.41 vs A0 3.28  CI [-2.35,-1.09]
+    without hi1_202003                 n= 2119  chosen 1.60 vs A0 3.37  CI [-2.44,-1.20]
+    without hi2_202209                 n= 2119  chosen 1.51 vs A0 3.41  CI [-2.35,-1.23]
+    without hi3_202204                 n= 2119  chosen 1.52 vs A0 3.45  CI [-2.43,-1.27]
+    without hi4_202502                 n= 2119  chosen 1.39 vs A0 3.25  CI [-2.36,-1.09]
+    fault flags out                    n= 2080  chosen 1.51 vs A0 3.26  CI [-2.30,-1.09]
+    any flag out (descriptive)         n= 1573  chosen 3.91 vs A0 4.33  CI [-1.98,-0.58]
+  HL>p75/p90 by quintile A0            : Q1 36.4/15.8  Q2 27.1/11.2  Q3 22.0/ 8.5  Q4 23.9/ 7.6  Q5 19.7/ 6.9
+  HL>p75/p90 by quintile R15           : Q1 28.8/11.2  Q2 25.0/10.1  Q3 22.7/ 8.9  Q4 24.5/ 9.4  Q5 23.8/ 9.6
+  HL>p75/p90 by quintile H8            : Q1 30.2/12.1  Q2 25.7/11.2  Q3 24.1/10.1  Q4 26.4/12.2  Q5 25.2/ 9.4
+  VERDICT AUDUSD F: VALIDATED
+  MIRROR F (20 draws): A0 primary median 1.27pp [1.07, 1.86] vs floor median 1.40 / p90 1.64; HL>p75 Q1-Q5 median -0.8pp [-8.2, +4.8]
+
+== AUDUSD C vs F on 2688 common London dates: F/C ratio (90% CI)
+  hl_p50  1.0039 [0.9980, 1.0078] ok
+  hl_p75  1.0098 [1.0005, 1.0105] ok
+  oh_p50  1.0113 [0.9950, 1.0167] ok
+  oh_p75  1.0062 [0.9990, 1.0140] ok
+  ol_p50  1.0010 [0.9936, 1.0153] ok
+  ol_p75  1.0106 [1.0005, 1.0178] ok
+  -> SAME (F reuses the C spec)

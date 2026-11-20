@@ -1,0 +1,6 @@
+Major release times (United Kingdom): 726 (2014-01-09 09:30:00+00:00 -> 2026-11-17 07:00:00+00:00)
+GBPJPY C: lines from ladder arm SHAR
+  placebo (lines from a random same-year session): 10254 first touches
+GBPJPY C: 1970 sessions, 9472 first touches; extraction check 79/79 match on 20 sessions
+  touches per family x rung: OCd50 1133, OCd75 563, OCd90 219, OCu50 1086, OCu75 507, OCu90 185, OH50 1099, OH75 537, OH90 221, OL50 1100, OL75 544, OL90 211, PH50 637, PH75 295, PH90 94, PL50 624, PL75 301, PL90 116
+  wrong-side dynamic touches: 146; release still to come: 525

@@ -1,0 +1,59 @@
+ZN (main race): arms ['A0', 'E_ewma_094', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht']; flags from analysis/output/data_screens/ZN/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  F: test rows 2009 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    H8             -1.3613  0.343
+    E_har_rv_log   -1.3568  0.342
+    R15            -1.3539  0.399
+    HARCJ          -1.3448  0.430
+    SHAR           -1.3431  0.421
+    R5             -1.3423  0.413
+    B_har_garcht   -1.3361  0.311
+    E_yz_20        -1.3153  0.205
+    A0             -1.3095  0.277
+    E_ewma_094     -1.2935  0.237
+    E_yz_30        -1.2915  0.173
+    E_ewma_090     -1.2877  0.280
+    G_garch_t      -1.2832  0.227
+    G_garch        -1.2233  0.222
+    E_naive        -1.1005  0.009
+    G_gjr          -0.0919  0.008
+    G_egarch       210163.9489  0.132
+
+== ZN F: 2009 test sessions 2018-01-02 -> 2026-08-21   noise floor median 1.46pp, p90 1.73pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  H8                 1.39   0.54   0.9682   0.97
+  E_har_rv_log       1.39   0.79   0.9696   1.01
+  E_yz_20            1.41   0.70   1.0009   0.83
+  E_ewma_094         1.45   0.93   1.0005   0.83
+  E_ewma_090         1.50   0.69   0.9952   0.79
+  R15                1.64   0.57   0.9653   1.12
+  E_yz_30            1.66   0.76   1.0172   0.82
+  R5                 1.78   0.64   0.9683   1.22
+  SHAR               1.80   0.66   0.9668   1.23
+  HARCJ              1.80   0.91   0.9662   1.27
+  B_har_garcht       2.09   1.35   0.9813   1.05
+  G_garch_t          3.07   1.96*   1.0166   0.93
+  A0                 3.13   0.53   1.0000   0.81
+  G_gjr              3.64   1.78*   1.0410  -0.00
+  G_garch            5.22   4.25*   1.0453   0.78
+  E_naive            8.02   5.51*   1.1740   1.54
+  G_egarch          26.04  23.29*   1.5741   0.07
+  winner H8, runner-up E_har_rv_log, tie=True, chosen H8; chosen - A0 CI [-2.53, -0.80]pp; calibrated to noise True
+    half 2018-22                       n= 1170  chosen 2.39 vs A0 3.69  CI [-2.82,-0.35]
+    half 2023-26                       n=  839  chosen 2.07 vs A0 4.79  CI [-3.66,-1.85]
+    without 2018Q4                     n= 1947  chosen 1.38 vs A0 3.13  CI [-2.66,-0.78]
+    without covid                      n= 1924  chosen 1.24 vs A0 3.34  CI [-2.80,-0.95]
+    without bear2022                   n= 1782  chosen 1.54 vs A0 3.25  CI [-2.50,-1.04]
+    without tariff2025                 n= 1950  chosen 1.29 vs A0 2.99  CI [-2.53,-0.81]
+    without hi1_202207                 n= 1946  chosen 1.33 vs A0 3.26  CI [-2.72,-0.97]
+    without hi2_202204                 n= 1946  chosen 1.15 vs A0 3.19  CI [-2.75,-1.00]
+    without hi3_202301                 n= 1946  chosen 1.49 vs A0 3.12  CI [-2.50,-0.74]
+    without hi4_202308                 n= 1946  chosen 1.45 vs A0 3.13  CI [-2.47,-0.77]
+    fault flags out                    n= 2009  chosen 1.39 vs A0 3.13  CI [-2.58,-0.81]
+    any flag out (descriptive)         n= 1667  chosen 3.01 vs A0 3.66  CI [-1.94,-0.58]
+  HL>p75/p90 by quintile A0            : Q1 34.6/13.2  Q2 27.1/12.4  Q3 28.2/11.5  Q4 19.2/ 8.5  Q5 17.7/ 7.0
+  HL>p75/p90 by quintile H8            : Q1 26.4/10.0  Q2 23.9/10.9  Q3 27.9/11.2  Q4 22.4/ 9.5  Q5 28.1/12.4
+  VERDICT ZN F: VALIDATED
+  MIRROR F (20 draws): A0 primary median 1.51pp [1.01, 2.05] vs floor median 1.45 / p90 1.72; HL>p75 Q1-Q5 median +1.0pp [-6.7, +6.7]

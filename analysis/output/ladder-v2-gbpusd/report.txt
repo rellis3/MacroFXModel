@@ -1,0 +1,127 @@
+GBPUSD (main race): arms ['A0', 'E_yz_10', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht']; flags from analysis/output/data_screens/GBPUSD/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 2240 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    SHAR           -0.4032  0.275
+    HARCJ          -0.4027  0.280
+    R15            -0.4020  0.271
+    R5             -0.4018  0.274
+    E_yz_10        -0.3779  0.193
+    B_har_garcht   -0.3764  0.233
+    H8             -0.3732  0.230
+    E_har_rv_log   -0.3694  0.245
+    G_gjr          -0.3645  0.220
+    G_garch        -0.3642  0.218
+    G_egarch       -0.3614  0.197
+    G_garch_t      -0.3609  0.177
+    E_yz_20        -0.3532  0.138
+    A0             -0.3506  0.205
+    E_yz_30        -0.3462  0.106
+    E_ewma_090     -0.3330  0.263
+    E_naive        -0.1928  0.005
+
+== GBPUSD C: 2240 test sessions 2018-01-02 -> 2026-08-20   noise floor median 1.37pp, p90 1.63pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  HARCJ              1.45   0.42   0.9630   1.03
+  E_yz_10            1.54   0.78   0.9931   0.75
+  SHAR               1.58   0.44   0.9641   1.04
+  R5                 1.61   0.44   0.9651   1.05
+  R15                1.62   0.48   0.9670   1.05
+  E_yz_20            1.72   1.31   1.0032   0.76
+  G_garch            1.77   0.58   0.9924   0.90
+  G_gjr              1.79   0.58   0.9914   0.90
+  G_garch_t          1.89   0.84   0.9959   0.93
+  G_egarch           1.98   0.42   0.9931   0.93
+  E_yz_30            2.09   1.59   1.0118   0.75
+  A0                 2.64   1.72   1.0000   0.76
+  B_har_garcht       3.03   3.29*   0.9877   1.03
+  E_ewma_090         3.65   1.33   1.0061   0.68
+  E_har_rv_log       4.46   4.86*   0.9962   0.96
+  H8                 5.72   6.11*   1.0066   0.93
+  E_naive            6.07   2.17   1.0891   1.60
+  winner HARCJ, runner-up E_yz_10, tie=True, chosen HARCJ; chosen - A0 CI [-2.16, -0.71]pp; calibrated to noise True
+    half 2018-22                       n= 1297  chosen 2.26 vs A0 3.95  CI [-3.02,-0.82]
+    half 2023-26                       n=  943  chosen 2.04 vs A0 3.11  CI [-1.86,-0.53]
+    without 2018Q4                     n= 2175  chosen 1.57 vs A0 2.88  CI [-2.29,-0.76]
+    without covid                      n= 2145  chosen 1.34 vs A0 2.80  CI [-2.28,-0.77]
+    without bear2022                   n= 1981  chosen 1.66 vs A0 2.99  CI [-2.26,-0.79]
+    without tariff2025                 n= 2175  chosen 1.59 vs A0 2.79  CI [-2.20,-0.71]
+    without hi1_202209                 n= 2177  chosen 1.36 vs A0 2.97  CI [-2.38,-0.87]
+    without hi2_202003                 n= 2177  chosen 1.42 vs A0 2.92  CI [-2.36,-0.80]
+    without hi3_202204                 n= 2177  chosen 1.48 vs A0 2.98  CI [-2.32,-0.80]
+    without hi4_202212                 n= 2177  chosen 1.62 vs A0 2.71  CI [-2.13,-0.62]
+    fault flags out                    n= 2197  chosen 1.31 vs A0 2.84  CI [-2.33,-0.81]
+    any flag out (descriptive)         n= 1634  chosen 3.63 vs A0 3.08  CI [-1.44,+0.00]
+  HL>p75/p90 by quintile A0            : Q1 38.2/16.3  Q2 29.2/ 9.6  Q3 27.2/11.6  Q4 23.2/ 6.7  Q5 24.8/ 8.5
+  HL>p75/p90 by quintile HARCJ         : Q1 26.3/10.9  Q2 24.8/ 6.2  Q3 23.0/ 9.6  Q4 23.0/ 8.0  Q5 27.7/11.8
+  HL>p75/p90 by quintile H8            : Q1 33.5/15.0  Q2 34.8/12.7  Q3 33.7/15.4  Q4 33.7/13.2  Q5 40.6/19.6
+  VERDICT GBPUSD C: VALIDATED
+  MIRROR C (20 draws): A0 primary median 1.34pp [1.00, 1.81] vs floor median 1.37 / p90 1.62; HL>p75 Q1-Q5 median -0.9pp [-5.1, +3.8]
+  F: test rows 2181 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    HARCJ          -0.3662  0.296
+    SHAR           -0.3661  0.291
+    R5             -0.3653  0.291
+    R15            -0.3596  0.289
+    E_har_rv_log   -0.3434  0.264
+    B_har_garcht   -0.3431  0.245
+    H8             -0.3421  0.253
+    E_yz_10        -0.3395  0.211
+    G_gjr          -0.3288  0.235
+    G_egarch       -0.3282  0.213
+    G_garch        -0.3277  0.228
+    G_garch_t      -0.3243  0.185
+    E_yz_20        -0.3132  0.148
+    A0             -0.3131  0.217
+    E_yz_30        -0.3056  0.112
+    E_ewma_090     -0.2962  0.279
+    E_naive        -0.1824  0.007
+
+== GBPUSD F: 2181 test sessions 2018-01-02 -> 2026-08-21   noise floor median 1.40pp, p90 1.66pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  E_yz_30            1.78   0.77   1.0120   0.74
+  HARCJ              1.83   0.42   0.9627   1.02
+  SHAR               1.86   0.38   0.9637   1.05
+  E_yz_10            1.89   0.51   0.9949   0.73
+  R5                 1.89   0.38   0.9645   1.05
+  E_yz_20            1.97   0.70   1.0038   0.74
+  B_har_garcht       2.05   0.63   0.9775   1.04
+  R15                2.08   0.51   0.9665   1.06
+  G_egarch           2.14   0.32   0.9923   0.92
+  G_garch_t          2.16   0.65   0.9952   0.91
+  E_har_rv_log       2.16   0.66   0.9780   1.00
+  G_garch            2.16   0.46   0.9927   0.88
+  G_gjr              2.19   0.46   0.9909   0.89
+  H8                 2.31   1.47   0.9805   0.96
+  A0                 3.02   1.22   1.0000   0.74
+  E_ewma_090         3.95   0.95   1.0081   0.67
+  E_naive            7.32   2.67*   1.0836   2.98
+  winner E_yz_30, runner-up HARCJ, tie=True, chosen HARCJ; chosen - A0 CI [-2.17, -0.73]pp; calibrated to noise False
+    half 2018-22                       n= 1267  chosen 2.55 vs A0 3.61  CI [-2.74,-0.54]
+    half 2023-26                       n=  914  chosen 2.93 vs A0 3.88  CI [-2.48,-0.78]
+    without 2018Q4                     n= 2120  chosen 1.89 vs A0 3.17  CI [-2.26,-0.75]
+    without covid                      n= 2087  chosen 1.84 vs A0 3.24  CI [-2.32,-0.79]
+    without bear2022                   n= 1927  chosen 1.96 vs A0 3.35  CI [-2.33,-0.98]
+    without tariff2025                 n= 2117  chosen 1.97 vs A0 3.01  CI [-2.16,-0.69]
+    without hi1_202209                 n= 2118  chosen 1.66 vs A0 3.15  CI [-2.27,-0.85]
+    without hi2_202003                 n= 2118  chosen 1.76 vs A0 3.15  CI [-2.30,-0.80]
+    without hi3_202204                 n= 2118  chosen 1.81 vs A0 3.21  CI [-2.31,-0.86]
+    without hi4_202212                 n= 2118  chosen 1.94 vs A0 3.06  CI [-2.13,-0.71]
+    fault flags out                    n= 2140  chosen 1.94 vs A0 3.11  CI [-2.25,-0.76]
+    any flag out (descriptive)         n= 1643  chosen 4.12 vs A0 3.36  CI [-1.46,-0.09]
+  HL>p75/p90 by quintile A0            : Q1 39.6/16.5  Q2 26.8/ 8.5  Q3 26.4/11.7  Q4 19.3/ 6.2  Q5 22.5/ 8.3
+  HL>p75/p90 by quintile HARCJ         : Q1 29.3/10.5  Q2 22.2/ 6.7  Q3 22.7/ 9.9  Q4 20.9/ 6.0  Q5 26.8/11.7
+  HL>p75/p90 by quintile E_yz_30       : Q1 31.1/11.0  Q2 23.9/ 6.2  Q3 26.6/12.2  Q4 25.0/ 7.6  Q5 27.3/12.6
+  HL>p75/p90 by quintile H8            : Q1 30.0/11.9  Q2 24.3/ 6.7  Q3 26.6/11.2  Q4 22.7/ 7.8  Q5 31.4/14.4
+  VERDICT GBPUSD F: VALIDATED
+  MIRROR F (20 draws): A0 primary median 1.43pp [0.96, 1.88] vs floor median 1.40 / p90 1.64; HL>p75 Q1-Q5 median -0.5pp [-4.9, +4.1]
+
+== GBPUSD C vs F on 2689 common London dates: F/C ratio (90% CI)
+  hl_p50  1.0064 [1.0013, 1.0124] ok
+  hl_p75  1.0121 [1.0031, 1.0152] ok
+  oh_p50  1.0162 [0.9985, 1.0218] ok
+  oh_p75  1.0113 [0.9991, 1.0160] ok
+  ol_p50  1.0104 [0.9960, 1.0189] ok
+  ol_p75  1.0097 [0.9969, 1.0147] ok
+  -> SAME (F reuses the C spec)

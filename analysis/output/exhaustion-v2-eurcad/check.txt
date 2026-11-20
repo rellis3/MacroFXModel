@@ -1,0 +1,6 @@
+Major release times (Euro Area): 267 (2014-01-09 10:00:00+00:00 -> 2026-11-13 10:00:00+00:00)
+EURCAD C: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 9632 first touches
+EURCAD C: 1975 sessions, 9305 first touches; extraction check 85/85 match on 20 sessions
+  touches per family x rung: OCd50 1045, OCd75 515, OCd90 201, OCu50 1087, OCu75 525, OCu90 233, OH50 1138, OH75 533, OH90 229, OL50 1080, OL75 535, OL90 205, PH50 606, PH75 305, PH90 116, PL50 576, PL75 284, PL90 92
+  wrong-side dynamic touches: 94; release still to come: 208

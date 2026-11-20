@@ -1,0 +1,6 @@
+Major release times (none graded): 0 (- -> -)
+AUDCHF C: lines from ladder arm R5
+  placebo (lines from a random same-year session): 10066 first touches
+AUDCHF C: 1990 sessions, 9542 first touches; extraction check 89/89 match on 20 sessions
+  touches per family x rung: OCd50 1084, OCd75 541, OCd90 262, OCu50 1090, OCu75 522, OCu90 207, OH50 1074, OH75 530, OH90 208, OL50 1142, OL75 569, OL90 239, PH50 626, PH75 273, PH90 93, PL50 634, PL75 309, PL90 139
+  wrong-side dynamic touches: 112; release still to come: 0

@@ -1,0 +1,92 @@
+{
+ "symbol": "PLATINUM",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "analysis/output/ladder-v2-data/m1_commod/platinum_m1.parquet": "d0194d5d1d86f6ff0d3cef9ea8fee165ea29aae8f2d5e9024c86faff6f6b24ec",
+  "analysis/output/nt8/continuous/PL_1m_unadj.parquet": "f7ca36922c56b77e760f4af9fa1ed4680cf5ab67a66cc208a6139f93d0a14484",
+  "analysis/output/nt8/continuous/PL_1m_ratio.parquet": "ca17c6f4ca2d86bdca2806c63d886c502cf7626c9c419ec8d6ff89d22dc6652c",
+  "analysis/output/nt8/continuous/PL_rolls.csv": "22e7a862469c518ac90b863ba82e899b75b791e03eef533d3c516a7d884eb161"
+ },
+ "sessions": {
+  "C": [
+   "2015-12-30",
+   "2026-11-20",
+   2792
+  ],
+  "F": [
+   "2014-10-13",
+   "2026-11-19",
+   3048
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 341
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 3
+  },
+  {
+   "track": "C",
+   "screen": "missing",
+   "n": 21
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 13
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 64
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 35
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 258
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 10
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 68
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 397
+  }
+ ]
+}

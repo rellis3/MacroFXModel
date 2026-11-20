@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+USDCHF C: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 10262 first touches
+USDCHF C: 2043 sessions, 9895 first touches; extraction check 119/119 match on 20 sessions
+  touches per family x rung: OCd50 1124, OCd75 589, OCd90 241, OCu50 1197, OCu75 571, OCu90 207, OH50 1116, OH75 576, OH90 239, OL50 1111, OL75 575, OL90 227, PH50 613, PH75 303, PH90 106, PL50 643, PL75 323, PL90 134
+  wrong-side dynamic touches: 101; release still to come: 2425
+USDCHF F: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 9678 first touches
+USDCHF F: 1962 sessions, 9321 first touches; extraction check 92/92 match on 20 sessions
+  touches per family x rung: OCd50 1078, OCd75 559, OCd90 225, OCu50 1148, OCu75 552, OCu90 187, OH50 1040, OH75 533, OH90 217, OL50 1073, OL75 547, OL90 210, PH50 578, PH75 261, PH90 94, PL50 615, PL75 290, PL90 114
+  wrong-side dynamic touches: 99; release still to come: 2263

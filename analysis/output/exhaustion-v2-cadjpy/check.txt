@@ -1,0 +1,6 @@
+Major release times (none graded): 0 (- -> -)
+CADJPY C: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 10349 first touches
+CADJPY C: 1953 sessions, 9545 first touches; extraction check 80/80 match on 20 sessions
+  touches per family x rung: OCd50 1078, OCd75 605, OCd90 268, OCu50 1048, OCu75 519, OCu90 195, OH50 1114, OH75 544, OH90 229, OL50 1082, OL75 560, OL90 226, PH50 612, PH75 292, PH90 115, PL50 623, PL75 308, PL90 127
+  wrong-side dynamic touches: 142; release still to come: 0

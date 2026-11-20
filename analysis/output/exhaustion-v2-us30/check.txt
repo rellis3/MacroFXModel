@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+US30 C: lines from ladder arm E_har_rv_log
+  placebo (lines from a random same-year session): 11173 first touches
+US30 C: 2014 sessions, 10189 first touches; extraction check 93/93 match on 20 sessions
+  touches per family x rung: OCd50 1125, OCd75 629, OCd90 263, OCu50 1183, OCu75 581, OCu90 186, OH50 1134, OH75 549, OH90 205, OL50 1191, OL75 604, OL90 241, PH50 712, PH75 296, PH90 95, PL50 693, PL75 354, PL90 148
+  wrong-side dynamic touches: 185; release still to come: 1468
+US30 F: lines from ladder arm E_har_rv_log
+  placebo (lines from a random same-year session): 10915 first touches
+US30 F: 1980 sessions, 9952 first touches; extraction check 100/100 match on 20 sessions
+  touches per family x rung: OCd50 1114, OCd75 612, OCd90 258, OCu50 1168, OCu75 547, OCu90 176, OH50 1096, OH75 534, OH90 207, OL50 1176, OL75 595, OL90 225, PH50 694, PH75 272, PH90 92, PL50 694, PL75 343, PL90 149
+  wrong-side dynamic touches: 182; release still to come: 1435

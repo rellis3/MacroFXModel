@@ -1,0 +1,6 @@
+Major release times (United Kingdom): 726 (2014-01-09 09:30:00+00:00 -> 2026-11-17 07:00:00+00:00)
+GBPAUD C: lines from ladder arm R5
+  placebo (lines from a random same-year session): 9867 first touches
+GBPAUD C: 2002 sessions, 9389 first touches; extraction check 66/66 match on 20 sessions
+  touches per family x rung: OCd50 1144, OCd75 549, OCd90 196, OCu50 1127, OCu75 550, OCu90 232, OH50 1125, OH75 567, OH90 210, OL50 1050, OL75 509, OL90 209, PH50 615, PH75 275, PH90 118, PL50 578, PL75 244, PL90 91
+  wrong-side dynamic touches: 94; release still to come: 556

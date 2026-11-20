@@ -1,0 +1,92 @@
+{
+ "symbol": "BRENT",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "analysis/output/ladder-v2-data/m1_commod/oil_m1.parquet": "59c0918ab83b05ada305c8c84535f5021f6afd333fc4501921c3b2d0cd212214",
+  "analysis/output/nt8/continuous/BZ_1m_unadj.parquet": "bfdb2921ae899603a0ba796c668d9a5e8f67fd1494fcfc42a5362758ec18c9cd",
+  "analysis/output/nt8/continuous/BZ_1m_ratio.parquet": "fdf4368ffadc0c95dc0a502a3ae085cdf6c1c0815ba6b9c04d4ec9729cc2a49e",
+  "analysis/output/nt8/continuous/BZ_rolls.csv": "f4f5afd686e5b9279d4763a469233b0a7435139b9c3ca054adf4135bb3ad6e7b"
+ },
+ "sessions": {
+  "C": [
+   "2015-12-30",
+   "2026-11-20",
+   2813
+  ],
+  "F": [
+   "2016-07-11",
+   "2026-11-19",
+   2650
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 514
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 6
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 1
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 79
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 62
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 300
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 5
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 26
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 132
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 7
+  }
+ ]
+}

@@ -1,0 +1,6 @@
+Major release times (United Kingdom): 726 (2014-01-09 09:30:00+00:00 -> 2026-11-17 07:00:00+00:00)
+UK100 C: lines from ladder arm E_ewma_094
+  placebo (lines from a random same-year session): 10468 first touches
+UK100 C: 1950 sessions, 9911 first touches; extraction check 74/74 match on 20 sessions
+  touches per family x rung: OCd50 1143, OCd75 608, OCd90 271, OCu50 1156, OCu75 562, OCu90 217, OH50 1113, OH75 555, OH90 234, OL50 1090, OL75 544, OL90 218, PH50 677, PH75 286, PH90 109, PL50 652, PL75 331, PL90 145
+  wrong-side dynamic touches: 198; release still to come: 400

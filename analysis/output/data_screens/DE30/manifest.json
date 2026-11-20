@@ -1,0 +1,107 @@
+{
+ "symbol": "DE30",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "portfolioBacktest/cache/de30_m1.parquet": "56aedc7bef42fc206fb7210115d18b925896574590a2ec55068ff60f82df3884",
+  "analysis/output/nt8/continuous/FDAX_1m_unadj.parquet": "27dbe639f4cfb87d45ae3edf774e12a0f5c93b98e97f224defda9416872b62f1",
+  "analysis/output/nt8/continuous/FDAX_1m_ratio.parquet": "fb1ff63546b922d5a285c450d35d06ea0500def10ddb38d04a797e771aff807f",
+  "analysis/output/nt8/continuous/FDAX_rolls.csv": "d0f78c7d59a2824dd52b0f0c8001504e7915c0255ecbad5b73e44d522e56029d"
+ },
+ "sessions": {
+  "C": [
+   "2016-01-04",
+   "2026-08-20",
+   2702
+  ],
+  "F": [
+   "2014-12-08",
+   "2026-11-19",
+   2939
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "frozen",
+   "n": 1
+  },
+  {
+   "track": "C",
+   "screen": "gap",
+   "n": 8
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 407
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 7
+  },
+  {
+   "track": "C",
+   "screen": "missing",
+   "n": 1
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 1
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 55
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 60
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 302
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 6
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 89
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 37
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 1
+  }
+ ]
+}

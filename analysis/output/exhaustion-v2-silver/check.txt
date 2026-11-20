@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+SILVER C: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 10796 first touches
+SILVER C: 2046 sessions, 10331 first touches; extraction check 93/93 match on 20 sessions
+  touches per family x rung: OCd50 1209, OCd75 626, OCd90 254, OCu50 1196, OCu75 610, OCu90 245, OH50 1155, OH75 605, OH90 227, OL50 1115, OL75 585, OL90 241, PH50 724, PH75 322, PH90 119, PL50 666, PL75 303, PL90 129
+  wrong-side dynamic touches: 192; release still to come: 2507
+SILVER F: lines from ladder arm G_gjr
+  placebo (lines from a random same-year session): 10078 first touches
+SILVER F: 1893 sessions, 9665 first touches; extraction check 96/96 match on 20 sessions
+  touches per family x rung: OCd50 1132, OCd75 598, OCd90 228, OCu50 1118, OCu75 576, OCu90 218, OH50 1067, OH75 555, OH90 224, OL50 1031, OL75 545, OL90 217, PH50 699, PH75 311, PH90 120, PL50 624, PL75 285, PL90 117
+  wrong-side dynamic touches: 203; release still to come: 2425

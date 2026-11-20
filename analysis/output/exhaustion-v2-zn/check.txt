@@ -1,0 +1,6 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+ZN F: lines from ladder arm H8
+  placebo (lines from a random same-year session): 9312 first touches
+ZN F: 1788 sessions, 8833 first touches; extraction check 84/84 match on 20 sessions
+  touches per family x rung: OCd50 990, OCd75 482, OCd90 214, OCu50 988, OCu75 505, OCu90 231, OH50 1031, OH75 502, OH90 215, OL50 1011, OL75 487, OL90 198, PH50 587, PH75 294, PH90 116, PL50 596, PL75 271, PL90 115
+  wrong-side dynamic touches: 122; release still to come: 1768

@@ -1,0 +1,61 @@
+{
+ "symbol": "ZT",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "analysis/output/nt8/continuous/ZT_1m_unadj.parquet": "117516840d6cd0cafafdd4284efaca3f526c83f829b7034fa582291144f4007c",
+  "analysis/output/nt8/continuous/ZT_1m_ratio.parquet": "378891bbf4bf623925e774bfdcc461231b7c77f7ade8d4caf44e916bd44f07e6",
+  "analysis/output/nt8/continuous/ZT_rolls.csv": "6cefc8e8a6915488f032e89f01ead7575ba0c0c60170ce5a6308207ff9548617"
+ },
+ "sessions": {
+  "F": [
+   "2014-12-08",
+   "2026-11-19",
+   3066
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "F",
+   "screen": "frozen",
+   "n": 43
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 479
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 12
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 457
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 37
+  }
+ ]
+}

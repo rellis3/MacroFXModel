@@ -1,0 +1,6 @@
+Major release times (United Kingdom): 726 (2014-01-09 09:30:00+00:00 -> 2026-11-17 07:00:00+00:00)
+GBPNZD C: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 9849 first touches
+GBPNZD C: 2001 sessions, 9443 first touches; extraction check 65/65 match on 20 sessions
+  touches per family x rung: OCd50 1112, OCd75 595, OCd90 220, OCu50 1083, OCu75 569, OCu90 238, OH50 1139, OH75 550, OH90 211, OL50 1060, OL75 524, OL90 215, PH50 579, PH75 269, PH90 111, PL50 583, PL75 284, PL90 101
+  wrong-side dynamic touches: 92; release still to come: 710

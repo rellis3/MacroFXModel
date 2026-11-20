@@ -1,0 +1,6 @@
+Major release times (Euro Area): 267 (2014-01-09 10:00:00+00:00 -> 2026-11-13 10:00:00+00:00)
+EURCHF C: lines from ladder arm E_yz_10
+  placebo (lines from a random same-year session): 10542 first touches
+EURCHF C: 2013 sessions, 9951 first touches; extraction check 98/98 match on 20 sessions
+  touches per family x rung: OCd50 1204, OCd75 591, OCd90 260, OCu50 1135, OCu75 577, OCu90 218, OH50 1088, OH75 560, OH90 198, OL50 1133, OL75 575, OL90 247, PH50 632, PH75 289, PH90 112, PL50 693, PL75 326, PL90 113
+  wrong-side dynamic touches: 189; release still to come: 310

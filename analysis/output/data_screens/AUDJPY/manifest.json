@@ -1,0 +1,59 @@
+{
+ "symbol": "AUDJPY",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "portfolioBacktest/cache/audjpy_m1.parquet": "66ef50deba25caeafa71627a9f2b52f0a01c2de9516cc650f7077113bd390be4"
+ },
+ "sessions": {
+  "C": [
+   "2016-01-04",
+   "2026-08-21",
+   2758
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "gap",
+   "n": 2
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 694
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 8
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 1
+  },
+  {
+   "track": "C",
+   "screen": "ts_weekend",
+   "n": 4
+  }
+ ]
+}

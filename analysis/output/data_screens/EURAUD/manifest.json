@@ -1,0 +1,54 @@
+{
+ "symbol": "EURAUD",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "portfolioBacktest/cache/euraud_m1.parquet": "467431b8e12a5d2d9feaa40b4998693ad784aba6ab774bf42f5505021db1b251"
+ },
+ "sessions": {
+  "C": [
+   "2016-01-04",
+   "2026-08-21",
+   2758
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "gap",
+   "n": 2
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 670
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 4
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 1
+  }
+ ]
+}

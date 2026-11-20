@@ -1,0 +1,92 @@
+{
+ "symbol": "AUDUSD",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "portfolioBacktest/cache/audusd_m1.parquet": "3b441ac0ba12625e547f72aa8d08f75398d0f80b6f6932dfaeee3ad05c69066b",
+  "analysis/output/nt8/continuous/6A_1m_unadj.parquet": "987d3231392318484ea478a83c77e03143a04b4e9a3b89a0c43281c0d2e0ffb8",
+  "analysis/output/nt8/continuous/6A_1m_ratio.parquet": "27f9c41fd3ac669af83db2d2c95c8bceafc791eb285b281e86e692928c2df4f7",
+  "analysis/output/nt8/continuous/6A_rolls.csv": "a9bc6447a63946a47b7bffa5f7ec860b18c67aadfa8590bf332c60ad0cf54305"
+ },
+ "sessions": {
+  "C": [
+   "2016-01-04",
+   "2026-08-21",
+   2758
+  ],
+  "F": [
+   "2014-12-08",
+   "2026-11-19",
+   3042
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "gap",
+   "n": 9
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 735
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 3
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 4
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 103
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 35
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 749
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 3
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 55
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 14
+  }
+ ]
+}

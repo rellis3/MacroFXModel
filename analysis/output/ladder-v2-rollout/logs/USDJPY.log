@@ -1,0 +1,209 @@
+
+=== score: scripts/ladder-v2/ladder.py score USDJPY (12:42:30)
+USDJPY (main race): arms ['A0', 'E_yz_10', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht']; flags from analysis/output/data_screens/USDJPY/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 2240 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    R5             -0.3819  0.165
+    SHAR           -0.3816  0.167
+    R15            -0.3801  0.158
+    HARCJ          -0.3772  0.168
+    B_har_garcht   -0.3755  0.150
+    H8             -0.3695  0.149
+    E_har_rv_log   -0.3626  0.153
+    G_garch_t      -0.3558  0.123
+    G_gjr          -0.3534  0.133
+    G_garch        -0.3534  0.125
+    G_egarch       -0.3520  0.144
+    E_yz_20        -0.3361  0.098
+    A0             -0.3304  0.124
+    E_yz_30        -0.3224  0.092
+    E_yz_10        -0.3135  0.121
+    E_ewma_090     -0.2943  0.139
+    E_naive        -0.1747  0.002
+
+== USDJPY C: 2240 test sessions 2018-01-02 -> 2026-08-20   noise floor median 1.37pp, p90 1.63pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  E_yz_30            1.58   0.99   1.0213   0.78
+  E_yz_20            1.61   0.82   1.0164   0.77
+  G_garch_t          1.75   1.00   0.9922   1.00
+  A0                 1.89   0.69   1.0000   0.82
+  G_garch            1.90   1.42   0.9922   1.09
+  B_har_garcht       1.92   1.15   0.9720   1.06
+  E_yz_10            1.93   0.83   1.0065   0.76
+  G_gjr              1.93   1.24   0.9884   1.07
+  G_egarch           2.11   0.84   0.9835   1.13
+  SHAR               2.17   0.81   0.9600   1.02
+  R5                 2.23   0.80   0.9607   1.02
+  R15                2.26   0.90   0.9623   1.01
+  HARCJ              2.26   0.72   0.9578   1.01
+  H8                 2.40   1.72*   0.9744   0.93
+  E_ewma_090         3.08   0.61   0.9991   0.77
+  E_har_rv_log       3.27   2.97*   0.9735   0.98
+  E_naive            7.52   4.44*   1.1367   0.12
+  winner E_yz_30, runner-up E_yz_20, tie=True, chosen E_yz_20; chosen - A0 CI [-1.37, +0.00]pp; calibrated to noise True
+    half 2018-22                       n= 1297  chosen 3.45 vs A0 4.18  CI [-2.48,-0.30]
+    half 2023-26                       n=  943  chosen 1.95 vs A0 2.60  CI [-1.73,+0.00]  <-- FAILS
+    without 2018Q4                     n= 2175  chosen 1.73 vs A0 1.91  CI [-1.45,+0.00]  <-- FAILS
+    without covid                      n= 2145  chosen 1.53 vs A0 1.63  CI [-1.14,+0.00]  <-- FAILS
+    without bear2022                   n= 1981  chosen 1.85 vs A0 2.14  CI [-1.50,-0.09]
+    without tariff2025                 n= 2175  chosen 1.76 vs A0 1.95  CI [-1.42,+0.00]  <-- FAILS
+    without hi1_202210                 n= 2177  chosen 1.57 vs A0 1.79  CI [-1.31,+0.00]  <-- FAILS
+    without hi2_202407                 n= 2177  chosen 1.66 vs A0 2.02  CI [-1.53,+0.00]  <-- FAILS
+    without hi3_202503                 n= 2177  chosen 1.60 vs A0 1.79  CI [-1.28,+0.00]  <-- FAILS
+    without hi4_202301                 n= 2177  chosen 1.58 vs A0 1.83  CI [-1.32,+0.00]  <-- FAILS
+    fault flags out                    n= 2174  chosen 1.65 vs A0 1.88  CI [-1.35,+0.00]  <-- FAILS
+    any flag out (descriptive)         n= 1469  chosen 2.87 vs A0 3.58  CI [-1.96,-0.63]
+  HL>p75/p90 by quintile A0            : Q1 32.6/13.8  Q2 26.1/ 9.8  Q3 25.4/ 8.0  Q4 22.3/ 8.0  Q5 22.1/10.0
+  HL>p75/p90 by quintile E_yz_20       : Q1 29.2/15.2  Q2 25.2/11.8  Q3 25.0/10.0  Q4 24.6/ 9.6  Q5 24.3/13.4
+  HL>p75/p90 by quintile E_yz_30       : Q1 29.9/13.8  Q2 27.0/12.1  Q3 26.6/10.3  Q4 25.9/10.3  Q5 26.8/13.4
+  HL>p75/p90 by quintile H8            : Q1 32.8/15.6  Q2 26.1/10.9  Q3 27.2/11.4  Q4 27.5/10.5  Q5 33.7/16.1
+  VERDICT USDJPY C: UNDERPOWERED
+  MIRROR C (20 draws): A0 primary median 1.29pp [1.04, 1.73] vs floor median 1.37 / p90 1.62; HL>p75 Q1-Q5 median +0.1pp [-4.2, +3.3]
+  F: test rows 2181 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    SHAR           -0.3707  0.181
+    R5             -0.3706  0.178
+    R15            -0.3650  0.172
+    HARCJ          -0.3650  0.190
+    E_har_rv_log   -0.3529  0.151
+    H8             -0.3528  0.144
+    B_har_garcht   -0.3527  0.147
+    G_egarch       -0.3294  0.146
+    G_garch_t      -0.3292  0.122
+    E_yz_20        -0.3288  0.101
+    G_gjr          -0.3282  0.133
+    G_garch        -0.3268  0.124
+    E_yz_30        -0.3082  0.100
+    E_yz_10        -0.3056  0.125
+    A0             -0.3039  0.123
+    E_ewma_090     -0.2755  0.135
+    E_naive        -0.1529  0.001
+
+== USDJPY F: 2181 test sessions 2018-01-02 -> 2026-08-21   noise floor median 1.39pp, p90 1.66pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  G_garch_t          1.81   1.16   0.9901   0.99
+  E_yz_30            1.85   0.84   1.0141   0.77
+  G_garch            2.03   1.58   0.9898   1.06
+  G_gjr              2.06   1.30   0.9852   1.05
+  B_har_garcht       2.09   0.72   0.9705   1.06
+  E_yz_20            2.10   0.82   1.0114   0.76
+  A0                 2.24   0.73   1.0000   0.80
+  HARCJ              2.24   0.84   0.9529   1.03
+  G_egarch           2.32   1.05   0.9794   1.11
+  R5                 2.34   0.76   0.9569   1.05
+  SHAR               2.38   0.76   0.9562   1.05
+  E_yz_10            2.42   0.80   1.0028   0.75
+  R15                2.48   0.77   0.9582   1.03
+  H8                 2.58   0.77   0.9734   0.91
+  E_har_rv_log       2.62   1.44   0.9686   1.00
+  E_ewma_090         3.56   0.71   1.0016   0.75
+  E_naive            7.66   1.46   1.1242   0.52
+  winner G_garch_t, runner-up E_yz_30, tie=True, chosen G_garch_t; chosen - A0 CI [-1.41, +0.00]pp; calibrated to noise False
+    half 2018-22                       n= 1266  chosen 2.65 vs A0 4.24  CI [-2.70,-0.53]
+    half 2023-26                       n=  915  chosen 1.52 vs A0 2.75  CI [-1.99,-0.11]
+    without 2018Q4                     n= 2120  chosen 1.77 vs A0 2.36  CI [-1.56,+0.00]  <-- FAILS
+    without covid                      n= 2087  chosen 1.81 vs A0 2.11  CI [-1.29,+0.00]  <-- FAILS
+    without bear2022                   n= 1927  chosen 1.99 vs A0 2.25  CI [-1.66,-0.20]
+    without tariff2025                 n= 2117  chosen 2.02 vs A0 2.45  CI [-1.49,+0.00]  <-- FAILS
+    without hi1_202210                 n= 2118  chosen 2.05 vs A0 2.37  CI [-1.50,+0.00]  <-- FAILS
+    without hi2_202407                 n= 2118  chosen 1.98 vs A0 2.49  CI [-1.62,-0.04]
+    without hi3_202503                 n= 2118  chosen 1.90 vs A0 2.23  CI [-1.39,+0.00]  <-- FAILS
+    without hi4_202206                 n= 2118  chosen 1.85 vs A0 2.36  CI [-1.47,-0.02]
+    fault flags out                    n= 2116  chosen 1.89 vs A0 2.35  CI [-1.50,-0.00]
+    any flag out (descriptive)         n= 1495  chosen 4.47 vs A0 4.00  CI [-2.04,-0.73]
+  HL>p75/p90 by quintile A0            : Q1 31.1/13.7  Q2 27.3/10.6  Q3 24.8/ 8.0  Q4 20.9/ 7.8  Q5 20.6/ 9.9
+  HL>p75/p90 by quintile G_garch_t     : Q1 28.4/11.0  Q2 21.6/ 8.9  Q3 22.7/ 7.3  Q4 21.6/ 7.8  Q5 25.0/11.9
+  HL>p75/p90 by quintile H8            : Q1 30.2/14.4  Q2 23.2/ 8.7  Q3 27.5/ 8.5  Q4 21.8/10.3  Q5 32.3/15.6
+  VERDICT USDJPY F: UNDERPOWERED
+  MIRROR F (20 draws): A0 primary median 1.31pp [0.94, 2.11] vs floor median 1.40 / p90 1.64; HL>p75 Q1-Q5 median +0.1pp [-5.3, +5.4]
+
+== USDJPY C vs F on 2689 common London dates: F/C ratio (90% CI)
+  hl_p50  1.0102 [1.0054, 1.0163] ok
+  hl_p75  1.0064 [1.0025, 1.0145] ok
+  oh_p50  1.0193 [1.0119, 1.0319] ok
+  oh_p75  1.0216 [1.0097, 1.0309] ok
+  ol_p50  1.0062 [0.9966, 1.0158] ok
+  ol_p75  1.0049 [0.9976, 1.0193] ok
+  -> SAME (F reuses the C spec)
+
+=== touches: scripts/exhaustion-v2/touches.py USDJPY (12:55:56)
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+USDJPY C: lines from ladder arm E_yz_20
+  placebo (lines from a random same-year session): 10614 first touches
+USDJPY C: 1918 sessions, 9845 first touches; extraction check 107/107 match on 20 sessions
+  touches per family x rung: OCd50 1107, OCd75 588, OCd90 260, OCu50 1095, OCu75 530, OCu90 227, OH50 1113, OH75 556, OH90 249, OL50 1085, OL75 569, OL90 222, PH50 666, PH75 314, PH90 125, PL50 648, PL75 324, PL90 167
+  wrong-side dynamic touches: 203; release still to come: 2759
+USDJPY F: lines from ladder arm E_yz_20
+  placebo (lines from a random same-year session): 10335 first touches
+USDJPY F: 1880 sessions, 9726 first touches; extraction check 85/85 match on 20 sessions
+  touches per family x rung: OCd50 1093, OCd75 585, OCd90 258, OCu50 1092, OCu75 531, OCu90 228, OH50 1079, OH75 534, OH90 234, OL50 1077, OL75 567, OL90 223, PH50 666, PH75 322, PH90 122, PL50 644, PL75 317, PL90 154
+  wrong-side dynamic touches: 210; release still to come: 2712
+
+=== exhaustion: scripts/exhaustion-v2/score.py USDJPY (12:57:44)
+positive control (20 synthetic histories, ~10425 touches each): X2 pooled bias next +0.12pp / sig +0.06pp; X0 worst time-bucket miss (median) 27.9pp -> ok
+  noise floor of a perfect forecaster WITH touch clustering: X2 PRIMARY median 2.43pp, p90 2.98pp (independent-Bernoulli floor p90 2.01pp)
+
+== C: 1674 sessions, touches next 7480 / sig 8561; floor median 1.87pp, p90 2.20pp
+  cand  PRIMARY   GUARD  logloss   vs X0
+  X7       3.21   1.80   0.6116  0.9317
+  X5       3.45   4.22*   0.6189  0.9429
+  X6       4.25   3.58*   0.6209  0.9460
+  X1       4.32   3.91*   0.6181  0.9416
+  X2       4.47   5.55*   0.6237  0.9502
+  X4       4.73   4.54*   0.6180  0.9416
+  X3       7.33   1.97   0.6337  0.9655
+  X0      12.08   1.57   0.6564  1.0000
+  winner X7, runner-up X3, tie=False, chosen X7; chosen-X0 PRIMARY CI [-9.05,-7.12]pp; log loss ratio CI [0.9183,0.9430]; calibrated to noise False
+    half 2019-22                 chosen 4.31 vs X0 12.12  CI [-8.01,-5.38]
+    half 2023-26                 chosen 4.38 vs X0 12.92  CI [-8.83,-5.22]
+    without covid                chosen 3.21 vs X0 11.78  CI [-8.81,-6.77]
+    without bear2022             chosen 3.96 vs X0 12.29  CI [-8.88,-6.44]
+    without tariff2025           chosen 3.41 vs X0 12.22  CI [-9.07,-7.05]
+    without hi1_202210           chosen 3.38 vs X0 12.05  CI [-9.03,-7.08]
+    without hi2_202407           chosen 3.46 vs X0 11.91  CI [-8.93,-7.00]
+    fault flags out              chosen 3.43 vs X0 12.13  CI [-8.98,-6.99]
+  next X0  obs/pred by time: 00-07 62.7/50.4 (n2150)  07-12 52.2/49.3 (n1888)  12-16 42.6/48.8 (n2468)  16-22 19.3/48.1 (n974)
+  next X2  obs/pred by time: 00-07 62.7/57.5 (n2150)  07-12 52.2/49.5 (n1888)  12-16 42.6/37.6 (n2468)  16-22 19.3/12.7 (n974)
+  next X7  obs/pred by time: 00-07 62.7/63.5 (n2150)  07-12 52.2/52.8 (n1888)  12-16 42.6/43.7 (n2468)  16-22 19.3/21.5 (n974)
+  sig  X0  obs/pred by time: 00-07 79.9/68.8 (n2295)  07-12 74.7/68.2 (n2114)  12-16 66.9/67.8 (n2905)  16-22 42.6/67.6 (n1247)
+  sig  X2  obs/pred by time: 00-07 79.9/77.2 (n2295)  07-12 74.7/72.9 (n2114)  12-16 66.9/65.0 (n2905)  16-22 42.6/39.2 (n1247)
+  sig  X7  obs/pred by time: 00-07 79.9/79.9 (n2295)  07-12 74.7/73.8 (n2114)  12-16 66.9/67.3 (n2905)  16-22 42.6/46.8 (n1247)
+  VERDICT C: VALIDATED
+  C: chosen X7 3.21pp vs clustered floor p90 2.98 -> calibrated to noise (clustered): False
+  placebo levels (random same-year session's lines): next: real obs 47.8% vs X2 43.1% | placebo obs 51.8% vs X2 44.1%; sig: real obs 68.8% vs X2 66.5% | placebo obs 71.7% vs X2 67.1%
+  wrong-side dynamic touches (next, n=171): obs 52.0% vs chosen 49.5%
+  wrong-side dynamic touches (sig, n=191): obs 71.7% vs chosen 70.8%
+
+== F: 1645 sessions, touches next 7409 / sig 8470; floor median 1.88pp, p90 2.19pp
+  cand  PRIMARY   GUARD  logloss   vs X0
+  X7       3.68   1.66   0.6129  0.9334
+  X8       3.77   2.59   0.6126  0.9328
+  X5       3.87   3.86*   0.6212  0.9460
+  X6       4.09   3.20*   0.6220  0.9472
+  X1       4.14   4.07*   0.6221  0.9473
+  X4       4.24   3.52*   0.6173  0.9401
+  X2       4.26   4.84*   0.6250  0.9518
+  X3       7.47   1.76   0.6348  0.9667
+  X0      11.81   1.65   0.6567  1.0000
+  winner X7, runner-up X8, tie=True, chosen X8; chosen-X0 PRIMARY CI [-8.61,-6.59]pp; log loss ratio CI [0.9196,0.9450]; calibrated to noise False
+    half 2019-22                 chosen 4.88 vs X0 11.49  CI [-7.78,-4.94]
+    half 2023-26                 chosen 5.56 vs X0 13.45  CI [-9.19,-6.12]
+    without covid                chosen 4.22 vs X0 11.46  CI [-8.23,-5.91]
+    without bear2022             chosen 3.95 vs X0 12.00  CI [-8.68,-6.31]
+    without tariff2025           chosen 4.14 vs X0 11.95  CI [-8.60,-6.60]
+    without hi1_202210           chosen 4.16 vs X0 11.74  CI [-8.46,-6.29]
+    without hi2_202407           chosen 4.12 vs X0 11.72  CI [-8.29,-6.22]
+    fault flags out              chosen 4.03 vs X0 11.80  CI [-8.53,-6.38]
+  next X0  obs/pred by time: 00-07 62.0/50.3 (n2151)  07-12 52.9/49.0 (n1839)  12-16 42.3/48.2 (n2452)  16-22 18.9/47.4 (n967)
+  next X2  obs/pred by time: 00-07 62.0/58.1 (n2151)  07-12 52.9/50.6 (n1839)  12-16 42.3/38.8 (n2452)  16-22 18.9/13.6 (n967)
+  next X8  obs/pred by time: 00-07 62.0/61.5 (n2151)  07-12 52.9/53.0 (n1839)  12-16 42.3/44.1 (n2452)  16-22 18.9/20.8 (n967)
+  sig  X0  obs/pred by time: 00-07 79.0/68.7 (n2295)  07-12 75.0/67.9 (n2051)  12-16 66.9/67.3 (n2873)  16-22 42.5/67.1 (n1251)
+  sig  X2  obs/pred by time: 00-07 79.0/77.6 (n2295)  07-12 75.0/73.4 (n2051)  12-16 66.9/65.9 (n2873)  16-22 42.5/40.9 (n1251)
+  sig  X8  obs/pred by time: 00-07 79.0/78.1 (n2295)  07-12 75.0/72.6 (n2051)  12-16 66.9/66.5 (n2873)  16-22 42.5/47.9 (n1251)
+  VERDICT F: VALIDATED
+  F: chosen X8 3.77pp vs clustered floor p90 2.98 -> calibrated to noise (clustered): False
+  placebo levels (random same-year session's lines): next: real obs 47.6% vs X2 44.0% | placebo obs 51.3% vs X2 45.0%; sig: real obs 68.5% vs X2 67.2% | placebo obs 71.1% vs X2 68.0%
+  wrong-side dynamic touches (next, n=182): obs 52.7% vs chosen 44.8%
+  wrong-side dynamic touches (sig, n=199): obs 70.4% vs chosen 65.0%

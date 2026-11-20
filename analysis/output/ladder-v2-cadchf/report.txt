@@ -1,0 +1,61 @@
+CADCHF (main race): arms ['A0', 'E_ewma_094', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht']; flags from analysis/output/data_screens/CADCHF/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 2240 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    R15            -0.5732  0.228
+    HARCJ          -0.5705  0.242
+    SHAR           -0.5666  0.230
+    R5             -0.5665  0.227
+    E_har_rv_log   -0.5659  0.196
+    H8             -0.5623  0.187
+    B_har_garcht   -0.5564  0.181
+    A0             -0.5354  0.175
+    G_garch_t      -0.5300  0.142
+    E_yz_30        -0.5257  0.092
+    E_yz_20        -0.5204  0.110
+    E_ewma_094     -0.5144  0.122
+    G_egarch       -0.5072  0.116
+    E_ewma_090     -0.5008  0.149
+    G_garch        -0.4939  0.130
+    G_gjr          -0.4762  0.124
+    E_naive        -0.4518  0.003
+
+== CADCHF C: 2240 test sessions 2018-01-02 -> 2026-08-20   noise floor median 1.37pp, p90 1.63pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  E_yz_30            1.35   0.85   1.0056   0.73
+  B_har_garcht       1.42   1.21   0.9761   1.06
+  R15                1.44   1.18   0.9661   1.02
+  H8                 1.44   0.84   0.9752   1.00
+  G_egarch           1.50   1.20   0.9963   0.77
+  R5                 1.51   0.92   0.9656   1.00
+  SHAR               1.51   0.93   0.9656   0.99
+  HARCJ              1.52   1.03   0.9623   0.99
+  E_har_rv_log       1.54   0.76   0.9730   1.01
+  E_ewma_094         1.77   1.03   1.0132   0.62
+  E_yz_20            1.93   0.99   1.0078   0.69
+  G_garch            2.03   2.24*   0.9997   0.81
+  G_garch_t          2.11   2.52*   0.9973   0.88
+  E_ewma_090         2.21   0.87   1.0214   0.56
+  G_gjr              2.65   2.86*   1.0022   0.75
+  A0                 3.78   1.06   1.0000   0.67
+  E_naive            4.29   0.96   1.0362   2.13
+  winner E_yz_30, runner-up B_har_garcht, tie=True, chosen B_har_garcht; chosen - A0 CI [-2.84, -1.47]pp; calibrated to noise True
+    half 2018-22                       n= 1297  chosen 1.39 vs A0 4.13  CI [-3.26,-1.37]
+    half 2023-26                       n=  943  chosen 2.27 vs A0 4.16  CI [-2.68,-1.25]
+    without 2018Q4                     n= 2175  chosen 1.53 vs A0 3.79  CI [-2.76,-1.42]
+    without covid                      n= 2145  chosen 1.56 vs A0 3.99  CI [-3.01,-1.87]
+    without bear2022                   n= 1981  chosen 1.86 vs A0 3.45  CI [-2.66,-1.16]
+    without tariff2025                 n= 2175  chosen 1.56 vs A0 3.83  CI [-2.88,-1.50]
+    without hi1_202002                 n= 2177  chosen 1.57 vs A0 3.91  CI [-2.93,-1.77]
+    without hi2_202502                 n= 2177  chosen 1.58 vs A0 3.83  CI [-2.90,-1.52]
+    without hi3_202204                 n= 2177  chosen 1.63 vs A0 3.86  CI [-2.84,-1.51]
+    without hi4_202209                 n= 2177  chosen 1.57 vs A0 3.63  CI [-2.75,-1.43]
+    fault flags out                    n= 2237  chosen 1.41 vs A0 3.80  CI [-2.86,-1.53]
+    any flag out (descriptive)         n= 1800  chosen 3.03 vs A0 3.93  CI [-2.31,-1.04]
+  HL>p75/p90 by quintile A0            : Q1 36.6/17.9  Q2 27.9/13.6  Q3 25.7/ 8.9  Q4 18.8/ 7.4  Q5 17.6/ 7.4
+  HL>p75/p90 by quintile B_har_garcht  : Q1 24.6/ 9.4  Q2 21.9/ 9.6  Q3 25.2/ 7.8  Q4 23.7/ 9.2  Q5 23.7/10.5
+  HL>p75/p90 by quintile E_yz_30       : Q1 28.8/11.2  Q2 24.6/11.2  Q3 24.3/ 8.3  Q4 24.3/ 8.3  Q5 24.1/12.9
+  HL>p75/p90 by quintile H8            : Q1 28.6/11.4  Q2 24.3/ 9.6  Q3 25.7/ 9.4  Q4 22.5/ 8.7  Q5 25.7/11.8
+  VERDICT CADCHF C: VALIDATED
+  MIRROR C (20 draws): A0 primary median 1.40pp [1.13, 2.02] vs floor median 1.36 / p90 1.63; HL>p75 Q1-Q5 median +1.1pp [-2.7, +5.6]

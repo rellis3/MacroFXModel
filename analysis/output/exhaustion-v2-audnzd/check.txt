@@ -1,0 +1,6 @@
+Major release times (none graded): 0 (- -> -)
+AUDNZD C: lines from ladder arm E_har_rv_log
+  placebo (lines from a random same-year session): 10313 first touches
+AUDNZD C: 2049 sessions, 10002 first touches; extraction check 72/72 match on 20 sessions
+  touches per family x rung: OCd50 1155, OCd75 616, OCd90 273, OCu50 1157, OCu75 620, OCu90 261, OH50 1129, OH75 571, OH90 215, OL50 1124, OL75 553, OL90 226, PH50 620, PH75 300, PH90 110, PL50 645, PL75 302, PL90 125
+  wrong-side dynamic touches: 169; release still to come: 0

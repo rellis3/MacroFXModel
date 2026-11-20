@@ -1,0 +1,60 @@
+AUDNZD (main race): arms ['A0', 'E_ewma_094', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht']; flags from analysis/output/data_screens/AUDNZD/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 2240 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    B_har_garcht   -1.3973  0.037
+    G_gjr          -1.3961  0.013
+    G_garch        -1.3956  0.011
+    G_egarch       -1.3949  0.013
+    G_garch_t      -1.3933  0.010
+    E_har_rv_log   -1.3848  0.051
+    E_ewma_094     -1.3802  0.015
+    H8             -1.3783  0.049
+    E_yz_20        -1.3657  0.016
+    A0             -1.3633  0.019
+    E_yz_30        -1.3598  0.014
+    R15            -1.3591  0.051
+    E_ewma_090     -1.3545  0.018
+    HARCJ          -1.3333  0.060
+    SHAR           -1.3285  0.053
+    R5             -1.3275  0.051
+    E_naive        -1.3049  0.004
+
+== AUDNZD C: 2240 test sessions 2018-01-02 -> 2026-08-20   noise floor median 1.37pp, p90 1.63pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  H8                 1.11   0.41   0.9652   0.93
+  E_har_rv_log       1.17   0.43   0.9618   0.96
+  E_yz_30            1.18   0.26   0.9955   0.63
+  B_har_garcht       1.41   0.64   0.9654   1.14
+  E_yz_20            1.76   0.48   0.9951   0.63
+  G_egarch           1.86   0.70   0.9867   0.85
+  R15                1.93   1.90*   0.9679   0.90
+  HARCJ              1.93   1.58*   0.9609   0.91
+  E_ewma_094         1.95   1.28   0.9963   0.64
+  E_ewma_090         1.97   1.14   1.0085   0.53
+  SHAR               1.98   1.83*   0.9674   0.89
+  R5                 2.00   1.88*   0.9686   0.90
+  G_gjr              2.08   0.83   0.9874   0.96
+  G_garch            2.11   0.89   0.9883   0.96
+  G_garch_t          2.27   1.00   0.9890   0.98
+  A0                 3.21   0.36   1.0000   0.60
+  E_naive            4.46   0.41   1.0207   0.80
+  winner H8, runner-up E_har_rv_log, tie=True, chosen E_har_rv_log; chosen - A0 CI [-2.43, -1.23]pp; calibrated to noise True
+    half 2018-22                       n= 1297  chosen 1.47 vs A0 3.56  CI [-2.84,-1.06]
+    half 2023-26                       n=  943  chosen 2.28 vs A0 3.42  CI [-2.12,-0.51]
+    without 2018Q4                     n= 2175  chosen 1.30 vs A0 3.30  CI [-2.40,-1.23]
+    without covid                      n= 2145  chosen 1.32 vs A0 3.30  CI [-2.45,-1.22]
+    without bear2022                   n= 1981  chosen 1.35 vs A0 3.28  CI [-2.39,-1.12]
+    without tariff2025                 n= 2175  chosen 1.22 vs A0 3.32  CI [-2.43,-1.21]
+    without hi1_202003                 n= 2177  chosen 1.49 vs A0 3.45  CI [-2.48,-1.27]
+    without hi2_202210                 n= 2177  chosen 1.42 vs A0 3.32  CI [-2.40,-1.14]
+    without hi3_201801                 n= 2177  chosen 1.29 vs A0 3.16  CI [-2.39,-1.21]
+    without hi4_202303                 n= 2177  chosen 1.31 vs A0 3.17  CI [-2.23,-1.10]
+    fault flags out                    n= 2237  chosen 1.17 vs A0 3.22  CI [-2.40,-1.21]
+    any flag out (descriptive)         n= 1608  chosen 3.74 vs A0 4.47  CI [-2.79,-0.87]
+  HL>p75/p90 by quintile A0            : Q1 33.0/13.6  Q2 26.6/11.4  Q3 26.8/ 9.8  Q4 21.2/ 8.5  Q5 14.5/ 5.8
+  HL>p75/p90 by quintile E_har_rv_log  : Q1 23.4/ 8.7  Q2 24.6/ 9.4  Q3 25.9/10.9  Q4 24.3/ 9.6  Q5 22.8/ 9.6
+  HL>p75/p90 by quintile H8            : Q1 23.2/ 8.5  Q2 23.9/ 9.6  Q3 25.4/10.5  Q4 23.9/10.0  Q5 23.0/ 9.8
+  VERDICT AUDNZD C: VALIDATED
+  MIRROR C (20 draws): A0 primary median 1.31pp [0.80, 1.87] vs floor median 1.37 / p90 1.63; HL>p75 Q1-Q5 median -0.3pp [-5.6, +4.9]

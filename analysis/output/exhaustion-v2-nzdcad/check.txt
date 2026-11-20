@@ -1,0 +1,6 @@
+Major release times (none graded): 0 (- -> -)
+NZDCAD C: lines from ladder arm SHAR
+  placebo (lines from a random same-year session): 10044 first touches
+NZDCAD C: 2019 sessions, 9797 first touches; extraction check 69/69 match on 20 sessions
+  touches per family x rung: OCd50 1088, OCd75 580, OCd90 265, OCu50 1152, OCu75 617, OCu90 262, OH50 1121, OH75 554, OH90 224, OL50 1120, OL75 564, OL90 231, PH50 621, PH75 290, PH90 128, PL50 606, PL75 271, PL90 103
+  wrong-side dynamic touches: 104; release still to come: 0

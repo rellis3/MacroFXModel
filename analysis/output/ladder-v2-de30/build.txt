@@ -1,0 +1,3 @@
+positive control 1 (DE30 C bars vs JS nyCloseDailyBars): 2702/2702 = 1.0000
+DE30 C: 2701 sessions 2016-01-04 -> 2026-08-20
+DE30 F: 2841 sessions 2014-12-08 -> 2026-08-21

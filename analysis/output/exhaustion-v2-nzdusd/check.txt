@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+NZDUSD C: lines from ladder arm E_yz_20
+  placebo (lines from a random same-year session): 10171 first touches
+NZDUSD C: 1985 sessions, 9821 first touches; extraction check 91/91 match on 20 sessions
+  touches per family x rung: OCd50 1053, OCd75 555, OCd90 261, OCu50 1116, OCu75 568, OCu90 228, OH50 1103, OH75 539, OH90 235, OL50 1137, OL75 566, OL90 255, PH50 652, PH75 320, PH90 135, PL50 652, PL75 312, PL90 134
+  wrong-side dynamic touches: 116; release still to come: 2587
+NZDUSD F: lines from ladder arm E_yz_20
+  placebo (lines from a random same-year session): 10012 first touches
+NZDUSD F: 1916 sessions, 9680 first touches; extraction check 109/109 match on 20 sessions
+  touches per family x rung: OCd50 1016, OCd75 551, OCd90 264, OCu50 1100, OCu75 576, OCu90 242, OH50 1085, OH75 543, OH90 232, OL50 1086, OL75 557, OL90 235, PH50 658, PH75 307, PH90 133, PL50 647, PL75 318, PL90 130
+  wrong-side dynamic touches: 130; release still to come: 2541

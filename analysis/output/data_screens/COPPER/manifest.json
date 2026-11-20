@@ -1,0 +1,92 @@
+{
+ "symbol": "COPPER",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "analysis/output/ladder-v2-data/m1_commod/copper_m1.parquet": "d33920a125acbd4afb0f3e5465d393bb1f5876df705274b9cf7ad190f05b9ac9",
+  "analysis/output/nt8/continuous/HG_1m_unadj.parquet": "81ad02cf4c6192f456dc34c3326c02406b04aba3f334e5c700c46ef0d0f99faa",
+  "analysis/output/nt8/continuous/HG_1m_ratio.parquet": "d1be8aef7ef6c3b1dd73d8cd76f3c48a5d2453a870ab3648cba44437d4958a4b",
+  "analysis/output/nt8/continuous/HG_rolls.csv": "e1729e4eece7856c8e51b150c6441d7c5cf06cb50199c50295e4788e3183edb3"
+ },
+ "sessions": {
+  "C": [
+   "2015-12-30",
+   "2026-11-20",
+   2812
+  ],
+  "F": [
+   "2014-12-08",
+   "2026-11-19",
+   3004
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "frozen",
+   "n": 1
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 454
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 4
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 2
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 73
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 41
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 446
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 6
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 63
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 183
+  }
+ ]
+}

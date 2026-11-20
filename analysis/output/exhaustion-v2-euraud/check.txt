@@ -1,0 +1,6 @@
+Major release times (Euro Area): 267 (2014-01-09 10:00:00+00:00 -> 2026-11-13 10:00:00+00:00)
+EURAUD C: lines from ladder arm SHAR
+  placebo (lines from a random same-year session): 10199 first touches
+EURAUD C: 2027 sessions, 9764 first touches; extraction check 85/85 match on 20 sessions
+  touches per family x rung: OCd50 1138, OCd75 548, OCd90 214, OCu50 1128, OCu75 583, OCu90 261, OH50 1145, OH75 592, OH90 230, OL50 1093, OL75 545, OL90 215, PH50 625, PH75 310, PH90 131, PL50 625, PL75 290, PL90 91
+  wrong-side dynamic touches: 96; release still to come: 364

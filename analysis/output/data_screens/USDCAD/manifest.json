@@ -1,0 +1,97 @@
+{
+ "symbol": "USDCAD",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "portfolioBacktest/cache/usdcad_m1.parquet": "362750b397836d758e3220f24aa7e4834030f558b7c1b904f62e71d336f72b0c",
+  "analysis/output/nt8/continuous/6C_1m_unadj.parquet": "6a17729a68e33b31186d4ae4c2190416f3cf1d142a1e32f3e19babb50e1fddf9",
+  "analysis/output/nt8/continuous/6C_1m_ratio.parquet": "9223d61fdd8ef4ba61a11682b9ee2a6e5831e03111707cb75456c8f85c580b9c",
+  "analysis/output/nt8/continuous/6C_rolls.csv": "e8fd1ad564d504ea9e6582da47882a4fa3380b2a50110c15dd65f7b8b5be66d1"
+ },
+ "sessions": {
+  "C": [
+   "2016-01-04",
+   "2026-08-21",
+   2758
+  ],
+  "F": [
+   "2014-12-08",
+   "2026-11-19",
+   3032
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "gap",
+   "n": 2
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 654
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 1
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 1
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 98
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 44
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 613
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 1
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 66
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 34
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 3
+  }
+ ]
+}

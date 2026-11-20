@@ -1,0 +1,1006 @@
+date,track,screen,detail
+2014-12-17,F,jump_1m,5 bars; max 14.8 SD (0.12%)
+2015-01-09,F,jump_1m,1 bars; max 17.9 SD (0.11%)
+2015-01-14,F,jump_1m,2 bars; max 19.4 SD (0.14%)
+2015-01-27,F,jump_1m,1 bars; max 10.3 SD (0.08%)
+2015-02-06,F,jump_1m,1 bars; max 64.7 SD (0.51%)
+2015-02-12,F,jump_1m,1 bars; max 15.8 SD (0.12%)
+2015-02-18,F,jump_1m,2 bars; max 20.7 SD (0.16%)
+2015-02-20,F,jump_1m,1 bars; max 13.6 SD (0.11%)
+2015-02-24,F,jump_1m,1 bars; max 16.1 SD (0.10%)
+2015-02-26,F,jump_1m,1 bars; max 17.4 SD (0.11%)
+2015-03-03,F,partial,456 bars
+2015-03-04,F,partial,350 bars
+2015-03-05,F,partial,251 bars
+2015-03-06,F,jump_1m,2 bars; max 53.6 SD (0.57%)
+2015-03-06,F,partial,218 bars
+2015-03-09,F,partial,84 bars
+2015-03-09,F,roll_gap,ZF_03-15->ZF_06-15 gap -0.80 pts = 2.5 daily SD
+2015-03-12,F,jump_1m,1 bars; max 29.2 SD (0.20%)
+2015-03-18,F,jump_1m,1 bars; max 55.3 SD (0.35%)
+2015-03-25,F,jump_1m,1 bars; max 12.2 SD (0.08%)
+2015-04-01,F,jump_1m,1 bars; max 13.4 SD (0.08%)
+2015-04-03,F,jump_1m,1 bars; max 51.3 SD (0.30%)
+2015-04-03,F,partial,486 bars
+2015-04-08,F,jump_1m,1 bars; max 16.6 SD (0.10%)
+2015-04-14,F,jump_1m,1 bars; max 23.4 SD (0.14%)
+2015-04-16,F,jump_1m,1 bars; max 10.9 SD (0.06%)
+2015-04-29,F,jump_1m,1 bars; max 10.6 SD (0.08%)
+2015-05-05,F,jump_1m,1 bars; max 14.2 SD (0.09%)
+2015-05-08,F,jump_1m,1 bars; max 37.7 SD (0.34%)
+2015-05-13,F,jump_1m,1 bars; max 11.2 SD (0.10%)
+2015-05-19,F,jump_1m,1 bars; max 14.1 SD (0.10%)
+2015-05-22,F,jump_1m,1 bars; max 21.0 SD (0.14%)
+2015-05-25,F,partial,531 bars
+2015-05-26,F,jump_1m,1 bars; max 15.3 SD (0.09%)
+2015-06-01,F,jump_1m,1 bars; max 14.3 SD (0.09%)
+2015-06-02,F,partial,523 bars
+2015-06-03,F,partial,512 bars
+2015-06-04,F,partial,341 bars
+2015-06-05,F,jump_1m,1 bars; max 43.1 SD (0.46%)
+2015-06-05,F,partial,316 bars
+2015-06-08,F,partial,50 bars
+2015-06-08,F,roll_gap,ZF_06-15->ZF_09-15 gap -0.67 pts = 2.7 daily SD
+2015-06-11,F,jump_1m,1 bars; max 12.8 SD (0.09%)
+2015-06-17,F,jump_1m,3 bars; max 20.4 SD (0.13%)
+2015-06-24,F,jump_1m,1 bars; max 13.3 SD (0.09%)
+2015-07-02,F,jump_1m,1 bars; max 43.1 SD (0.29%)
+2015-07-14,F,jump_1m,1 bars; max 20.0 SD (0.13%)
+2015-07-15,F,jump_1m,1 bars; max 11.9 SD (0.09%)
+2015-07-29,F,jump_1m,1 bars; max 19.9 SD (0.10%)
+2015-07-31,F,jump_1m,2 bars; max 20.4 SD (0.14%)
+2015-08-05,F,jump_1m,2 bars; max 19.5 SD (0.12%)
+2015-08-07,F,jump_1m,2 bars; max 36.0 SD (0.21%)
+2015-08-12,F,jump_1m,1 bars; max 25.6 SD (0.16%)
+2015-08-19,F,jump_1m,2 bars; max 12.3 SD (0.08%)
+2015-08-24,F,jump_1m,1 bars; max 10.2 SD (0.09%)
+2015-08-26,F,jump_1m,1 bars; max 13.1 SD (0.11%)
+2015-08-27,F,jump_1m,1 bars; max 10.9 SD (0.10%)
+2015-08-28,F,jump_1m,1 bars; max 11.1 SD (0.08%)
+2015-09-01,F,jump_1m,1 bars; max 15.5 SD (0.11%)
+2015-09-03,F,partial,426 bars
+2015-09-04,F,jump_1m,1 bars; max 13.0 SD (0.10%)
+2015-09-04,F,partial,303 bars
+2015-09-07,F,partial,59 bars
+2015-09-07,F,roll_gap,ZF_09-15->ZF_12-15 gap -0.39 pts = 1.5 daily SD
+2015-09-17,F,jump_1m,1 bars; max 10.3 SD (0.07%)
+2015-10-02,F,jump_1m,1 bars; max 84.0 SD (0.50%)
+2015-10-22,F,jump_1m,2 bars; max 16.4 SD (0.08%)
+2015-10-28,F,jump_1m,3 bars; max 27.8 SD (0.15%)
+2015-11-04,F,jump_1m,2 bars; max 11.5 SD (0.07%)
+2015-11-06,F,jump_1m,1 bars; max 95.2 SD (0.55%)
+2015-11-13,F,jump_1m,1 bars; max 10.1 SD (0.06%)
+2015-11-17,F,jump_1m,1 bars; max 16.6 SD (0.09%)
+2015-11-26,F,partial,472 bars
+2015-12-01,F,jump_1m,2 bars; max 12.8 SD (0.07%)
+2015-12-01,F,partial,582 bars
+2015-12-02,F,jump_1m,1 bars; max 12.4 SD (0.08%)
+2015-12-02,F,partial,524 bars
+2015-12-03,F,partial,465 bars
+2015-12-04,F,jump_1m,1 bars; max 19.9 SD (0.17%)
+2015-12-04,F,partial,389 bars
+2015-12-07,F,partial,147 bars
+2015-12-07,F,roll_gap,ZF_12-15->ZF_03-16 gap -0.52 pts = 2.3 daily SD
+2015-12-16,F,jump_1m,3 bars; max 41.5 SD (0.25%)
+2015-12-29,F,jump_1m,1 bars; max 10.1 SD (0.05%)
+2016-01-08,F,jump_1m,1 bars; max 11.7 SD (0.08%)
+2016-01-15,F,jump_1m,1 bars; max 17.7 SD (0.13%)
+2016-01-27,F,jump_1m,1 bars; max 13.0 SD (0.08%)
+2016-01-29,F,jump_1m,1 bars; max 10.3 SD (0.08%)
+2016-02-05,F,jump_1m,2 bars; max 15.6 SD (0.11%)
+2016-02-12,F,jump_1m,1 bars; max 10.6 SD (0.13%)
+2016-02-19,F,jump_1m,1 bars; max 13.2 SD (0.09%)
+2016-02-23,F,jump_1m,1 bars; max 10.2 SD (0.06%)
+2016-02-25,F,jump_1m,1 bars; max 10.9 SD (0.08%)
+2016-02-26,F,jump_1m,1 bars; max 10.5 SD (0.08%)
+2016-03-02,F,jump_1m,1 bars; max 11.9 SD (0.08%)
+2016-03-03,F,partial,386 bars
+2016-03-04,F,partial,308 bars
+2016-03-07,F,partial,151 bars
+2016-03-08,F,partial,89 bars
+2016-03-09,F,partial,104 bars
+2016-03-10,F,partial,76 bars
+2016-03-11,F,partial,44 bars
+2016-03-14,F,partial,17 bars
+2016-03-16,F,jump_1m,2 bars; max 40.8 SD (0.27%)
+2016-03-29,F,jump_1m,1 bars; max 26.5 SD (0.14%)
+2016-04-01,F,jump_1m,1 bars; max 29.0 SD (0.16%)
+2016-04-06,F,jump_1m,1 bars; max 10.5 SD (0.06%)
+2016-04-13,F,jump_1m,1 bars; max 14.0 SD (0.08%)
+2016-04-27,F,jump_1m,1 bars; max 29.8 SD (0.16%)
+2016-05-04,F,jump_1m,1 bars; max 10.3 SD (0.06%)
+2016-05-06,F,jump_1m,1 bars; max 30.8 SD (0.16%)
+2016-05-13,F,jump_1m,1 bars; max 20.9 SD (0.12%)
+2016-05-17,F,jump_1m,1 bars; max 13.3 SD (0.06%)
+2016-05-18,F,jump_1m,1 bars; max 20.4 SD (0.10%)
+2016-05-27,F,jump_1m,1 bars; max 13.5 SD (0.07%)
+2016-05-30,F,partial,413 bars
+2016-06-01,F,jump_1m,1 bars; max 13.4 SD (0.07%)
+2016-06-02,F,partial,446 bars
+2016-06-03,F,jump_1m,1 bars; max 47.4 SD (0.30%)
+2016-06-03,F,partial,438 bars
+2016-06-06,F,partial,253 bars
+2016-06-07,F,partial,76 bars
+2016-06-08,F,partial,55 bars
+2016-06-09,F,partial,32 bars
+2016-06-10,F,partial,70 bars
+2016-06-13,F,partial,20 bars
+2016-06-13,F,roll_gap,ZF_06-16->ZF_09-16 gap -0.36 pts = 1.6 daily SD
+2016-06-15,F,jump_1m,1 bars; max 42.3 SD (0.22%)
+2016-06-21,F,jump_1m,1 bars; max 10.2 SD (0.06%)
+2016-06-24,F,jump_1m,2 bars; max 20.7 SD (0.14%)
+2016-07-01,F,jump_1m,1 bars; max 10.3 SD (0.07%)
+2016-07-08,F,jump_1m,1 bars; max 23.6 SD (0.15%)
+2016-07-15,F,jump_1m,1 bars; max 17.2 SD (0.12%)
+2016-07-27,F,jump_1m,3 bars; max 15.4 SD (0.10%)
+2016-07-29,F,jump_1m,4 bars; max 23.6 SD (0.13%)
+2016-08-05,F,jump_1m,1 bars; max 28.6 SD (0.16%)
+2016-08-12,F,jump_1m,2 bars; max 24.1 SD (0.12%)
+2016-08-16,F,jump_1m,1 bars; max 12.0 SD (0.06%)
+2016-08-17,F,jump_1m,2 bars; max 23.1 SD (0.14%)
+2016-08-26,F,jump_1m,1 bars; max 26.9 SD (0.15%)
+2016-08-31,F,partial,14 bars
+2016-09-16,F,jump_1m,1 bars; max 12.8 SD (0.08%)
+2016-09-21,F,jump_1m,1 bars; max 20.9 SD (0.10%)
+2016-10-04,F,jump_1m,2 bars; max 18.8 SD (0.10%)
+2016-10-05,F,jump_1m,1 bars; max 14.0 SD (0.09%)
+2016-10-07,F,jump_1m,2 bars; max 17.3 SD (0.09%)
+2016-10-18,F,jump_1m,1 bars; max 13.4 SD (0.07%)
+2016-11-09,F,jump_1m,5 bars; max 17.7 SD (0.13%)
+2016-12-01,F,partial,569 bars
+2016-12-02,F,jump_1m,1 bars; max 12.1 SD (0.11%)
+2016-12-02,F,partial,431 bars
+2016-12-05,F,partial,344 bars
+2016-12-06,F,partial,228 bars
+2016-12-07,F,partial,112 bars
+2016-12-08,F,partial,120 bars
+2016-12-09,F,partial,128 bars
+2016-12-12,F,partial,64 bars
+2016-12-12,F,roll_gap,ZF_12-16->ZF_03-17 gap -0.61 pts = 3.1 daily SD
+2016-12-14,F,jump_1m,1 bars; max 46.3 SD (0.31%)
+2017-01-06,F,jump_1m,1 bars; max 17.9 SD (0.12%)
+2017-01-11,F,jump_1m,1 bars; max 10.3 SD (0.07%)
+2017-01-13,F,jump_1m,1 bars; max 16.3 SD (0.11%)
+2017-02-01,F,jump_1m,1 bars; max 11.5 SD (0.07%)
+2017-02-03,F,jump_1m,1 bars; max 30.9 SD (0.18%)
+2017-02-08,F,jump_1m,1 bars; max 10.6 SD (0.07%)
+2017-02-14,F,jump_1m,1 bars; max 30.6 SD (0.15%)
+2017-02-15,F,jump_1m,1 bars; max 24.0 SD (0.17%)
+2017-02-22,F,jump_1m,1 bars; max 12.0 SD (0.07%)
+2017-03-02,F,partial,547 bars
+2017-03-03,F,jump_1m,1 bars; max 11.7 SD (0.09%)
+2017-03-03,F,partial,445 bars
+2017-03-06,F,partial,202 bars
+2017-03-07,F,partial,137 bars
+2017-03-08,F,jump_1m,1 bars; max 13.5 SD (0.12%)
+2017-03-08,F,partial,162 bars
+2017-03-09,F,partial,66 bars
+2017-03-10,F,partial,54 bars
+2017-03-13,F,partial,23 bars
+2017-03-13,F,roll_gap,ZF_03-17->ZF_06-17 gap -0.45 pts = 2.0 daily SD
+2017-03-15,F,jump_1m,1 bars; max 58.8 SD (0.33%)
+2017-04-05,F,jump_1m,1 bars; max 11.9 SD (0.06%)
+2017-04-07,F,jump_1m,3 bars; max 25.8 SD (0.17%)
+2017-05-05,F,jump_1m,1 bars; max 12.5 SD (0.07%)
+2017-05-12,F,jump_1m,1 bars; max 12.2 SD (0.07%)
+2017-05-29,F,partial,396 bars
+2017-06-01,F,jump_1m,1 bars; max 11.5 SD (0.06%)
+2017-06-01,F,partial,496 bars
+2017-06-02,F,partial,381 bars
+2017-06-05,F,partial,280 bars
+2017-06-06,F,partial,323 bars
+2017-06-07,F,partial,180 bars
+2017-06-08,F,partial,175 bars
+2017-06-09,F,partial,120 bars
+2017-06-12,F,partial,89 bars
+2017-06-12,F,roll_gap,ZF_06-17->ZF_09-17 gap -0.45 pts = 2.6 daily SD
+2017-06-14,F,jump_1m,1 bars; max 39.4 SD (0.18%)
+2017-06-28,F,jump_1m,1 bars; max 12.9 SD (0.07%)
+2017-06-29,F,jump_1m,1 bars; max 11.3 SD (0.07%)
+2017-07-12,F,jump_1m,1 bars; max 12.6 SD (0.07%)
+2017-07-14,F,jump_1m,1 bars; max 26.6 SD (0.14%)
+2017-07-18,F,jump_1m,1 bars; max 12.3 SD (0.07%)
+2017-08-03,F,jump_1m,1 bars; max 11.9 SD (0.06%)
+2017-08-04,F,jump_1m,1 bars; max 26.4 SD (0.13%)
+2017-08-11,F,jump_1m,1 bars; max 20.8 SD (0.11%)
+2017-08-15,F,jump_1m,1 bars; max 18.6 SD (0.09%)
+2017-09-01,F,jump_1m,1 bars; max 18.1 SD (0.09%)
+2017-09-01,F,partial,469 bars
+2017-09-04,F,partial,127 bars
+2017-09-05,F,partial,307 bars
+2017-09-06,F,partial,276 bars
+2017-09-07,F,partial,229 bars
+2017-09-08,F,partial,150 bars
+2017-09-11,F,partial,81 bars
+2017-09-11,F,roll_gap,ZF_09-17->ZF_12-17 gap -0.28 pts = 1.9 daily SD
+2017-09-14,F,jump_1m,1 bars; max 28.8 SD (0.13%)
+2017-09-20,F,jump_1m,1 bars; max 28.9 SD (0.13%)
+2017-09-29,F,jump_1m,2 bars; max 16.2 SD (0.09%)
+2017-10-04,F,jump_1m,1 bars; max 10.9 SD (0.05%)
+2017-10-06,F,jump_1m,1 bars; max 18.3 SD (0.09%)
+2017-10-13,F,jump_1m,1 bars; max 28.8 SD (0.14%)
+2017-10-16,F,jump_1m,1 bars; max 14.9 SD (0.07%)
+2017-10-19,F,jump_1m,1 bars; max 10.6 SD (0.05%)
+2017-10-24,F,jump_1m,1 bars; max 17.3 SD (0.09%)
+2017-10-27,F,jump_1m,1 bars; max 16.2 SD (0.10%)
+2017-11-03,F,jump_1m,1 bars; max 18.5 SD (0.09%)
+2017-12-01,F,jump_1m,3 bars; max 18.2 SD (0.11%)
+2017-12-04,F,partial,528 bars
+2017-12-05,F,partial,374 bars
+2017-12-06,F,partial,452 bars
+2017-12-07,F,partial,214 bars
+2017-12-08,F,jump_1m,1 bars; max 10.9 SD (0.07%)
+2017-12-08,F,partial,167 bars
+2017-12-11,F,partial,56 bars
+2017-12-11,F,roll_gap,ZF_12-17->ZF_03-18 gap -0.23 pts = 1.9 daily SD
+2017-12-13,F,jump_1m,1 bars; max 39.1 SD (0.17%)
+2018-01-05,F,jump_1m,1 bars; max 25.0 SD (0.11%)
+2018-01-11,F,jump_1m,1 bars; max 10.9 SD (0.05%)
+2018-01-12,F,jump_1m,1 bars; max 23.3 SD (0.12%)
+2018-02-02,F,jump_1m,1 bars; max 25.4 SD (0.14%)
+2018-02-05,F,jump_1m,3 bars; max 26.0 SD (0.16%)
+2018-02-05,F,jump_day,+0.65% = 6.1 SD
+2018-02-06,F,jump_1m,1 bars; max 17.4 SD (0.17%)
+2018-02-14,F,jump_1m,1 bars; max 31.3 SD (0.18%)
+2018-02-27,F,jump_1m,1 bars; max 13.3 SD (0.08%)
+2018-03-05,F,partial,453 bars
+2018-03-06,F,partial,342 bars
+2018-03-07,F,partial,184 bars
+2018-03-08,F,partial,112 bars
+2018-03-09,F,partial,107 bars
+2018-03-12,F,partial,87 bars
+2018-03-12,F,roll_gap,ZF_03-18->ZF_06-18 gap -0.28 pts = 1.6 daily SD
+2018-03-21,F,jump_1m,1 bars; max 27.7 SD (0.14%)
+2018-04-06,F,jump_1m,1 bars; max 12.8 SD (0.07%)
+2018-04-27,F,jump_1m,1 bars; max 11.2 SD (0.06%)
+2018-05-10,F,jump_1m,1 bars; max 22.5 SD (0.10%)
+2018-05-29,F,jump_1m,1 bars; max 10.3 SD (0.06%)
+2018-06-01,F,jump_1m,1 bars; max 16.0 SD (0.12%)
+2018-06-04,F,partial,433 bars
+2018-06-05,F,partial,395 bars
+2018-06-06,F,partial,293 bars
+2018-06-07,F,jump_1m,2 bars; max 21.8 SD (0.16%)
+2018-06-07,F,partial,192 bars
+2018-06-08,F,partial,197 bars
+2018-06-11,F,partial,97 bars
+2018-06-11,F,roll_gap,ZF_06-18->ZF_09-18 gap -0.27 pts = 1.6 daily SD
+2018-06-13,F,jump_1m,1 bars; max 17.0 SD (0.09%)
+2018-06-20,F,jump_1m,1 bars; max 14.0 SD (0.08%)
+2018-06-27,F,jump_1m,1 bars; max 12.7 SD (0.06%)
+2018-07-27,F,jump_1m,1 bars; max 15.1 SD (0.08%)
+2018-07-31,F,jump_1m,1 bars; max 10.2 SD (0.06%)
+2018-09-03,F,partial,128 bars
+2018-09-04,F,partial,517 bars
+2018-09-05,F,partial,471 bars
+2018-09-06,F,partial,398 bars
+2018-09-07,F,jump_1m,1 bars; max 17.2 SD (0.09%)
+2018-09-07,F,partial,288 bars
+2018-09-10,F,partial,107 bars
+2018-09-10,F,roll_gap,ZF_09-18->ZF_12-18 gap -0.26 pts = 2.1 daily SD
+2018-09-13,F,jump_1m,1 bars; max 24.4 SD (0.12%)
+2018-09-26,F,jump_1m,1 bars; max 12.7 SD (0.06%)
+2018-11-02,F,jump_1m,1 bars; max 11.2 SD (0.06%)
+2018-11-28,F,jump_1m,1 bars; max 15.7 SD (0.08%)
+2018-12-07,F,jump_1m,1 bars; max 17.0 SD (0.14%)
+2018-12-07,F,partial,309 bars
+2018-12-10,F,partial,123 bars
+2018-12-19,F,jump_1m,1 bars; max 19.1 SD (0.10%)
+2019-01-03,F,jump_1m,1 bars; max 14.1 SD (0.08%)
+2019-01-04,F,jump_1m,1 bars; max 26.6 SD (0.20%)
+2019-01-30,F,jump_1m,1 bars; max 18.0 SD (0.10%)
+2019-02-01,F,jump_1m,1 bars; max 13.4 SD (0.07%)
+2019-02-14,F,jump_1m,1 bars; max 19.3 SD (0.10%)
+2019-02-28,F,jump_1m,1 bars; max 12.0 SD (0.05%)
+2019-03-01,F,jump_1m,1 bars; max 16.2 SD (0.09%)
+2019-03-01,F,partial,483 bars
+2019-03-04,F,partial,442 bars
+2019-03-05,F,partial,321 bars
+2019-03-06,F,partial,246 bars
+2019-03-07,F,partial,243 bars
+2019-03-08,F,partial,152 bars
+2019-03-11,F,partial,110 bars
+2019-03-20,F,jump_1m,1 bars; max 30.6 SD (0.15%)
+2019-04-03,F,jump_1m,1 bars; max 10.7 SD (0.06%)
+2019-04-05,F,jump_1m,1 bars; max 11.6 SD (0.06%)
+2019-04-18,F,jump_1m,2 bars; max 14.6 SD (0.08%)
+2019-04-24,F,jump_1m,1 bars; max 10.2 SD (0.05%)
+2019-04-26,F,jump_1m,1 bars; max 15.6 SD (0.07%)
+2019-05-01,F,jump_1m,4 bars; max 17.9 SD (0.09%)
+2019-05-03,F,jump_1m,2 bars; max 11.1 SD (0.07%)
+2019-05-06,F,jump_1m,1 bars; max 18.4 SD (0.11%)
+2019-05-08,F,jump_1m,2 bars; max 12.7 SD (0.08%)
+2019-06-04,F,jump_1m,1 bars; max 12.2 SD (0.11%)
+2019-06-05,F,jump_1m,1 bars; max 10.5 SD (0.11%)
+2019-06-05,F,partial,426 bars
+2019-06-06,F,partial,273 bars
+2019-06-07,F,jump_1m,1 bars; max 14.7 SD (0.18%)
+2019-06-07,F,partial,268 bars
+2019-06-10,F,partial,66 bars
+2019-06-12,F,jump_1m,1 bars; max 13.9 SD (0.08%)
+2019-06-14,F,jump_1m,1 bars; max 24.1 SD (0.13%)
+2019-06-25,F,jump_1m,2 bars; max 11.9 SD (0.07%)
+2019-07-02,F,jump_1m,1 bars; max 11.5 SD (0.07%)
+2019-07-05,F,jump_1m,1 bars; max 30.4 SD (0.13%)
+2019-07-10,F,jump_1m,1 bars; max 24.4 SD (0.13%)
+2019-07-11,F,jump_1m,1 bars; max 17.1 SD (0.13%)
+2019-07-16,F,jump_1m,1 bars; max 13.3 SD (0.07%)
+2019-07-18,F,jump_1m,1 bars; max 12.1 SD (0.07%)
+2019-07-24,F,jump_1m,1 bars; max 10.9 SD (0.05%)
+2019-07-25,F,jump_1m,1 bars; max 10.9 SD (0.06%)
+2019-07-26,F,jump_1m,1 bars; max 11.0 SD (0.07%)
+2019-07-30,F,jump_1m,1 bars; max 10.1 SD (0.05%)
+2019-07-31,F,jump_1m,3 bars; max 21.1 SD (0.11%)
+2019-08-05,F,jump_1m,1 bars; max 11.8 SD (0.12%)
+2019-08-06,F,jump_1m,1 bars; max 10.8 SD (0.11%)
+2019-08-13,F,jump_1m,2 bars; max 14.0 SD (0.10%)
+2019-08-15,F,jump_1m,2 bars; max 11.6 SD (0.12%)
+2019-08-21,F,jump_1m,1 bars; max 11.6 SD (0.06%)
+2019-08-23,F,jump_1m,1 bars; max 11.2 SD (0.07%)
+2019-08-29,F,jump_1m,1 bars; max 11.0 SD (0.07%)
+2019-09-02,F,partial,117 bars
+2019-09-03,F,jump_1m,1 bars; max 29.6 SD (0.22%)
+2019-09-03,F,partial,466 bars
+2019-09-04,F,partial,295 bars
+2019-09-05,F,jump_1m,1 bars; max 11.7 SD (0.12%)
+2019-09-05,F,partial,343 bars
+2019-09-06,F,partial,104 bars
+2019-09-09,F,partial,119 bars
+2019-09-09,F,roll_gap,ZF_09-19->ZF_12-19 gap +0.41 pts = 1.7 daily SD
+2019-09-12,F,jump_1m,2 bars; max 23.1 SD (0.17%)
+2019-09-18,F,jump_1m,1 bars; max 12.8 SD (0.07%)
+2019-09-24,F,jump_1m,2 bars; max 13.4 SD (0.09%)
+2019-10-01,F,jump_1m,1 bars; max 50.1 SD (0.32%)
+2019-10-03,F,jump_1m,1 bars; max 40.6 SD (0.27%)
+2019-10-08,F,jump_1m,1 bars; max 13.0 SD (0.09%)
+2019-10-10,F,jump_1m,1 bars; max 10.1 SD (0.08%)
+2019-10-30,F,jump_1m,2 bars; max 16.4 SD (0.09%)
+2019-11-01,F,jump_1m,1 bars; max 31.6 SD (0.19%)
+2019-11-05,F,jump_1m,1 bars; max 16.4 SD (0.09%)
+2019-11-15,F,jump_1m,1 bars; max 10.2 SD (0.06%)
+2019-11-20,F,jump_1m,1 bars; max 10.2 SD (0.06%)
+2019-11-21,F,jump_1m,1 bars; max 10.3 SD (0.07%)
+2019-11-26,F,jump_1m,1 bars; max 14.6 SD (0.07%)
+2019-11-28,F,partial,258 bars
+2019-11-29,F,partial,416 bars
+2019-12-02,F,jump_1m,1 bars; max 19.4 SD (0.12%)
+2019-12-02,F,partial,513 bars
+2019-12-03,F,partial,518 bars
+2019-12-04,F,partial,515 bars
+2019-12-05,F,partial,374 bars
+2019-12-06,F,jump_1m,1 bars; max 35.7 SD (0.31%)
+2019-12-06,F,partial,219 bars
+2019-12-09,F,partial,143 bars
+2019-12-12,F,jump_1m,2 bars; max 17.9 SD (0.14%)
+2019-12-13,F,jump_1m,2 bars; max 13.2 SD (0.13%)
+2019-12-24,F,jump_1m,1 bars; max 15.4 SD (0.07%)
+2020-01-03,F,jump_1m,1 bars; max 13.2 SD (0.08%)
+2020-01-07,F,jump_1m,1 bars; max 13.8 SD (0.08%)
+2020-01-10,F,jump_1m,1 bars; max 18.2 SD (0.10%)
+2020-01-14,F,jump_1m,1 bars; max 14.8 SD (0.07%)
+2020-01-21,F,jump_1m,1 bars; max 10.3 SD (0.05%)
+2020-01-28,F,jump_1m,1 bars; max 11.1 SD (0.07%)
+2020-02-03,F,jump_1m,1 bars; max 12.2 SD (0.08%)
+2020-02-05,F,jump_1m,1 bars; max 10.5 SD (0.06%)
+2020-02-21,F,jump_1m,1 bars; max 14.1 SD (0.08%)
+2020-03-03,F,partial,592 bars
+2020-03-04,F,partial,344 bars
+2020-03-05,F,partial,281 bars
+2020-03-06,F,partial,136 bars
+2020-03-09,F,partial,28 bars
+2020-03-09,F,roll_gap,ZF_03-20->ZF_06-20 gap +0.57 pts = 2.2 daily SD
+2020-03-15,F,jump_1m,1 bars; max 28.1 SD (0.44%)
+2020-05-13,F,jump_1m,1 bars; max 14.4 SD (0.07%)
+2020-05-25,F,partial,588 bars
+2020-06-01,F,partial,318 bars
+2020-06-02,F,partial,220 bars
+2020-06-03,F,partial,210 bars
+2020-06-04,F,partial,220 bars
+2020-06-05,F,jump_1m,2 bars; max 18.3 SD (0.13%)
+2020-06-05,F,partial,179 bars
+2020-06-08,F,partial,73 bars
+2020-07-02,F,jump_1m,1 bars; max 11.1 SD (0.05%)
+2020-08-31,F,partial,402 bars
+2020-09-01,F,partial,226 bars
+2020-09-02,F,partial,128 bars
+2020-09-03,F,partial,103 bars
+2020-09-04,F,partial,85 bars
+2020-09-07,F,partial,18 bars
+2020-10-22,F,frozen,31 identical flat bars
+2020-11-09,F,jump_1m,2 bars; max 16.0 SD (0.07%)
+2020-11-26,F,partial,558 bars
+2020-11-27,F,partial,597 bars
+2020-11-30,F,partial,424 bars
+2020-12-01,F,partial,321 bars
+2020-12-02,F,partial,172 bars
+2020-12-03,F,partial,148 bars
+2020-12-04,F,partial,123 bars
+2020-12-07,F,partial,49 bars
+2020-12-07,F,roll_gap,ZF_12-20->ZF_03-21 gap +0.31 pts = 2.9 daily SD
+2021-02-11,F,frozen,30 identical flat bars
+2021-02-25,F,jump_1m,3 bars; max 16.5 SD (0.12%)
+2021-02-25,F,jump_day,-0.85% = 10.9 SD
+2021-03-01,F,partial,264 bars
+2021-03-02,F,partial,105 bars
+2021-03-03,F,partial,125 bars
+2021-03-04,F,partial,86 bars
+2021-03-05,F,partial,49 bars
+2021-03-08,F,partial,29 bars
+2021-03-08,F,roll_gap,ZF_03-21->ZF_06-21 gap -0.50 pts = 2.7 daily SD
+2021-03-17,F,jump_1m,2 bars; max 27.0 SD (0.15%)
+2021-03-19,F,jump_1m,1 bars; max 24.6 SD (0.16%)
+2021-03-25,F,jump_1m,1 bars; max 12.6 SD (0.06%)
+2021-04-02,F,jump_1m,2 bars; max 24.9 SD (0.11%)
+2021-05-07,F,jump_1m,1 bars; max 54.6 SD (0.26%)
+2021-05-12,F,jump_1m,1 bars; max 27.9 SD (0.13%)
+2021-05-31,F,partial,133 bars
+2021-06-01,F,partial,153 bars
+2021-06-02,F,partial,112 bars
+2021-06-03,F,partial,80 bars
+2021-06-04,F,jump_1m,1 bars; max 14.5 SD (0.08%)
+2021-06-04,F,partial,98 bars
+2021-06-07,F,partial,38 bars
+2021-06-08,F,partial,24 bars
+2021-06-09,F,partial,30 bars
+2021-06-10,F,jump_1m,1 bars; max 12.0 SD (0.08%)
+2021-06-10,F,partial,33 bars
+2021-06-11,F,partial,26 bars
+2021-06-14,F,partial,10 bars
+2021-06-14,F,roll_gap,ZF_06-21->ZF_09-21 gap -0.53 pts = 3.6 daily SD
+2021-06-16,F,jump_1m,1 bars; max 54.1 SD (0.22%)
+2021-07-02,F,jump_1m,2 bars; max 16.1 SD (0.08%)
+2021-07-13,F,jump_1m,1 bars; max 39.2 SD (0.18%)
+2021-07-28,F,jump_1m,1 bars; max 29.9 SD (0.14%)
+2021-08-04,F,jump_1m,2 bars; max 15.6 SD (0.07%)
+2021-08-06,F,jump_1m,1 bars; max 26.1 SD (0.13%)
+2021-08-11,F,jump_1m,2 bars; max 14.2 SD (0.08%)
+2021-08-17,F,jump_1m,1 bars; max 10.1 SD (0.05%)
+2021-08-18,F,jump_1m,1 bars; max 10.9 SD (0.05%)
+2021-08-27,F,jump_1m,1 bars; max 11.1 SD (0.06%)
+2021-08-31,F,partial,539 bars
+2021-09-01,F,partial,373 bars
+2021-09-02,F,partial,130 bars
+2021-09-03,F,jump_1m,2 bars; max 21.9 SD (0.12%)
+2021-09-03,F,partial,105 bars
+2021-09-06,F,partial,10 bars
+2021-09-07,F,partial,65 bars
+2021-09-08,F,partial,88 bars
+2021-09-09,F,partial,84 bars
+2021-09-10,F,partial,22 bars
+2021-09-13,F,partial,46 bars
+2021-09-13,F,roll_gap,ZF_09-21->ZF_12-21 gap -0.49 pts = 3.0 daily SD
+2021-09-22,F,jump_1m,3 bars; max 12.6 SD (0.06%)
+2021-10-01,F,jump_1m,1 bars; max 10.1 SD (0.06%)
+2021-10-08,F,jump_1m,1 bars; max 16.7 SD (0.08%)
+2021-10-15,F,jump_1m,1 bars; max 14.2 SD (0.07%)
+2021-10-27,F,jump_1m,2 bars; max 14.8 SD (0.10%)
+2021-11-03,F,jump_1m,2 bars; max 10.7 SD (0.07%)
+2021-11-09,F,jump_1m,1 bars; max 11.1 SD (0.06%)
+2021-11-10,F,jump_1m,1 bars; max 23.8 SD (0.15%)
+2021-11-12,F,jump_1m,1 bars; max 13.9 SD (0.08%)
+2021-11-22,F,jump_1m,1 bars; max 10.6 SD (0.08%)
+2021-11-30,F,jump_1m,1 bars; max 15.1 SD (0.13%)
+2021-12-01,F,partial,246 bars
+2021-12-02,F,partial,230 bars
+2021-12-03,F,partial,291 bars
+2021-12-06,F,partial,110 bars
+2021-12-06,F,roll_gap,ZF_12-21->ZF_03-22 gap -0.52 pts = 2.2 daily SD
+2021-12-10,F,jump_1m,1 bars; max 12.9 SD (0.08%)
+2021-12-15,F,jump_1m,1 bars; max 23.0 SD (0.14%)
+2022-01-07,F,jump_1m,2 bars; max 20.3 SD (0.14%)
+2022-01-16,F,jump_1m,1 bars; max 10.5 SD (0.07%)
+2022-01-26,F,jump_1m,1 bars; max 13.9 SD (0.09%)
+2022-01-28,F,jump_1m,1 bars; max 10.3 SD (0.07%)
+2022-02-01,F,jump_1m,1 bars; max 11.6 SD (0.08%)
+2022-02-03,F,jump_1m,1 bars; max 15.1 SD (0.09%)
+2022-02-04,F,jump_1m,1 bars; max 35.4 SD (0.28%)
+2022-02-10,F,jump_1m,2 bars; max 38.3 SD (0.22%)
+2022-02-16,F,jump_1m,1 bars; max 10.6 SD (0.08%)
+2022-02-21,F,jump_1m,1 bars; max 11.1 SD (0.09%)
+2022-03-01,F,jump_1m,1 bars; max 10.5 SD (0.11%)
+2022-03-02,F,partial,500 bars
+2022-03-03,F,partial,360 bars
+2022-03-04,F,partial,151 bars
+2022-03-07,F,partial,123 bars
+2022-03-08,F,partial,52 bars
+2022-03-09,F,partial,91 bars
+2022-03-10,F,jump_1m,1 bars; max 10.8 SD (0.21%)
+2022-03-10,F,partial,31 bars
+2022-03-11,F,partial,22 bars
+2022-03-14,F,partial,20 bars
+2022-03-16,F,jump_1m,3 bars; max 12.0 SD (0.10%)
+2022-03-18,F,jump_1m,1 bars; max 13.0 SD (0.11%)
+2022-03-21,F,jump_1m,1 bars; max 12.7 SD (0.09%)
+2022-03-31,F,jump_1m,1 bars; max 10.1 SD (0.09%)
+2022-04-06,F,jump_1m,1 bars; max 16.0 SD (0.17%)
+2022-04-12,F,jump_1m,1 bars; max 43.7 SD (0.39%)
+2022-05-04,F,jump_1m,1 bars; max 11.6 SD (0.13%)
+2022-05-11,F,jump_1m,1 bars; max 35.6 SD (0.37%)
+2022-05-17,F,jump_1m,1 bars; max 12.0 SD (0.10%)
+2022-05-30,F,partial,405 bars
+2022-06-01,F,jump_1m,1 bars; max 14.8 SD (0.17%)
+2022-06-01,F,partial,403 bars
+2022-06-02,F,partial,240 bars
+2022-06-03,F,partial,127 bars
+2022-06-06,F,partial,77 bars
+2022-06-07,F,partial,185 bars
+2022-06-08,F,partial,68 bars
+2022-06-09,F,partial,65 bars
+2022-06-10,F,jump_1m,1 bars; max 10.1 SD (0.15%)
+2022-06-10,F,partial,33 bars
+2022-06-13,F,partial,47 bars
+2022-06-14,F,jump_day,-2.24% = 6.8 SD
+2022-06-15,F,jump_1m,4 bars; max 31.8 SD (0.53%)
+2022-06-17,F,jump_1m,1 bars; max 11.1 SD (0.18%)
+2022-06-23,F,jump_1m,1 bars; max 10.0 SD (0.13%)
+2022-06-24,F,jump_1m,1 bars; max 21.5 SD (0.30%)
+2022-06-27,F,jump_1m,1 bars; max 14.6 SD (0.14%)
+2022-06-29,F,jump_1m,1 bars; max 10.7 SD (0.11%)
+2022-06-30,F,jump_1m,1 bars; max 10.5 SD (0.11%)
+2022-07-06,F,jump_1m,1 bars; max 11.5 SD (0.15%)
+2022-07-08,F,jump_1m,1 bars; max 37.5 SD (0.38%)
+2022-07-13,F,jump_1m,1 bars; max 48.7 SD (0.45%)
+2022-07-15,F,jump_1m,1 bars; max 11.5 SD (0.14%)
+2022-07-22,F,jump_1m,2 bars; max 14.0 SD (0.17%)
+2022-07-25,F,jump_1m,1 bars; max 11.1 SD (0.12%)
+2022-07-27,F,jump_1m,2 bars; max 18.3 SD (0.17%)
+2022-07-28,F,jump_1m,1 bars; max 16.8 SD (0.21%)
+2022-08-03,F,jump_1m,1 bars; max 18.5 SD (0.23%)
+2022-08-05,F,jump_1m,1 bars; max 42.4 SD (0.44%)
+2022-08-10,F,jump_1m,1 bars; max 80.9 SD (0.66%)
+2022-08-12,F,jump_1m,1 bars; max 14.6 SD (0.15%)
+2022-08-18,F,jump_1m,1 bars; max 12.4 SD (0.13%)
+2022-08-23,F,jump_1m,2 bars; max 13.9 SD (0.12%)
+2022-08-25,F,jump_1m,1 bars; max 10.3 SD (0.08%)
+2022-08-26,F,jump_1m,2 bars; max 19.0 SD (0.17%)
+2022-09-01,F,partial,383 bars
+2022-09-02,F,partial,337 bars
+2022-09-05,F,partial,54 bars
+2022-09-06,F,partial,145 bars
+2022-09-07,F,partial,225 bars
+2022-09-08,F,partial,235 bars
+2022-09-09,F,partial,114 bars
+2022-09-12,F,partial,48 bars
+2022-09-13,F,jump_1m,1 bars; max 34.6 SD (0.53%)
+2022-09-15,F,jump_1m,1 bars; max 13.2 SD (0.11%)
+2022-09-21,F,jump_1m,1 bars; max 31.0 SD (0.27%)
+2022-10-03,F,jump_1m,1 bars; max 20.1 SD (0.27%)
+2022-10-05,F,jump_1m,1 bars; max 11.8 SD (0.14%)
+2022-10-07,F,jump_1m,1 bars; max 24.2 SD (0.26%)
+2022-10-12,F,jump_1m,1 bars; max 14.4 SD (0.16%)
+2022-10-13,F,jump_1m,2 bars; max 49.5 SD (0.56%)
+2022-10-21,F,jump_1m,2 bars; max 11.0 SD (0.13%)
+2022-10-26,F,jump_1m,1 bars; max 12.4 SD (0.14%)
+2022-10-27,F,jump_1m,1 bars; max 10.1 SD (0.11%)
+2022-11-01,F,jump_1m,1 bars; max 18.2 SD (0.18%)
+2022-11-02,F,jump_1m,3 bars; max 21.7 SD (0.26%)
+2022-11-04,F,jump_1m,1 bars; max 12.3 SD (0.14%)
+2022-11-10,F,jump_1m,1 bars; max 59.6 SD (0.59%)
+2022-11-15,F,jump_1m,1 bars; max 21.8 SD (0.20%)
+2022-11-23,F,jump_1m,1 bars; max 11.9 SD (0.12%)
+2022-11-30,F,jump_1m,2 bars; max 11.1 SD (0.14%)
+2022-12-01,F,partial,466 bars
+2022-12-02,F,jump_1m,1 bars; max 40.1 SD (0.62%)
+2022-12-02,F,partial,217 bars
+2022-12-05,F,partial,171 bars
+2022-12-06,F,partial,24 bars
+2022-12-07,F,partial,15 bars
+2022-12-08,F,partial,59 bars
+2022-12-09,F,partial,5 bars
+2022-12-12,F,partial,14 bars
+2022-12-13,F,jump_1m,1 bars; max 26.9 SD (0.64%)
+2022-12-14,F,jump_1m,2 bars; max 13.3 SD (0.14%)
+2022-12-20,F,jump_1m,1 bars; max 12.2 SD (0.08%)
+2022-12-22,F,jump_1m,1 bars; max 12.8 SD (0.09%)
+2022-12-30,F,jump_1m,1 bars; max 24.3 SD (0.19%)
+2023-01-06,F,jump_1m,1 bars; max 14.2 SD (0.15%)
+2023-01-12,F,jump_1m,3 bars; max 37.3 SD (0.31%)
+2023-01-18,F,jump_1m,2 bars; max 24.2 SD (0.20%)
+2023-01-19,F,jump_1m,1 bars; max 11.5 SD (0.12%)
+2023-01-26,F,jump_1m,2 bars; max 12.3 SD (0.09%)
+2023-01-30,F,jump_1m,1 bars; max 11.0 SD (0.07%)
+2023-01-31,F,jump_1m,2 bars; max 14.9 SD (0.11%)
+2023-02-01,F,jump_1m,2 bars; max 13.2 SD (0.11%)
+2023-02-03,F,jump_1m,2 bars; max 44.9 SD (0.42%)
+2023-02-07,F,jump_1m,2 bars; max 11.7 SD (0.09%)
+2023-02-14,F,jump_1m,4 bars; max 45.1 SD (0.30%)
+2023-02-16,F,jump_1m,1 bars; max 14.5 SD (0.15%)
+2023-02-23,F,jump_1m,1 bars; max 10.4 SD (0.08%)
+2023-02-24,F,jump_1m,1 bars; max 13.1 SD (0.11%)
+2023-02-28,F,partial,591 bars
+2023-03-01,F,partial,490 bars
+2023-03-02,F,partial,367 bars
+2023-03-03,F,partial,279 bars
+2023-03-06,F,partial,151 bars
+2023-03-07,F,partial,41 bars
+2023-03-08,F,partial,72 bars
+2023-03-09,F,partial,11 bars
+2023-03-10,F,jump_1m,1 bars; max 17.7 SD (0.31%)
+2023-03-10,F,partial,24 bars
+2023-03-12,F,jump_1m,1 bars; max 11.5 SD (0.23%)
+2023-03-13,F,jump_1m,1 bars; max 10.6 SD (0.23%)
+2023-03-13,F,partial,31 bars
+2023-03-14,F,jump_day,+2.05% = 6.5 SD
+2023-03-19,F,jump_1m,1 bars; max 10.8 SD (0.18%)
+2023-03-22,F,jump_1m,1 bars; max 22.5 SD (0.28%)
+2023-03-31,F,jump_1m,1 bars; max 10.9 SD (0.11%)
+2023-04-03,F,jump_1m,1 bars; max 21.3 SD (0.24%)
+2023-04-04,F,jump_1m,1 bars; max 22.5 SD (0.28%)
+2023-04-05,F,jump_1m,2 bars; max 13.7 SD (0.18%)
+2023-04-20,F,jump_1m,1 bars; max 17.7 SD (0.14%)
+2023-04-21,F,jump_1m,1 bars; max 21.2 SD (0.19%)
+2023-04-26,F,jump_1m,1 bars; max 14.4 SD (0.13%)
+2023-04-27,F,jump_1m,1 bars; max 23.7 SD (0.26%)
+2023-05-01,F,jump_1m,1 bars; max 11.1 SD (0.11%)
+2023-05-02,F,jump_1m,1 bars; max 16.0 SD (0.14%)
+2023-05-05,F,jump_1m,1 bars; max 19.9 SD (0.28%)
+2023-05-10,F,jump_1m,1 bars; max 42.2 SD (0.31%)
+2023-05-15,F,jump_1m,1 bars; max 15.1 SD (0.12%)
+2023-05-16,F,jump_1m,1 bars; max 12.7 SD (0.11%)
+2023-05-18,F,jump_1m,1 bars; max 10.2 SD (0.08%)
+2023-05-24,F,jump_1m,1 bars; max 10.4 SD (0.09%)
+2023-05-26,F,jump_1m,1 bars; max 13.7 SD (0.14%)
+2023-05-31,F,jump_1m,1 bars; max 18.3 SD (0.19%)
+2023-06-01,F,partial,428 bars
+2023-06-02,F,jump_1m,1 bars; max 10.6 SD (0.15%)
+2023-06-02,F,partial,295 bars
+2023-06-05,F,partial,140 bars
+2023-06-06,F,partial,2 bars
+2023-06-07,F,partial,16 bars
+2023-06-08,F,partial,19 bars
+2023-06-09,F,partial,28 bars
+2023-06-12,F,jump_1m,1 bars; max 20.2 SD (0.34%)
+2023-06-12,F,partial,10 bars
+2023-06-13,F,jump_1m,1 bars; max 15.8 SD (0.30%)
+2023-06-13,F,partial,14 bars
+2023-06-14,F,jump_1m,1 bars; max 24.9 SD (0.42%)
+2023-06-21,F,jump_1m,1 bars; max 16.2 SD (0.12%)
+2023-06-27,F,jump_1m,1 bars; max 10.6 SD (0.09%)
+2023-06-29,F,jump_1m,1 bars; max 18.9 SD (0.16%)
+2023-07-03,F,jump_1m,1 bars; max 15.5 SD (0.16%)
+2023-07-06,F,jump_1m,2 bars; max 28.1 SD (0.21%)
+2023-07-07,F,jump_1m,1 bars; max 24.6 SD (0.32%)
+2023-07-12,F,jump_1m,1 bars; max 25.0 SD (0.18%)
+2023-07-14,F,jump_1m,1 bars; max 12.9 SD (0.12%)
+2023-07-18,F,jump_1m,2 bars; max 14.0 SD (0.11%)
+2023-07-19,F,jump_1m,1 bars; max 17.3 SD (0.16%)
+2023-07-24,F,jump_1m,1 bars; max 10.9 SD (0.08%)
+2023-07-26,F,jump_1m,2 bars; max 12.2 SD (0.09%)
+2023-07-28,F,jump_1m,1 bars; max 12.7 SD (0.13%)
+2023-08-01,F,jump_1m,1 bars; max 10.7 SD (0.09%)
+2023-08-02,F,jump_1m,1 bars; max 10.8 SD (0.09%)
+2023-08-04,F,jump_1m,2 bars; max 19.5 SD (0.17%)
+2023-08-10,F,jump_1m,4 bars; max 16.6 SD (0.13%)
+2023-08-11,F,jump_1m,1 bars; max 12.7 SD (0.14%)
+2023-08-15,F,jump_1m,1 bars; max 23.2 SD (0.18%)
+2023-08-23,F,jump_1m,1 bars; max 16.8 SD (0.13%)
+2023-08-24,F,jump_1m,1 bars; max 11.6 SD (0.10%)
+2023-08-29,F,jump_1m,1 bars; max 37.3 SD (0.27%)
+2023-08-30,F,jump_1m,1 bars; max 11.8 SD (0.13%)
+2023-08-31,F,partial,431 bars
+2023-09-01,F,jump_1m,1 bars; max 10.7 SD (0.12%)
+2023-09-01,F,partial,299 bars
+2023-09-04,F,partial,40 bars
+2023-09-05,F,partial,158 bars
+2023-09-06,F,jump_1m,1 bars; max 12.6 SD (0.18%)
+2023-09-06,F,partial,29 bars
+2023-09-07,F,partial,19 bars
+2023-09-08,F,partial,31 bars
+2023-09-11,F,partial,16 bars
+2023-09-13,F,jump_1m,3 bars; max 18.3 SD (0.13%)
+2023-09-14,F,jump_1m,1 bars; max 29.6 SD (0.28%)
+2023-09-15,F,jump_1m,1 bars; max 10.3 SD (0.12%)
+2023-09-20,F,jump_1m,1 bars; max 30.1 SD (0.21%)
+2023-10-03,F,jump_1m,1 bars; max 21.6 SD (0.18%)
+2023-10-04,F,jump_1m,1 bars; max 12.3 SD (0.13%)
+2023-10-06,F,jump_1m,2 bars; max 24.0 SD (0.19%)
+2023-10-12,F,jump_1m,2 bars; max 22.8 SD (0.21%)
+2023-10-17,F,jump_1m,1 bars; max 16.9 SD (0.13%)
+2023-10-24,F,jump_1m,1 bars; max 14.0 SD (0.12%)
+2023-10-31,F,jump_1m,1 bars; max 10.3 SD (0.07%)
+2023-11-01,F,jump_1m,2 bars; max 18.6 SD (0.16%)
+2023-11-03,F,jump_1m,1 bars; max 30.4 SD (0.27%)
+2023-11-09,F,jump_1m,1 bars; max 15.1 SD (0.11%)
+2023-11-14,F,jump_1m,1 bars; max 80.7 SD (0.54%)
+2023-11-16,F,jump_1m,1 bars; max 12.7 SD (0.10%)
+2023-11-27,F,jump_1m,1 bars; max 12.7 SD (0.10%)
+2023-12-01,F,jump_1m,1 bars; max 10.3 SD (0.13%)
+2023-12-01,F,partial,239 bars
+2023-12-04,F,partial,135 bars
+2023-12-05,F,jump_1m,1 bars; max 12.6 SD (0.20%)
+2023-12-05,F,partial,49 bars
+2023-12-06,F,partial,9 bars
+2023-12-07,F,partial,1 bars
+2023-12-08,F,jump_1m,1 bars; max 15.8 SD (0.27%)
+2023-12-08,F,partial,17 bars
+2023-12-11,F,partial,9 bars
+2023-12-12,F,partial,8 bars
+2023-12-13,F,jump_1m,1 bars; max 28.6 SD (0.41%)
+2023-12-21,F,jump_1m,2 bars; max 12.9 SD (0.09%)
+2023-12-22,F,jump_1m,1 bars; max 11.3 SD (0.09%)
+2023-12-27,F,jump_1m,1 bars; max 12.0 SD (0.07%)
+2023-12-29,F,jump_1m,1 bars; max 17.0 SD (0.12%)
+2024-01-03,F,jump_1m,1 bars; max 10.3 SD (0.08%)
+2024-01-05,F,jump_1m,2 bars; max 37.3 SD (0.28%)
+2024-01-11,F,jump_1m,2 bars; max 27.1 SD (0.18%)
+2024-01-12,F,jump_1m,1 bars; max 12.5 SD (0.14%)
+2024-01-16,F,jump_1m,3 bars; max 15.1 SD (0.12%)
+2024-01-17,F,jump_1m,1 bars; max 14.5 SD (0.14%)
+2024-01-24,F,jump_1m,2 bars; max 15.6 SD (0.10%)
+2024-01-30,F,jump_1m,1 bars; max 18.4 SD (0.12%)
+2024-01-31,F,jump_1m,1 bars; max 10.8 SD (0.09%)
+2024-02-01,F,jump_1m,1 bars; max 12.2 SD (0.14%)
+2024-02-02,F,jump_1m,1 bars; max 49.9 SD (0.50%)
+2024-02-09,F,jump_1m,1 bars; max 14.0 SD (0.09%)
+2024-02-13,F,jump_1m,1 bars; max 85.5 SD (0.53%)
+2024-02-15,F,jump_1m,1 bars; max 10.4 SD (0.07%)
+2024-02-16,F,jump_1m,1 bars; max 25.7 SD (0.19%)
+2024-02-22,F,jump_1m,1 bars; max 12.3 SD (0.10%)
+2024-02-27,F,jump_1m,1 bars; max 10.1 SD (0.07%)
+2024-02-29,F,jump_1m,1 bars; max 18.4 SD (0.13%)
+2024-02-29,F,partial,553 bars
+2024-03-01,F,jump_1m,1 bars; max 14.2 SD (0.15%)
+2024-03-01,F,partial,330 bars
+2024-03-04,F,partial,54 bars
+2024-03-05,F,jump_1m,1 bars; max 10.5 SD (0.13%)
+2024-03-05,F,partial,130 bars
+2024-03-06,F,partial,19 bars
+2024-03-07,F,partial,13 bars
+2024-03-08,F,jump_1m,1 bars; max 22.7 SD (0.31%)
+2024-03-08,F,partial,20 bars
+2024-03-11,F,partial,14 bars
+2024-03-14,F,jump_1m,1 bars; max 12.3 SD (0.07%)
+2024-03-20,F,jump_1m,1 bars; max 21.7 SD (0.12%)
+2024-04-01,F,jump_1m,1 bars; max 10.8 SD (0.07%)
+2024-04-03,F,jump_1m,1 bars; max 22.7 SD (0.15%)
+2024-04-05,F,jump_1m,1 bars; max 31.2 SD (0.21%)
+2024-04-10,F,jump_1m,2 bars; max 84.6 SD (0.53%)
+2024-04-15,F,jump_1m,1 bars; max 17.5 SD (0.15%)
+2024-04-23,F,jump_1m,1 bars; max 30.7 SD (0.19%)
+2024-04-25,F,jump_1m,1 bars; max 22.9 SD (0.14%)
+2024-04-26,F,jump_1m,1 bars; max 12.6 SD (0.10%)
+2024-04-30,F,jump_1m,1 bars; max 38.0 SD (0.24%)
+2024-05-01,F,jump_1m,1 bars; max 11.9 SD (0.09%)
+2024-05-03,F,jump_1m,1 bars; max 78.4 SD (0.57%)
+2024-05-09,F,jump_1m,1 bars; max 17.2 SD (0.10%)
+2024-05-14,F,jump_1m,1 bars; max 30.6 SD (0.17%)
+2024-05-15,F,jump_1m,1 bars; max 30.5 SD (0.24%)
+2024-05-21,F,jump_1m,1 bars; max 10.4 SD (0.06%)
+2024-05-22,F,jump_1m,1 bars; max 10.2 SD (0.06%)
+2024-05-23,F,jump_1m,1 bars; max 18.2 SD (0.12%)
+2024-05-31,F,jump_1m,1 bars; max 12.3 SD (0.07%)
+2024-05-31,F,partial,560 bars
+2024-06-03,F,jump_1m,1 bars; max 19.0 SD (0.14%)
+2024-06-03,F,partial,247 bars
+2024-06-04,F,partial,57 bars
+2024-06-05,F,partial,195 bars
+2024-06-06,F,partial,27 bars
+2024-06-07,F,jump_1m,1 bars; max 28.3 SD (0.30%)
+2024-06-07,F,partial,7 bars
+2024-06-10,F,partial,18 bars
+2024-06-12,F,jump_1m,1 bars; max 76.0 SD (0.52%)
+2024-06-13,F,jump_1m,1 bars; max 11.2 SD (0.18%)
+2024-06-18,F,jump_1m,1 bars; max 30.2 SD (0.19%)
+2024-06-21,F,jump_1m,1 bars; max 24.0 SD (0.15%)
+2024-06-28,F,jump_1m,1 bars; max 16.1 SD (0.10%)
+2024-07-02,F,jump_1m,1 bars; max 10.8 SD (0.07%)
+2024-07-03,F,jump_1m,1 bars; max 28.0 SD (0.19%)
+2024-07-05,F,jump_1m,2 bars; max 23.8 SD (0.12%)
+2024-07-11,F,jump_1m,1 bars; max 82.4 SD (0.47%)
+2024-07-16,F,jump_1m,1 bars; max 23.8 SD (0.15%)
+2024-07-18,F,jump_1m,1 bars; max 10.7 SD (0.07%)
+2024-07-24,F,jump_1m,1 bars; max 13.6 SD (0.08%)
+2024-07-25,F,jump_1m,1 bars; max 13.6 SD (0.10%)
+2024-07-30,F,jump_1m,1 bars; max 12.6 SD (0.07%)
+2024-07-31,F,jump_1m,1 bars; max 14.2 SD (0.09%)
+2024-08-01,F,jump_1m,1 bars; max 13.0 SD (0.11%)
+2024-08-02,F,jump_1m,1 bars; max 81.0 SD (0.78%)
+2024-08-05,F,jump_1m,1 bars; max 16.7 SD (0.30%)
+2024-08-07,F,jump_1m,1 bars; max 12.8 SD (0.11%)
+2024-08-08,F,jump_1m,1 bars; max 20.7 SD (0.19%)
+2024-08-14,F,jump_1m,2 bars; max 11.9 SD (0.09%)
+2024-08-15,F,jump_1m,1 bars; max 42.5 SD (0.32%)
+2024-08-21,F,jump_1m,1 bars; max 24.5 SD (0.15%)
+2024-08-23,F,jump_1m,1 bars; max 20.5 SD (0.15%)
+2024-08-29,F,jump_1m,1 bars; max 20.7 SD (0.11%)
+2024-08-30,F,partial,366 bars
+2024-09-02,F,partial,22 bars
+2024-09-03,F,partial,181 bars
+2024-09-04,F,jump_1m,1 bars; max 14.0 SD (0.12%)
+2024-09-04,F,partial,55 bars
+2024-09-05,F,partial,22 bars
+2024-09-06,F,jump_1m,2 bars; max 11.4 SD (0.11%)
+2024-09-06,F,partial,32 bars
+2024-09-09,F,partial,10 bars
+2024-09-09,F,roll_gap,ZF_09-24->ZF_12-24 gap +0.51 pts = 1.9 daily SD
+2024-09-11,F,jump_1m,1 bars; max 36.3 SD (0.25%)
+2024-09-17,F,jump_1m,1 bars; max 15.3 SD (0.10%)
+2024-09-18,F,jump_1m,1 bars; max 37.1 SD (0.23%)
+2024-09-19,F,jump_1m,1 bars; max 10.6 SD (0.12%)
+2024-09-23,F,jump_1m,1 bars; max 11.6 SD (0.08%)
+2024-09-26,F,jump_1m,1 bars; max 16.1 SD (0.09%)
+2024-10-03,F,jump_1m,2 bars; max 13.2 SD (0.09%)
+2024-10-04,F,jump_1m,1 bars; max 66.9 SD (0.49%)
+2024-10-10,F,jump_1m,1 bars; max 19.8 SD (0.12%)
+2024-10-14,F,jump_1m,1 bars; max 13.0 SD (0.08%)
+2024-10-17,F,jump_1m,1 bars; max 35.0 SD (0.19%)
+2024-10-29,F,jump_1m,1 bars; max 15.3 SD (0.10%)
+2024-10-30,F,jump_1m,1 bars; max 12.1 SD (0.09%)
+2024-10-31,F,jump_1m,1 bars; max 10.0 SD (0.08%)
+2024-11-01,F,jump_1m,1 bars; max 41.8 SD (0.37%)
+2024-11-05,F,jump_1m,1 bars; max 19.8 SD (0.13%)
+2024-11-06,F,jump_1m,1 bars; max 11.5 SD (0.10%)
+2024-11-13,F,jump_1m,1 bars; max 30.7 SD (0.22%)
+2024-11-14,F,jump_1m,1 bars; max 11.9 SD (0.10%)
+2024-11-28,F,partial,209 bars
+2024-11-29,F,partial,214 bars
+2024-12-02,F,partial,259 bars
+2024-12-03,F,partial,255 bars
+2024-12-04,F,partial,101 bars
+2024-12-05,F,partial,14 bars
+2024-12-06,F,partial,15 bars
+2024-12-09,F,partial,10 bars
+2024-12-17,F,jump_1m,1 bars; max 17.7 SD (0.10%)
+2024-12-18,F,jump_1m,1 bars; max 32.8 SD (0.21%)
+2024-12-26,F,jump_1m,1 bars; max 12.1 SD (0.07%)
+2025-01-07,F,jump_1m,1 bars; max 20.8 SD (0.15%)
+2025-01-10,F,jump_1m,1 bars; max 53.6 SD (0.32%)
+2025-01-14,F,jump_1m,1 bars; max 28.1 SD (0.18%)
+2025-01-15,F,jump_1m,1 bars; max 25.0 SD (0.21%)
+2025-01-21,F,jump_1m,1 bars; max 10.6 SD (0.07%)
+2025-01-24,F,jump_1m,1 bars; max 14.0 SD (0.10%)
+2025-01-29,F,jump_1m,1 bars; max 20.4 SD (0.12%)
+2025-01-30,F,jump_1m,1 bars; max 10.3 SD (0.08%)
+2025-02-05,F,jump_1m,1 bars; max 11.0 SD (0.08%)
+2025-02-12,F,jump_1m,1 bars; max 64.6 SD (0.38%)
+2025-02-14,F,jump_1m,1 bars; max 17.0 SD (0.12%)
+2025-02-21,F,jump_1m,1 bars; max 16.3 SD (0.10%)
+2025-03-03,F,partial,467 bars
+2025-03-04,F,partial,460 bars
+2025-03-05,F,jump_1m,1 bars; max 15.2 SD (0.22%)
+2025-03-05,F,partial,117 bars
+2025-03-06,F,partial,52 bars
+2025-03-07,F,partial,50 bars
+2025-03-10,F,partial,32 bars
+2025-03-12,F,jump_1m,1 bars; max 23.1 SD (0.25%)
+2025-03-19,F,jump_1m,1 bars; max 20.0 SD (0.13%)
+2025-04-02,F,jump_1m,3 bars; max 23.6 SD (0.19%)
+2025-04-07,F,jump_1m,1 bars; max 14.2 SD (0.34%)
+2025-04-09,F,jump_1m,1 bars; max 12.6 SD (0.32%)
+2025-04-16,F,jump_1m,1 bars; max 10.3 SD (0.09%)
+2025-04-23,F,jump_1m,2 bars; max 19.0 SD (0.16%)
+2025-04-30,F,jump_1m,2 bars; max 12.9 SD (0.09%)
+2025-05-01,F,jump_1m,2 bars; max 14.2 SD (0.14%)
+2025-05-02,F,jump_1m,1 bars; max 20.1 SD (0.19%)
+2025-05-05,F,jump_1m,1 bars; max 16.3 SD (0.15%)
+2025-05-12,F,jump_1m,1 bars; max 15.1 SD (0.09%)
+2025-05-13,F,jump_1m,1 bars; max 14.5 SD (0.10%)
+2025-05-15,F,jump_1m,1 bars; max 15.0 SD (0.09%)
+2025-05-22,F,jump_1m,1 bars; max 12.1 SD (0.09%)
+2025-05-29,F,jump_1m,1 bars; max 15.0 SD (0.10%)
+2025-05-30,F,partial,416 bars
+2025-06-02,F,partial,150 bars
+2025-06-03,F,partial,69 bars
+2025-06-04,F,jump_1m,1 bars; max 13.2 SD (0.14%)
+2025-06-04,F,partial,58 bars
+2025-06-05,F,partial,38 bars
+2025-06-06,F,partial,10 bars
+2025-06-09,F,partial,12 bars
+2025-06-11,F,jump_1m,1 bars; max 48.8 SD (0.30%)
+2025-06-12,F,jump_1m,1 bars; max 11.5 SD (0.12%)
+2025-06-13,F,jump_1m,1 bars; max 11.1 SD (0.09%)
+2025-06-18,F,jump_1m,1 bars; max 10.4 SD (0.07%)
+2025-06-20,F,jump_1m,1 bars; max 11.0 SD (0.06%)
+2025-07-01,F,jump_1m,1 bars; max 14.8 SD (0.10%)
+2025-07-02,F,jump_1m,1 bars; max 23.3 SD (0.17%)
+2025-07-03,F,jump_1m,1 bars; max 66.0 SD (0.53%)
+2025-07-15,F,jump_1m,1 bars; max 15.6 SD (0.09%)
+2025-07-30,F,jump_1m,1 bars; max 13.2 SD (0.09%)
+2025-08-01,F,jump_1m,3 bars; max 45.8 SD (0.29%)
+2025-08-06,F,jump_1m,1 bars; max 10.2 SD (0.06%)
+2025-08-12,F,jump_1m,1 bars; max 25.9 SD (0.14%)
+2025-08-14,F,jump_1m,1 bars; max 40.7 SD (0.22%)
+2025-08-21,F,jump_1m,1 bars; max 12.4 SD (0.07%)
+2025-08-22,F,jump_1m,1 bars; max 41.8 SD (0.27%)
+2025-08-29,F,partial,333 bars
+2025-09-01,F,partial,79 bars
+2025-09-02,F,partial,263 bars
+2025-09-03,F,jump_1m,1 bars; max 10.1 SD (0.08%)
+2025-09-03,F,partial,225 bars
+2025-09-04,F,partial,47 bars
+2025-09-05,F,jump_1m,1 bars; max 12.6 SD (0.11%)
+2025-09-05,F,partial,49 bars
+2025-09-08,F,partial,12 bars
+2025-09-10,F,jump_1m,1 bars; max 14.5 SD (0.09%)
+2025-09-11,F,jump_1m,1 bars; max 30.1 SD (0.19%)
+2025-09-17,F,jump_1m,2 bars; max 19.7 SD (0.11%)
+2025-09-25,F,jump_1m,1 bars; max 17.1 SD (0.09%)
+2025-10-01,F,jump_1m,1 bars; max 31.5 SD (0.19%)
+2025-10-24,F,jump_1m,1 bars; max 30.7 SD (0.16%)
+2025-10-29,F,jump_1m,2 bars; max 16.2 SD (0.10%)
+2025-11-05,F,jump_1m,1 bars; max 20.5 SD (0.11%)
+2025-11-20,F,jump_1m,1 bars; max 26.5 SD (0.15%)
+2025-11-27,F,partial,83 bars
+2025-11-28,F,jump_1m,1 bars; max 10.3 SD (0.06%)
+2025-11-28,F,partial,145 bars
+2025-12-01,F,partial,277 bars
+2025-12-02,F,partial,260 bars
+2025-12-03,F,partial,279 bars
+2025-12-04,F,partial,55 bars
+2025-12-05,F,partial,26 bars
+2025-12-08,F,partial,31 bars
+2025-12-09,F,jump_1m,1 bars; max 14.9 SD (0.11%)
+2025-12-10,F,jump_1m,2 bars; max 12.9 SD (0.09%)
+2025-12-16,F,jump_1m,2 bars; max 26.7 SD (0.14%)
+2025-12-23,F,jump_1m,1 bars; max 19.2 SD (0.09%)
+2025-12-31,F,jump_1m,1 bars; max 11.3 SD (0.06%)
+2026-01-05,F,jump_1m,1 bars; max 11.8 SD (0.06%)
+2026-01-07,F,jump_1m,1 bars; max 17.0 SD (0.09%)
+2026-01-09,F,jump_1m,1 bars; max 13.7 SD (0.07%)
+2026-01-13,F,jump_1m,1 bars; max 24.6 SD (0.14%)
+2026-01-15,F,jump_1m,1 bars; max 10.6 SD (0.06%)
+2026-01-20,F,jump_1m,1 bars; max 14.9 SD (0.08%)
+2026-02-02,F,jump_1m,1 bars; max 12.9 SD (0.09%)
+2026-02-05,F,jump_1m,1 bars; max 11.2 SD (0.07%)
+2026-02-11,F,jump_1m,1 bars; max 58.7 SD (0.34%)
+2026-02-13,F,jump_1m,1 bars; max 24.2 SD (0.14%)
+2026-02-20,F,jump_1m,1 bars; max 13.6 SD (0.08%)
+2026-03-03,F,partial,593 bars
+2026-03-04,F,partial,132 bars
+2026-03-05,F,partial,214 bars
+2026-03-06,F,jump_1m,1 bars; max 17.1 SD (0.19%)
+2026-03-06,F,partial,149 bars
+2026-03-09,F,partial,145 bars
+2026-03-18,F,jump_1m,1 bars; max 10.5 SD (0.06%)
+2026-03-23,F,jump_1m,2 bars; max 32.2 SD (0.32%)
+2026-03-26,F,jump_1m,1 bars; max 23.7 SD (0.17%)
+2026-04-03,F,jump_1m,1 bars; max 18.9 SD (0.13%)
+2026-04-03,F,partial,520 bars
+2026-04-17,F,jump_1m,1 bars; max 10.0 SD (0.06%)
+2026-04-29,F,jump_1m,1 bars; max 11.0 SD (0.07%)
+2026-05-13,F,jump_1m,1 bars; max 11.1 SD (0.07%)
+2026-05-18,F,jump_1m,1 bars; max 15.4 SD (0.12%)
+2026-05-20,F,jump_1m,2 bars; max 19.3 SD (0.18%)
+2026-05-28,F,jump_1m,2 bars; max 17.4 SD (0.13%)
+2026-06-01,F,partial,578 bars
+2026-06-02,F,partial,476 bars
+2026-06-03,F,partial,56 bars
+2026-06-04,F,partial,89 bars
+2026-06-05,F,jump_1m,1 bars; max 26.9 SD (0.22%)
+2026-06-05,F,partial,87 bars
+2026-06-08,F,partial,43 bars
+2026-06-11,F,jump_1m,1 bars; max 12.4 SD (0.09%)
+2026-06-17,F,jump_1m,2 bars; max 42.7 SD (0.28%)
+2026-06-25,F,jump_1m,1 bars; max 24.4 SD (0.14%)
+2026-07-02,F,jump_1m,1 bars; max 41.8 SD (0.27%)
+2026-07-08,F,jump_1m,3 bars; max 11.1 SD (0.07%)
+2026-07-10,F,jump_1m,1 bars; max 11.5 SD (0.07%)
+2026-07-14,F,jump_1m,1 bars; max 61.1 SD (0.40%)
+2026-07-29,F,jump_1m,1 bars; max 21.0 SD (0.13%)
+2026-08-07,F,jump_1m,1 bars; max 42.4 SD (0.23%)
+2026-08-11,F,jump_1m,1 bars; max 11.2 SD (0.06%)
+2026-08-12,F,jump_1m,1 bars; max 14.8 SD (0.09%)
+2026-08-14,F,jump_1m,1 bars; max 10.2 SD (0.06%)
+2026-08-17,F,jump_1m,1 bars; max 10.2 SD (0.06%)
+2026-08-26,F,jump_1m,1 bars; max 11.1 SD (0.07%)
+2026-08-28,F,jump_1m,2 bars; max 20.0 SD (0.11%)
+2026-09-02,F,partial,563 bars
+2026-09-03,F,jump_1m,1 bars; max 11.1 SD (0.07%)
+2026-09-03,F,partial,96 bars
+2026-09-04,F,jump_1m,1 bars; max 35.9 SD (0.27%)
+2026-09-04,F,partial,84 bars
+2026-09-07,F,partial,22 bars
+2026-09-11,F,jump_1m,1 bars; max 34.6 SD (0.26%)
+2026-09-16,F,jump_1m,1 bars; max 12.3 SD (0.08%)
+2026-09-23,F,jump_1m,1 bars; max 17.7 SD (0.14%)
+2026-09-28,F,jump_1m,1 bars; max 10.1 SD (0.08%)
+2026-09-29,F,jump_1m,1 bars; max 10.2 SD (0.08%)
+2026-09-30,F,jump_1m,1 bars; max 12.0 SD (0.11%)
+2026-10-02,F,jump_1m,1 bars; max 24.6 SD (0.24%)
+2026-10-07,F,jump_1m,1 bars; max 10.6 SD (0.08%)
+2026-10-08,F,jump_1m,1 bars; max 10.5 SD (0.08%)
+2026-10-09,F,partial,35 bars
+2026-10-13,F,jump_1m,1 bars; max 10.4 SD (0.07%)
+2026-10-14,F,jump_1m,1 bars; max 56.3 SD (0.38%)
+2026-11-06,F,jump_1m,1 bars; max 13.8 SD (0.14%)
+2026-11-10,F,jump_1m,2 bars; max 26.9 SD (0.22%)
+2026-11-17,F,jump_1m,1 bars; max 10.5 SD (0.08%)

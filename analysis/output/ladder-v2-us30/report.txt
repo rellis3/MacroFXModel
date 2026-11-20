@@ -1,0 +1,139 @@
+US30 (main race): arms ['A0', 'E_ewma_094', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht', 'V3', 'V4', 'B_har_iv']; flags from analysis/output/data_screens/US30/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 2229 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    SHAR           0.7611  0.640
+    HARCJ          0.7654  0.647
+    R5             0.7673  0.642
+    R15            0.7702  0.652
+    H8             0.7926  0.543
+    B_har_garcht   0.7929  0.591
+    E_har_rv_log   0.7934  0.545
+    B_har_iv       0.8003  0.572
+    V3             0.8160  0.488
+    G_gjr          0.8274  0.673
+    G_garch_t      0.8511  0.576
+    G_garch        0.8513  0.605
+    A0             0.8604  0.383
+    V4             0.8672  0.506
+    G_egarch       0.8986  0.627
+    E_ewma_090     0.9077  0.466
+    E_yz_20        0.9097  0.240
+    E_ewma_094     0.9110  0.355
+    E_yz_30        0.9608  0.159
+    E_naive        1.3683  0.000
+
+== US30 C: 2229 test sessions 2018-01-02 -> 2026-08-20   noise floor median 1.37pp, p90 1.64pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  E_har_rv_log       1.76   1.41   0.9520   0.95
+  E_ewma_090         1.79   1.27   1.0214   0.75
+  H8                 2.02   2.00   0.9524   0.95
+  E_yz_20            2.09   1.55   1.0434   0.78
+  R5                 2.20   2.26   0.9259   0.97
+  HARCJ              2.20   2.25   0.9219   0.98
+  R15                2.23   2.13   0.9321   0.98
+  SHAR               2.37   2.20   0.9224   0.98
+  E_ewma_094         2.48   1.70   1.0429   0.77
+  A0                 2.53   1.45   1.0000   0.79
+  G_garch_t          2.70   3.06*   0.9872   0.82
+  E_yz_30            2.72   1.67   1.0742   0.75
+  B_har_garcht       2.74   2.67*   0.9529   0.95
+  V3                 3.45   3.36*   0.9734   1.11
+  G_garch            3.54   3.92*   0.9854   0.85
+  G_gjr              3.60   3.90*   0.9583   0.86
+  B_har_iv           4.02   3.59*   0.9648   1.18
+  G_egarch           4.11   4.03*   0.9781   0.92
+  V4                 5.38   4.04*   1.0002   1.24
+  E_naive           11.01   2.05   1.2577   0.30
+  winner E_har_rv_log, runner-up E_ewma_090, tie=True, chosen E_har_rv_log; chosen - A0 CI [-1.53, -0.39]pp; calibrated to noise False
+    half 2018-22                       n= 1291  chosen 2.38 vs A0 2.98  CI [-1.48,-0.26]
+    half 2023-26                       n=  938  chosen 2.20 vs A0 3.83  CI [-2.59,-0.69]
+    without 2018Q4                     n= 2164  chosen 1.65 vs A0 2.75  CI [-1.70,-0.64]
+    without covid                      n= 2136  chosen 2.01 vs A0 2.73  CI [-1.63,-0.41]
+    without bear2022                   n= 1971  chosen 2.24 vs A0 2.80  CI [-1.54,-0.34]
+    without tariff2025                 n= 2165  chosen 1.94 vs A0 2.58  CI [-1.51,-0.42]
+    without hi1_202002                 n= 2166  chosen 1.90 vs A0 2.72  CI [-1.61,-0.48]
+    without hi2_201810                 n= 2166  chosen 1.76 vs A0 2.75  CI [-1.64,-0.58]
+    without hi3_202502                 n= 2166  chosen 1.92 vs A0 2.58  CI [-1.52,-0.42]
+    without hi4_202208                 n= 2166  chosen 1.78 vs A0 2.51  CI [-1.61,-0.38]
+    fault flags out                    n= 2163  chosen 1.81 vs A0 2.54  CI [-1.52,-0.37]
+    any flag out (descriptive)         n= 1610  chosen 2.79 vs A0 2.92  CI [-1.72,-0.28]
+  HL>p75/p90 by quintile A0            : Q1 35.4/15.9  Q2 28.0/10.3  Q3 26.1/ 9.7  Q4 26.5/10.5  Q5 20.6/ 9.0
+  HL>p75/p90 by quintile E_har_rv_log  : Q1 28.9/10.8  Q2 24.4/ 8.7  Q3 25.8/10.1  Q4 26.7/11.7  Q5 27.1/10.5
+  HL>p75/p90 by quintile H8            : Q1 28.3/11.2  Q2 25.6/ 9.6  Q3 27.2/10.1  Q4 28.9/12.1  Q5 28.7/10.8
+  VERDICT US30 C: VALIDATED
+  MIRROR C (20 draws): A0 primary median 1.39pp [1.11, 1.87] vs floor median 1.37 / p90 1.64; HL>p75 Q1-Q5 median -0.9pp [-6.7, +3.8]
+  F: test rows 2192 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    B_har_garcht   0.8217  0.597
+    B_har_iv       0.8230  0.576
+    SHAR           0.8293  0.660
+    H8             0.8329  0.538
+    V3             0.8334  0.505
+    E_har_rv_log   0.8354  0.546
+    R5             0.8382  0.652
+    HARCJ          0.8389  0.651
+    G_gjr          0.8401  0.684
+    R15            0.8423  0.670
+    G_garch        0.8624  0.614
+    G_garch_t      0.8687  0.587
+    V4             0.8875  0.519
+    A0             0.8891  0.394
+    G_egarch       0.8923  0.637
+    E_yz_20        0.9332  0.251
+    E_ewma_090     0.9353  0.480
+    E_ewma_094     0.9374  0.368
+    E_yz_30        0.9886  0.167
+    E_naive        1.3641  0.000
+
+== US30 F: 2192 test sessions 2018-01-02 -> 2026-08-21   noise floor median 1.39pp, p90 1.66pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  E_ewma_090         1.67   0.77   1.0205   0.75
+  E_har_rv_log       1.81   1.22   0.9499   0.95
+  E_yz_20            1.88   1.03   1.0427   0.79
+  H8                 1.94   1.44   0.9506   0.95
+  HARCJ              1.97   1.66   0.9180   0.97
+  B_har_garcht       2.00   1.71   0.9474   0.95
+  R5                 2.00   1.61   0.9213   0.96
+  R15                2.02   1.54   0.9270   0.96
+  G_garch_t          2.05   2.16*   0.9831   0.82
+  E_ewma_094         2.08   1.13   1.0407   0.77
+  SHAR               2.09   1.49   0.9170   0.97
+  A0                 2.64   0.96   1.0000   0.80
+  E_yz_30            2.64   1.16   1.0729   0.76
+  G_garch            2.84   3.06*   0.9775   0.89
+  V3                 2.92   2.09*   0.9640   1.14
+  G_gjr              2.93   3.27*   0.9486   0.88
+  B_har_iv           3.41   2.30*   0.9532   1.19
+  G_egarch           3.77   3.59*   0.9686   0.95
+  V4                 4.87   2.45*   0.9843   1.25
+  E_naive           10.49   1.41   1.2275   0.41
+  winner E_ewma_090, runner-up E_har_rv_log, tie=True, chosen E_har_rv_log; chosen - A0 CI [-1.58, -0.48]pp; calibrated to noise False
+    half 2018-22                       n= 1283  chosen 2.26 vs A0 2.59  CI [-1.60,-0.26]
+    half 2023-26                       n=  909  chosen 3.04 vs A0 4.10  CI [-2.31,-0.29]
+    without 2018Q4                     n= 2131  chosen 1.67 vs A0 2.69  CI [-1.71,-0.58]
+    without covid                      n= 2099  chosen 1.80 vs A0 2.64  CI [-1.74,-0.54]
+    without bear2022                   n= 1934  chosen 1.98 vs A0 2.69  CI [-1.64,-0.42]
+    without tariff2025                 n= 2131  chosen 1.75 vs A0 2.49  CI [-1.58,-0.42]
+    without hi1_202002                 n= 2129  chosen 1.67 vs A0 2.63  CI [-1.74,-0.56]
+    without hi2_202204                 n= 2129  chosen 1.59 vs A0 2.55  CI [-1.63,-0.49]
+    without hi3_201810                 n= 2129  chosen 1.61 vs A0 2.59  CI [-1.69,-0.57]
+    without hi4_202502                 n= 2129  chosen 1.77 vs A0 2.49  CI [-1.61,-0.42]
+    fault flags out                    n= 2129  chosen 1.87 vs A0 2.64  CI [-1.54,-0.46]
+    any flag out (descriptive)         n= 1591  chosen 3.02 vs A0 3.27  CI [-1.88,-0.45]
+  HL>p75/p90 by quintile A0            : Q1 33.9/15.5  Q2 25.1/ 9.8  Q3 25.8/ 9.6  Q4 26.0/10.7  Q5 20.5/ 8.0
+  HL>p75/p90 by quintile E_har_rv_log  : Q1 28.5/10.5  Q2 22.1/ 8.7  Q3 25.1/10.7  Q4 26.0/12.1  Q5 26.0/10.5
+  HL>p75/p90 by quintile E_ewma_090    : Q1 27.1/12.5  Q2 24.9/ 9.8  Q3 24.9/11.2  Q4 25.3/12.8  Q5 21.9/ 9.3
+  HL>p75/p90 by quintile H8            : Q1 28.5/10.3  Q2 22.6/ 8.4  Q3 26.3/10.0  Q4 28.3/12.6  Q5 26.7/10.9
+  VERDICT US30 F: VALIDATED
+  MIRROR F (20 draws): A0 primary median 1.36pp [1.03, 1.88] vs floor median 1.39 / p90 1.65; HL>p75 Q1-Q5 median +0.5pp [-3.0, +4.3]
+
+== US30 C vs F on 2703 common London dates: F/C ratio (90% CI)
+  hl_p50  1.0054 [0.9986, 1.0086] ok
+  hl_p75  1.0030 [0.9966, 1.0082] ok
+  oh_p50  1.0123 [0.9941, 1.0153] ok
+  oh_p75  1.0001 [0.9936, 1.0084] ok
+  ol_p50  1.0017 [0.9959, 1.0132] ok
+  ol_p75  1.0066 [1.0004, 1.0151] ok
+  -> SAME (F reuses the C spec)
