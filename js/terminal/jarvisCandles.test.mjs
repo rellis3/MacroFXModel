@@ -53,3 +53,14 @@ test('buildScenes: the default is the short morning brief; the full tour keeps e
   assert.ok(full.some(s => s.id === 'zz-long') && full.length > quick.length);
   assert.ok(quick.reduce((n, s) => n + s.text.split(/\s+/).length, 0) < 220, 'the morning brief should stay short');
 });
+
+test('the morning brief flies the chain in 3D (chainfly) instead of the skyline blocks when it exists; the book line never says "not reviewed" unless some were not', async () => {
+  const { registerShowScene } = await import('./showCore.js'); const { bookScript } = await import('./jarvisBookCore.js');
+  registerShowScene({ id: 'chainfly', after: 'chain', build: () => ({ title: 'Fly', view: 'chainfly', text: 'a fly-through of the chain' }) });
+  const r = candleRows(vol, bias), inp = { now: new Date('2026-11-19T07:30:00Z'), movers: topMovers(r), board: boardSummary(r), chain: { holding: 1, broken: 1, quiet: 1, headline: 'x' } };
+  const ids = buildScenes(inp).map(s => s.id); assert.ok(ids.includes('chainfly') && !ids.includes('chain'), ids.join());
+  assert.ok(buildScenes({ ...inp, mode: 'full' }).map(s => s.id).includes('chain'), 'the full tour keeps the skyline scene too');
+  const row = (k, state, call = 0) => ({ key: k, state, call, conv: null, h: 0.35 });
+  const none = bookScript({ rows: [row('NQ', 'long', 1), row('GOLD', 'neutral'), row('WTI', 'neutral')] }), some = bookScript({ rows: [row('NQ', 'long', 1), row('GOLD', 'neutral'), row('WTI', 'unreviewed')] });
+  assert.ok(!/not (yet )?reviewed/.test(none), none); assert.ok(/1 were simply not reviewed/.test(some), some);
+});
