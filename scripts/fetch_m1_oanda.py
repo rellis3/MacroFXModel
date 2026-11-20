@@ -90,6 +90,16 @@ INSTRUMENTS = {
     # Additional commodities
     "silver":  {"oanda": "XAG_USD",     "class": "commodity", "desc": "Silver"},
     "oil":     {"oanda": "BCO_USD",     "class": "commodity", "desc": "Brent Crude"},
+    # 2026-11-20: the rest of the ladder-v2 rollout's commodity CFDs (futures pairs SI HG PL PA CL NG ZS ZW ZC)
+    "copper":    {"oanda": "XCU_USD",    "class": "commodity", "desc": "Copper"},
+    "platinum":  {"oanda": "XPT_USD",    "class": "commodity", "desc": "Platinum"},
+    "palladium": {"oanda": "XPD_USD",    "class": "commodity", "desc": "Palladium"},
+    "wti":       {"oanda": "WTICO_USD",  "class": "commodity", "desc": "WTI Crude"},
+    "natgas":    {"oanda": "NATGAS_USD", "class": "commodity", "desc": "Natural Gas"},
+    "soybean":   {"oanda": "SOYBN_USD",  "class": "commodity", "desc": "Soybeans"},
+    "wheat":     {"oanda": "WHEAT_USD",  "class": "commodity", "desc": "Wheat"},
+    "corn":      {"oanda": "CORN_USD",   "class": "commodity", "desc": "Corn"},
+    "sugar":     {"oanda": "SUGAR_USD",  "class": "commodity", "desc": "Sugar"},
 
     # Additional FX pairs — widening the universe past the 26 majors/crosses
     # already cached (see ContinuationBot/README.md's "widening past FX"
