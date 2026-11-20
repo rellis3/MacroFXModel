@@ -32,7 +32,7 @@ Owner, 2026-11-20, from the C.OG thread in Market Movers: "if A is losing, B/C/D
   2. GOLD ← DXY, NQ
   3. NQ ← GOLD, USDJPY
   4. NQ ← US2000
-  5. SPX ← GOLD
+  5. US2000 ← GOLD (A1: was SPX)
   6. US30 ← GOLD, USDJPY
   7. EURUSD ← USDCHF
   8. GBPUSD ← EURUSD, USDJPY
@@ -84,5 +84,14 @@ Trading P&L, costs, carry or swap on the hedge leg, hedge ratios on intraday bar
 If a method is VALIDATED, the Hedges tab shows its ratio next to the 60d OLS ratio and states the out-of-sample variance removed. If all are NULL against M2, the tab keeps 60d OLS and gains an out-of-sample column showing how much variance each pair actually removed against its in-window r². H2 decides whether the tab shows a stress beta beside the ordinary one.
 
 ## Amendments
+
+### A1 — 2026-11-20 — PRE-RESULTS
+No outcome had been computed; only the data build (dates and counts) had run.
+- **Problem 5 changed from SPX ← GOLD to US2000 ← GOLD.** The local SPX M1 file only covers 2021-06 → 2026-06; keeping it would cut the common sample from 2,701 days to 1,274 for every problem. SPX is dropped from the universe. The common sample is 2,701 dates, 2016-01-04 → 2026-08-20.
+- **M9 (min-ES) refreshes its weights every 5 days**, not daily (cost: a grid search per day is about 10^10 operations). Between refreshes the last weights carry.
+- **M10 (Kalman) scales:** Q_j = 1e-5 × var(rA) / var(rH_j) on the diagonal, observation variance R = var(rA) over the first 250 days, state starts at 0 with covariance I and is run from day 0 so the weights used from day 250 have been learning for 250 days.
+- **Placebo pool** is every series in the panel (including the synthetic DXY) outside the problem's own target and hedge set; the placebo has the same number of legs as the problem.
+- **The placebo clause of the gate** means: the method's pooled variance removed must exceed the placebo's pooled variance removed (a sanity floor: a real hedge must beat a random one).
+- **If a weight cannot be solved** (singular window), the previous day's weights carry.
 
 ## RESULTS
