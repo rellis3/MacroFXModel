@@ -1575,6 +1575,7 @@ export const DERIVED = {
     "terminal": [
      "js/terminal/analogueView.js",
      "js/terminal/chainBoard.js",
+     "js/terminal/jarvisViewYields.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
     ],
@@ -2327,8 +2328,6 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/flowView.js",
-     "js/terminal/jarvisViewWeather.js",
-     "js/terminal/jarvisWeatherCore.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/whatChanged.js"
     ],
@@ -2396,7 +2395,7 @@ export const DERIVED = {
     {
      "file": "vol-forecast-v3.html",
      "exists": true,
-     "lastModified": "2026-10-27",
+     "lastModified": "2026-11-19",
      "hub": [
       "live"
      ]
@@ -2510,14 +2509,15 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/jarvisCandles.js",
+     "js/terminal/jarvisCcyCore.js",
      "js/terminal/jarvisMarkets.js",
      "js/terminal/jarvisModMarkets.js",
      "js/terminal/jarvisSessionCore.js",
      "js/terminal/jarvisView.js",
      "js/terminal/jarvisViewBook.js",
+     "js/terminal/jarvisViewCcy.js",
+     "js/terminal/jarvisViewNet.js",
      "js/terminal/jarvisViewSession.js",
-     "js/terminal/jarvisViewWeather.js",
-     "js/terminal/jarvisWeatherCore.js",
      "js/terminal/monitorCore.js",
      "js/terminal/monitorView.js",
      "js/terminal/reachCore.js",
@@ -3557,7 +3557,10 @@ export const DERIVED = {
     }
    ],
    "names": {
-    "terminal": [],
+    "terminal": [
+     "js/terminal/jarvisModNews.js",
+     "js/terminal/newsShowCore.js"
+    ],
     "today": [],
     "atlas": [
      "atlas.html"
@@ -3576,7 +3579,9 @@ export const DERIVED = {
     }
    ],
    "packSkills": [],
-   "drift": []
+   "drift": [
+    "The terminal code names every route of this feed but the traced status says it is not drawn: re-trace."
+   ]
   },
   "fiscal-events": {
    "pages": [
@@ -3667,7 +3672,9 @@ export const DERIVED = {
     "terminal": [
      "js/terminal/corrMath.js",
      "js/terminal/corrView.js",
-     "js/terminal/hedgeView.js"
+     "js/terminal/hedgeView.js",
+     "js/terminal/jarvisViewNet.js",
+     "js/terminal/netCore.js"
     ],
     "today": [
      "today.html"
@@ -3969,6 +3976,7 @@ export const DERIVED = {
      "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
      "js/terminal/insightSeries.js",
+     "js/terminal/jarvisViewYields.js",
      "js/terminal/matrixCore.js",
      "js/terminal/optionsView.js",
      "js/terminal/spreadsCore.js",
@@ -4301,6 +4309,7 @@ export const DERIVED = {
      "js/terminal/spreadsCore.js",
      "js/terminal/spreadsDerived.js",
      "js/terminal/spreadsLibrary.js",
+     "js/terminal/stableRender.js",
      "js/terminal/tabRegistry.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/themes.js",
@@ -4726,6 +4735,8 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
+     "js/terminal/jarvisViewYields.js",
+     "js/terminal/jarvisYieldsCore.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/paperBoardsView.js",
      "js/terminal/terminalTabs.js"
@@ -4770,6 +4781,8 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
+     "js/terminal/jarvisViewYields.js",
+     "js/terminal/jarvisYieldsCore.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/paperBoardsView.js",
      "js/terminal/terminalTabs.js"
@@ -4830,6 +4843,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/dataAge.js",
+     "js/terminal/jarvisGammaCore.js",
+     "js/terminal/jarvisViewGamma.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/optionsView.js",
      "js/terminal/paperBoardsView.js",
@@ -5330,7 +5345,7 @@ export const DERIVED = {
     {
      "file": "atlas.html",
      "exists": true,
-     "lastModified": "2026-11-16",
+     "lastModified": "2026-11-20",
      "hub": [
       "live"
      ]
@@ -5446,5 +5461,5 @@ export const DERIVED = {
  ],
  "rootPageCount": 261,
  "packFeeds": 115,
- "generatedAt": "2026-11-19"
+ "generatedAt": "2026-11-20"
 };
