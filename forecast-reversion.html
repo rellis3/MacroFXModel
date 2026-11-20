@@ -138,7 +138,7 @@
       <button data-c="ladder" class="on" title="The fitted ladder — p50/p75/p90 on O-H, O-L and O-C, with widths fit to realized range walk-forward (forge/vol.py) rather than a textbook constant times a hand-tuned correction. Each rung means what it says: p50 is reached on ~50% of sessions, p75 on ~25%, p90 on ~10%. O-H and O-L are fit SEPARATELY, so each instrument's structural asymmetry is kept.">Ladder</button>
       <button data-c="cog">COG</button>
       <button data-c="bot" title="The Volatility Bot's actual lines: COG geometry × the bot's σ (volSigmaSeries — the backtest math the bot uses, not the vol-forecast σ the COG calc uses; NQ swaps to cc-HV like the bot). Works on both Backtest and Archive source.">Bot</button>
-      <button data-c="v2" title="Shadow ladder-v2 (not live): each instrument&#39;s winning σ from the 2026-11-19 races (NQ har_rv_log on daily ranges; gold and EURUSD HAR-CJ on 5-minute RV) × widths fitted on real ranges, calibrated in every vol regime. Shaded bands past each line = how far price typically runs past ANY level before its first 0.25σ pullback (darker = median, lighter = 75th). Touch markers show the chance that line goes on to the next one at that time of day. GOLD, EURUSD, NQ only; widths fitted to 2026-08-21, so earlier days are partly in-sample.">v2</button>
+      <button data-c="v2" title="Shadow ladder-v2 (not live): each instrument&#39;s winning σ from the 2026-11-19 races (NQ har_rv_log on daily ranges; gold and EURUSD HAR-CJ on 5-minute RV) × widths fitted on real ranges, calibrated in every vol regime. Shaded bands past each line = how far price typically runs past ANY level before its first 0.25σ pullback (darker = median, lighter = 75th). Touch markers show the chance that line goes on to the next one at that time of day. Every instrument whose v2 forecast AND exhaustion validated (ladder-v2-rollout, 2026-11-20: 32 CFDs, futures where the site can compute them); the rest keep the live ladder. Widths fitted to 2026-08-21, so earlier days are partly in-sample.">v2</button>
       <button data-c="exh" title="The EXHAUSTION ladder — a different quantity from the bands. Each rung is the distance from the open at which that share of the day's actual REVERSALS had already happened (p50 = half of all turns were inside it), fitted over ~10 years of London days by js/exhaustionLadderEngine.js. The range bands say how far price travels; these say where it turns. Needs a cached fit — POST /api/exhaustion-ladder/run.">Exh</button>
     </div>
     <label title="Overlay OTHER calcs' lines on top of the active Calc above, view-only (no touch markers, no trades) — so you can see how far apart Original/COG/Bot place their levels for the same day.">Compare</label>
@@ -146,7 +146,7 @@
       <button data-cc="ladder" title="Overlay the fitted ladder's lines">+Ladder</button>
       <button data-cc="cog" title="Overlay COG's lines">+COG</button>
       <button data-cc="bot" title="Overlay Bot's lines">+Bot</button>
-      <button data-cc="v2" title="Overlay the shadow ladder-v2 lines (GOLD, EURUSD, NQ)">+v2</button>
+      <button data-cc="v2" title="Overlay the shadow ladder-v2 lines (every instrument whose v2 forecast and exhaustion validated)">+v2</button>
       <button data-cc="exh" title="Overlay the EXHAUSTION turn rungs on top of the active calc. This is the comparison worth looking at: the turn rungs should sit visibly INSIDE the range bands.">+Exh</button>
     </span>
     <div class="seg" id="touch">
@@ -393,7 +393,10 @@ function bandsFor(f, mode) {
 // ── State ────────────────────────────────────────────────────────────────────
 const state = { showVwap: false, armed: new Set(FITTED_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false, compareCalcs: new Set() };
 const CALC_TAG = { ladder: 'Ladder', cog: 'COG', bot: 'Bot', exh: 'Exh', v2: 'v2' };
-const V2_PAIRS = new Set(['gold', 'eurusd', 'nq']);
+// instruments with a validated v2 ladder per track (ladder-v2 pilots + ladder-v2-rollout), from the server
+const V2_PAIRS = { cfd: new Set(['gold', 'eurusd', 'nq']), fut: new Set(['gold', 'eurusd', 'nq']) };
+fetch('/api/vol-forecast/ladder-v2/instruments').then(r => r.json())
+  .then(j => { if (j?.ok) { V2_PAIRS.cfd = new Set(j.cfd); V2_PAIRS.fut = new Set(j.fut); } }).catch(() => {});
 const _lonHourFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hourCycle: 'h23' });
 const lonBucket = t => { const h = +_lonHourFmt.format(new Date(t * 1000)); return h < 7 ? 0 : h < 12 ? 1 : h < 16 ? 2 : 3; };
 const HOLD_SESSIONS = 5;   // 'let run' holds a trade at most this many sessions past EOD
@@ -673,7 +676,7 @@ async function loadData() {
     : `/api/vol-forecast/archive/range?from=${from}&to=${to}&pair=${encodeURIComponent(name)}`;
   $('go').disabled = true; setStatus(src === 'backtest' ? 'generating forecasts…' : 'loading…'); $('hint').style.display = 'none';
   try {
-    const v2Url = V2_PAIRS.has(name.toLowerCase())
+    const v2Url = V2_PAIRS[state.v2Track === 'fut' ? 'fut' : 'cfd'].has(name.toLowerCase())
       ? `/api/vol-forecast/ladder-v2/levels?pair=${encodeURIComponent(name.toLowerCase())}&from=${from}&to=${to}&track=${state.v2Track || 'cfd'}` : null;
     const [candlesRes, fcRes, exhRes, v2Res] = await Promise.all([
       state.v2Track === 'fut' ? futuresCandles(name, from, to)
