@@ -415,21 +415,23 @@ def positive_control(clock, mult, arm):
 def main(sym):
     out = ROOT / f"analysis/output/exhaustion-v2-{sym.lower()}"
     rng = np.random.default_rng(SEED)
-    T = pd.read_parquet(ROOT / f"analysis/output/ladder-v2-{sym.lower()}/test_C.parquet")
-    TT.LINE_ARM = TT.line_arm(sym, "C")
+    tracks = TT.L.tracks_for(sym)
+    t0 = tracks[0]                                    # positive control on C, or on F for futures-only instruments
+    T = pd.read_parquet(ROOT / f"analysis/output/ladder-v2-{sym.lower()}/test_{t0}.parquet")
+    TT.LINE_ARM = TT.line_arm(sym, t0)
     mult = {c: float((T[c] / T[TT.LINE_ARM]).median()) for c in T.columns if c.startswith(f"{TT.LINE_ARM}_")}
-    clockC = pd.read_parquet(out / "clock_C.parquet")
+    clockC = pd.read_parquet(out / f"clock_{t0}.parquet")
     pc = positive_control(clockC[2019] if 2019 in clockC.columns else clockC["2019"], mult, TT.LINE_ARM)
     if not pc["pass"]:
         (out / "report.txt").write_text("\n".join(LOG) + "\n")
         raise SystemExit("positive control FAILED: nothing scored")
     flags_p = ROOT / f"analysis/output/data_screens/{sym}/flags.csv"
     flags = pd.read_csv(flags_p, parse_dates=["date"]) if flags_p.exists() else None
-    files = [f"analysis/output/exhaustion-v2-{sym.lower()}/touches_{t}{s}.parquet" for t in "CF" for s in ("", "_placebo")]
-    files += [f"analysis/output/ladder-v2-{sym.lower()}/test_{t}.parquet" for t in "CF"]
-    res = {"symbol": sym, "seed": SEED, "B": B, "block": BLOCK, "positive_control": pc,
+    files = [f"analysis/output/exhaustion-v2-{sym.lower()}/touches_{t}{s}.parquet" for t in tracks for s in ("", "_placebo")]
+    files += [f"analysis/output/ladder-v2-{sym.lower()}/test_{t}.parquet" for t in tracks]
+    res = {"symbol": sym, "tracks": tracks, "positive_control_track": t0, "seed": SEED, "B": B, "block": BLOCK, "positive_control": pc,
            "input_sha256": input_hashes(files + ([str(flags_p.relative_to(ROOT)).replace("\\", "/")] if flags is not None else []))}
-    for track in ("C", "F"):
+    for track in tracks:
         cands = ["X0", "X1", "X2", "X3", "X4", "X5", "X6", "X7"] + (["X8"] if track == "F" else [])
         X = pd.read_parquet(out / f"touches_{track}.parquet")
         clk = pd.read_parquet(out / f"clock_{track}.parquet")

@@ -40,6 +40,55 @@ SYMS = {
     "EURUSD": dict(c="portfolioBacktest/cache/eurusd_m1.parquet", f="6E", iv="SETTLE:eur_usd", ref="EURUSD", live="yz_10",
                    invert=False, iv_main=False),
 }
+
+# ── rollout instruments (forge/LADDER_V2_ROLLOUT_PREREG.md) ─────────────────────────────────────────
+# name, CFD cache key (None = futures only), NT8 root (None = CFD only), futures inverted, IV index, PC1 reference
+_ROLLOUT = [
+    ("GBPUSD", "gbpusd", "6B", False, None, "GBPUSD"), ("AUDUSD", "audusd", "6A", False, None, "AUDUSD"),
+    ("NZDUSD", "nzdusd", "6N", False, None, "NZDUSD"), ("USDJPY", "usdjpy", "6J", True, None, "USDJPY"),
+    ("USDCAD", "usdcad", "6C", True, None, "USDCAD"), ("USDCHF", "usdchf", "6S", True, None, "USDCHF"),
+    *[(x, x.lower(), None, False, None, x) for x in (
+        "AUDCAD", "AUDCHF", "AUDJPY", "AUDNZD", "CADCHF", "CADJPY", "CHFJPY", "EURAUD", "EURCAD", "EURCHF", "EURGBP",
+        "EURJPY", "EURNZD", "GBPAUD", "GBPCAD", "GBPCHF", "GBPJPY", "GBPNZD", "NZDCAD", "NZDJPY")],
+    ("DE30", "de30", "FDAX", False, None, "DE30"), ("UK100", "uk100", None, False, None, "UK100"),
+    ("SILVER", "silver", "SI", False, "VXSLV", None), ("COPPER", "copper", "HG", False, None, None),
+    ("PLATINUM", "platinum", "PL", False, None, None), ("PALLADIUM", "palladium", None, False, None, None),
+    ("WTI", "wti", "CL", False, "OVX", None), ("BRENT", "oil", "BZ", False, None, None),
+    ("NATGAS", "natgas", "NG", False, None, None), ("SOYBEAN", "soybean", None, False, None, None),
+    ("WHEAT", "wheat", "ZW", False, None, None), ("CORN", "corn", "ZC", False, None, None),
+    ("SUGAR", "sugar", None, False, None, None),
+    ("ZN", None, "ZN", False, None, None), ("ZB", None, "ZB", False, None, None),
+    ("ZT", None, "ZT", False, None, None), ("ZF", None, "ZF", False, None, None),
+]
+# live estimator per instrument (js/forecastLadderIvAdjParams.js; US30 is 'DOW' there); yz_10 where it has none
+_LIVE = {"GBPUSD": "ewma_094", "USDJPY": "ewma_094", "AUDCHF": "ewma_090", "AUDJPY": "ewma_090", "CADJPY": "ewma_094",
+         "CHFJPY": "ewma_094", "EURAUD": "ewma_094", "EURCHF": "ewma_094", "EURGBP": "ewma_094", "EURJPY": "ewma_094",
+         "GBPCAD": "ewma_094", "GBPCHF": "ewma_094", "GBPJPY": "ewma_094"}
+
+
+def _cfd_path(key):
+    if key is None:
+        return None
+    for c in (f"portfolioBacktest/cache/{key}_m1.parquet", f"analysis/output/ladder-v2-data/m1_commod/{key}_m1.parquet"):
+        if (ROOT / c).exists():
+            return c
+    return f"analysis/output/ladder-v2-data/m1_commod/{key}_m1.parquet"
+
+
+for _n, _k, _r, _inv, _iv, _ref in _ROLLOUT:
+    SYMS.setdefault(_n, dict(c=_cfd_path(_k), f=_r, iv=_iv, ref=_ref, live=_LIVE.get(_n, "yz_10"), invert=_inv))
+
+
+def tracks_for(sym):
+    """The tracks this instrument has data for: C needs its OANDA cache, F its NT8 continuous files."""
+    cfg, out = SYMS[sym], []
+    if cfg.get("c") and (ROOT / cfg["c"]).exists():
+        out.append("C")
+    if cfg.get("f") and (ROOT / f"analysis/output/nt8/continuous/{cfg['f']}_1m_unadj.parquet").exists():
+        out.append("F")
+    return out
+
+
 HALVES = {"half 2018-22": (2018, 2022), "half 2023-26": (2023, 2026)}
 SEED, B, BLOCK = 20261118, 2000, 63
 QS, TAUS = ("hl", "oc", "oh", "ol"), (50, 75, 90)
@@ -106,7 +155,11 @@ def load_m1(sym, track, kind="unadj"):
     p = m1_paths(sym, track, kind)
     d = pd.read_parquet(p)
     if track == "C":
-        d.index = pd.to_datetime(d.index, utc=True)
+        if "time" in d.columns:                       # research schema (fetch_m1_oanda.py): naive UTC 'time' column
+            t = pd.to_datetime(d.pop("time"))
+            d.index = pd.DatetimeIndex(t.dt.tz_localize("UTC") if t.dt.tz is None else t.dt.tz_convert("UTC"))
+        else:
+            d.index = pd.to_datetime(d.index, utc=True)
     else:
         d.index = pd.to_datetime(d.pop("timestamp"), utc=True) - pd.Timedelta(minutes=1)   # NT8 end-stamped
     d = d[~d.index.duplicated()].sort_index()
@@ -195,7 +248,7 @@ def build(sym, track):
     S = london_sessions(load_m1(sym, track, "unadj"))
     b, rv5, rv15, ext = ny_bars(load_m1(sym, track, "ratio"))
     pc1 = None
-    if track == "C":
+    if track == "C" and cfg.get("ref") and (ROOT / f"analysis/output/ladder_candidates/d1/{cfg['ref']}.json").exists():
         ref = pd.DataFrame(json.loads((ROOT / f"analysis/output/ladder_candidates/d1/{cfg['ref']}.json").read_text()))
         ref.index = pd.to_datetime(ref.pop("d"))
         j = b.join(ref, how="inner")
@@ -532,7 +585,7 @@ def positive_control(rng):
 def cmd_build(sym):
     OUT = out_dir(sym); OUT.mkdir(parents=True, exist_ok=True)
     pcs = {}
-    for t in ("C", "F"):
+    for t in tracks_for(sym):
         S, pc1 = build(sym, t)
         S.to_parquet(OUT / f"rows_{t}.parquet")
         if pc1:
@@ -550,15 +603,14 @@ def cmd_score(sym, race="main"):
         HALVES = {"half 2021-22": (2021, 2022), "half 2023-26": (2023, 2026)}
     OUT = out_dir(sym); rng = np.random.default_rng(SEED); arms = arms_for(sym, iv_race)
     sfx = "_iv" if iv_race else ""
-    tracks = ("C",) if iv_race else ("C", "F")
+    tracks = ("C",) if iv_race else tuple(tracks_for(sym))
     flags_p = ROOT / f"analysis/output/data_screens/{sym}/flags.csv"
     flags = pd.read_csv(flags_p, parse_dates=["date"]) if flags_p.exists() else None
     say(f"{sym} ({race} race): arms {arms}; flags {'from ' + rel(flags_p) if flags is not None else 'MISSING'}")
     pc = positive_control(rng)
     if not pc["pass"]:
         raise SystemExit("positive control 2 FAILED: nothing scored")
-    files = [m1_paths(sym, "C"), m1_paths(sym, "F", "unadj"), m1_paths(sym, "F", "ratio"),
-             OUT / "rows_C.parquet", OUT / "rows_F.parquet"] + ([flags_p] if flags is not None else [])
+    files = ([m1_paths(sym, "C")] if "C" in tracks else []) +             ([m1_paths(sym, "F", "unadj"), m1_paths(sym, "F", "ratio")] if "F" in tracks else []) +             [OUT / f"rows_{t}.parquet" for t in tracks] + ([flags_p] if flags is not None else [])
     res = {"symbol": sym, "race": race, "test_years": [min(YEARS), max(YEARS)], "seed": SEED, "B": B, "block": BLOCK,
            "arms": arms, "positive_control_2": pc, "build": json.loads((OUT / "build.json").read_text()),
            "input_sha256": input_hashes([rel(f) for f in files])}
@@ -580,7 +632,7 @@ def cmd_score(sym, race="main"):
                    "ci90": [float(np.quantile(d, .05)), float(np.quantile(d, .95))]}
             res[track]["best_iv_minus_best_non_iv"] = out
             say(f"  best IV arm {bi} - best non-IV arm {bn}: {out['point']:+.2f}pp CI [{out['ci90'][0]:+.2f}, {out['ci90'][1]:+.2f}]")
-    if not iv_race:
+    if not iv_race and len(tracks) == 2:
         res["c_vs_f"] = c_vs_f(sym, rng)
         res["same_winner_both_tracks"] = res["C"]["chosen"] == res["F"]["chosen"]
     (OUT / f"results{sfx}.json").write_text(json.dumps(res, indent=1))
