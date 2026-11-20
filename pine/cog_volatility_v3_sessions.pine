@@ -262,7 +262,8 @@ f_cfdMap(u) =>
     string s = ""
     fx = array.from("EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "NZDUSD", "USDCAD", "USDCHF",
          "GBPJPY", "EURGBP", "EURJPY", "EURCHF", "GBPCHF", "AUDJPY", "CADJPY", "EURAUD",
-         "EURCAD", "EURNZD", "GBPAUD", "GBPCAD", "AUDCAD", "NZDCAD", "NZDJPY", "BTCUSD")
+         "EURCAD", "EURNZD", "GBPAUD", "GBPCAD", "AUDCAD", "NZDCAD", "NZDJPY", "BTCUSD",
+         "AUDCHF", "AUDNZD", "CADCHF", "CHFJPY", "GBPNZD")
     for p in fx
         if s == "" and str.contains(u, p)
             s := p
