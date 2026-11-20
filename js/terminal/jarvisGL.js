@@ -136,6 +136,8 @@ function makeKit(L, H) {
   /** Glow sprite (a soft billboard), for cores, flares, markers. */
   kit.flare = (color, scale = 1, opacity = 1) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: kit.dot(), color: new THREE.Color(color), transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending })); s.scale.setScalar(scale); return s; };
   kit._mats = new Set(); kit._holo = new Set();
+  /** Let go of a material (or every material under an object) when a view rebuilds part of its scene, so the kit's resize/tick lists do not grow. Also disposes it. */
+  kit.forget = x => { const drop = m => { if (!m) return; kit._mats.delete(m); kit._holo.delete(m); try { m.dispose(); } catch (e) { /* gone */ } }; if (x?.isMaterial) drop(x); else x?.traverse?.(o => { (Array.isArray(o.material) ? o.material : [o.material]).forEach(drop); try { o.geometry?.dispose(); } catch (e) { /* gone */ } }); };
   kit.tick = t => { for (const m of kit._holo) m.uniforms.t.value = t; };
   kit.resize = (w, h) => { for (const m of kit._mats) m.resolution.set(w, h); };
   return kit;
