@@ -160,7 +160,7 @@ def walk(X, clocks, track, cands):
         parts = []
         for Y in TEST_YEARS:
             tr, te = d[d["year"] < Y], d[d["year"] == Y].copy()
-            if not len(te):
+            if not len(te) or not len(tr):        # rollout A1: a test year needs at least one earlier year to fit on
                 continue
             pr, fp = predict_year(tr, te, clocks[Y], track, cands)
             for c in cands:

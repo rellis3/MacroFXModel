@@ -74,3 +74,13 @@ The settlement IV for the FX majors starts 2020-09, so it stays out of the main 
 
 The VALIDATED instruments go onto the shadow export (forecast and exhaustion, CFD and futures pastes) and the
 forecast-reversion page, as the pilots did. NULL and UNDERPOWERED instruments keep the live ladder.
+
+## Amendments
+
+### A1 — 2026-11-20, PRE-RESULTS for US2000 F exhaustion (not yet scored; other instruments unaffected)
+
+The exhaustion walk-forward now scores a test year only when at least one earlier year of touches exists to fit on.
+RTY's NT8 history starts 2017-07, so its first ladder test year is 2019 and its touches start in 2019. With nothing
+before 2019 the plain-ladder baseline X0 was undefined and the fitted candidates were fitted on no rows, and the scorer
+stopped with an error. RTY F's exhaustion is therefore scored on **2020+**. A check over every touches file written so
+far found no other instrument-track whose touches start after 2018, so no other result changes.
