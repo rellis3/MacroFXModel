@@ -1,0 +1,6 @@
+Major release times (none graded): 0 (- -> -)
+CADCHF C: lines from ladder arm B_har_garcht
+  placebo (lines from a random same-year session): 9527 first touches
+CADCHF C: 1992 sessions, 9359 first touches; extraction check 88/88 match on 20 sessions
+  touches per family x rung: OCd50 1109, OCd75 546, OCd90 263, OCu50 1042, OCu75 509, OCu90 213, OH50 1094, OH75 520, OH90 194, OL50 1122, OL75 536, OL90 228, PH50 568, PH75 275, PH90 95, PL50 629, PL75 293, PL90 123
+  wrong-side dynamic touches: 105; release still to come: 0

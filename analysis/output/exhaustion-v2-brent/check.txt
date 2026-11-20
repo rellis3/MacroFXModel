@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+BRENT C: lines from ladder arm B_har_garcht
+  placebo (lines from a random same-year session): 10489 first touches
+BRENT C: 2010 sessions, 9706 first touches; extraction check 81/81 match on 20 sessions
+  touches per family x rung: OCd50 1100, OCd75 567, OCd90 242, OCu50 1141, OCu75 526, OCu90 172, OH50 1141, OH75 561, OH90 218, OL50 1130, OL75 563, OL90 218, PH50 638, PH75 291, PH90 102, PL50 637, PL75 317, PL90 142
+  wrong-side dynamic touches: 161; release still to come: 2099
+BRENT F: lines from ladder arm H8
+  placebo (lines from a random same-year session): 10254 first touches
+BRENT F: 1974 sessions, 9424 first touches; extraction check 90/90 match on 20 sessions
+  touches per family x rung: OCd50 1109, OCd75 545, OCd90 227, OCu50 1150, OCu75 497, OCu90 179, OH50 1077, OH75 535, OH90 216, OL50 1096, OL75 529, OL90 194, PH50 635, PH75 262, PH90 94, PL50 627, PL75 326, PL90 126
+  wrong-side dynamic touches: 154; release still to come: 2086

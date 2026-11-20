@@ -1,0 +1,6 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+ZB F: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 8912 first touches
+ZB F: 1777 sessions, 8514 first touches; extraction check 83/83 match on 20 sessions
+  touches per family x rung: OCd50 986, OCd75 481, OCd90 202, OCu50 962, OCu75 469, OCu90 212, OH50 971, OH75 473, OH90 198, OL50 1037, OL75 502, OL90 187, PH50 537, PH75 262, PH90 94, PL50 557, PL75 277, PL90 107
+  wrong-side dynamic touches: 105; release still to come: 1598

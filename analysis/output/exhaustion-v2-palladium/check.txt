@@ -1,0 +1,6 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+PALLADIUM C: lines from ladder arm E_yz_20
+  placebo (lines from a random same-year session): 9920 first touches
+PALLADIUM C: 1949 sessions, 9396 first touches; extraction check 97/97 match on 20 sessions
+  touches per family x rung: OCd50 1030, OCd75 543, OCd90 230, OCu50 1067, OCu75 538, OCu90 227, OH50 1032, OH75 511, OH90 217, OL50 1151, OL75 559, OL90 220, PH50 623, PH75 314, PH90 118, PL50 608, PL75 290, PL90 118
+  wrong-side dynamic touches: 156; release still to come: 2298

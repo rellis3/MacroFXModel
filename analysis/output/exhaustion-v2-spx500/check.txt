@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+SPX500 C: lines from ladder arm G_garch_t
+  placebo (lines from a random same-year session): 11129 first touches
+SPX500 C: 1928 sessions, 10062 first touches; extraction check 98/98 match on 20 sessions
+  touches per family x rung: OCd50 1092, OCd75 598, OCd90 282, OCu50 1148, OCu75 564, OCu90 186, OH50 1113, OH75 595, OH90 242, OL50 1104, OL75 582, OL90 239, PH50 727, PH75 312, PH90 102, PL50 668, PL75 341, PL90 167
+  wrong-side dynamic touches: 206; release still to come: 1452
+SPX500 F: lines from ladder arm G_garch_t
+  placebo (lines from a random same-year session): 11070 first touches
+SPX500 F: 1912 sessions, 9977 first touches; extraction check 93/93 match on 20 sessions
+  touches per family x rung: OCd50 1091, OCd75 574, OCd90 269, OCu50 1123, OCu75 533, OCu90 184, OH50 1105, OH75 582, OH90 232, OL50 1131, OL75 597, OL90 231, PH50 737, PH75 307, PH90 101, PL50 682, PL75 336, PL90 162
+  wrong-side dynamic touches: 216; release still to come: 1476

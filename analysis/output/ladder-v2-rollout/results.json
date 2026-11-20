@@ -1,0 +1,2609 @@
+{
+ "summary": {
+  "date": "2026-11-20",
+  "instrument_tracks": 58,
+  "instruments": 42,
+  "ladder": {
+   "VALIDATED": 51,
+   "NULL": 0,
+   "UNDERPOWERED": 7,
+   "CONTEXT": 0
+  },
+  "exhaustion": {
+   "VALIDATED": 58,
+   "NULL": 0,
+   "UNDERPOWERED": 0,
+   "CONTEXT": 0
+  },
+  "chance_validated_expected": 2.9,
+  "bh_q10_ladder_kept": 58,
+  "bh_q10_exhaustion_kept": 58,
+  "pending": [
+   "SOYBEAN",
+   "WHEAT",
+   "CORN",
+   "SUGAR"
+  ]
+ },
+ "rows": [
+  {
+   "sym": "SPX500",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "ES",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "G_garch_t",
+     "A0": 2.4957530894325473,
+     "chosen_primary": 1.6924396179475178,
+     "ci": [
+      -1.5524190559359385,
+      -0.36167605169461864
+     ],
+     "n": 2218,
+     "floor_p90": 1.632145011828985,
+     "within_noise": false,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "B_har_garcht",
+     "A0": 2.2619935114240355,
+     "chosen_primary": 1.6939324911990061,
+     "ci": [
+      -1.4513289424125086,
+      -0.2927515391207056
+     ],
+     "n": 2197,
+     "floor_p90": 1.650020708221164,
+     "within_noise": false,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 8.904090763888862,
+     "chosen_primary": 3.862817739210253,
+     "ci": [
+      -5.689259175036176,
+      -3.3481472382718716
+     ],
+     "ll": 0.9297882087442381,
+     "n_sessions": 1695,
+     "touches": {
+      "next": 7715,
+      "sig": 8772
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 9.273494922492043,
+     "chosen_primary": 4.128003386979347,
+     "ci": [
+      -6.005904584849041,
+      -3.4682206682737107
+     ],
+     "ll": 0.933170661344822,
+     "n_sessions": 1691,
+     "touches": {
+      "next": 7722,
+      "sig": 8775
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2614,
+    "lo": 0.998574626209377,
+    "hi": 1.0105299418689753
+   }
+  },
+  {
+   "sym": "US30",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "YM",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "E_har_rv_log",
+     "A0": 2.5257973497253996,
+     "chosen_primary": 1.7648930988730451,
+     "ci": [
+      -1.5323637583224767,
+      -0.3913168330727883
+     ],
+     "n": 2229,
+     "floor_p90": 1.6416351757612397,
+     "within_noise": false,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "E_har_rv_log",
+     "A0": 2.639364752464263,
+     "chosen_primary": 1.805859796202106,
+     "ci": [
+      -1.5770202509390818,
+      -0.4783063796712299
+     ],
+     "n": 2192,
+     "floor_p90": 1.6557455542727175,
+     "within_noise": false,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 10.231171255963627,
+     "chosen_primary": 4.389073271639137,
+     "ci": [
+      -7.0655317793892145,
+      -4.297369412971294
+     ],
+     "ll": 0.9216875876082328,
+     "n_sessions": 1771,
+     "touches": {
+      "next": 7840,
+      "sig": 8789
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 10.573299760056045,
+     "chosen_primary": 4.58127671647352,
+     "ci": [
+      -7.202780482555474,
+      -4.481167665261329
+     ],
+     "ll": 0.9251720574348556,
+     "n_sessions": 1750,
+     "touches": {
+      "next": 7730,
+      "sig": 8678
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2703,
+    "lo": 1.0001110176836805,
+    "hi": 1.0122942229205907
+   }
+  },
+  {
+   "sym": "US2000",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "RTY",
+   "lad": {
+    "C": {
+     "verdict": "UNDERPOWERED",
+     "chosen": "E_ewma_090",
+     "A0": 2.7584269662921357,
+     "chosen_primary": 1.4513108614232206,
+     "ci": [
+      -2.055624000146662,
+      -0.48226963845436394
+     ],
+     "n": 2225,
+     "floor_p90": 1.6385767790262171,
+     "within_noise": true,
+     "fails": [
+      "half 2018-22"
+     ],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "E_ewma_090",
+     "A0": 3.1512027491408925,
+     "chosen_primary": 1.6013745704467355,
+     "ci": [
+      -2.351462948317337,
+      -0.9346736960213575
+     ],
+     "n": 1940,
+     "floor_p90": 1.7579037800687287,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 12.166652232971934,
+     "chosen_primary": 3.2823680049269894,
+     "ci": [
+      -9.740737253091284,
+      -6.470638838921675
+     ],
+     "ll": 0.916109711172375,
+     "n_sessions": 1736,
+     "touches": {
+      "next": 7871,
+      "sig": 8894
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 13.444213292509271,
+     "chosen_primary": 3.566012736394549,
+     "ci": [
+      -10.522679827567753,
+      -7.0409312359923115
+     ],
+     "ll": 0.9198277062779037,
+     "n_sessions": 1475,
+     "touches": {
+      "next": 6664,
+      "sig": 7535
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2284,
+    "lo": 0.9976172070688064,
+    "hi": 1.0105738958393344
+   }
+  },
+  {
+   "sym": "GBPUSD",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "6B",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 2.642857142857143,
+     "chosen_primary": 1.4523809523809523,
+     "ci": [
+      -2.162162548129541,
+      -0.7131500250880554
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "ewma_094"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 3.0176978145403397,
+     "chosen_primary": 1.8307720837794528,
+     "ci": [
+      -2.17205258992043,
+      -0.7297961448004411
+     ],
+     "n": 2181,
+     "floor_p90": 1.6578251072435772,
+     "within_noise": false,
+     "fails": [],
+     "live": "ewma_094"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X6",
+     "X0": 12.225067577840202,
+     "chosen_primary": 2.8659398960768394,
+     "ci": [
+      -10.128781094142234,
+      -7.508031038649213
+     ],
+     "ll": 0.9362752319794031,
+     "n_sessions": 1764,
+     "touches": {
+      "next": 7572,
+      "sig": 8547
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X6",
+     "X0": 11.9984480197925,
+     "chosen_primary": 4.025865027766473,
+     "ci": [
+      -9.154814206800474,
+      -6.523778006419062
+     ],
+     "ll": 0.9434893075696316,
+     "n_sessions": 1728,
+     "touches": {
+      "next": 7343,
+      "sig": 8255
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2689,
+    "lo": 1.0064082325112185,
+    "hi": 1.016173984396838
+   }
+  },
+  {
+   "sym": "AUDUSD",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "6A",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "R15",
+     "A0": 3.1307859273463294,
+     "chosen_primary": 1.4168863854266542,
+     "ci": [
+      -2.197365474560462,
+      -0.9476768204809001
+     ],
+     "n": 2238,
+     "floor_p90": 1.6301224432726111,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "R15",
+     "A0": 3.2338084941112255,
+     "chosen_primary": 1.4590095102135074,
+     "ci": [
+      -2.2497559600644097,
+      -1.0809392597904106
+     ],
+     "n": 2182,
+     "floor_p90": 1.649778864792616,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 11.575106320566672,
+     "chosen_primary": 3.3642180862331927,
+     "ci": [
+      -9.00907600188198,
+      -7.024266749441424
+     ],
+     "ll": 0.9364141962973975,
+     "n_sessions": 1757,
+     "touches": {
+      "next": 7645,
+      "sig": 8697
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 11.610880135981844,
+     "chosen_primary": 2.822833100816444,
+     "ci": [
+      -9.037648934353198,
+      -6.994255878954429
+     ],
+     "ll": 0.9374246117656896,
+     "n_sessions": 1719,
+     "touches": {
+      "next": 7409,
+      "sig": 8412
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2688,
+    "lo": 1.0010360511810907,
+    "hi": 1.0112829124526417
+   }
+  },
+  {
+   "sym": "NZDUSD",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "6N",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "E_yz_20",
+     "A0": 2.598467295195483,
+     "chosen_primary": 1.4005839192500267,
+     "ci": [
+      -1.9849205657196929,
+      -0.4772799933841
+     ],
+     "n": 2239,
+     "floor_p90": 1.6229712634494515,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 3.1924584974549903,
+     "chosen_primary": 1.8787298332703823,
+     "ci": [
+      -2.079769374031861,
+      -0.6891903692135145
+     ],
+     "n": 2152,
+     "floor_p90": 1.6580711883307255,
+     "within_noise": false,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 11.802633329756071,
+     "chosen_primary": 3.01782684865577,
+     "ci": [
+      -9.590528400947811,
+      -7.0751284001571975
+     ],
+     "ll": 0.9318839308995865,
+     "n_sessions": 1748,
+     "touches": {
+      "next": 7561,
+      "sig": 8641
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X5",
+     "X0": 12.095311617108012,
+     "chosen_primary": 3.0680097592430045,
+     "ci": [
+      -9.520220445517147,
+      -7.170949895510881
+     ],
+     "ll": 0.9328507318414919,
+     "n_sessions": 1690,
+     "touches": {
+      "next": 7426,
+      "sig": 8489
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2652,
+    "lo": 0.9881917563701491,
+    "hi": 1.0042852378817206
+   }
+  },
+  {
+   "sym": "USDJPY",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "6J",
+   "lad": {
+    "C": {
+     "verdict": "UNDERPOWERED",
+     "chosen": "E_yz_20",
+     "A0": 1.8898809523809523,
+     "chosen_primary": 1.6101190476190477,
+     "ci": [
+      -1.37053395864701,
+      0.0
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [
+      "half 2023-26",
+      "without 2018Q4",
+      "without covid",
+      "without tariff2025",
+      "without hi1_202210",
+      "without hi2_202407",
+      "without hi3_202503",
+      "without hi4_202301",
+      "fault flags out"
+     ],
+     "live": "ewma_094"
+    },
+    "F": {
+     "verdict": "UNDERPOWERED",
+     "chosen": "G_garch_t",
+     "A0": 2.2403165872399384,
+     "chosen_primary": 1.8128993204990944,
+     "ci": [
+      -1.4072808132374646,
+      0.0
+     ],
+     "n": 2181,
+     "floor_p90": 1.658541347385216,
+     "within_noise": false,
+     "fails": [
+      "without 2018Q4",
+      "without covid",
+      "without tariff2025",
+      "without hi1_202210",
+      "without hi3_202503"
+     ],
+     "live": "ewma_094"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 12.084672703538232,
+     "chosen_primary": 3.2083824021254386,
+     "ci": [
+      -9.050566034586062,
+      -7.1230615193641995
+     ],
+     "ll": 0.9317050318533505,
+     "n_sessions": 1674,
+     "touches": {
+      "next": 7480,
+      "sig": 8561
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X8",
+     "X0": 11.814667537421975,
+     "chosen_primary": 3.7665285684256142,
+     "ci": [
+      -8.614489274158162,
+      -6.586825969884618
+     ],
+     "ll": 0.9328133785444281,
+     "n_sessions": 1645,
+     "touches": {
+      "next": 7409,
+      "sig": 8470
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2689,
+    "lo": 1.0048508209840703,
+    "hi": 1.0216470888759277
+   }
+  },
+  {
+   "sym": "USDCAD",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "6C",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "B_har_garcht",
+     "A0": 3.2127976190476195,
+     "chosen_primary": 1.4940476190476193,
+     "ci": [
+      -2.167812855267773,
+      -0.9418416518587427
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "B_har_garcht",
+     "A0": 2.9794690551988348,
+     "chosen_primary": 1.6906688969226071,
+     "ci": [
+      -1.8246129336486145,
+      -0.8769380800321078
+     ],
+     "n": 2154,
+     "floor_p90": 1.644279573373622,
+     "within_noise": false,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 10.693126656206116,
+     "chosen_primary": 3.094286157384694,
+     "ci": [
+      -8.590491365962674,
+      -5.727202129392813
+     ],
+     "ll": 0.9304433068953264,
+     "n_sessions": 1771,
+     "touches": {
+      "next": 7546,
+      "sig": 8499
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X8",
+     "X0": 11.120849065746926,
+     "chosen_primary": 2.4804803642206155,
+     "ci": [
+      -9.199310586695189,
+      -5.760483077078428
+     ],
+     "ll": 0.9320469147720193,
+     "n_sessions": 1690,
+     "touches": {
+      "next": 7088,
+      "sig": 7987
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2662,
+    "lo": 1.0032829558615484,
+    "hi": 1.0113119376322397
+   }
+  },
+  {
+   "sym": "USDCHF",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "6S",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 3.009983887290934,
+     "chosen_primary": 1.4696488494726747,
+     "ci": [
+      -2.0417747238280706,
+      -0.9043696833975747
+     ],
+     "n": 2237,
+     "floor_p90": 1.6215930275913502,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 3.0616108203384953,
+     "chosen_primary": 1.2906617025486067,
+     "ci": [
+      -2.145667065034688,
+      -0.935740732783937
+     ],
+     "n": 2154,
+     "floor_p90": 1.659832011367111,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X5",
+     "X0": 11.648021619724785,
+     "chosen_primary": 3.887039142641328,
+     "ci": [
+      -8.828148289323119,
+      -6.03296713009253
+     ],
+     "ll": 0.940782099437398,
+     "n_sessions": 1809,
+     "touches": {
+      "next": 7789,
+      "sig": 8850
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X6",
+     "X0": 11.400959135658395,
+     "chosen_primary": 2.8134693868065934,
+     "ci": [
+      -9.169211798385104,
+      -6.132886104107328
+     ],
+     "ll": 0.9413398550888755,
+     "n_sessions": 1735,
+     "touches": {
+      "next": 7358,
+      "sig": 8309
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2653,
+    "lo": 1.0016681711826179,
+    "hi": 1.0167226335307424
+   }
+  },
+  {
+   "sym": "AUDCAD",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "R5",
+     "A0": 3.665178571428571,
+     "chosen_primary": 1.3139880952380951,
+     "ci": [
+      -2.952670839819386,
+      -1.4918047252154636
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X2",
+     "X0": 12.450594342084681,
+     "chosen_primary": 3.0744448457677422,
+     "ci": [
+      -9.669319060057164,
+      -7.474788520046203
+     ],
+     "ll": 0.9371368184143265,
+     "n_sessions": 1812,
+     "touches": {
+      "next": 7834,
+      "sig": 8870
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "AUDCHF",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "R5",
+     "A0": 3.239583333333333,
+     "chosen_primary": 1.3333333333333335,
+     "ci": [
+      -2.867316401025981,
+      -1.1447213495615847
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "ewma_090"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 14.376002599546217,
+     "chosen_primary": 3.9613472686959277,
+     "ci": [
+      -10.844776026765759,
+      -8.445142385212796
+     ],
+     "ll": 0.923530329786502,
+     "n_sessions": 1759,
+     "touches": {
+      "next": 7422,
+      "sig": 8427
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "AUDJPY",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "R5",
+     "A0": 3.72172619047619,
+     "chosen_primary": 1.4419642857142856,
+     "ci": [
+      -3.0653053527259115,
+      -1.4678515411469253
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "ewma_090"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 13.427719425160522,
+     "chosen_primary": 2.723259972076468,
+     "ci": [
+      -10.98373552599792,
+      -8.705654856263477
+     ],
+     "ll": 0.9392830048240246,
+     "n_sessions": 1757,
+     "touches": {
+      "next": 7595,
+      "sig": 8606
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "AUDNZD",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "E_har_rv_log",
+     "A0": 3.2127976190476186,
+     "chosen_primary": 1.1711309523809526,
+     "ci": [
+      -2.4253797296277306,
+      -1.2305803538370417
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X2",
+     "X0": 14.556643277798559,
+     "chosen_primary": 4.023104151837396,
+     "ci": [
+      -10.868533782592266,
+      -8.99214230418045
+     ],
+     "ll": 0.9411626789620743,
+     "n_sessions": 1811,
+     "touches": {
+      "next": 7730,
+      "sig": 8805
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "CADCHF",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "B_har_garcht",
+     "A0": 3.77529761904762,
+     "chosen_primary": 1.4211309523809528,
+     "ci": [
+      -2.8355391624232693,
+      -1.4729257938731004
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X2",
+     "X0": 12.438922993253007,
+     "chosen_primary": 3.8431448255464047,
+     "ci": [
+      -9.558491763859408,
+      -5.925267100794925
+     ],
+     "ll": 0.9310599147862124,
+     "n_sessions": 1761,
+     "touches": {
+      "next": 7263,
+      "sig": 8218
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "CADJPY",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 2.3645833333333335,
+     "chosen_primary": 1.3541666666666663,
+     "ci": [
+      -1.7143162245620027,
+      -0.28346626555211446
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "ewma_094"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 13.447846105521165,
+     "chosen_primary": 2.9362955434501417,
+     "ci": [
+      -10.858199799911308,
+      -8.810001967992953
+     ],
+     "ll": 0.9226863300393884,
+     "n_sessions": 1728,
+     "touches": {
+      "next": 7410,
+      "sig": 8426
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "CHFJPY",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "UNDERPOWERED",
+     "chosen": "HARCJ",
+     "A0": 2.230654761904762,
+     "chosen_primary": 1.4940476190476186,
+     "ci": [
+      -1.7270349198743873,
+      -0.1294568544829426
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [
+      "without tariff2025",
+      "without hi4_202302"
+     ],
+     "live": "ewma_094"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X2",
+     "X0": 14.081556857666428,
+     "chosen_primary": 2.985077683247232,
+     "ci": [
+      -11.922370337849355,
+      -9.088959453323742
+     ],
+     "ll": 0.9311148700682054,
+     "n_sessions": 1802,
+     "touches": {
+      "next": 7805,
+      "sig": 8973
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "EURAUD",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "SHAR",
+     "A0": 2.4687499999999996,
+     "chosen_primary": 1.0744047619047619,
+     "ci": [
+      -1.9975148719814173,
+      -0.5574839487253729
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "ewma_094"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 14.166815931160881,
+     "chosen_primary": 3.232426325730459,
+     "ci": [
+      -11.448308347243447,
+      -8.866156506793333
+     ],
+     "ll": 0.9202036490855198,
+     "n_sessions": 1787,
+     "touches": {
+      "next": 7627,
+      "sig": 8658
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "EURCAD",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 2.4568452380952377,
+     "chosen_primary": 1.5327380952380956,
+     "ci": [
+      -1.8820499597545148,
+      -0.39137806483980225
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 13.253922726898015,
+     "chosen_primary": 3.8779144016246057,
+     "ci": [
+      -10.859484317414129,
+      -7.5800230836489675
+     ],
+     "ll": 0.9223986012421593,
+     "n_sessions": 1745,
+     "touches": {
+      "next": 7305,
+      "sig": 8255
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "EURCHF",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "E_yz_10",
+     "A0": 2.4717261904761907,
+     "chosen_primary": 1.3883928571428572,
+     "ci": [
+      -2.0889143678221926,
+      -0.29378597071102364
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "ewma_094"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X6",
+     "X0": 11.882236053797214,
+     "chosen_primary": 3.5289898010630316,
+     "ci": [
+      -9.015537425718977,
+      -6.674589940830735
+     ],
+     "ll": 0.9290777670373432,
+     "n_sessions": 1778,
+     "touches": {
+      "next": 7714,
+      "sig": 8700
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "EURGBP",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "G_egarch",
+     "A0": 2.754464285714286,
+     "chosen_primary": 1.717261904761904,
+     "ci": [
+      -1.686589468456109,
+      -0.5706589511820339
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": false,
+     "fails": [],
+     "live": "ewma_094"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 14.109173750481185,
+     "chosen_primary": 3.658792587768743,
+     "ci": [
+      -11.637063666570485,
+      -8.577864463691824
+     ],
+     "ll": 0.9216125621784002,
+     "n_sessions": 1756,
+     "touches": {
+      "next": 7436,
+      "sig": 8398
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "EURJPY",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "SHAR",
+     "A0": 2.4371937253648666,
+     "chosen_primary": 1.1427839032704803,
+     "ci": [
+      -1.690593413856521,
+      -0.4731567518007366
+     ],
+     "n": 2239,
+     "floor_p90": 1.6229712634494515,
+     "within_noise": true,
+     "fails": [],
+     "live": "ewma_094"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X2",
+     "X0": 14.438475921844018,
+     "chosen_primary": 3.2470194091113598,
+     "ci": [
+      -11.7438430894862,
+      -9.304729509630572
+     ],
+     "ll": 0.9379315279643755,
+     "n_sessions": 1766,
+     "touches": {
+      "next": 7600,
+      "sig": 8620
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "EURNZD",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 2.8541666666666665,
+     "chosen_primary": 0.9315476190476185,
+     "ci": [
+      -2.3987691957699484,
+      -1.0021305278518087
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 13.083056192097246,
+     "chosen_primary": 2.8684528331895223,
+     "ci": [
+      -10.57303236320778,
+      -8.238674835703833
+     ],
+     "ll": 0.9285959783108299,
+     "n_sessions": 1784,
+     "touches": {
+      "next": 7620,
+      "sig": 8687
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "GBPAUD",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "R5",
+     "A0": 3.1696428571428577,
+     "chosen_primary": 1.6607142857142863,
+     "ci": [
+      -2.3856267832366798,
+      -0.9886412672777368
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": false,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 12.781912727412145,
+     "chosen_primary": 2.651033411054668,
+     "ci": [
+      -10.525436141753572,
+      -8.182780327309317
+     ],
+     "ll": 0.9316483150266635,
+     "n_sessions": 1767,
+     "touches": {
+      "next": 7359,
+      "sig": 8300
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "GBPCAD",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "SHAR",
+     "A0": 3.2366071428571432,
+     "chosen_primary": 1.5818452380952381,
+     "ci": [
+      -2.888298887760711,
+      -0.9569495359610191
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "ewma_094"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 14.080839105833542,
+     "chosen_primary": 2.800623680067714,
+     "ci": [
+      -11.503316644629201,
+      -7.907954415069949
+     ],
+     "ll": 0.9211450207306731,
+     "n_sessions": 1759,
+     "touches": {
+      "next": 7346,
+      "sig": 8285
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "GBPCHF",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "E_yz_10",
+     "A0": 2.8601190476190474,
+     "chosen_primary": 1.3110119047619044,
+     "ci": [
+      -2.3509459928950056,
+      -0.8350113724287134
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "ewma_094"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 13.556158675251828,
+     "chosen_primary": 3.6201933744812815,
+     "ci": [
+      -11.179320899702724,
+      -8.374875371420597
+     ],
+     "ll": 0.9097270847196427,
+     "n_sessions": 1743,
+     "touches": {
+      "next": 7594,
+      "sig": 8635
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "GBPJPY",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "UNDERPOWERED",
+     "chosen": "SHAR",
+     "A0": 1.7738095238095237,
+     "chosen_primary": 1.2023809523809526,
+     "ci": [
+      -1.369765558382667,
+      -0.06284330390859309
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [
+      "half 2023-26"
+     ],
+     "live": "ewma_094"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X6",
+     "X0": 13.024551803499884,
+     "chosen_primary": 3.3008859925131766,
+     "ci": [
+      -10.96533231905452,
+      -8.210844602995309
+     ],
+     "ll": 0.940209369470592,
+     "n_sessions": 1737,
+     "touches": {
+      "next": 7450,
+      "sig": 8393
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "GBPNZD",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 3.5208333333333326,
+     "chosen_primary": 1.4136904761904763,
+     "ci": [
+      -2.5787278837384133,
+      -1.3941609335410499
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 13.544267258863007,
+     "chosen_primary": 3.135389498946154,
+     "ci": [
+      -10.659183340480608,
+      -8.406826246924606
+     ],
+     "ll": 0.9351800259613745,
+     "n_sessions": 1771,
+     "touches": {
+      "next": 7373,
+      "sig": 8338
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "NZDCAD",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "SHAR",
+     "A0": 2.6889880952380962,
+     "chosen_primary": 1.5327380952380951,
+     "ci": [
+      -1.822850402381911,
+      -0.6026718189498756
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X2",
+     "X0": 13.539894437863842,
+     "chosen_primary": 4.469421789011522,
+     "ci": [
+      -9.6341717900442,
+      -7.614399204904518
+     ],
+     "ll": 0.9215640897518301,
+     "n_sessions": 1789,
+     "touches": {
+      "next": 7646,
+      "sig": 8724
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "NZDJPY",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "E_ewma_094",
+     "A0": 3.403273809523809,
+     "chosen_primary": 1.5178571428571428,
+     "ci": [
+      -2.5043064248908187,
+      -1.0180404691759963
+     ],
+     "n": 2240,
+     "floor_p90": 1.6311011904761907,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 12.467720573826144,
+     "chosen_primary": 2.6272761990072384,
+     "ci": [
+      -10.257393669925468,
+      -7.677753833940794
+     ],
+     "ll": 0.9309871124037952,
+     "n_sessions": 1759,
+     "touches": {
+      "next": 7634,
+      "sig": 8666
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "DE30",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "FDAX",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 2.6457858769931666,
+     "chosen_primary": 1.1545178435839032,
+     "ci": [
+      -1.977406012109897,
+      -0.6599077328050893
+     ],
+     "n": 2195,
+     "floor_p90": 1.6397873955960525,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "R5",
+     "A0": 2.795942720763723,
+     "chosen_primary": 1.5954653937947494,
+     "ci": [
+      -1.9985850245929018,
+      -0.760325298028411
+     ],
+     "n": 2095,
+     "floor_p90": 1.6806682577565633,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 12.853989027355938,
+     "chosen_primary": 4.152181760606291,
+     "ci": [
+      -9.469626856326629,
+      -7.283665887993239
+     ],
+     "ll": 0.9313100247062963,
+     "n_sessions": 1774,
+     "touches": {
+      "next": 7625,
+      "sig": 8501
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 12.262429230230076,
+     "chosen_primary": 2.7512859890606167,
+     "ci": [
+      -10.450668463407927,
+      -8.124633844526596
+     ],
+     "ll": 0.933771371617798,
+     "n_sessions": 1695,
+     "touches": {
+      "next": 7130,
+      "sig": 7955
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": false,
+    "n": 2580,
+    "lo": 0.95324539240965,
+    "hi": 0.9698654168169136
+   }
+  },
+  {
+   "sym": "UK100",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "UNDERPOWERED",
+     "chosen": "E_ewma_094",
+     "A0": 2.455272222872611,
+     "chosen_primary": 1.7325113610966245,
+     "ci": [
+      -1.6494041963280437,
+      -0.1332141336868209
+     ],
+     "n": 2168,
+     "floor_p90": 1.6568771440633174,
+     "within_noise": false,
+     "fails": [
+      "half 2018-22"
+     ],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X1",
+     "X0": 12.81735742970721,
+     "chosen_primary": 4.752311387357209,
+     "ci": [
+      -8.754901597631724,
+      -6.868918439061586
+     ],
+     "ll": 0.9265911737733618,
+     "n_sessions": 1716,
+     "touches": {
+      "next": 7606,
+      "sig": 8642
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "SILVER",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "SI",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 2.6123595505617976,
+     "chosen_primary": 1.4138576779026215,
+     "ci": [
+      -2.156703834309121,
+      -0.699675451443898
+     ],
+     "n": 2225,
+     "floor_p90": 1.6385767790262171,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "G_gjr",
+     "A0": 2.570288429045659,
+     "chosen_primary": 1.5131393245472797,
+     "ci": [
+      -2.0358137232680535,
+      -0.597147831763127
+     ],
+     "n": 2046,
+     "floor_p90": 1.7142862822271256,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X6",
+     "X0": 10.909270378649879,
+     "chosen_primary": 3.7723320855027125,
+     "ci": [
+      -8.500512139567554,
+      -6.211612757476026
+     ],
+     "ll": 0.9416482945696967,
+     "n_sessions": 1809,
+     "touches": {
+      "next": 8099,
+      "sig": 9193
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 11.976236655703348,
+     "chosen_primary": 3.531381875819427,
+     "ci": [
+      -9.379495926585054,
+      -6.687302430649964
+     ],
+     "ll": 0.9357562176361325,
+     "n_sessions": 1678,
+     "touches": {
+      "next": 7701,
+      "sig": 8743
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": false,
+    "n": 2506,
+    "lo": 1.03005896734229,
+    "hi": 1.0536541124425787
+   }
+  },
+  {
+   "sym": "COPPER",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "HG",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "E_har_rv_log",
+     "A0": 2.919777968122806,
+     "chosen_primary": 1.534514032347458,
+     "ci": [
+      -1.9227831917205058,
+      -0.8004480634417259
+     ],
+     "n": 2229,
+     "floor_p90": 1.6416351757612397,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "E_har_rv_log",
+     "A0": 2.996607520819733,
+     "chosen_primary": 1.3354202520127396,
+     "ci": [
+      -2.465223033254423,
+      -1.0359991618651405
+     ],
+     "n": 2053,
+     "floor_p90": 1.7150574644432575,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 11.907082194963435,
+     "chosen_primary": 3.307168159931162,
+     "ci": [
+      -9.330755681339141,
+      -7.107571332221982
+     ],
+     "ll": 0.9373487651167984,
+     "n_sessions": 1814,
+     "touches": {
+      "next": 7748,
+      "sig": 8766
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 11.612871091942603,
+     "chosen_primary": 2.8497783294291223,
+     "ci": [
+      -9.158641020649943,
+      -6.827767371573199
+     ],
+     "ll": 0.9354360841289129,
+     "n_sessions": 1672,
+     "touches": {
+      "next": 7247,
+      "sig": 8160
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2523,
+    "lo": 1.0039074252439493,
+    "hi": 1.0103747866051063
+   }
+  },
+  {
+   "sym": "PLATINUM",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "PL",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "E_ewma_094",
+     "A0": 3.991666752170954,
+     "chosen_primary": 1.8532318910470171,
+     "ci": [
+      -2.5842958060184023,
+      -1.3295931174103373
+     ],
+     "n": 2206,
+     "floor_p90": 1.646907651949669,
+     "within_noise": false,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "E_har_rv_log",
+     "A0": 4.13611456462679,
+     "chosen_primary": 1.6739650964682051,
+     "ci": [
+      -3.2284669849900736,
+      -1.5156705041739267
+     ],
+     "n": 1901,
+     "floor_p90": 1.7652230971128606,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X5",
+     "X0": 13.266582193978218,
+     "chosen_primary": 3.337524454237818,
+     "ci": [
+      -10.440863328368197,
+      -8.082311043467739
+     ],
+     "ll": 0.9332306487133087,
+     "n_sessions": 1776,
+     "touches": {
+      "next": 7425,
+      "sig": 8379
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X8",
+     "X0": 14.42309036496064,
+     "chosen_primary": 4.3034354948211435,
+     "ci": [
+      -10.845163838468833,
+      -8.43839707005441
+     ],
+     "ll": 0.9204423298075326,
+     "n_sessions": 1489,
+     "touches": {
+      "next": 6246,
+      "sig": 7055
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2310,
+    "lo": 1.0088310277527364,
+    "hi": 1.019726007032732
+   }
+  },
+  {
+   "sym": "PALLADIUM",
+   "tracks": [
+    "C"
+   ],
+   "fut": null,
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "E_yz_20",
+     "A0": 3.419145690312739,
+     "chosen_primary": 1.7036613272311214,
+     "ci": [
+      -2.4148927298279657,
+      -1.1667217566122614
+     ],
+     "n": 2185,
+     "floor_p90": 1.6587337909992377,
+     "within_noise": false,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X5",
+     "X0": 11.248807020249501,
+     "chosen_primary": 3.5910288031907407,
+     "ci": [
+      -8.643159547997804,
+      -5.682016853155275
+     ],
+     "ll": 0.9467345934430157,
+     "n_sessions": 1717,
+     "touches": {
+      "next": 7296,
+      "sig": 8278
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "WTI",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "CL",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "B_har_garcht",
+     "A0": 3.387875581532054,
+     "chosen_primary": 1.0397121311365278,
+     "ci": [
+      -2.7226028592560434,
+      -1.2260282747405233
+     ],
+     "n": 2229,
+     "floor_p90": 1.6416351757612397,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "G_garch",
+     "A0": 3.0502258947615926,
+     "chosen_primary": 0.9939789388824505,
+     "ci": [
+      -2.48372892690535,
+      -1.0707841093453883
+     ],
+     "n": 2227,
+     "floor_p90": 1.6460203893115668,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 12.00581323724495,
+     "chosen_primary": 3.5101666821084745,
+     "ci": [
+      -9.210152251154279,
+      -6.506796059578076
+     ],
+     "ll": 0.929445975251193,
+     "n_sessions": 1773,
+     "touches": {
+      "next": 7577,
+      "sig": 8474
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X8",
+     "X0": 12.207556474140894,
+     "chosen_primary": 4.192962213045604,
+     "ci": [
+      -8.671485332519191,
+      -6.136437364217387
+     ],
+     "ll": 0.9313079930694643,
+     "n_sessions": 1747,
+     "touches": {
+      "next": 7368,
+      "sig": 8255
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": true,
+    "n": 2740,
+    "lo": 0.9995338620749855,
+    "hi": 1.0187168918521603
+   }
+  },
+  {
+   "sym": "BRENT",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "BZ",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "B_har_garcht",
+     "A0": 3.079970104633782,
+     "chosen_primary": 1.404334828101644,
+     "ci": [
+      -2.2349803453669197,
+      -0.686722666810334
+     ],
+     "n": 2230,
+     "floor_p90": 1.6376681614349775,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "H8",
+     "A0": 2.971548627149089,
+     "chosen_primary": 1.2081943375245914,
+     "ci": [
+      -2.3670819623313317,
+      -0.9244257654739366
+     ],
+     "n": 2162,
+     "floor_p90": 1.6519017477831954,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 11.322928001498267,
+     "chosen_primary": 3.6485983857428987,
+     "ci": [
+      -8.105834956131394,
+      -5.2833776875035445
+     ],
+     "ll": 0.9355320705689001,
+     "n_sessions": 1772,
+     "touches": {
+      "next": 7524,
+      "sig": 8472
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X8",
+     "X0": 11.54504787726323,
+     "chosen_primary": 3.850947095288075,
+     "ci": [
+      -8.575300953614528,
+      -5.782144294710139
+     ],
+     "ll": 0.9321694267021841,
+     "n_sessions": 1742,
+     "touches": {
+      "next": 7278,
+      "sig": 8167
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": false,
+    "n": 2460,
+    "lo": 0.9962318959832972,
+    "hi": 1.0311334840527406
+   }
+  },
+  {
+   "sym": "NATGAS",
+   "tracks": [
+    "C",
+    "F"
+   ],
+   "fut": "NG",
+   "lad": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "R15",
+     "A0": 3.2031127687986367,
+     "chosen_primary": 1.861675185338675,
+     "ci": [
+      -2.097258139709256,
+      -0.6234957506381424
+     ],
+     "n": 1901,
+     "floor_p90": 1.7593175853018372,
+     "within_noise": false,
+     "fails": [],
+     "live": "yz_10"
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "E_har_rv_log",
+     "A0": 2.17256082267369,
+     "chosen_primary": 1.188413017984124,
+     "ci": [
+      -1.923978959617494,
+      -0.43485606474016336
+     ],
+     "n": 2219,
+     "floor_p90": 1.6483591944088556,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "C": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 12.532408700329768,
+     "chosen_primary": 4.226734958460766,
+     "ci": [
+      -9.349828136189618,
+      -5.415704687798182
+     ],
+     "ll": 0.9388009060230305,
+     "n_sessions": 1616,
+     "touches": {
+      "next": 6693,
+      "sig": 7571
+     },
+     "fails": []
+    },
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X6",
+     "X0": 11.594655879716726,
+     "chosen_primary": 3.4132232204369006,
+     "ci": [
+      -9.1847419385949,
+      -5.181427156792447
+     ],
+     "ll": 0.9413966580266474,
+     "n_sessions": 1742,
+     "touches": {
+      "next": 7334,
+      "sig": 8237
+     },
+     "fails": []
+    }
+   },
+   "cvf": {
+    "same": false,
+    "n": 2124,
+    "lo": 1.013944353823479,
+    "hi": 1.0774115069059103
+   }
+  },
+  {
+   "sym": "ZN",
+   "tracks": [
+    "F"
+   ],
+   "fut": "ZN",
+   "lad": {
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "H8",
+     "A0": 3.1282138765854848,
+     "chosen_primary": 1.3877185146586268,
+     "ci": [
+      -2.529452493594637,
+      -0.8041205906168001
+     ],
+     "n": 2009,
+     "floor_p90": 1.7293263524439317,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X5",
+     "X0": 10.887637558541655,
+     "chosen_primary": 3.487768167935603,
+     "ci": [
+      -8.320555983483953,
+      -5.51674313746967
+     ],
+     "ll": 0.9326921293878226,
+     "n_sessions": 1582,
+     "touches": {
+      "next": 6849,
+      "sig": 7799
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "ZB",
+   "tracks": [
+    "F"
+   ],
+   "fut": "ZB",
+   "lad": {
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "HARCJ",
+     "A0": 3.4646464646464654,
+     "chosen_primary": 1.3552188552188553,
+     "ci": [
+      -2.593870740700062,
+      -1.200337241965665
+     ],
+     "n": 1980,
+     "floor_p90": 1.7323232323232327,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X5",
+     "X0": 13.569745674554612,
+     "chosen_primary": 3.9163042940282224,
+     "ci": [
+      -10.503691708721854,
+      -6.919492313746723
+     ],
+     "ll": 0.9237380579708405,
+     "n_sessions": 1568,
+     "touches": {
+      "next": 6726,
+      "sig": 7636
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "ZT",
+   "tracks": [
+    "F"
+   ],
+   "fut": "ZT",
+   "lad": {
+    "F": {
+     "verdict": "UNDERPOWERED",
+     "chosen": "H8",
+     "A0": 2.63006029285099,
+     "chosen_primary": 1.580103359173126,
+     "ci": [
+      -2.2167530167389127,
+      -0.12186887284017824
+     ],
+     "n": 1935,
+     "floor_p90": 1.7490094745908695,
+     "within_noise": true,
+     "fails": [
+      "half 2018-22"
+     ],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X7",
+     "X0": 11.42046659318045,
+     "chosen_primary": 3.949990859426518,
+     "ci": [
+      -7.877189375297488,
+      -5.320680191153466
+     ],
+     "ll": 0.941399364791947,
+     "n_sessions": 1477,
+     "touches": {
+      "next": 6318,
+      "sig": 7181
+     },
+     "fails": []
+    }
+   }
+  },
+  {
+   "sym": "ZF",
+   "tracks": [
+    "F"
+   ],
+   "fut": "ZF",
+   "lad": {
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "H8",
+     "A0": 2.7242661713694454,
+     "chosen_primary": 1.219665165508994,
+     "ci": [
+      -2.357956188904876,
+      -0.48600857016847615
+     ],
+     "n": 1983,
+     "floor_p90": 1.7276361431273273,
+     "within_noise": true,
+     "fails": [],
+     "live": "yz_10"
+    }
+   },
+   "exh": {
+    "F": {
+     "verdict": "VALIDATED",
+     "chosen": "X4",
+     "X0": 12.15838644436186,
+     "chosen_primary": 4.337037508779668,
+     "ci": [
+      -8.836096553137926,
+      -5.94871771847316
+     ],
+     "ll": 0.9293309213312934,
+     "n_sessions": 1521,
+     "touches": {
+      "next": 6682,
+      "sig": 7610
+     },
+     "fails": []
+    }
+   }
+  }
+ ],
+ "p_approx": {
+  "ladder": {
+   "SPX500_C": 0.004094899741148517,
+   "SPX500_F": 0.006639962229160301,
+   "US30_C": 0.00277606601788305,
+   "US30_F": 0.001045271606282927,
+   "US2000_C": 0.003985448706976813,
+   "US2000_F": 6.803015358342046e-05,
+   "GBPUSD_C": 0.0005492226801865896,
+   "GBPUSD_F": 0.0004671943053766725,
+   "AUDUSD_C": 1.7391414801226635e-05,
+   "AUDUSD_F": 1.3837830804552809e-06,
+   "NZDUSD_C": 0.003611700615437363,
+   "NZDUSD_F": 0.000527616828318922,
+   "USDJPY_C": 0.04999521746834629,
+   "USDJPY_F": 0.04999521746834629,
+   "USDCAD_C": 1.507965563490865e-05,
+   "USDCAD_F": 1.371769732583239e-06,
+   "USDCHF_C": 1.0190532668430397e-05,
+   "USDCHF_F": 1.399778043004174e-05,
+   "AUDCAD_C": 2.802218083686192e-07,
+   "AUDCHF_C": 6.379078788526504e-05,
+   "AUDJPY_C": 1.522233934958539e-06,
+   "AUDNZD_C": 2.4115387942114097e-07,
+   "CADCHF_C": 9.909316206480057e-08,
+   "CADJPY_C": 0.010819554300643242,
+   "CHFJPY_C": 0.02797126944462286,
+   "EURAUD_C": 0.00175864908141099,
+   "EURCAD_C": 0.0060598164583040015,
+   "EURCHF_C": 0.01450686315273042,
+   "EURGBP_C": 0.0004385832182736138,
+   "EURJPY_C": 0.001730708129866254,
+   "EURNZD_C": 3.095223833787797e-05,
+   "GBPAUD_C": 3.547478440724117e-05,
+   "GBPCAD_C": 0.0005284260709128574,
+   "GBPCHF_C": 0.0002731155752603298,
+   "GBPJPY_C": 0.035687048519728704,
+   "GBPNZD_C": 1.7262568152709434e-08,
+   "NZDCAD_C": 0.0005381152939115119,
+   "NZDJPY_C": 4.843547201094367e-05,
+   "DE30_C": 0.0004961637971487298,
+   "DE30_F": 0.0001237045377358581,
+   "UK100_C": 0.026559916857339827,
+   "SILVER_C": 0.0006305556458549022,
+   "SILVER_F": 0.0013045232176825405,
+   "COPPER_C": 3.287248323902148e-05,
+   "COPPER_F": 2.793925835786748e-05,
+   "PLATINUM_C": 1.4405684339857672e-07,
+   "PLATINUM_F": 2.605898365759529e-06,
+   "PALLADIUM_C": 1.1790807527001235e-06,
+   "WTI_C": 7.124793174773103e-06,
+   "WTI_F": 1.7514464410506303e-05,
+   "BRENT_C": 0.0009543719193810807,
+   "BRENT_F": 8.738661137036585e-05,
+   "NATGAS_C": 0.001195933492248391,
+   "NATGAS_F": 0.004585772698222024,
+   "ZN_F": 0.0007410446434100715,
+   "ZB_F": 3.756537077348465e-06,
+   "ZT_F": 0.03315794141834416,
+   "ZF_F": 0.0062268350750008805
+  },
+  "exhaustion": {
+   "SPX500_C": 1.0778639092379194e-10,
+   "SPX500_F": 4.099449668615307e-10,
+   "US30_C": 7.287337400185834e-12,
+   "US30_F": 8.230083281546285e-13,
+   "US2000_C": 1.6653345369377348e-16,
+   "US2000_F": 0.0,
+   "GBPUSD_C": 0.0,
+   "GBPUSD_F": 0.0,
+   "AUDUSD_C": 0.0,
+   "AUDUSD_F": 0.0,
+   "NZDUSD_C": 0.0,
+   "NZDUSD_F": 0.0,
+   "USDJPY_C": 0.0,
+   "USDJPY_F": 0.0,
+   "USDCAD_C": 1.1102230246251565e-16,
+   "USDCAD_F": 4.1611158962950867e-13,
+   "USDCHF_C": 0.0,
+   "USDCHF_F": 0.0,
+   "AUDCAD_C": 0.0,
+   "AUDCHF_C": 0.0,
+   "AUDJPY_C": 0.0,
+   "AUDNZD_C": 0.0,
+   "CADCHF_C": 1.190825216212943e-12,
+   "CADJPY_C": 0.0,
+   "CHFJPY_C": 0.0,
+   "EURAUD_C": 0.0,
+   "EURCAD_C": 0.0,
+   "EURCHF_C": 0.0,
+   "EURGBP_C": 0.0,
+   "EURJPY_C": 0.0,
+   "EURNZD_C": 0.0,
+   "GBPAUD_C": 0.0,
+   "GBPCAD_C": 0.0,
+   "GBPCHF_C": 0.0,
+   "GBPJPY_C": 0.0,
+   "GBPNZD_C": 0.0,
+   "NZDCAD_C": 0.0,
+   "NZDJPY_C": 0.0,
+   "DE30_C": 0.0,
+   "DE30_F": 0.0,
+   "UK100_C": 0.0,
+   "SILVER_C": 0.0,
+   "SILVER_F": 0.0,
+   "COPPER_C": 0.0,
+   "COPPER_F": 0.0,
+   "PLATINUM_C": 0.0,
+   "PLATINUM_F": 0.0,
+   "PALLADIUM_C": 8.881784197001252e-16,
+   "WTI_C": 0.0,
+   "WTI_F": 0.0,
+   "BRENT_C": 2.9976021664879227e-15,
+   "BRENT_F": 0.0,
+   "NATGAS_C": 3.336968479317193e-10,
+   "NATGAS_F": 1.786524594926675e-09,
+   "ZN_F": 2.220446049250313e-16,
+   "ZB_F": 6.661338147750939e-16,
+   "ZT_F": 0.0,
+   "ZF_F": 0.0
+  }
+ }
+}

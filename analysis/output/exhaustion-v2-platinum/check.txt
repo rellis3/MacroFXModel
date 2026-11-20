@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+PLATINUM C: lines from ladder arm E_ewma_094
+  placebo (lines from a random same-year session): 9888 first touches
+PLATINUM C: 2018 sessions, 9606 first touches; extraction check 82/82 match on 20 sessions
+  touches per family x rung: OCd50 1164, OCd75 582, OCd90 216, OCu50 1153, OCu75 573, OCu90 226, OH50 1095, OH75 593, OH90 212, OL50 1069, OL75 516, OL90 216, PH50 634, PH75 313, PH90 106, PL50 565, PL75 258, PL90 115
+  wrong-side dynamic touches: 104; release still to come: 2360
+PLATINUM F: lines from ladder arm E_ewma_094
+  placebo (lines from a random same-year session): 8608 first touches
+PLATINUM F: 1707 sessions, 8229 first touches; extraction check 86/86 match on 20 sessions
+  touches per family x rung: OCd50 995, OCd75 494, OCd90 194, OCu50 939, OCu75 476, OCu90 181, OH50 937, OH75 508, OH90 198, OL50 935, OL75 441, OL90 179, PH50 549, PH75 255, PH90 102, PL50 496, PL75 252, PL90 98
+  wrong-side dynamic touches: 107; release still to come: 1991

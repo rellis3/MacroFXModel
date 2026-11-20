@@ -1,0 +1,575 @@
+{
+ "USDJPY": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "exists",
+   "build": "exists",
+   "score": "ok 806s",
+   "touches": "ok 108s",
+   "exhaustion": "ok 860s"
+  }
+ },
+ "GBPUSD": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 42s",
+   "build": "ok 75s",
+   "score": "ok 800s",
+   "touches": "ok 161s",
+   "exhaustion": "ok 827s"
+  }
+ },
+ "AUDUSD": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 42s",
+   "build": "ok 76s",
+   "score": "ok 803s",
+   "touches": "ok 163s",
+   "exhaustion": "ok 810s"
+  }
+ },
+ "NZDUSD": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 32s",
+   "build": "ok 70s",
+   "score": "ok 728s",
+   "touches": "ok 89s",
+   "exhaustion": "ok 792s"
+  }
+ },
+ "USDCAD": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 34s",
+   "build": "ok 70s",
+   "score": "ok 730s",
+   "touches": "ok 127s",
+   "exhaustion": "ok 753s"
+  }
+ },
+ "USDCHF": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 30s",
+   "build": "ok 73s",
+   "score": "ok 739s",
+   "touches": "ok 136s",
+   "exhaustion": "ok 756s"
+  }
+ },
+ "SPX500": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 37s",
+   "build": "ok 63s",
+   "score": "ok 920s",
+   "touches": "ok 97s",
+   "exhaustion": "ok 850s"
+  }
+ },
+ "US30": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 33s",
+   "build": "ok 60s",
+   "score": "ok 840s",
+   "touches": "ok 114s",
+   "exhaustion": "ok 874s"
+  }
+ },
+ "US2000": {
+  "state": "failed at exhaustion",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 30s",
+   "build": "ok 55s",
+   "score": "ok 799s",
+   "touches": "ok 89s",
+   "exhaustion": "FAILED rc=1"
+  }
+ },
+ "DE30": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 28s",
+   "build": "ok 73s",
+   "score": "ok 898s",
+   "touches": "ok 133s",
+   "exhaustion": "ok 714s"
+  }
+ },
+ "UK100": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 28s",
+   "build": "ok 64s",
+   "score": "ok 416s",
+   "touches": "ok 45s",
+   "exhaustion": "ok 601s"
+  }
+ },
+ "ZN": {
+  "state": "done",
+  "tracks": [
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 24s",
+   "build": "ok 40s",
+   "score": "ok 386s",
+   "touches": "ok 51s",
+   "exhaustion": "ok 611s"
+  }
+ },
+ "ZB": {
+  "state": "done",
+  "tracks": [
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 21s",
+   "build": "ok 40s",
+   "score": "ok 329s",
+   "touches": "ok 56s",
+   "exhaustion": "ok 522s"
+  }
+ },
+ "ZT": {
+  "state": "done",
+  "tracks": [
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 18s",
+   "build": "ok 34s",
+   "score": "ok 324s",
+   "touches": "ok 53s",
+   "exhaustion": "ok 516s"
+  }
+ },
+ "ZF": {
+  "state": "done",
+  "tracks": [
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 27s",
+   "build": "ok 101s",
+   "score": "ok 406s",
+   "touches": "ok 48s",
+   "exhaustion": "ok 464s"
+  }
+ },
+ "AUDCAD": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 19s",
+   "build": "ok 34s",
+   "score": "ok 447s",
+   "touches": "ok 57s",
+   "exhaustion": "ok 551s"
+  }
+ },
+ "AUDCHF": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 18s",
+   "build": "ok 35s",
+   "score": "ok 444s",
+   "touches": "ok 54s",
+   "exhaustion": "ok 551s"
+  }
+ },
+ "AUDJPY": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 20s",
+   "build": "ok 66s",
+   "score": "ok 500s",
+   "touches": "ok 51s",
+   "exhaustion": "ok 542s"
+  }
+ },
+ "AUDNZD": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 20s",
+   "build": "ok 40s",
+   "score": "ok 493s",
+   "touches": "ok 71s",
+   "exhaustion": "ok 657s"
+  }
+ },
+ "CADCHF": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 20s",
+   "build": "ok 39s",
+   "score": "ok 488s",
+   "touches": "ok 72s",
+   "exhaustion": "ok 638s"
+  }
+ },
+ "CADJPY": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 29s",
+   "build": "ok 109s",
+   "score": "ok 535s",
+   "touches": "ok 59s",
+   "exhaustion": "ok 563s"
+  }
+ },
+ "CHFJPY": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 25s",
+   "build": "ok 51s",
+   "score": "ok 517s",
+   "touches": "ok 66s",
+   "exhaustion": "ok 684s"
+  }
+ },
+ "EURAUD": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 27s",
+   "build": "ok 53s",
+   "score": "ok 535s",
+   "touches": "ok 72s",
+   "exhaustion": "ok 693s"
+  }
+ },
+ "EURCAD": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 34s",
+   "build": "ok 88s",
+   "score": "ok 638s",
+   "touches": "ok 71s",
+   "exhaustion": "ok 540s"
+  }
+ },
+ "EURCHF": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 29s",
+   "build": "ok 77s",
+   "score": "ok 524s",
+   "touches": "ok 52s",
+   "exhaustion": "ok 564s"
+  }
+ },
+ "EURGBP": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 31s",
+   "build": "ok 67s",
+   "score": "ok 517s",
+   "touches": "ok 66s",
+   "exhaustion": "ok 547s"
+  }
+ },
+ "EURJPY": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 19s",
+   "build": "ok 58s",
+   "score": "ok 518s",
+   "touches": "ok 47s",
+   "exhaustion": "ok 409s"
+  }
+ },
+ "EURNZD": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 19s",
+   "build": "ok 34s",
+   "score": "ok 400s",
+   "touches": "ok 49s",
+   "exhaustion": "ok 485s"
+  }
+ },
+ "GBPAUD": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 18s",
+   "build": "ok 53s",
+   "score": "ok 396s",
+   "touches": "ok 63s",
+   "exhaustion": "ok 480s"
+  }
+ },
+ "GBPCAD": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 19s",
+   "build": "ok 37s",
+   "score": "ok 457s",
+   "touches": "ok 54s",
+   "exhaustion": "ok 423s"
+  }
+ },
+ "GBPCHF": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 20s",
+   "build": "ok 52s",
+   "score": "ok 423s",
+   "touches": "ok 52s",
+   "exhaustion": "ok 496s"
+  }
+ },
+ "GBPJPY": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 29s",
+   "build": "ok 70s",
+   "score": "ok 392s",
+   "touches": "ok 69s",
+   "exhaustion": "ok 494s"
+  }
+ },
+ "GBPNZD": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 19s",
+   "build": "ok 39s",
+   "score": "ok 465s",
+   "touches": "ok 54s",
+   "exhaustion": "ok 415s"
+  }
+ },
+ "NZDCAD": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 20s",
+   "build": "ok 68s",
+   "score": "ok 396s",
+   "touches": "ok 49s",
+   "exhaustion": "ok 475s"
+  }
+ },
+ "NZDJPY": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 33s",
+   "build": "ok 66s",
+   "score": "ok 373s",
+   "touches": "ok 66s",
+   "exhaustion": "ok 447s"
+  }
+ },
+ "SILVER": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 30s",
+   "build": "ok 61s",
+   "score": "ok 803s",
+   "touches": "ok 170s",
+   "exhaustion": "ok 665s"
+  }
+ },
+ "COPPER": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 32s",
+   "build": "ok 61s",
+   "score": "ok 691s",
+   "touches": "ok 89s",
+   "exhaustion": "ok 728s"
+  }
+ },
+ "PLATINUM": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 27s",
+   "build": "ok 59s",
+   "score": "ok 669s",
+   "touches": "ok 78s",
+   "exhaustion": "ok 699s"
+  }
+ },
+ "PALLADIUM": {
+  "state": "done",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 16s",
+   "build": "ok 37s",
+   "score": "ok 341s",
+   "touches": "ok 40s",
+   "exhaustion": "ok 358s"
+  }
+ },
+ "BRENT": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 25s",
+   "build": "ok 62s",
+   "score": "ok 695s",
+   "touches": "ok 79s",
+   "exhaustion": "ok 489s"
+  }
+ },
+ "WTI": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 32s",
+   "build": "ok 64s",
+   "score": "ok 751s",
+   "touches": "ok 105s",
+   "exhaustion": "ok 578s"
+  }
+ },
+ "NATGAS": {
+  "state": "done",
+  "tracks": [
+   "C",
+   "F"
+  ],
+  "steps": {
+   "screens": "ok 26s",
+   "build": "ok 62s",
+   "score": "ok 588s",
+   "touches": "ok 81s",
+   "exhaustion": "ok 588s"
+  }
+ },
+ "SOYBEAN": {
+  "state": "running",
+  "tracks": [
+   "C"
+  ],
+  "steps": {
+   "screens": "ok 13s",
+   "build": "ok 33s",
+   "score": "running"
+  }
+ }
+}

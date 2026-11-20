@@ -1,0 +1,127 @@
+USDJPY (main race): arms ['A0', 'E_yz_10', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht']; flags from analysis/output/data_screens/USDJPY/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 2240 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    R5             -0.3819  0.165
+    SHAR           -0.3816  0.167
+    R15            -0.3801  0.158
+    HARCJ          -0.3772  0.168
+    B_har_garcht   -0.3755  0.150
+    H8             -0.3695  0.149
+    E_har_rv_log   -0.3626  0.153
+    G_garch_t      -0.3558  0.123
+    G_gjr          -0.3534  0.133
+    G_garch        -0.3534  0.125
+    G_egarch       -0.3520  0.144
+    E_yz_20        -0.3361  0.098
+    A0             -0.3304  0.124
+    E_yz_30        -0.3224  0.092
+    E_yz_10        -0.3135  0.121
+    E_ewma_090     -0.2943  0.139
+    E_naive        -0.1747  0.002
+
+== USDJPY C: 2240 test sessions 2018-01-02 -> 2026-08-20   noise floor median 1.37pp, p90 1.63pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  E_yz_30            1.58   0.99   1.0213   0.78
+  E_yz_20            1.61   0.82   1.0164   0.77
+  G_garch_t          1.75   1.00   0.9922   1.00
+  A0                 1.89   0.69   1.0000   0.82
+  G_garch            1.90   1.42   0.9922   1.09
+  B_har_garcht       1.92   1.15   0.9720   1.06
+  E_yz_10            1.93   0.83   1.0065   0.76
+  G_gjr              1.93   1.24   0.9884   1.07
+  G_egarch           2.11   0.84   0.9835   1.13
+  SHAR               2.17   0.81   0.9600   1.02
+  R5                 2.23   0.80   0.9607   1.02
+  R15                2.26   0.90   0.9623   1.01
+  HARCJ              2.26   0.72   0.9578   1.01
+  H8                 2.40   1.72*   0.9744   0.93
+  E_ewma_090         3.08   0.61   0.9991   0.77
+  E_har_rv_log       3.27   2.97*   0.9735   0.98
+  E_naive            7.52   4.44*   1.1367   0.12
+  winner E_yz_30, runner-up E_yz_20, tie=True, chosen E_yz_20; chosen - A0 CI [-1.37, +0.00]pp; calibrated to noise True
+    half 2018-22                       n= 1297  chosen 3.45 vs A0 4.18  CI [-2.48,-0.30]
+    half 2023-26                       n=  943  chosen 1.95 vs A0 2.60  CI [-1.73,+0.00]  <-- FAILS
+    without 2018Q4                     n= 2175  chosen 1.73 vs A0 1.91  CI [-1.45,+0.00]  <-- FAILS
+    without covid                      n= 2145  chosen 1.53 vs A0 1.63  CI [-1.14,+0.00]  <-- FAILS
+    without bear2022                   n= 1981  chosen 1.85 vs A0 2.14  CI [-1.50,-0.09]
+    without tariff2025                 n= 2175  chosen 1.76 vs A0 1.95  CI [-1.42,+0.00]  <-- FAILS
+    without hi1_202210                 n= 2177  chosen 1.57 vs A0 1.79  CI [-1.31,+0.00]  <-- FAILS
+    without hi2_202407                 n= 2177  chosen 1.66 vs A0 2.02  CI [-1.53,+0.00]  <-- FAILS
+    without hi3_202503                 n= 2177  chosen 1.60 vs A0 1.79  CI [-1.28,+0.00]  <-- FAILS
+    without hi4_202301                 n= 2177  chosen 1.58 vs A0 1.83  CI [-1.32,+0.00]  <-- FAILS
+    fault flags out                    n= 2174  chosen 1.65 vs A0 1.88  CI [-1.35,+0.00]  <-- FAILS
+    any flag out (descriptive)         n= 1469  chosen 2.87 vs A0 3.58  CI [-1.96,-0.63]
+  HL>p75/p90 by quintile A0            : Q1 32.6/13.8  Q2 26.1/ 9.8  Q3 25.4/ 8.0  Q4 22.3/ 8.0  Q5 22.1/10.0
+  HL>p75/p90 by quintile E_yz_20       : Q1 29.2/15.2  Q2 25.2/11.8  Q3 25.0/10.0  Q4 24.6/ 9.6  Q5 24.3/13.4
+  HL>p75/p90 by quintile E_yz_30       : Q1 29.9/13.8  Q2 27.0/12.1  Q3 26.6/10.3  Q4 25.9/10.3  Q5 26.8/13.4
+  HL>p75/p90 by quintile H8            : Q1 32.8/15.6  Q2 26.1/10.9  Q3 27.2/11.4  Q4 27.5/10.5  Q5 33.7/16.1
+  VERDICT USDJPY C: UNDERPOWERED
+  MIRROR C (20 draws): A0 primary median 1.29pp [1.04, 1.73] vs floor median 1.37 / p90 1.62; HL>p75 Q1-Q5 median +0.1pp [-4.2, +3.3]
+  F: test rows 2181 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    SHAR           -0.3707  0.181
+    R5             -0.3706  0.178
+    R15            -0.3650  0.172
+    HARCJ          -0.3650  0.190
+    E_har_rv_log   -0.3529  0.151
+    H8             -0.3528  0.144
+    B_har_garcht   -0.3527  0.147
+    G_egarch       -0.3294  0.146
+    G_garch_t      -0.3292  0.122
+    E_yz_20        -0.3288  0.101
+    G_gjr          -0.3282  0.133
+    G_garch        -0.3268  0.124
+    E_yz_30        -0.3082  0.100
+    E_yz_10        -0.3056  0.125
+    A0             -0.3039  0.123
+    E_ewma_090     -0.2755  0.135
+    E_naive        -0.1529  0.001
+
+== USDJPY F: 2181 test sessions 2018-01-02 -> 2026-08-21   noise floor median 1.39pp, p90 1.66pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  G_garch_t          1.81   1.16   0.9901   0.99
+  E_yz_30            1.85   0.84   1.0141   0.77
+  G_garch            2.03   1.58   0.9898   1.06
+  G_gjr              2.06   1.30   0.9852   1.05
+  B_har_garcht       2.09   0.72   0.9705   1.06
+  E_yz_20            2.10   0.82   1.0114   0.76
+  A0                 2.24   0.73   1.0000   0.80
+  HARCJ              2.24   0.84   0.9529   1.03
+  G_egarch           2.32   1.05   0.9794   1.11
+  R5                 2.34   0.76   0.9569   1.05
+  SHAR               2.38   0.76   0.9562   1.05
+  E_yz_10            2.42   0.80   1.0028   0.75
+  R15                2.48   0.77   0.9582   1.03
+  H8                 2.58   0.77   0.9734   0.91
+  E_har_rv_log       2.62   1.44   0.9686   1.00
+  E_ewma_090         3.56   0.71   1.0016   0.75
+  E_naive            7.66   1.46   1.1242   0.52
+  winner G_garch_t, runner-up E_yz_30, tie=True, chosen G_garch_t; chosen - A0 CI [-1.41, +0.00]pp; calibrated to noise False
+    half 2018-22                       n= 1266  chosen 2.65 vs A0 4.24  CI [-2.70,-0.53]
+    half 2023-26                       n=  915  chosen 1.52 vs A0 2.75  CI [-1.99,-0.11]
+    without 2018Q4                     n= 2120  chosen 1.77 vs A0 2.36  CI [-1.56,+0.00]  <-- FAILS
+    without covid                      n= 2087  chosen 1.81 vs A0 2.11  CI [-1.29,+0.00]  <-- FAILS
+    without bear2022                   n= 1927  chosen 1.99 vs A0 2.25  CI [-1.66,-0.20]
+    without tariff2025                 n= 2117  chosen 2.02 vs A0 2.45  CI [-1.49,+0.00]  <-- FAILS
+    without hi1_202210                 n= 2118  chosen 2.05 vs A0 2.37  CI [-1.50,+0.00]  <-- FAILS
+    without hi2_202407                 n= 2118  chosen 1.98 vs A0 2.49  CI [-1.62,-0.04]
+    without hi3_202503                 n= 2118  chosen 1.90 vs A0 2.23  CI [-1.39,+0.00]  <-- FAILS
+    without hi4_202206                 n= 2118  chosen 1.85 vs A0 2.36  CI [-1.47,-0.02]
+    fault flags out                    n= 2116  chosen 1.89 vs A0 2.35  CI [-1.50,-0.00]
+    any flag out (descriptive)         n= 1495  chosen 4.47 vs A0 4.00  CI [-2.04,-0.73]
+  HL>p75/p90 by quintile A0            : Q1 31.1/13.7  Q2 27.3/10.6  Q3 24.8/ 8.0  Q4 20.9/ 7.8  Q5 20.6/ 9.9
+  HL>p75/p90 by quintile G_garch_t     : Q1 28.4/11.0  Q2 21.6/ 8.9  Q3 22.7/ 7.3  Q4 21.6/ 7.8  Q5 25.0/11.9
+  HL>p75/p90 by quintile H8            : Q1 30.2/14.4  Q2 23.2/ 8.7  Q3 27.5/ 8.5  Q4 21.8/10.3  Q5 32.3/15.6
+  VERDICT USDJPY F: UNDERPOWERED
+  MIRROR F (20 draws): A0 primary median 1.31pp [0.94, 2.11] vs floor median 1.40 / p90 1.64; HL>p75 Q1-Q5 median +0.1pp [-5.3, +5.4]
+
+== USDJPY C vs F on 2689 common London dates: F/C ratio (90% CI)
+  hl_p50  1.0102 [1.0054, 1.0163] ok
+  hl_p75  1.0064 [1.0025, 1.0145] ok
+  oh_p50  1.0193 [1.0119, 1.0319] ok
+  oh_p75  1.0216 [1.0097, 1.0309] ok
+  ol_p50  1.0062 [0.9966, 1.0158] ok
+  ol_p75  1.0049 [0.9976, 1.0193] ok
+  -> SAME (F reuses the C spec)

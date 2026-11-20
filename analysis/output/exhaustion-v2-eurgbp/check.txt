@@ -1,0 +1,6 @@
+Major release times (Euro Area, United Kingdom): 992 (2014-01-09 09:30:00+00:00 -> 2026-11-17 07:00:00+00:00)
+EURGBP C: lines from ladder arm G_egarch
+  placebo (lines from a random same-year session): 9991 first touches
+EURGBP C: 2002 sessions, 9664 first touches; extraction check 108/108 match on 20 sessions
+  touches per family x rung: OCd50 1172, OCd75 581, OCd90 205, OCu50 1104, OCu75 583, OCu90 246, OH50 1066, OH75 521, OH90 220, OL50 1126, OL75 570, OL90 205, PH50 628, PH75 294, PH90 130, PL50 629, PL75 283, PL90 101
+  wrong-side dynamic touches: 138; release still to come: 534

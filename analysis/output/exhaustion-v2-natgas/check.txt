@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+NATGAS C: lines from ladder arm R15
+  placebo (lines from a random same-year session): 8670 first touches
+NATGAS C: 1717 sessions, 8072 first touches; extraction check 104/104 match on 20 sessions
+  touches per family x rung: OCd50 917, OCd75 431, OCd90 174, OCu50 921, OCu75 455, OCu90 201, OH50 986, OH75 507, OH90 203, OL50 932, OL75 448, OL90 171, PH50 548, PH75 279, PH90 111, PL50 490, PL75 219, PL90 79
+  wrong-side dynamic touches: 73; release still to come: 1516
+NATGAS F: lines from ladder arm E_har_rv_log
+  placebo (lines from a random same-year session): 10037 first touches
+NATGAS F: 1960 sessions, 9301 first touches; extraction check 110/110 match on 20 sessions
+  touches per family x rung: OCd50 1094, OCd75 547, OCd90 182, OCu50 1063, OCu75 554, OCu90 215, OH50 1095, OH75 569, OH90 216, OL50 1100, OL75 541, OL90 205, PH50 622, PH75 295, PH90 119, PL50 561, PL75 250, PL90 73
+  wrong-side dynamic touches: 77; release still to come: 1548

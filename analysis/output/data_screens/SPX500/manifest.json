@@ -1,0 +1,102 @@
+{
+ "symbol": "SPX500",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "portfolioBacktest/cache/spx500_m1.parquet": "29915b7b2c5caa17d74096582c16984c21999672584e876f88f8c06e4124e10c",
+  "analysis/output/nt8/continuous/ES_1m_unadj.parquet": "790f10a66bae01ae82abc309c5ee2599ed083a596b8146cca6972e54656b5867",
+  "analysis/output/nt8/continuous/ES_1m_ratio.parquet": "91e319517f2c0e62c55567319f0820dbdad0557285783af3e3a0f606a14fbbbe",
+  "analysis/output/nt8/continuous/ES_rolls.csv": "11272ca81a4f64e365fe6b6cdaf5e06ad004b6a1dff87fee485d221cc5acd6fb"
+ },
+ "sessions": {
+  "C": [
+   "2016-01-04",
+   "2026-08-21",
+   2748
+  ],
+  "F": [
+   "2014-12-08",
+   "2026-11-19",
+   3050
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "gap",
+   "n": 19
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 471
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 11
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 96
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 60
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 39
+  },
+  {
+   "track": "F",
+   "screen": "frozen",
+   "n": 6
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 553
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 14
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 37
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 2
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 4
+  }
+ ]
+}

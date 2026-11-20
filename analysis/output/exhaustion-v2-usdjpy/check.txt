@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+USDJPY C: lines from ladder arm E_yz_20
+  placebo (lines from a random same-year session): 10614 first touches
+USDJPY C: 1918 sessions, 9845 first touches; extraction check 107/107 match on 20 sessions
+  touches per family x rung: OCd50 1107, OCd75 588, OCd90 260, OCu50 1095, OCu75 530, OCu90 227, OH50 1113, OH75 556, OH90 249, OL50 1085, OL75 569, OL90 222, PH50 666, PH75 314, PH90 125, PL50 648, PL75 324, PL90 167
+  wrong-side dynamic touches: 203; release still to come: 2759
+USDJPY F: lines from ladder arm E_yz_20
+  placebo (lines from a random same-year session): 10335 first touches
+USDJPY F: 1880 sessions, 9726 first touches; extraction check 85/85 match on 20 sessions
+  touches per family x rung: OCd50 1093, OCd75 585, OCd90 258, OCu50 1092, OCu75 531, OCu90 228, OH50 1079, OH75 534, OH90 234, OL50 1077, OL75 567, OL90 223, PH50 666, PH75 322, PH90 122, PL50 644, PL75 317, PL90 154
+  wrong-side dynamic touches: 210; release still to come: 2712

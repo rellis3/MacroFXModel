@@ -1,0 +1,11 @@
+Major release times (Euro Area): 267 (2014-01-09 10:00:00+00:00 -> 2026-11-13 10:00:00+00:00)
+DE30 C: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 10460 first touches
+DE30 C: 2003 sessions, 9685 first touches; extraction check 71/71 match on 20 sessions
+  touches per family x rung: OCd50 1149, OCd75 629, OCd90 248, OCu50 1154, OCu75 562, OCu90 145, OH50 1102, OH75 580, OH90 211, OL50 1074, OL75 568, OL90 210, PH50 650, PH75 256, PH90 69, PL50 625, PL75 327, PL90 126
+  wrong-side dynamic touches: 163; release still to come: 348
+DE30 F: lines from ladder arm R5
+  placebo (lines from a random same-year session): 9827 first touches
+DE30 F: 1906 sessions, 9002 first touches; extraction check 52/52 match on 20 sessions
+  touches per family x rung: OCd50 1077, OCd75 557, OCd90 235, OCu50 1093, OCu75 510, OCu90 140, OH50 1062, OH75 529, OH90 188, OL50 1009, OL75 510, OL90 198, PH50 584, PH75 228, PH90 62, PL50 587, PL75 305, PL90 128
+  wrong-side dynamic touches: 140; release still to come: 278

@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+COPPER C: lines from ladder arm E_har_rv_log
+  placebo (lines from a random same-year session): 10271 first touches
+COPPER C: 2053 sessions, 9974 first touches; extraction check 93/93 match on 20 sessions
+  touches per family x rung: OCd50 1173, OCd75 576, OCd90 220, OCu50 1154, OCu75 607, OCu90 249, OH50 1122, OH75 559, OH90 213, OL50 1146, OL75 575, OL90 236, PH50 683, PH75 325, PH90 115, PL50 625, PL75 280, PL90 116
+  wrong-side dynamic touches: 141; release still to come: 2844
+COPPER F: lines from ladder arm E_har_rv_log
+  placebo (lines from a random same-year session): 9536 first touches
+COPPER F: 1891 sessions, 9255 first touches; extraction check 93/93 match on 20 sessions
+  touches per family x rung: OCd50 1098, OCd75 558, OCd90 190, OCu50 1065, OCu75 574, OCu90 223, OH50 1042, OH75 518, OH90 193, OL50 1058, OL75 534, OL90 203, PH50 641, PH75 308, PH90 96, PL50 589, PL75 262, PL90 103
+  wrong-side dynamic touches: 140; release still to come: 2668

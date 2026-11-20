@@ -1,0 +1,31 @@
+positive control (20 synthetic histories, ~10900 touches each): X2 pooled bias next +0.15pp / sig +0.06pp; X0 worst time-bucket miss (median) 28.5pp -> ok
+  noise floor of a perfect forecaster WITH touch clustering: X2 PRIMARY median 2.39pp, p90 2.70pp (independent-Bernoulli floor p90 2.02pp)
+
+== C: 1811 sessions, touches next 7730 / sig 8805; floor median 1.91pp, p90 2.24pp
+  cand  PRIMARY   GUARD  logloss   vs X0
+  X2       4.02   1.97   0.6288  0.9412
+  X5       4.02   1.97   0.6288  0.9412
+  X4       4.04   2.02   0.6259  0.9369
+  X6       4.23   1.80   0.6293  0.9420
+  X7       5.96   2.80   0.6257  0.9365
+  X1       6.30   4.14*   0.6518  0.9756
+  X3       8.00   3.36   0.6327  0.9471
+  X0      14.56   3.06   0.6681  1.0000
+  winner X2, runner-up X5, tie=True, chosen X2; chosen-X0 PRIMARY CI [-10.87,-8.99]pp; log loss ratio CI [0.9219,0.9551]; calibrated to noise False
+    half 2019-22                 chosen 4.28 vs X0 14.16  CI [-10.40,-7.70]
+    half 2023-26                 chosen 7.23 vs X0 15.97  CI [-9.85,-7.22]
+    without covid                chosen 4.55 vs X0 14.82  CI [-10.92,-8.97]
+    without bear2022             chosen 4.35 vs X0 14.61  CI [-10.81,-8.90]
+    without tariff2025           chosen 4.28 vs X0 14.73  CI [-10.85,-9.01]
+    without hi1_202003           chosen 4.46 vs X0 14.72  CI [-10.81,-8.91]
+    without hi2_202210           chosen 4.12 vs X0 14.48  CI [-10.94,-8.91]
+    fault flags out              chosen 4.03 vs X0 14.58  CI [-10.86,-9.00]
+  next X0  obs/pred by time: 00-07 63.8/48.6 (n3277)  07-12 47.8/47.1 (n1871)  12-16 33.0/45.7 (n1669)  16-22 14.5/44.7 (n913)
+  next X2  obs/pred by time: 00-07 63.8/60.2 (n3277)  07-12 47.8/51.0 (n1871)  12-16 33.0/39.3 (n1669)  16-22 14.5/15.6 (n913)
+  sig  X0  obs/pred by time: 00-07 78.0/65.1 (n3575)  07-12 70.2/64.2 (n2079)  12-16 55.6/62.9 (n1997)  16-22 32.3/62.4 (n1154)
+  sig  X2  obs/pred by time: 00-07 78.0/75.6 (n3575)  07-12 70.2/69.9 (n2079)  12-16 55.6/61.5 (n1997)  16-22 32.3/36.5 (n1154)
+  VERDICT C: VALIDATED
+  C: chosen X2 4.02pp vs clustered floor p90 2.70 -> calibrated to noise (clustered): False
+  placebo levels (random same-year session's lines): next: real obs 47.5% vs X2 48.2% | placebo obs 49.2% vs X2 48.8%; sig: real obs 65.1% vs X2 66.0% | placebo obs 66.9% vs X2 66.4%
+  wrong-side dynamic touches (next, n=138): obs 51.4% vs chosen 40.2%
+  wrong-side dynamic touches (sig, n=151): obs 64.9% vs chosen 56.5%

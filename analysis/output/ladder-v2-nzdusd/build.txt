@@ -1,0 +1,3 @@
+positive control 1 (NZDUSD C bars vs JS nyCloseDailyBars): 2759/2759 = 1.0000
+NZDUSD C: 2756 sessions 2016-01-04 -> 2026-08-20
+NZDUSD F: 2914 sessions 2014-12-08 -> 2026-08-21

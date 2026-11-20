@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+WTI C: lines from ladder arm B_har_garcht
+  placebo (lines from a random same-year session): 10493 first touches
+WTI C: 2008 sessions, 9678 first touches; extraction check 92/92 match on 20 sessions
+  touches per family x rung: OCd50 1105, OCd75 572, OCd90 231, OCu50 1129, OCu75 525, OCu90 175, OH50 1140, OH75 563, OH90 213, OL50 1143, OL75 565, OL90 201, PH50 665, PH75 277, PH90 96, PL50 626, PL75 319, PL90 133
+  wrong-side dynamic touches: 150; release still to come: 1991
+WTI F: lines from ladder arm B_har_garcht
+  placebo (lines from a random same-year session): 10275 first touches
+WTI F: 1981 sessions, 9400 first touches; extraction check 103/103 match on 20 sessions
+  touches per family x rung: OCd50 1075, OCd75 551, OCd90 227, OCu50 1092, OCu75 503, OCu90 176, OH50 1138, OH75 541, OH90 206, OL50 1104, OL75 554, OL90 203, PH50 631, PH75 266, PH90 95, PL50 612, PL75 299, PL90 127
+  wrong-side dynamic touches: 146; release still to come: 1899

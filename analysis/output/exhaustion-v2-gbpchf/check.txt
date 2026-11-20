@@ -1,0 +1,6 @@
+Major release times (United Kingdom): 726 (2014-01-09 09:30:00+00:00 -> 2026-11-17 07:00:00+00:00)
+GBPCHF C: lines from ladder arm E_yz_10
+  placebo (lines from a random same-year session): 10317 first touches
+GBPCHF C: 1974 sessions, 9823 first touches; extraction check 91/91 match on 20 sessions
+  touches per family x rung: OCd50 1135, OCd75 598, OCd90 259, OCu50 1113, OCu75 549, OCu90 210, OH50 1103, OH75 548, OH90 226, OL50 1143, OL75 544, OL90 238, PH50 635, PH75 296, PH90 111, PL50 640, PL75 339, PL90 136
+  wrong-side dynamic touches: 143; release still to come: 348

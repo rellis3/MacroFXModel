@@ -1,0 +1,6 @@
+Major release times (United Kingdom): 726 (2014-01-09 09:30:00+00:00 -> 2026-11-17 07:00:00+00:00)
+GBPCAD C: lines from ladder arm SHAR
+  placebo (lines from a random same-year session): 9765 first touches
+GBPCAD C: 1992 sessions, 9369 first touches; extraction check 61/61 match on 20 sessions
+  touches per family x rung: OCd50 1073, OCd75 584, OCd90 201, OCu50 1072, OCu75 559, OCu90 208, OH50 1130, OH75 557, OH90 223, OL50 1066, OL75 541, OL90 212, PH50 601, PH75 282, PH90 120, PL50 582, PL75 260, PL90 98
+  wrong-side dynamic touches: 95; release still to come: 192

@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+AUDUSD C: lines from ladder arm R15
+  placebo (lines from a random same-year session): 10354 first touches
+AUDUSD C: 1993 sessions, 9912 first touches; extraction check 91/91 match on 20 sessions
+  touches per family x rung: OCd50 1105, OCd75 600, OCd90 259, OCu50 1120, OCu75 562, OCu90 224, OH50 1093, OH75 540, OH90 227, OL50 1138, OL75 589, OL90 247, PH50 659, PH75 301, PH90 113, PL50 667, PL75 325, PL90 143
+  wrong-side dynamic touches: 122; release still to come: 2614
+AUDUSD F: lines from ladder arm R15
+  placebo (lines from a random same-year session): 9877 first touches
+AUDUSD F: 1941 sessions, 9515 first touches; extraction check 131/131 match on 20 sessions
+  touches per family x rung: OCd50 1088, OCd75 566, OCd90 252, OCu50 1096, OCu75 550, OCu90 216, OH50 1069, OH75 508, OH90 210, OL50 1105, OL75 563, OL90 232, PH50 622, PH75 275, PH90 101, PL50 634, PL75 303, PL90 125
+  wrong-side dynamic touches: 113; release still to come: 2522

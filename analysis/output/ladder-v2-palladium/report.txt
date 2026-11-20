@@ -1,0 +1,61 @@
+PALLADIUM (main race): arms ['A0', 'E_ewma_094', 'E_ewma_090', 'E_yz_20', 'E_yz_30', 'E_naive', 'E_har_rv_log', 'H8', 'R5', 'R15', 'SHAR', 'HARCJ', 'G_garch', 'G_garch_t', 'G_gjr', 'G_egarch', 'B_har_garcht']; flags from analysis/output/data_screens/PALLADIUM/flags.csv
+  PC2: test rows 2080 (dropped 0 with a missing arm or regime)
+positive control 2: TRUE 1.68pp vs floor p90 1.70; rv10 Q1-Q5 +40.6pp -> ok
+  C: test rows 2185 (dropped 0 with a missing arm or regime)
+  reported only: QLIKE vs squared NY-day return (lower better) / MZ R2 on GK variance (higher better)
+    R5             2.7043  0.240
+    SHAR           2.7053  0.243
+    HARCJ          2.7053  0.243
+    R15            2.7140  0.228
+    B_har_garcht   2.7148  0.217
+    E_har_rv_log   2.7225  0.211
+    H8             2.7236  0.208
+    A0             2.7438  0.210
+    E_yz_20        2.7458  0.149
+    E_yz_30        2.7501  0.129
+    G_egarch       2.7515  0.200
+    G_gjr          2.7520  0.202
+    G_garch        2.7526  0.203
+    G_garch_t      2.7526  0.198
+    E_ewma_094     2.7697  0.178
+    E_ewma_090     2.8039  0.206
+    E_naive        2.9773  0.014
+
+== PALLADIUM C: 2185 test sessions 2018-01-02 -> 2026-08-21   noise floor median 1.40pp, p90 1.66pp   (block 63)
+  arm             PRIMARY   GUARD  pinball  slope
+  E_yz_30            1.43   1.22   1.0146   0.82
+  E_yz_20            1.70   1.17   1.0105   0.81
+  E_ewma_094         1.83   1.36   1.0068   0.86
+  B_har_garcht       1.89   1.20   0.9765   0.96
+  H8                 1.92   1.76   0.9856   0.87
+  HARCJ              1.93   1.21   0.9680   0.95
+  R15                1.99   1.48   0.9707   0.96
+  SHAR               2.03   1.43   0.9680   0.97
+  R5                 2.08   1.46   0.9680   0.97
+  E_har_rv_log       2.13   2.05   0.9812   0.88
+  E_ewma_090         2.29   1.23   1.0153   0.79
+  G_garch_t          2.85   2.44*   1.0077   0.92
+  G_garch            3.22   2.80*   1.0082   0.93
+  G_gjr              3.25   2.81*   1.0079   0.94
+  A0                 3.42   1.28   1.0000   0.79
+  G_egarch           3.52   3.15*   1.0104   1.04
+  E_naive            7.09   5.90*   1.1089   1.49
+  winner E_yz_30, runner-up E_yz_20, tie=True, chosen E_yz_20; chosen - A0 CI [-2.41, -1.17]pp; calibrated to noise False
+    half 2018-22                       n= 1248  chosen 2.16 vs A0 3.83  CI [-2.69,-1.02]
+    half 2023-26                       n=  937  chosen 2.46 vs A0 3.89  CI [-2.11,-0.50]
+    without 2018Q4                     n= 2121  chosen 1.60 vs A0 3.53  CI [-2.50,-1.22]
+    without covid                      n= 2092  chosen 1.73 vs A0 3.42  CI [-2.47,-1.20]
+    without bear2022                   n= 1928  chosen 1.63 vs A0 3.35  CI [-2.48,-1.12]
+    without tariff2025                 n= 2121  chosen 1.76 vs A0 3.64  CI [-2.51,-1.23]
+    without hi1_202002                 n= 2122  chosen 1.79 vs A0 3.44  CI [-2.44,-1.18]
+    without hi2_202512                 n= 2122  chosen 1.83 vs A0 3.59  CI [-2.49,-1.19]
+    without hi3_202202                 n= 2122  chosen 1.84 vs A0 3.60  CI [-2.40,-1.25]
+    without hi4_202509                 n= 2122  chosen 1.76 vs A0 3.58  CI [-2.53,-1.25]
+    fault flags out                    n= 2184  chosen 1.71 vs A0 3.42  CI [-2.40,-1.16]
+    any flag out (descriptive)         n= 1731  chosen 3.07 vs A0 4.42  CI [-2.46,-1.25]
+  HL>p75/p90 by quintile A0            : Q1 35.2/17.8  Q2 25.6/ 8.7  Q3 22.4/ 7.1  Q4 21.3/ 8.9  Q5 16.2/ 5.9
+  HL>p75/p90 by quintile E_yz_20       : Q1 28.6/14.2  Q2 24.5/ 9.4  Q3 25.9/ 8.9  Q4 25.6/ 9.4  Q5 22.2/ 8.9
+  HL>p75/p90 by quintile E_yz_30       : Q1 25.9/11.9  Q2 22.9/ 7.8  Q3 25.2/ 8.2  Q4 26.1/10.8  Q5 26.5/11.4
+  HL>p75/p90 by quintile H8            : Q1 27.9/11.4  Q2 19.0/ 6.9  Q3 20.8/ 6.4  Q4 24.0/ 8.7  Q5 24.7/11.2
+  VERDICT PALLADIUM C: VALIDATED
+  MIRROR C (20 draws): A0 primary median 1.39pp [0.88, 2.27] vs floor median 1.39 / p90 1.66; HL>p75 Q1-Q5 median -1.1pp [-6.2, +4.1]

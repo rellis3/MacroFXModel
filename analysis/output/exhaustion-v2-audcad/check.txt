@@ -1,0 +1,6 @@
+Major release times (none graded): 0 (- -> -)
+AUDCAD C: lines from ladder arm R5
+  placebo (lines from a random same-year session): 10383 first touches
+AUDCAD C: 2048 sessions, 10031 first touches; extraction check 77/77 match on 20 sessions
+  touches per family x rung: OCd50 1152, OCd75 598, OCd90 248, OCu50 1190, OCu75 608, OCu90 249, OH50 1109, OH75 545, OH90 236, OL50 1146, OL75 551, OL90 211, PH50 665, PH75 317, PH90 121, PL50 655, PL75 300, PL90 130
+  wrong-side dynamic touches: 138; release still to come: 0

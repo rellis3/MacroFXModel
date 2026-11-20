@@ -1,0 +1,97 @@
+{
+ "symbol": "USDJPY",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "portfolioBacktest/cache/usdjpy_m1.parquet": "92de693c931748e9b0687fe1f7565ddd4907706645498f2daa2cc1baae4a2662",
+  "analysis/output/nt8/continuous/6J_1m_unadj.parquet": "21c3967b35758fe3ec79e7437cf451233a4b8b63eb86525bee3eaac37296c886",
+  "analysis/output/nt8/continuous/6J_1m_ratio.parquet": "15ba5afadbd461e12c32673a553a884b6d8b915ac257d9d278ae4acc23e37651",
+  "analysis/output/nt8/continuous/6J_rolls.csv": "860dc98e16034ee1125f9e845d5da2f6979bab2ebb6e3ed415e51c3c620e6975"
+ },
+ "sessions": {
+  "C": [
+   "2016-01-04",
+   "2026-08-21",
+   2758
+  ],
+  "F": [
+   "2014-12-08",
+   "2026-11-19",
+   3040
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "gap",
+   "n": 2
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 890
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 6
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 1
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 85
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 61
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 867
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 8
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 58
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 14
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 17
+  }
+ ]
+}

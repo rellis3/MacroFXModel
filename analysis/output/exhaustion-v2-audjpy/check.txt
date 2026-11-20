@@ -1,0 +1,6 @@
+Major release times (none graded): 0 (- -> -)
+AUDJPY C: lines from ladder arm R5
+  placebo (lines from a random same-year session): 10510 first touches
+AUDJPY C: 1986 sessions, 9757 first touches; extraction check 67/67 match on 20 sessions
+  touches per family x rung: OCd50 1118, OCd75 591, OCd90 273, OCu50 1098, OCu75 521, OCu90 181, OH50 1118, OH75 548, OH90 208, OL50 1146, OL75 569, OL90 234, PH50 644, PH75 269, PH90 102, PL50 643, PL75 334, PL90 160
+  wrong-side dynamic touches: 146; release still to come: 0

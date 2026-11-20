@@ -1,0 +1,3 @@
+positive control 1 (SPX500 C bars vs JS nyCloseDailyBars): 2748/2748 = 1.0000
+SPX500 C: 2652 sessions 2016-01-04 -> 2026-08-20
+SPX500 F: 2985 sessions 2014-12-08 -> 2026-08-21

@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+USDCAD C: lines from ladder arm B_har_garcht
+  placebo (lines from a random same-year session): 10069 first touches
+USDCAD C: 1996 sessions, 9657 first touches; extraction check 87/87 match on 20 sessions
+  touches per family x rung: OCd50 1091, OCd75 497, OCd90 211, OCu50 1180, OCu75 570, OCu90 227, OH50 1129, OH75 582, OH90 231, OL50 1119, OL75 532, OL90 200, PH50 666, PH75 294, PH90 117, PL50 605, PL75 294, PL90 112
+  wrong-side dynamic touches: 123; release still to come: 1868
+USDCAD F: lines from ladder arm B_har_garcht
+  placebo (lines from a random same-year session): 9316 first touches
+USDCAD F: 1906 sessions, 9034 first touches; extraction check 102/102 match on 20 sessions
+  touches per family x rung: OCd50 1034, OCd75 480, OCd90 193, OCu50 1121, OCu75 551, OCu90 210, OH50 1063, OH75 542, OH90 218, OL50 1053, OL75 494, OL90 182, PH50 598, PH75 257, PH90 116, PL50 554, PL75 261, PL90 107
+  wrong-side dynamic touches: 98; release still to come: 1771

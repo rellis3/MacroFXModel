@@ -1,0 +1,92 @@
+{
+ "symbol": "GBPUSD",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "portfolioBacktest/cache/gbpusd_m1.parquet": "6e33d166e83c7daca5b05e7f963eb0665ce2f271662dc88aefdabe87eb0b4b83",
+  "analysis/output/nt8/continuous/6B_1m_unadj.parquet": "542353b0394b8dcfd80ab5799b94ddecf517dd0342ce7c1662af192cef66abaa",
+  "analysis/output/nt8/continuous/6B_1m_ratio.parquet": "8a8be1b983e1e4edbe2113e67a6fd55c03c5ab4962bcdf31517ae90310a71c29",
+  "analysis/output/nt8/continuous/6B_rolls.csv": "51bd7182154a78ace021af1632b5734ddabb77fedf7b0ffe9ad694d81b263175"
+ },
+ "sessions": {
+  "C": [
+   "2016-01-04",
+   "2026-08-21",
+   2758
+  ],
+  "F": [
+   "2014-12-08",
+   "2026-11-19",
+   3042
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "gap",
+   "n": 2
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 734
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 3
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 1
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 79
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 44
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 716
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 3
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 56
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 16
+  }
+ ]
+}

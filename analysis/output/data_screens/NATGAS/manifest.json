@@ -1,0 +1,97 @@
+{
+ "symbol": "NATGAS",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "analysis/output/ladder-v2-data/m1_commod/natgas_m1.parquet": "17d265d7d33a362a756cfdc6cfac01d1f8fb929e4b94e9f1bfa92b61f9eb715d",
+  "analysis/output/nt8/continuous/NG_1m_unadj.parquet": "04407890950703686f41b2508169b5c473bfa92901ebf7f391e03edd315202e6",
+  "analysis/output/nt8/continuous/NG_1m_ratio.parquet": "29e383f5052358ab87e197557e7bba4f98cd71c40cc36799d8d06fee83d6102a",
+  "analysis/output/nt8/continuous/NG_rolls.csv": "9c2824914d0cb569f61f00df57371bc538f2e8cacb1752aaf0daaaca31d30491"
+ },
+ "sessions": {
+  "C": [
+   "2015-12-30",
+   "2026-11-20",
+   2812
+  ],
+  "F": [
+   "2014-10-13",
+   "2026-11-19",
+   3083
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "frozen",
+   "n": 2
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 309
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 6
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 613
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 61
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 69
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 508
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 4
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 11
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 15
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 36
+  }
+ ]
+}

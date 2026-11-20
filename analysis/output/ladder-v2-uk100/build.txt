@@ -1,0 +1,2 @@
+positive control 1 (UK100 C bars vs JS nyCloseDailyBars): 2687/2687 = 1.0000
+UK100 C: 2669 sessions 2016-01-04 -> 2026-08-20

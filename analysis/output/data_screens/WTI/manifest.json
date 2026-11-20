@@ -1,0 +1,92 @@
+{
+ "symbol": "WTI",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "analysis/output/ladder-v2-data/m1_commod/wti_m1.parquet": "8f7bf408596347e89a5aa3168fe636e81f13d915b25b28efea2bd03b770e3ecf",
+  "analysis/output/nt8/continuous/CL_1m_unadj.parquet": "77d64cb2eeb8500f4444ddbb8e61c759c4f1a92d7e495a230dfcc5a23ebb370b",
+  "analysis/output/nt8/continuous/CL_1m_ratio.parquet": "8c9a60115dda9cf03a43a94b47a512f25e5deec8a88d2a1de6a8f63b2adbcc19",
+  "analysis/output/nt8/continuous/CL_rolls.csv": "52a326524f33bd0c08e56e4ca68a144cdb3fbce2777ebeca0c7c310564ca9969"
+ },
+ "sessions": {
+  "C": [
+   "2015-12-30",
+   "2026-11-20",
+   2813
+  ],
+  "F": [
+   "2014-10-13",
+   "2026-11-19",
+   3084
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 638
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 7
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 2
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_open",
+   "n": 97
+  },
+  {
+   "track": "CF",
+   "screen": "cvf_range",
+   "n": 53
+  },
+  {
+   "track": "F",
+   "screen": "jump_1m",
+   "n": 735
+  },
+  {
+   "track": "F",
+   "screen": "jump_day",
+   "n": 8
+  },
+  {
+   "track": "F",
+   "screen": "missing",
+   "n": 9
+  },
+  {
+   "track": "F",
+   "screen": "partial",
+   "n": 6
+  },
+  {
+   "track": "F",
+   "screen": "roll_gap",
+   "n": 4
+  }
+ ]
+}

@@ -1,0 +1,11 @@
+Major release times (United Kingdom, United States): 2104 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+GBPUSD C: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 9994 first touches
+GBPUSD C: 2000 sessions, 9695 first touches; extraction check 77/77 match on 20 sessions
+  touches per family x rung: OCd50 1135, OCd75 583, OCd90 227, OCu50 1110, OCu75 550, OCu90 210, OH50 1103, OH75 555, OH90 239, OL50 1114, OL75 561, OL90 217, PH50 640, PH75 301, PH90 103, PL50 643, PL75 292, PL90 112
+  wrong-side dynamic touches: 111; release still to come: 2393
+GBPUSD F: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 9700 first touches
+GBPUSD F: 1961 sessions, 9384 first touches; extraction check 94/94 match on 20 sessions
+  touches per family x rung: OCd50 1119, OCd75 551, OCd90 217, OCu50 1098, OCu75 524, OCu90 200, OH50 1096, OH75 531, OH90 215, OL50 1072, OL75 545, OL90 210, PH50 618, PH75 289, PH90 97, PL50 617, PL75 280, PL90 105
+  wrong-side dynamic touches: 110; release still to come: 2355

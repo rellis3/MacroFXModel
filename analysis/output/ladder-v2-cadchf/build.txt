@@ -1,0 +1,2 @@
+positive control 1 (CADCHF C bars vs JS nyCloseDailyBars): 2758/2758 = 1.0000
+CADCHF C: 2757 sessions 2016-01-04 -> 2026-08-20

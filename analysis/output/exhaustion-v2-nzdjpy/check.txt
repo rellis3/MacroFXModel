@@ -1,0 +1,6 @@
+Major release times (none graded): 0 (- -> -)
+NZDJPY C: lines from ladder arm E_ewma_094
+  placebo (lines from a random same-year session): 10237 first touches
+NZDJPY C: 1998 sessions, 9841 first touches; extraction check 72/72 match on 20 sessions
+  touches per family x rung: OCd50 1138, OCd75 590, OCd90 260, OCu50 1146, OCu75 578, OCu90 198, OH50 1117, OH75 531, OH90 219, OL50 1115, OL75 555, OL90 245, PH50 660, PH75 297, PH90 109, PL50 608, PL75 328, PL90 147
+  wrong-side dynamic touches: 158; release still to come: 0

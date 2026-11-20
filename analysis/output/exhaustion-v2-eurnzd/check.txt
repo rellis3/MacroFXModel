@@ -1,0 +1,6 @@
+Major release times (Euro Area): 267 (2014-01-09 10:00:00+00:00 -> 2026-11-13 10:00:00+00:00)
+EURNZD C: lines from ladder arm HARCJ
+  placebo (lines from a random same-year session): 10119 first touches
+EURNZD C: 2013 sessions, 9743 first touches; extraction check 80/80 match on 20 sessions
+  touches per family x rung: OCd50 1130, OCd75 573, OCd90 240, OCu50 1119, OCu75 577, OCu90 264, OH50 1125, OH75 566, OH90 233, OL50 1115, OL75 537, OL90 215, PH50 621, PH75 308, PH90 125, PL50 605, PL75 280, PL90 110
+  wrong-side dynamic touches: 98; release still to come: 362

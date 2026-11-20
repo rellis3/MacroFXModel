@@ -10,16 +10,16 @@ Generated 2026-11-20.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **443** |
-| validated | 84 |
+| claims tested (validated + null + underpowered) | **559** |
+| validated | 193 |
 | null | 214 |
-| underpowered | 145 |
-| context (base rates, descriptions: not counted as tests) | 66 |
-| pre-registrations with no banked verdict (below) | 90 |
+| underpowered | 152 |
+| context (base rates, descriptions: not counted as tests) | 82 |
+| pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 443 claims were real, tests at the usual 5% size would still pass
-about **22.2** of them by luck. 84 passed, so most passes are unlikely to be luck alone, but
-**roughly 22 of the 84 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 559 claims were real, tests at the usual 5% size would still pass
+about **28** of them by luck. 193 passed, so most passes are unlikely to be luck alone, but
+**roughly 28 of the 193 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -529,8 +529,140 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-19 | trade-at-lines | price | null | forge/TRADE_AT_LINES_PREREG.md |
 | 2026-11-19 | turn-at-lines-close | price | underpowered | forge/TURN_AT_LINES_PREREG.md |
 | 2026-11-19 | turn-at-lines-proj | price | null | forge/TURN_AT_LINES_PREREG.md |
+| 2026-11-20 | exhaustion-v2-audcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-audchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-audjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-audnzd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-audusd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-audusd-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-brent | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-brent-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-cadchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-cadjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-chfjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-copper | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-copper-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-de30 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-de30-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-euraud | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-eurcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-eurchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-eurgbp | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-eurjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-eurnzd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-gbpaud | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-gbpcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-gbpchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-gbpjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-gbpnzd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-gbpusd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-gbpusd-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-lockbox | volatility | validated | forge/LADDER_V2_LOCKBOX_PREREG.md |
+| 2026-11-20 | exhaustion-v2-natgas | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-natgas-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-nzdcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-nzdjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-nzdusd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-nzdusd-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-palladium | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-platinum | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-platinum-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-silver | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-silver-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-spx500 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-spx500-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-uk100 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-us2000 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-us2000-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-us30 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-us30-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-usdcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-usdcad-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-usdchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-usdchf-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-usdjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-usdjpy-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-wti | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-wti-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-zb-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-zf-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-zn-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-zt-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-audcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-audchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-audjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-audnzd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-audusd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-audusd-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-audusd-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-brent | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-brent-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-brent-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-cadchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-cadjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-chfjpy | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-copper | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-copper-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-copper-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-de30 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-de30-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-de30-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-euraud | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-eurcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-eurchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-eurgbp | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-eurjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-eurnzd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-gbpaud | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-gbpcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-gbpchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-gbpjpy | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-gbpnzd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-gbpusd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-gbpusd-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-gbpusd-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-lockbox | volatility | underpowered | forge/LADDER_V2_LOCKBOX_PREREG.md |
+| 2026-11-20 | ladder-v2-natgas | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-natgas-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-natgas-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-nzdcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-nzdjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-nzdusd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-nzdusd-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-nzdusd-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-palladium | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-platinum | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-platinum-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-platinum-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-silver | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-silver-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-silver-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-spx500 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-spx500-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-spx500-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-uk100 | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-us2000 | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-us2000-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-us2000-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-us30 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-us30-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-us30-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-usdcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-usdcad-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-usdcad-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-usdchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-usdchf-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-usdchf-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-usdjpy | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-usdjpy-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-usdjpy-fut | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-wti | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-wti-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-wti-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-zb-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-zf-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-zn-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-zt-fut | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | tpo-ib-candle | price | null | forge/TPO_INITIAL_BALANCE_PREREG.md |
 | 2026-11-20 | tpo-ib-fade | price | null | forge/TPO_INITIAL_BALANCE_PREREG.md |
 | 2026-11-20 | tpo-ib-flow | price | null | forge/TPO_INITIAL_BALANCE_PREREG.md |
@@ -589,7 +721,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
 - `forge/IVRV_COT_PREREG.md`: IV ÷ RV in the book, the rich-IV break rule on the indices, and COT positioning at the lines — pre-registratio
-- `forge/LADDER_V2_ROLLOUT_PREREG.md`: ladder-v2-rollout — the σ race and the exhaustion race for every instrument with data, CFD and futures
 - `forge/LEVEL_P2_PREREG.md`: Level engine, Phase 2: reach, which-first, time-to-reach (registered 2026-10-10, before any Phase 2 outcome is
 - `forge/LEVEL_SCENARIO_SHADOW_PREREG.md`: S3 shadow: level scenarios, live reach / which-first / time (registered 2026-10-11, before any live session is
 - `forge/LINE_CLUSTER_MFE_PREREG.md`: Clusters of the forecast lines, and fade MFE / MAE at every touch — pre-registration

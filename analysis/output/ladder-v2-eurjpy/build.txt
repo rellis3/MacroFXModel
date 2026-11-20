@@ -1,0 +1,2 @@
+positive control 1 (EURJPY C bars vs JS nyCloseDailyBars): 2758/2758 = 1.0000
+EURJPY C: 2756 sessions 2016-01-04 -> 2026-08-20
