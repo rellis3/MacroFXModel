@@ -176,7 +176,8 @@ export function rankCandidates(S, tx, cands, { w = 60, end = S.n - 1, inverseOnl
     if (inverseOnly && rho >= 0) continue;
     const sdT = sdWin(tx, end, w), sdC = sdWin(cx, end, w);
     rows.push({ id, rho, side: rho > 0 ? 'short' : 'long', share: st.share, p10: st.p10, p90: st.p90, n: st.n,
-      ratio: fin(sdT) && fin(sdC) && sdC > 0 ? Math.abs(rho) * sdT / sdC : null, varCut: rho * rho, score: hedgeScore(rho, st.share) });
+      ratio: fin(sdT) && fin(sdC) && sdC > 0 ? Math.abs(rho) * sdT / sdC : null, varCut: rho * rho, score: hedgeScore(rho, st.share),
+      ratioEwma: (() => { const b = ewmaBeta(tx, cx, end); return fin(b) ? Math.abs(b) : null; })(), oos: oosCut(tx, cx, end, { w }), oosEwma: oosCut(tx, cx, end, { w, kind: 'ewma' }) });
   }
   return rows.sort((a, b) => b.score - a.score || Math.abs(b.rho) - Math.abs(a.rho));
 }
@@ -226,6 +227,39 @@ export function betaWin(y, x, end, w) {
   const r = corrWin(y, x, end, w); if (!fin(r)) return { beta: null, r: null };
   const sy = sdWin(y, end, w), sx = sdWin(x, end, w);
   return { beta: fin(sy) && fin(sx) && sx > 0 ? r * sy / sx : null, r };
+}
+
+/** EWMA least-squares beta of y on x over the `look` days ending at `end` (weight lambda^age, age 0 = `end`); pairwise-complete days; null when fewer than 60 days. */
+export function ewmaBeta(y, x, end, { look = 250, lambda = 0.97 } = {}) {
+  if (!y || !x || end < 0) return null;
+  let sw = 0, sx = 0, sy = 0, n = 0; const days = [];
+  for (let i = Math.max(0, end - look + 1); i <= end; i++) {
+    const a = y[i], b = x[i]; if (!fin(a) || !fin(b)) continue;
+    const w = Math.pow(lambda, end - i); days.push([a, b, w]); sw += w; sx += w * b; sy += w * a; n++;
+  }
+  if (n < 60) return null;
+  const mx = sx / sw, my = sy / sw; let cxy = 0, cxx = 0;
+  for (const [a, b, w] of days) { cxy += w * (b - mx) * (a - my); cxx += w * (b - mx) * (b - mx); }
+  return cxx > 1e-18 ? cxy / cxx : null;
+}
+/**
+ * How much of y's variance a hedge ratio ACTUALLY removed on days it had not seen: for each of the last `test` days t, the ratio comes from the data up to t-1
+ * (kind 'ols' = the `w`-day least-squares ratio, the one the finder shows; 'ewma' = the recency-weighted one), the hedged return is y_t - ratio * x_t, and the result
+ * is 1 - var(hedged) / var(y) over those days. Can be negative (the hedge added risk). { cut, n } or null when under 60 usable days.
+ * Tested on 12 target/hedge sets 2016-2026 (hedge-method-comparison): EWMA removed about 1pp more than OLS 60d on all 12; the difference between methods is small next to the difference between pairs.
+ */
+export function oosCut(y, x, end, { w = 60, test = 250, kind = 'ols' } = {}) {
+  if (!y || !x) return null;
+  let n = 0, sh = 0, shh = 0, sy = 0, syy = 0;
+  for (let t = Math.max(w, end - test + 1); t <= end; t++) {
+    const a = y[t], b = x[t]; if (!fin(a) || !fin(b)) continue;
+    const beta = kind === 'ewma' ? ewmaBeta(y, x, t - 1) : betaWin(y, x, t - 1, w).beta;
+    if (!fin(beta)) continue;
+    const h = a - beta * b; n++; sh += h; shh += h * h; sy += a; syy += a * a;
+  }
+  if (n < 60) return null;
+  const vh = shh / n - (sh / n) ** 2, vy = syy / n - (sy / n) ** 2;
+  return vy > 1e-18 ? { cut: 1 - vh / vy, n } : null;
 }
 
 /** Per instrument: each factor's beta and correlation, the dominant factor (largest r^2) and every factor's r^2 share. */
