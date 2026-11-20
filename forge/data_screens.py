@@ -47,6 +47,26 @@ SOURCES = {
 }
 
 
+INVERT: set = set()
+
+
+def _extend_sources(sym: str) -> None:
+    """Rollout instruments come from scripts/ladder-v2/ladder.py SYMS (imported lazily; no cycle at import time)."""
+    if sym in SOURCES:
+        return
+    sys.path.insert(0, str(ROOT / "scripts/ladder-v2"))
+    import ladder as _L
+    cfg = _L.SYMS[sym]
+    src = {}
+    if "C" in _L.tracks_for(sym):
+        src["C"] = cfg["c"]
+    if "F" in _L.tracks_for(sym):
+        src["F"] = cfg["f"]
+    SOURCES[sym] = src
+    if cfg.get("invert"):
+        INVERT.add(sym)
+
+
 # ---------------------------------------------------------------- hashing
 def sha256(path: str | Path, chunk: int = 1 << 20) -> str:
     h = hashlib.sha256()
@@ -66,7 +86,11 @@ def load_raw(sym: str, track: str, kind: str = "unadj") -> tuple[pd.DataFrame, P
     if track == "C":
         p = ROOT / SOURCES[sym]["C"]
         d = pd.read_parquet(p)
-        d.index = pd.to_datetime(d.index, utc=True)
+        if "time" in d.columns:                       # research schema (fetch_m1_oanda.py): naive UTC 'time' column
+            t = pd.to_datetime(d.pop("time"))
+            d.index = pd.DatetimeIndex(t.dt.tz_localize("UTC") if t.dt.tz is None else t.dt.tz_convert("UTC"))
+        else:
+            d.index = pd.to_datetime(d.index, utc=True)
     else:
         p = ROOT / f"analysis/output/nt8/continuous/{SOURCES[sym]['F']}_1m_{kind}.parquet"
         d = pd.read_parquet(p)
@@ -260,6 +284,7 @@ def screen_cvf(SC: pd.DataFrame, SF: pd.DataFrame) -> list[pd.DataFrame]:
 def run(sym: str) -> pd.DataFrame:
     out_dir = ROOT / "analysis/output/data_screens" / sym
     out_dir.mkdir(parents=True, exist_ok=True)
+    _extend_sources(sym)
     parts, files, sess = [], [], {}
     for track in ("C", "F"):
         if track not in SOURCES[sym]:
@@ -268,6 +293,8 @@ def run(sym: str) -> pd.DataFrame:
         files.append(p)
         parts += screen_timestamps(raw, track)
         m = clean(raw)
+        if track == "F" and sym in INVERT:            # 6J/6C/6S: compare sessions the CFD way up (jumps are log-symmetric)
+            m = m.assign(open=1 / m["open"], high=1 / m["low"], low=1 / m["high"], close=1 / m["close"])
         sess[track] = sessions(m)
         if track == "F":
             rraw, rp = load_raw(sym, "F", "ratio")

@@ -18,6 +18,14 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 INST = {"GOLD": "XAU_USD", "NQ": "NAS100_USD", "SPX500": "SPX500_USD", "US30": "US30_USD", "US2000": "US2000_USD", "EURUSD": "EUR_USD"}
+INST.update({"DE30": "DE30_EUR", "UK100": "UK100_GBP", "SILVER": "XAG_USD", "COPPER": "XCU_USD", "PLATINUM": "XPT_USD",
+             "PALLADIUM": "XPD_USD", "WTI": "WTICO_USD", "BRENT": "BCO_USD", "NATGAS": "NATGAS_USD",
+             "SOYBEAN": "SOYBN_USD", "WHEAT": "WHEAT_USD", "CORN": "CORN_USD", "SUGAR": "SUGAR_USD"})
+
+
+def inst(s):
+    """OANDA name; any 6-letter FX pair maps to XXX_YYY (ladder-v2 rollout)."""
+    return INST.get(s) or (f"{s[:3]}_{s[3:]}" if len(s) == 6 and s.isalpha() else None)
 
 
 def get(inst, start, end):
@@ -34,9 +42,12 @@ def main(syms):
     out = ROOT / "analysis/output/ladder-v2-data"
     out.mkdir(parents=True, exist_ok=True)
     for s in syms:
+        if inst(s) is None:
+            print(f"{s}: no OANDA instrument (futures only), skipped")
+            continue
         rows = []
         for a, b in (("2004-01-01", "2012-01-01"), ("2012-01-01", "2019-01-01")):
-            for c in get(INST[s], a, b):
+            for c in get(inst(s), a, b):
                 if c.get("complete"):
                     m = c["mid"]
                     rows.append({"t": c["time"], "open": float(m["o"]), "high": float(m["h"]), "low": float(m["l"]),
@@ -46,7 +57,7 @@ def main(syms):
         d.index = (start.dt.tz_convert("America/New_York").dt.tz_localize(None) + pd.Timedelta(hours=7)).dt.normalize()
         d = d[~d.index.duplicated()].sort_index()
         d.to_parquet(out / f"{s}_d1_long.parquet")
-        print(f"{s} ({INST[s]}): {len(d)} NY-close bars {d.index.min().date()} -> {d.index.max().date()}")
+        print(f"{s} ({inst(s)}): {len(d)} NY-close bars {d.index.min().date()} -> {d.index.max().date()}")
 
 
 if __name__ == "__main__":

@@ -39,13 +39,28 @@ NEXT = {50: 75, 75: 90}
 
 
 EVENT_COUNTRIES = {"EURUSD": ("United States", "Euro Area")}   # default: United States only
+# rollout (forge/LADDER_V2_ROLLOUT_PREREG.md §3): the release-to-come countries follow the instrument's currencies.
+# The calendar grades major/high only for these three; other currencies (JPY, AUD, CAD, CHF, NZD) add none.
+_CCY_COUNTRY = {"USD": "United States", "EUR": "Euro Area", "GBP": "United Kingdom"}
+for _s in L.SYMS:
+    if _s in EVENT_COUNTRIES or _s in ("NQ", "GOLD", "SPX500", "US30", "US2000"):
+        continue
+    if len(_s) == 6 and _s.isalpha() and _s[:3] in ("EUR", "GBP", "AUD", "NZD", "USD", "CAD", "CHF", "JPY"):
+        EVENT_COUNTRIES[_s] = tuple(_CCY_COUNTRY[c] for c in (_s[:3], _s[3:]) if c in _CCY_COUNTRY)
+    elif _s == "DE30":
+        EVENT_COUNTRIES[_s] = ("Euro Area",)
+    elif _s == "UK100":
+        EVENT_COUNTRIES[_s] = ("United Kingdom",)
 
 
 def usd_major_times(sym: str = "NQ") -> pd.DatetimeIndex:
     """Major-impact release times (UTC) for the countries that move this instrument."""
     sys.path.insert(0, str(ROOT / "scripts/calendar"))
     from fetch_nasdaq_calendar import load_calendar
-    c = load_calendar(countries=EVENT_COUNTRIES.get(sym, ("United States",)))
+    cs = EVENT_COUNTRIES.get(sym, ("United States",))
+    if not cs:
+        return pd.DatetimeIndex([], tz="UTC")
+    c = load_calendar(countries=cs)
     c = c[c["impact"].astype(str).str.lower().isin(["major", "high"])]
     t = pd.to_datetime(c["datetime_raw"], errors="coerce").dropna()
     t = t[(t.dt.hour != 0) | (t.dt.minute != 0)]              # all-day rows have no time
@@ -159,11 +174,11 @@ def main(sym):
     out = ROOT / f"analysis/output/exhaustion-v2-{sym.lower()}"
     out.mkdir(parents=True, exist_ok=True)
     events = usd_major_times(sym)
-    log = [f"Major release times ({', '.join(EVENT_COUNTRIES.get(sym, ('United States',)))}): {len(events)} "
-           f"({events.min()} -> {events.max()})"]
+    log = [f"Major release times ({', '.join(EVENT_COUNTRIES.get(sym, ('United States',))) or 'none graded'}): {len(events)} "
+           f"({events.min() if len(events) else '-'} -> {events.max() if len(events) else '-'})"]
     rng = np.random.default_rng(20261119)
     global LINE_ARM
-    for track in ("C", "F"):
+    for track in L.tracks_for(sym):
         LINE_ARM = line_arm(sym, track)
         log.append(f"{sym} {track}: lines from ladder arm {LINE_ARM}")
         T = pd.read_parquet(ROOT / f"analysis/output/ladder-v2-{sym.lower()}/test_{track}.parquet")
