@@ -17,7 +17,7 @@ registerJarvisModule({
   id: 'show', label: 'SHOW',
   render(pane, api) {
     const { esc, st } = api, prefs = lsGet();
-    let token = 0, raf = 0;
+    let token = 0;
     const ctl = { paused: false, rate: 1, jump: null };
     pane.innerHTML = `<h3>THE SHOW</h3><p>A narrated tour of your morning: the world, today's candles with a fly-through, the bias lean, the chain and the day ahead. Jarvis speaks, and the picture follows him, never the other way round. Press Esc to end it.</p>
 <div class="jv-row"><button type="button" data-s="go">▶ START THE SHOW</button><button type="button" data-s="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button><button type="button" data-s="voice" aria-pressed="${prefs.voice !== false}">VOICE ${prefs.voice !== false ? 'ON' : 'OFF'}</button><label class="jv-sub">length <select data-s="len"><option value="quick" selected>morning brief (about 2 min)</option><option value="full">full tour (everything)</option></select></label><label class="jv-sub">pace <select data-s="rate"><option value="0.9">calm</option><option value="1" selected>normal</option><option value="1.15">brisk</option></select></label></div>
@@ -29,31 +29,11 @@ registerJarvisModule({
     q('rate').onchange = e => lsPut({ rate: +e.target.value });
 
     const sleep = ms => new Promise(r => setTimeout(r, ms));
-    function stop() { token++; cancelAnimationFrame(raf); api.sfx.ambient(false); api.st.speakStop?.(); api.caption(null); api.cinema(false); api.st.spin = true; }
+    function stop() { token++; stopMotion(); api.sfx.ambient(false); api.st.speakStop?.(); api.caption(null); api.cinema(false); api.st.spin = true; }
 
-    // the camera moves WHILE he talks; how far it gets is tied to how long the line should take, and it holds its last pose if he runs on
-    function motion(scene, dur, my) {
-      let el = 0, last = performance.now();
-      const cd = st.cd, zs = cd ? Object.values(cd.layout).map(p => p.z) : [0], zMin = Math.min(...zs), zMax = Math.max(...zs);
-      const tick = () => {
-        if (my !== token) return; const nowT = performance.now(); if (!ctl.paused) el += nowT - last; last = nowT; const p = Math.min(1, el / (dur * 1000));
-        if (scene.cam?.fly) { const k = ease(p), z = scene.cam.lean ? lerp(zMax + 0.4, zMin - 0.4, k) : lerp(zMin - 0.4, zMax + 0.4, k); api.flyTo(Math.sin(k * 5) * 0.55, z); }
-        if (scene.cam?.drift) st.zoom = 1 + 0.25 * ease(p);
-        try { scene.motion?.(api, p); } catch (e) { /* a scene's camera must never stop the show */ }
-        raf = requestAnimationFrame(tick);
-      };
-      tick();
-    }
-    function enter(scene) {
-      if (st.view !== scene.view) api.setView(scene.view);
-      st.spin = true; st.zoom = 1;
-      if (scene.view === 'globe') {
-        if (scene.cam?.focus) { GEO ??= buildMarketGeo(); const g = GEO[scene.cam.focus]; if (g) api.globeTo(g[0], g[1], 2.2); }
-        else { const [la, lo, z] = REGIONS[scene.cam?.region ?? 'world']; api.globeTo(la, st.gl.tlon, z); st.spin = true; st.gl.tlat = la; }
-      }
-      if (scene.view === 'candles') { st.cdTarget = { x: 0, z: -1.6 }; st.cdCam = { x: 0, z: -1.6 }; }
-      try { scene.enter?.(api); } catch (e) { /* ignore */ }
-    }
+    let stopMotion = () => {};
+    const motion = (scene, dur, my) => { stopMotion = sceneMotion(api, scene, dur, () => my === token, ctl); };
+    const enter = scene => enterScene(api, scene);
 
     async function run() {
       const my = ++token; status('Gathering the morning...');
@@ -82,7 +62,7 @@ registerJarvisModule({
         motion(sc, readSeconds(sc.text) / ctl.rate, my);
         api.voicePrefetch?.(scenes[i + 1]?.text);   // the next line is fetched while this one plays: no gap between scenes
         await api.speak(sc.text, ctl.rate);          // the voice leads: nothing moves on until he has finished the line, or you skip it
-        cancelAnimationFrame(raf); if (my !== token) break;
+        stopMotion(); if (my !== token) break;
         if (ctl.jump != null) { i = ctl.jump === -1 ? i + 1 : Math.max(0, i - 1); ctl.jump = null; continue; }
         while (ctl.paused && my === token) await sleep(120);
         if (my === token) await sleep(650 / ctl.rate);
@@ -91,40 +71,80 @@ registerJarvisModule({
       if (my === token) { api.sfx.ambient(false); api.caption(null); api.cinema(false); api.setView('globe'); status('Finished. Press START to watch again.'); }
     }
     q('go').onclick = () => { stop(); run(); };
-    // record the tab (picture, subtitles, sound) while the show plays, then offer the file; needs the browser's screen-capture permission, so it cannot start by itself
-    // A phone's browser cannot record its own tab at all, so this mode gets the show ready for the phone's OWN screen recorder: it hides every control, counts down, and plays the show clean.
-    // Two presses: the first explains (start the recorder), the second starts the show. A tap on the screen brings the controls back, which is also how you stop it.
-    let armed = false;
-    async function phoneRecord() {
-      const root = api.doc.getElementById(api.ID);
-      if (!armed) {
-        armed = true; q('rec').textContent = '▶ START NOW (I AM RECORDING)';
-        status('This phone browser cannot record the page itself. So: 1) START YOUR PHONE\'S SCREEN RECORDER first (swipe down from the top, tap Screen recorder; choose "Media sounds" so the voice is recorded). 2) Come back here and press the button again. Jarvis counts down, hides all the buttons and plays the show. Tap the screen to stop.', true);
-        return;
-      }
-      armed = false; q('rec').textContent = '⏺ RECORD AS VIDEO'; stop();
-      const my = ++token; api.cinema(true, () => { stop(); root?.classList.remove('jv-rec'); status('Ended.'); }, null); root?.classList.add('jv-rec');
-      root?.addEventListener('pointerdown', () => { root.classList.remove('jv-rec'); }, { once: true });
-      for (let n = 3; n >= 1 && my === token; n--) { api.caption(String(n), 'RECORDING STARTS'); await sleep(1000); }
-      if (my !== token) return; api.caption(null); await run(); root?.classList.remove('jv-rec');
-      status('Finished. Stop your screen recorder now; the video is in your phone\'s gallery.');
-    }
-    q('rec').onclick = async () => {
-      const md = navigator.mediaDevices, Rec = globalThis.MediaRecorder;
-      if (!md?.getDisplayMedia || !Rec) return phoneRecord();
-      const type = pickRecorderType(t => Rec.isTypeSupported(t)); if (!type) { status('This browser has no video format it can record in. Use the computer\'s own screen recorder (Windows: Win + G) while the show plays.', true); return; }
-      let stream; try { stream = await md.getDisplayMedia({ video: { frameRate: 30 }, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include', systemAudio: 'include' }); } catch (e) { status('Recording was not started: the share window was closed or refused. Press the button again and choose This tab.', true); return; }
-      const hasAudio = stream.getAudioTracks().length > 0, chunks = [], rec = new Rec(stream, { mimeType: type.mime, videoBitsPerSecond: 6_000_000 }), root = api.doc.getElementById(api.ID);
-      rec.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
-      const done = new Promise(r => { rec.onstop = r; });
-      root?.classList.add('jv-rec'); rec.start(1000); status(hasAudio ? 'Recording... the show is starting.' : 'Recording (no audio was shared, so the video will be silent)...');
-      stream.getVideoTracks()[0]?.addEventListener('ended', () => { try { rec.state !== 'inactive' && rec.stop(); } catch (er) { /* done */ } token++; });
-      await sleep(900); stop(); await run();
-      await sleep(700); try { rec.state !== 'inactive' && rec.stop(); } catch (e) { /* done */ } stream.getTracks().forEach(t => t.stop()); await done; root?.classList.remove('jv-rec');
-      const blob = new Blob(chunks, { type: type.mime.split(';')[0] }), a = api.doc.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = `jarvis-morning-${new Date().toISOString().slice(0, 10)}.${type.ext}`; api.doc.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
-      status(`Saved ${a.download} (${(blob.size / 1048576).toFixed(1)} MB)${hasAudio ? '' : ', without sound'}.`);
-    };
+    q('rec').onclick = makeRecorder(api, { run, stop, status, btn: q('rec'), file: 'jarvis-morning', label: '⏺ RECORD AS VIDEO', bump: () => ++token, alive: my => my === token });
     // leaving the panel never ends a show in progress (cinema hides the panel anyway); closing Jarvis does, via cinemaStop
   },
 });
+
+// ── the shared director parts (also used by the MORNING BROADCAST, jarvisModBroadcast.js) ──
+/** Puts a scene's view on screen and its camera at the start pose (globe region / focus market, candles at the front), then runs the scene's own enter(api). */
+export function enterScene(api, scene) {
+  const st = api.st;
+  if (st.view !== scene.view) api.setView(scene.view);
+  st.spin = true; st.zoom = 1;
+  if (scene.view === 'globe') {
+    if (scene.cam?.focus) { GEO ??= buildMarketGeo(); const g = GEO[scene.cam.focus]; if (g) api.globeTo(g[0], g[1], 2.2); }
+    else { const [la, lo, z] = REGIONS[scene.cam?.region ?? 'world'] ?? REGIONS.world; api.globeTo(la, st.gl?.tlon ?? lo, z); st.spin = true; if (st.gl) st.gl.tlat = la; }
+  }
+  if (scene.view === 'candles') { st.cdTarget = { x: 0, z: -1.6 }; st.cdCam = { x: 0, z: -1.6 }; }
+  try { scene.enter?.(api); } catch (e) { /* ignore */ }
+}
+/**
+ * The camera moves WHILE he talks: how far it gets is tied to how long the line should take (dur seconds), and it holds its last pose if he runs on. alive() false stops it; ctl.paused freezes it.
+ * onP(p) (optional) gets the same 0..1 progress every frame (the broadcast's subtitles follow it). Returns a stop function.
+ */
+export function sceneMotion(api, scene, dur, alive, ctl, onP = null) {
+  const st = api.st, raf = api.win?.requestAnimationFrame?.bind(api.win) ?? requestAnimationFrame, caf = api.win?.cancelAnimationFrame?.bind(api.win) ?? cancelAnimationFrame;
+  let el = 0, last = performance.now(), id = 0, live = true;
+  const cd = st.cd, z0 = cd?.layout ? Object.values(cd.layout).map(p => p.z) : [], zs = z0.length ? z0 : [0], zMin = Math.min(...zs), zMax = Math.max(...zs);
+  const tick = () => {
+    if (!live || !alive()) return; const nowT = performance.now(); if (!ctl.paused) el += nowT - last; last = nowT; const p = Math.min(1, el / (Math.max(0.5, dur) * 1000));
+    if (scene.cam?.fly) { const k = ease(p), z = scene.cam.lean ? lerp(zMax + 0.4, zMin - 0.4, k) : lerp(zMin - 0.4, zMax + 0.4, k); api.flyTo(Math.sin(k * 5) * 0.55, z); }
+    if (scene.cam?.drift) st.zoom = 1 + 0.25 * ease(p);
+    try { scene.motion?.(api, p); } catch (e) { /* a scene's camera must never stop the show */ }
+    try { onP?.(p); } catch (e) { /* subtitles only */ }
+    id = raf(tick);
+  };
+  tick();
+  return () => { live = false; caf(id); };
+}
+/**
+ * RECORD AS VIDEO for a director: records the tab (picture, subtitles, sound) while run() plays, then downloads the file. Needs the browser's screen-capture permission, so it cannot start by itself.
+ * A phone's browser cannot record its own tab at all, so there it gets the show ready for the phone's OWN screen recorder: it hides every control, counts down, and plays clean.
+ * Two presses: the first explains (start the recorder), the second starts. A tap on the screen brings the controls back, which is also how you stop it.
+ * o = { run(), stop(), status(text, bad), btn (the button element), file (name prefix), label (the button's resting text), bump() -> a new run token, alive(token), countdown?(n) (draws 3-2-1; default the caption) }.
+ */
+export function makeRecorder(api, o) {
+  const sleep = ms => new Promise(r => setTimeout(r, ms)), { status } = o;
+  let armed = false;
+  async function phoneRecord() {
+    const root = api.doc.getElementById(api.ID);
+    if (!armed) {
+      armed = true; o.btn.textContent = '▶ START NOW (I AM RECORDING)';
+      status('This phone browser cannot record the page itself. So: 1) START YOUR PHONE\'S SCREEN RECORDER first (swipe down from the top, tap Screen recorder; choose "Media sounds" so the voice is recorded). 2) Come back here and press the button again. Jarvis counts down, hides all the buttons and plays. Tap the screen to stop.', true);
+      return;
+    }
+    armed = false; o.btn.textContent = o.label; o.stop();
+    const my = o.bump(); api.cinema(true, () => { o.stop(); root?.classList.remove('jv-rec'); status('Ended.'); }, null); root?.classList.add('jv-rec');
+    root?.addEventListener('pointerdown', () => { root.classList.remove('jv-rec'); }, { once: true });
+    for (let n = 3; n >= 1 && o.alive(my); n--) { if (o.countdown) o.countdown(n); else api.caption(String(n), 'RECORDING STARTS'); await sleep(1000); }
+    if (!o.alive(my)) return; if (o.countdown) o.countdown(0); else api.caption(null); await o.run(); root?.classList.remove('jv-rec');
+    status('Finished. Stop your screen recorder now; the video is in your phone\'s gallery.');
+  }
+  return async () => {
+    const md = navigator.mediaDevices, Rec = globalThis.MediaRecorder;
+    if (!md?.getDisplayMedia || !Rec) return phoneRecord();
+    const type = pickRecorderType(t => Rec.isTypeSupported(t)); if (!type) { status('This browser has no video format it can record in. Use the computer\'s own screen recorder (Windows: Win + G) while it plays.', true); return; }
+    let stream; try { stream = await md.getDisplayMedia({ video: { frameRate: 30 }, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include', systemAudio: 'include' }); } catch (e) { status('Recording was not started: the share window was closed or refused. Press the button again and choose This tab.', true); return; }
+    const hasAudio = stream.getAudioTracks().length > 0, chunks = [], rec = new Rec(stream, { mimeType: type.mime, videoBitsPerSecond: 6_000_000 }), root = api.doc.getElementById(api.ID);
+    rec.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
+    const done = new Promise(r => { rec.onstop = r; });
+    root?.classList.add('jv-rec'); rec.start(1000); status(hasAudio ? 'Recording... starting.' : 'Recording (no audio was shared, so the video will be silent)...');
+    stream.getVideoTracks()[0]?.addEventListener('ended', () => { try { rec.state !== 'inactive' && rec.stop(); } catch (er) { /* done */ } o.bump(); });
+    await sleep(900); o.stop(); await o.run();
+    await sleep(700); try { rec.state !== 'inactive' && rec.stop(); } catch (e) { /* done */ } stream.getTracks().forEach(t => t.stop()); await done; root?.classList.remove('jv-rec');
+    const blob = new Blob(chunks, { type: type.mime.split(';')[0] }), a = api.doc.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `${o.file}-${new Date().toISOString().slice(0, 10)}.${type.ext}`; api.doc.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+    status(`Saved ${a.download} (${(blob.size / 1048576).toFixed(1)} MB)${hasAudio ? '' : ', without sound'}.`);
+  };
+}

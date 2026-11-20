@@ -13,7 +13,7 @@ const list = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} an
 // enter?(api) and motion?(api, p) (p runs 0..1 over the line's estimated length) so it can steer its own view. buildScenes() never throws because of a hook.
 export const SHOW_HOOKS = [];
 /** The scenes of the quick MORNING BRIEF (about two minutes). Everything else is in the FULL TOUR. */
-export const QUICK_IDS = new Set(['wake', 'movers', 'candles', 'lean', 'book', 'chain', 'chainfly', 'ahead', 'close']);
+export const QUICK_IDS = new Set(['wake', 'movers', 'candles', 'lean', 'book', 'chain', 'chainfly', 'reactor', 'ahead', 'dayahead', 'close']);
 export const registerShowScene = h => { if (h?.id && typeof h.build === 'function' && !SHOW_HOOKS.some(x => x.id === h.id)) SHOW_HOOKS.push(h); return h; };
 
 /** Reading time in seconds for a line when nobody is speaking it (about 2.6 words a second, never under 2 seconds). */
@@ -47,8 +47,10 @@ export function buildScenes(inp = {}) {
     } catch (e) { /* a scene must never stop the show */ }
   }
   sc.push({ id: 'close', title: 'Standing by', view: 'globe', cam: { region: 'world' }, text: 'That is the picture. Description, not advice. I am watching.' });
-  const fly = sc.some(x => x.id === 'chainfly');      // when the 3D fly-through exists it replaces the skyline-blocks chain scene in the brief
-  return inp.mode === 'full' ? sc : sc.filter(x => QUICK_IDS.has(x.id) && !(fly && x.id === 'chain'));
+  const has = id => sc.some(x => x.id === id);
+  const fly = has('chainfly') || has('reactor');      // a 3D chain scene replaces the skyline-blocks chain scene in the brief; the REACTOR, when present, replaces the fly-through too
+  const drop = x => (fly && x.id === 'chain') || (has('reactor') && x.id === 'chainfly') || (has('dayahead') && x.id === 'ahead');
+  return inp.mode === 'full' ? sc : sc.filter(x => QUICK_IDS.has(x.id) && !drop(x));
 }
 
 /** Recorder formats to try, best first: MP4 (plays everywhere: WhatsApp, Telegram, phones) where the browser can write it, else WebM. */
