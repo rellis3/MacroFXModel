@@ -1,0 +1,121 @@
+{
+ "zero": {
+  "sessions": 2540,
+  "planted": 0,
+  "counts": {
+   "poke": 1432,
+   "acc": 1065,
+   "none": 19
+  },
+  "d_follow": {
+   "n": 1065,
+   "est": 0.0122,
+   "lo": -0.0511,
+   "hi": 0.0745
+  },
+  "dR_follow": {
+   "n": 996,
+   "est": 0.0302,
+   "lo": -0.1381,
+   "hi": 0.2165
+  },
+  "slope_flow_follow": {
+   "est": 0.006,
+   "lo": -0.0617,
+   "hi": 0.0784
+  },
+  "slope_candle_follow": {
+   "est": -0.0107,
+   "lo": -0.0825,
+   "hi": 0.0644
+  },
+  "d_fade": {
+   "n": 1432,
+   "est": -0.0011,
+   "lo": -0.0632,
+   "hi": 0.0654
+  },
+  "dR_fade": {
+   "n": 1359,
+   "est": -0.0453,
+   "lo": -0.1459,
+   "hi": 0.0571
+  },
+  "slope_flow_fade": {
+   "est": 0.0433,
+   "lo": -0.026,
+   "hi": 0.1101
+  },
+  "slope_candle_fade": {
+   "est": -0.0315,
+   "lo": -0.0982,
+   "hi": 0.0394
+  }
+ },
+ "planted": {
+  "sessions": 2540,
+  "planted": 1084,
+  "counts": {
+   "poke": 1422,
+   "acc": 1075,
+   "none": 19
+  },
+  "d_follow": {
+   "n": 1075,
+   "est": 0.2154,
+   "lo": 0.1493,
+   "hi": 0.2782
+  },
+  "dR_follow": {
+   "n": 1013,
+   "est": 0.3916,
+   "lo": 0.2387,
+   "hi": 0.5611
+  },
+  "slope_flow_follow": {
+   "est": 0.0453,
+   "lo": -0.0279,
+   "hi": 0.115
+  },
+  "slope_candle_follow": {
+   "est": 0.0779,
+   "lo": 0.0083,
+   "hi": 0.1455
+  },
+  "d_fade": {
+   "n": 1422,
+   "est": 0.0098,
+   "lo": -0.0547,
+   "hi": 0.0694
+  },
+  "dR_fade": {
+   "n": 1364,
+   "est": 0.0014,
+   "lo": -0.105,
+   "hi": 0.1015
+  },
+  "slope_flow_fade": {
+   "est": -0.0079,
+   "lo": -0.0703,
+   "hi": 0.059
+  },
+  "slope_candle_fade": {
+   "est": 0.0167,
+   "lo": -0.041,
+   "hi": 0.0774
+  }
+ },
+ "checks": {
+  "zero d_follow covers 0": true,
+  "zero dR_follow covers 0": true,
+  "zero slope_flow_follow covers 0": true,
+  "zero slope_candle_follow covers 0": true,
+  "zero d_fade covers 0": true,
+  "zero dR_fade covers 0": true,
+  "zero slope_flow_fade covers 0": true,
+  "zero slope_candle_fade covers 0": true,
+  "planted d_follow within 0.20 +/- 0.05": true,
+  "planted d_follow interval excludes 0": true
+ },
+ "passed": true
+}

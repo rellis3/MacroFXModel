@@ -172,6 +172,48 @@ These are restated from the real n and SD(d) in A2, before scoring. A slope that
 
 The A2 amendment (real n, the strategy-cell MDE from placebo trades, the positive-control result) follows before any scoring.
 
+### A2 — 2026-11-20 — PRE-RESULTS: positive control, real n and MDEs, implementation notes
+
+No event outcome had been computed. The count pass (`run.py count`) reads only setup counts, features known at t, and placebo (other-session) outcomes. Code: `scripts/tpo-initial-balance/` (`tpo_ib.py`, `events.py`, `control.py`, `run.py`).
+
+**Positive control (§3.9): PASSED** (`analysis/output/tpo-initial-balance/positive_control.json`, 2,540 synthetic sessions).
+- On the driftless walk, all 8 cells have 95% intervals that cover 0: d follow +0.012 [−0.051, +0.075], d fade −0.001, dR follow +0.030 [−0.138, +0.217], dR fade −0.045, and all four slopes.
+- A planted +0.20 was recovered as **+0.215 [+0.149, +0.278]**.
+- The synthetic walk gave event rates close to the real ones (acceptance 42%, poke 56%).
+
+**Real n and MDE** (`count.json`; MDE at α = 0.05/8, 80% power):
+
+| | NQ follow | NQ fade | ES follow | ES fade |
+|---|---|---|---|---|
+| events | 1,038 | 1,349 | 1,068 | 1,371 |
+| SD of placebo y | 1.000 | 1.024 | 1.096 | 1.032 |
+| MDE of d (Q1/Q2) and of the slopes (Q4/Q5) | 0.128σ | 0.115σ | 0.138σ | 0.115σ |
+| trades (stop ≥ 4 ticks) | 1,024 | 1,339 | 1,023 | 1,318 |
+| SD of placebo net R | 2.74 | 1.80 | 2.47 | 1.61 |
+| **MDE of dR (Q3)** | **0.354R** | **0.203R** | **0.319R** | **0.183R** |
+
+- Q1, Q2, Q4 and Q5 are all **POWERED** against their 0.15σ bars.
+- **The four Q3 strategy cells are UNDERPOWERED by design.** The bar is +0.05R and the MDE is 0.18–0.35R. The IB-edge stop is often tight, so R has fat tails.
+- Q3 is still scored and reported. A Q3 cell that does not clear its bar is recorded as **UNDERPOWERED**, not NULL, and only an effect above its MDE could pass.
+- The design is **not** changed after this count: no wider stop, no other exit. Any such variant is a new trial under §7.
+
+**Sessions.** NQ 2,603 kept (104 short sessions dropped, 16 minutes forward-filled); ES 2,604 (103, 16). "No event": NQ 216, ES 165.
+
+**Implementation notes (fixed now, before scoring).**
+- A period that pokes **both** IB edges and closes back inside is a poke on the side exceeded by more.
+- A period that closes beyond an edge right after a period that also closed beyond the other edge does not count as acceptance; acceptance needs the same edge twice.
+- Day-type rules (§3.10) are as coded in `tpo_ib.day_type`:
+  - w = IB width, R = the day's range.
+  - **normal:** R < 1.15w.
+  - **neutral extreme / centre:** both sides extended; extreme if the close is in the outer 20% of the range.
+  - **trend:** one side extended, R ≥ 2w, and the close in the outer 20% toward the extension.
+  - **one-sided other:** the same as trend, but the close is not there (it absorbs Dalton's double distribution).
+  - **normal variation:** one side extended and 1.15w ≤ R < 2w.
+- Profiles for D2 use 1-tick rows.
+- Bootstrap: one RNG with seed 20261118 is shared across cells in a fixed order.
+- Placebo pool: the 250 sessions before the event, at least 20.
+- The tick-rule arm uses only sessions where NQ 09-26 was the front contract in the continuous file. Before about mid-June the 09-26 trades are back-month trades and are not used. The tick arm's flow is the raw signed ratio over the event window (no 20-session z-score, because the front-month tick history is too short), standardised within the subset.
+
 ---
 
 ## RESULTS — run <YYYY-MM-DD>

@@ -1,0 +1,62 @@
+{
+ "NQ": {
+  "sessions": 2603,
+  "dropped_short": 104,
+  "filled_minutes": 16,
+  "counts": {
+   "poke": 1349,
+   "acc": 1038,
+   "none": 216
+  },
+  "follow": {
+   "n": 1038,
+   "sd_y_placebo": 1.0,
+   "mde_d": 0.128,
+   "n_flow": 1038,
+   "mde_slope": 0.128,
+   "n_trades": 1024,
+   "sd_R_placebo": 2.74,
+   "mde_dR": 0.354
+  },
+  "fade": {
+   "n": 1349,
+   "sd_y_placebo": 1.024,
+   "mde_d": 0.115,
+   "n_flow": 1349,
+   "mde_slope": 0.115,
+   "n_trades": 1339,
+   "sd_R_placebo": 1.796,
+   "mde_dR": 0.203
+  }
+ },
+ "ES": {
+  "sessions": 2604,
+  "dropped_short": 103,
+  "filled_minutes": 16,
+  "counts": {
+   "poke": 1371,
+   "acc": 1068,
+   "none": 165
+  },
+  "follow": {
+   "n": 1068,
+   "sd_y_placebo": 1.096,
+   "mde_d": 0.138,
+   "n_flow": 1068,
+   "mde_slope": 0.138,
+   "n_trades": 1023,
+   "sd_R_placebo": 2.467,
+   "mde_dR": 0.319
+  },
+  "fade": {
+   "n": 1371,
+   "sd_y_placebo": 1.032,
+   "mde_d": 0.115,
+   "n_flow": 1371,
+   "mde_slope": 0.115,
+   "n_trades": 1318,
+   "sd_R_placebo": 1.612,
+   "mde_dR": 0.183
+  }
+ }
+}
