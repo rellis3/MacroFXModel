@@ -91,7 +91,8 @@ estimator and the band/action fall out of it.
   Normal-Variation, **Trend**, Double-Distribution, Neutral). The taxonomy *is*
   a reversion/continuation classification. Rule: extends beyond the first-hour
   initial balance **and holds** → trend day (follow); pokes out and returns →
-  fade. The most useful practitioner lens here.
+  fade. The most useful practitioner lens here. **Tested 2026-11-20 (`tpo-ib-follow`, `tpo-ib-fade`): NULL on
+  NQ/ES/YM/RTY 2016-26, powered; see `analysis/output/tpo-initial-balance/RESULTS.md`.**
 - **Mark Fisher — ACD method** (*The Logical Trader*) — opening range + A/C
   points to decide fade vs follow at a level.
 

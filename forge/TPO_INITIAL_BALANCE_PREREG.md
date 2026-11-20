@@ -214,6 +214,14 @@ No event outcome had been computed. The count pass (`run.py count`) reads only s
 - Placebo pool: the 250 sessions before the event, at least 20.
 - The tick-rule arm uses only sessions where NQ 09-26 was the front contract in the continuous file. Before about mid-June the 09-26 trades are back-month trades and are not used. The tick arm's flow is the raw signed ratio over the event window (no 20-session z-score, because the front-month tick history is too short), standardised within the subset.
 
+### A3 — 2026-11-20 — POST-HOC (results seen): the real-flow arm's data replaced; description only
+
+A1 said the NT8 tick file covered "about 125 sessions" from 2026-02-11 to 2026-08-14. That was wrong. I read only its first and last rows. The file holds three two-day chunks (8 days), and only **one** session is front month, so the tick-rule arm could not run (`results.json` → `tick_arm_NQ`: 1 session).
+
+It is replaced by the **exchange aggressor flag** on 51 NQ RTH sessions from Databento (2026-06-12 → 2026-08-21, before the lockbox), bought for `orderflow-lead-aggressor`. That is better data than the tick rule. 49 sessions overlap the kept 1-minute sessions. Script: `scripts/tpo-initial-balance/aggressor_arm.py` → `aggressor_arm.json`.
+
+This arm is descriptive only, as A1 registered it, and it changes no verdict. It can only qualify Q4 (demote or describe). Its main use is the A1 validity check: the proxy-versus-real-flow correlation per 30-minute period.
+
 ---
 
 ## RESULTS — run <YYYY-MM-DD>

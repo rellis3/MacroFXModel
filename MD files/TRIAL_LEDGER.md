@@ -10,15 +10,15 @@ Generated 2026-11-20.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **438** |
+| claims tested (validated + null + underpowered) | **443** |
 | validated | 84 |
-| null | 210 |
-| underpowered | 144 |
+| null | 214 |
+| underpowered | 145 |
 | context (base rates, descriptions: not counted as tests) | 66 |
-| pre-registrations with no banked verdict (below) | 90 |
+| pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 438 claims were real, tests at the usual 5% size would still pass
-about **21.9** of them by luck. 84 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 443 claims were real, tests at the usual 5% size would still pass
+about **22.2** of them by luck. 84 passed, so most passes are unlikely to be luck alone, but
 **roughly 22 of the 84 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -531,6 +531,11 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-19 | turn-at-lines-proj | price | null | forge/TURN_AT_LINES_PREREG.md |
 | 2026-11-20 | exhaustion-v2-lockbox | volatility | validated | forge/LADDER_V2_LOCKBOX_PREREG.md |
 | 2026-11-20 | ladder-v2-lockbox | volatility | underpowered | forge/LADDER_V2_LOCKBOX_PREREG.md |
+| 2026-11-20 | tpo-ib-candle | price | null | forge/TPO_INITIAL_BALANCE_PREREG.md |
+| 2026-11-20 | tpo-ib-fade | price | null | forge/TPO_INITIAL_BALANCE_PREREG.md |
+| 2026-11-20 | tpo-ib-flow | price | null | forge/TPO_INITIAL_BALANCE_PREREG.md |
+| 2026-11-20 | tpo-ib-follow | price | null | forge/TPO_INITIAL_BALANCE_PREREG.md |
+| 2026-11-20 | tpo-ib-strategy | price | underpowered | forge/TPO_INITIAL_BALANCE_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -613,7 +618,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/THEORY_FEATURES_LEVELS_PREREG.md`: Theory-lab features at the levels — pre-registration (EURUSD)
 - `forge/THREE_FADE_SETUPS_PREREG.md`: Three fade setups from an outside framework — pre-registration
 - `forge/TOUCH_BOOK_EURUSD_PREREG.md`: EURUSD Touch Book — pre-registration (continue vs fade at the lines, with excursions)
-- `forge/TPO_INITIAL_BALANCE_PREREG.md`: tpo-initial-balance — On NQ and ES, does a break of the US-cash initial balance that holds for an hour lead to
 - `forge/TRADE_PLAN_SHADOW_PREREG.md`: trade-plan-shadow — does joining the tested direction score (which way) to the vol forecast (stop, target, siz
 - `forge/TRENDDAY_RETEST_PREREG.md`: Trend-day filter and acceptance-retest entry for the rich-IV break rule — pre-registration
 - `forge/VF3_SHADOW_P1_PREREG.md`: VF3 shadow S1: time-aware intraday probabilities, prospective evaluation (registered 2026-10-10)
