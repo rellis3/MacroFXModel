@@ -421,7 +421,8 @@ def main(sym):
     TT.LINE_ARM = TT.line_arm(sym, t0)
     mult = {c: float((T[c] / T[TT.LINE_ARM]).median()) for c in T.columns if c.startswith(f"{TT.LINE_ARM}_")}
     clockC = pd.read_parquet(out / f"clock_{t0}.parquet")
-    pc = positive_control(clockC[2019] if 2019 in clockC.columns else clockC["2019"], mult, TT.LINE_ARM)
+    pc = positive_control(clockC[2019] if 2019 in clockC.columns else clockC["2019"] if "2019" in clockC.columns
+                          else clockC.iloc[:, 0], mult, TT.LINE_ARM)
     if not pc["pass"]:
         (out / "report.txt").write_text("\n".join(LOG) + "\n")
         raise SystemExit("positive control FAILED: nothing scored")

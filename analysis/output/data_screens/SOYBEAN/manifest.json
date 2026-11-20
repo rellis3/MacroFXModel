@@ -1,0 +1,54 @@
+{
+ "symbol": "SOYBEAN",
+ "version": "v1",
+ "thresholds": {
+  "jump_1m_sd": 10.0,
+  "jump_1m_window": 1440,
+  "jump_1m_maxgap_min": 15,
+  "jump_day_sd": 5.0,
+  "jump_day_window": 60,
+  "gap_min": 30,
+  "frozen_min": 30,
+  "liquid_hours": [
+   8,
+   21
+  ],
+  "min_bars": 600,
+  "roll_gap_sd": 1.5,
+  "cvf_sd": 3.0,
+  "cvf_window": 250,
+  "cvf_open_median": 20
+ },
+ "inputs": {
+  "analysis/output/ladder-v2-data/m1_commod/soybean_m1.parquet": "625313a77c957ab140266f403b8e2ab09822645d98d959f79f521d2bf98906c7"
+ },
+ "sessions": {
+  "C": [
+   "2015-12-30",
+   "2026-11-20",
+   2748
+  ]
+ },
+ "flag_counts": [
+  {
+   "track": "C",
+   "screen": "frozen",
+   "n": 1
+  },
+  {
+   "track": "C",
+   "screen": "jump_1m",
+   "n": 241
+  },
+  {
+   "track": "C",
+   "screen": "jump_day",
+   "n": 3
+  },
+  {
+   "track": "C",
+   "screen": "partial",
+   "n": 612
+  }
+ ]
+}

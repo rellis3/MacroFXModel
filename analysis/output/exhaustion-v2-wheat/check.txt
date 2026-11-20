@@ -1,0 +1,11 @@
+Major release times (United States): 1380 (2014-01-07 13:30:00+00:00 -> 2026-11-17 13:30:00+00:00)
+WHEAT C: lines from ladder arm R15
+  placebo (lines from a random same-year session): 7409 first touches
+WHEAT C: 1534 sessions, 7169 first touches; extraction check 107/107 match on 20 sessions
+  touches per family x rung: OCd50 836, OCd75 399, OCd90 146, OCu50 787, OCu75 418, OCu90 202, OH50 856, OH75 435, OH90 188, OL50 826, OL75 404, OL90 151, PH50 486, PH75 242, PH90 97, PL50 453, PL75 187, PL90 56
+  wrong-side dynamic touches: 68; release still to come: 1348
+WHEAT F: lines from ladder arm R15
+  placebo (lines from a random same-year session): 8787 first touches
+WHEAT F: 1748 sessions, 8465 first touches; extraction check 85/85 match on 20 sessions
+  touches per family x rung: OCd50 1017, OCd75 488, OCd90 180, OCu50 906, OCu75 476, OCu90 210, OH50 954, OH75 504, OH90 204, OL50 980, OL75 506, OL90 198, PH50 562, PH75 287, PH90 111, PL50 563, PL75 241, PL90 78
+  wrong-side dynamic touches: 82; release still to come: 1562

@@ -4,11 +4,12 @@ Pre-registered: `forge/LADDER_V2_ROLLOUT_PREREG.md` (A1: a test year needs an ea
 
 ## Summary
 
-- 42 instruments, 58 instrument-tracks scored.
-- **Sigma race:** 51 VALIDATED, 7 UNDERPOWERED, 0 NULL.
-- **Exhaustion:** 58 VALIDATED, 0 UNDERPOWERED, 0 NULL.
-- **Multiplicity:** 58 independent tries would give about 2.9 VALIDATED by chance under the 90% CI rule. BH q = 0.10 over approximate one-sided p-values (normal approximation from each 90% CI; conservative where the re-selected CI is clipped at 0) keeps 58/58 sigma races and 58/58 exhaustion races. Errors are correlated across instruments (about 0.47 for sigma), so the effective number of tries is smaller.
-- Pending (no data yet): SOYBEAN, WHEAT, CORN, SUGAR.
+- 45 instruments, 63 instrument-tracks scored.
+- **Sigma race:** 52 VALIDATED, 11 UNDERPOWERED, 0 NULL.
+- **Exhaustion:** 59 VALIDATED, 3 UNDERPOWERED, 0 NULL.
+- **Multiplicity:** 63 independent tries would give about 3.2 VALIDATED by chance under the 90% CI rule. BH q = 0.10 over approximate one-sided p-values (normal approximation from each 90% CI; conservative where the re-selected CI is clipped at 0) keeps 63/63 sigma races and 62/63 exhaustion races. Errors are correlated across instruments (about 0.47 for sigma), so the effective number of tries is smaller.
+- Not scored: SUGAR (CFD fails inventory: 100% thin, A2).
+- **Inventory (amendment A2, post-hoc, demote-only):** the commodity CFDs were downloaded for this study and skipped the 0.1 inventory screen. Applied afterwards with the harness's own session floor (600 London bars), NATGAS CFD 22%, SOYBEAN CFD 23%, WHEAT CFD 34%, CORN CFD 76%, SUGAR CFD 100% of present sessions are thin, so their scored sessions are the busy days only. Their CFD verdicts are demoted to UNDERPOWERED and stay off the exports; their futures (NG, ZW, ZC) passed the 0.1 screen and stand. Read literally, 0.1's futures threshold (1,000 of 1,320 bars) would also flag SPX500 (21% thin), DE30 (28%), SILVER (26%), PLATINUM (25%) and PALLADIUM (54%) CFDs; under the harness floor they drop at most 2% of sessions, so their samples are not activity-selected and they stand, flagged here.
 
 ## Sigma race (regime miss, pp; lower is better)
 
@@ -66,8 +67,13 @@ Pre-registered: `forge/LADDER_V2_ROLLOUT_PREREG.md` (A1: a test year needs an ea
 | WTI | F | VALIDATED | GARCH | 0.99 | 3.05 | [-2.48, -1.07] | — | kept |
 | BRENT | C | VALIDATED | HAR + GARCH-t | 1.40 | 3.08 | [-2.23, -0.69] | — | kept |
 | BRENT | F | VALIDATED | HAR-800 | 1.21 | 2.97 | [-2.37, -0.92] | — | kept |
-| NATGAS | C | VALIDATED | HAR-RV 15-min | 1.86 | 3.20 | [-2.10, -0.62] | — | kept |
+| NATGAS | C | UNDERPOWERED | HAR-RV 15-min | 1.86 | 3.20 | [-2.10, -0.62] | inventory: 22% of sessions thin (A2) | kept |
 | NATGAS | F | VALIDATED | har rv log | 1.19 | 2.17 | [-1.92, -0.43] | — | kept |
+| SOYBEAN | C | UNDERPOWERED | HAR-RV 5-min | 1.36 | 2.92 | [-2.02, -0.79] | inventory: 23% of sessions thin (A2) | kept |
+| WHEAT | C | UNDERPOWERED | HAR-RV 15-min | 1.51 | 3.21 | [-2.05, -0.79] | inventory: 34% of sessions thin (A2) | kept |
+| WHEAT | F | VALIDATED | HAR-RV 15-min | 1.23 | 3.00 | [-2.53, -0.92] | — | kept |
+| CORN | C | UNDERPOWERED | HAR-RV 5-min | 3.25 | 4.58 | [-1.67, -0.01] | without bear2022, without tariff2025, without hi1_202104, without hi3_202205, without hi4_202201, inventory: 76% of sessions thin (A2) | kept |
+| CORN | F | VALIDATED | har rv log | 2.02 | 3.00 | [-2.14, -0.75] | — | kept |
 | ZN | F | VALIDATED | HAR-800 | 1.39 | 3.13 | [-2.53, -0.80] | — | kept |
 | ZB | F | VALIDATED | HAR-CJ | 1.36 | 3.46 | [-2.59, -1.20] | — | kept |
 | ZT | F | UNDERPOWERED | HAR-800 | 1.58 | 2.63 | [-2.22, -0.12] | half 2018-22 | kept |
@@ -93,6 +99,8 @@ Pre-registered: `forge/LADDER_V2_ROLLOUT_PREREG.md` (A1: a test year needs an ea
 | WTI | CL | same | 1.000–1.019 | HAR + GARCH-t |
 | BRENT | BZ | different | 0.996–1.031 | HAR-800 |
 | NATGAS | NG | different | 1.014–1.077 | har rv log |
+| WHEAT | ZW | different | 0.992–1.055 | HAR-RV 15-min |
+| CORN | ZC | different | 0.990–1.051 | har rv log |
 
 ## Exhaustion (calibration miss, pp)
 
@@ -150,8 +158,12 @@ Pre-registered: `forge/LADDER_V2_ROLLOUT_PREREG.md` (A1: a test year needs an ea
 | WTI | F | VALIDATED | X8 | 4.19 | 12.21 | [-8.67, -6.14] | 0.931 | kept |
 | BRENT | C | VALIDATED | X7 | 3.65 | 11.32 | [-8.11, -5.28] | 0.936 | kept |
 | BRENT | F | VALIDATED | X8 | 3.85 | 11.55 | [-8.58, -5.78] | 0.932 | kept |
-| NATGAS | C | VALIDATED | X7 | 4.23 | 12.53 | [-9.35, -5.42] | 0.939 | kept |
+| NATGAS | C | UNDERPOWERED | X7 | 4.23 | 12.53 | [-9.35, -5.42] | 0.939 | kept |
 | NATGAS | F | VALIDATED | X6 | 3.41 | 11.59 | [-9.18, -5.18] | 0.941 | kept |
+| SOYBEAN | C | UNDERPOWERED | X7 | 2.99 | 8.93 | [-6.72, -3.75] | 0.928 | kept |
+| WHEAT | C | UNDERPOWERED | X2 | 3.82 | 10.19 | [-7.26, -4.06] | 0.921 | kept |
+| WHEAT | F | VALIDATED | X8 | 3.71 | 11.66 | [-8.26, -5.40] | 0.926 | kept |
+| CORN | F | VALIDATED | X4 | 3.49 | 9.63 | [-6.76, -3.97] | 0.929 | kept |
 | ZN | F | VALIDATED | X5 | 3.49 | 10.89 | [-8.32, -5.52] | 0.933 | kept |
 | ZB | F | VALIDATED | X5 | 3.92 | 13.57 | [-10.50, -6.92] | 0.924 | kept |
 | ZT | F | VALIDATED | X7 | 3.95 | 11.42 | [-7.88, -5.32] | 0.941 | kept |

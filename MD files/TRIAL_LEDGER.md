@@ -10,16 +10,16 @@ Generated 2026-11-20.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **559** |
-| validated | 193 |
+| claims tested (validated + null + underpowered) | **568** |
+| validated | 195 |
 | null | 214 |
-| underpowered | 152 |
-| context (base rates, descriptions: not counted as tests) | 82 |
+| underpowered | 159 |
+| context (base rates, descriptions: not counted as tests) | 84 |
 | pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 559 claims were real, tests at the usual 5% size would still pass
-about **28** of them by luck. 193 passed, so most passes are unlikely to be luck alone, but
-**roughly 28 of the 193 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 568 claims were real, tests at the usual 5% size would still pass
+about **28.4** of them by luck. 195 passed, so most passes are unlikely to be luck alone, but
+**roughly 28 of the 195 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -542,6 +542,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-20 | exhaustion-v2-chfjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-copper | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-copper-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-corn-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-de30 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-de30-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-euraud | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
@@ -558,7 +559,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-20 | exhaustion-v2-gbpusd | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-gbpusd-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-lockbox | volatility | validated | forge/LADDER_V2_LOCKBOX_PREREG.md |
-| 2026-11-20 | exhaustion-v2-natgas | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-natgas | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-natgas-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-nzdcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-nzdjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
@@ -569,6 +570,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-20 | exhaustion-v2-platinum-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-silver | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-silver-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-soybean | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-spx500 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-spx500-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-uk100 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
@@ -582,6 +584,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-20 | exhaustion-v2-usdchf-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-usdjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-usdjpy-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-wheat | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | exhaustion-v2-wheat-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-wti | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-wti-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-zb-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
@@ -604,6 +608,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-20 | ladder-v2-copper | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-copper-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-copper-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-corn | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-corn-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-corn-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-de30 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-de30-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-de30-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
@@ -622,7 +629,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-20 | ladder-v2-gbpusd-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-gbpusd-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-lockbox | volatility | underpowered | forge/LADDER_V2_LOCKBOX_PREREG.md |
-| 2026-11-20 | ladder-v2-natgas | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-natgas | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-natgas-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-natgas-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-nzdcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
@@ -637,6 +644,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-20 | ladder-v2-silver | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-silver-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-silver-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-soybean | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-spx500 | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-spx500-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-spx500-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
@@ -656,6 +664,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-20 | ladder-v2-usdjpy | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-usdjpy-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-usdjpy-fut | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-wheat | volatility | underpowered | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-wheat-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | ladder-v2-wheat-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-wti | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-wti-cvf | volatility | context | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-wti-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
