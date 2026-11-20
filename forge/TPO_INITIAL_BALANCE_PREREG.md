@@ -125,7 +125,52 @@ The power pass found "no event" in 191 of 2,583 NQ sessions and 130 of 2,584 ES 
 
 ## Amendments
 
-*(none yet)*
+### A1 — 2026-11-20 — PRE-RESULTS: order flow and candles added (owner's ask)
+
+The owner asked (2026-11-20) for order flow, candles, and a cross-comparison of TPO against order flow in the same study. No outcome had been computed: no script for this study had read prices after an event. Added:
+
+**Flow and candle variables, all known at the event period's close (t).**
+- **Delta proxy (tier P).** The bulk-volume classification already used in `value-migration-nq` (`scripts/value-migration-nq/vmig/features.py`): per minute δ = V·(2Φ(Δp/σ1) − 1), with Δp the close-to-close change (close − open at 09:30). The flow ratio of a window is cd = Σδ / ΣV.
+- **x_flow, follow events.** cd over the event's two acceptance periods, signed with the break (+ = buyers on an up-break), and z-scored against the same two clock periods over the previous 20 sessions (past only).
+- **x_flow, fade events.** cd over the poke period, signed **toward the poke** (+ = aggressive buying into a poke above IBH that still closed back inside, which is absorption). Expectation from the footprint literature: more absorption leads to a stronger fade. The sign is fixed here.
+- **x_candle, follow events.** The close location of the second acceptance period's 30-minute candle in the break direction, CLV = (C − L)/(H − L) for an up-break and (H − C)/(H − L) for a down-break. 0.5 if H = L.
+- **x_candle, fade events.** The poke period's close location **away from** the poke: (H − C)/(H − L) for a poke above, (C − L)/(H − L) for a poke below. A close at the far end means a strong rejection.
+- x_flow and x_candle are both standardised (z) within instrument and event type over the whole sample before the regression. That is a scaling only, and the scored slope stays in σ of y per 1 SD of x.
+
+**New scored cells (a second family, separate from the 8 in §6).**
+- **Q4 (flow) and Q5 (candle):** the OLS slope b in d = a + b·x, per instrument (NQ, ES) and event type (follow, fade). That gives 8 cells: Q4-follow, Q4-fade, Q5-follow and Q5-fade, each on NQ and on ES.
+- **Expected sign:** positive in all 8 (flow with the break helps the follow; absorption helps the fade; a strong close helps the follow; a strong rejection helps the fade).
+- **Uncertainty:** the same session-block bootstrap (block 20, B = 2000), p via `pFromCI`, Holm at α = 0.05 over these 8.
+- **A cell passes if:** Holm p < 0.05, b ≥ **+0.15σ per SD**, and the same sign in IS and OOS.
+- **The question-level gate:** both NQ and ES must pass.
+- **Planned power.** SE(b) ≈ SD(d)/√n. SD(d) = SD(y)·√(4/3), using the control SD from §5. At α = 0.05/8 (z 2.73 + 0.84 = 3.57):
+
+| Cell | n | SD(d) | MDE (σ per SD of x) | Bar | Verdict |
+|---|---|---|---|---|---|
+| Q4/Q5 follow NQ | 1,044 | 1.19 | 0.132 | 0.15 | POWERED |
+| Q4/Q5 follow ES | 1,079 | 1.29 | 0.140 | 0.15 | POWERED |
+| Q4/Q5 fade NQ | 1,348 | 1.19 | 0.116 | 0.15 | POWERED |
+| Q4/Q5 fade ES | 1,375 | 1.29 | 0.124 | 0.15 | POWERED |
+
+These are restated from the real n and SD(d) in A2, before scoring. A slope that is statistically positive but below the bar in both halves is **CONTEXT**.
+
+**Real order flow (descriptive only, no pass weight).**
+- NQ tick-rule trades from NT8 history (`analysis/output/nt8/NQ_09-26_tick.csv`): 2026-02-11 → 2026-08-14, about 125 sessions, all before the lockbox. The tick rule correlated +0.91 with the exchange aggressor flag on NQ (`orderflow-lead`).
+- Two uses:
+  - **(i) Proxy validity:** the per-30-minute-period correlation between the tick-rule flow ratio and the proxy cd on the same periods. If it is below 0.5, Q4 is read as "the proxy carries no flow information", not as a null of flow.
+  - **(ii)** The Q4 regressions re-run with tick-rule x_flow. That is about 50 follow and 65 fade events, so underpowered by design and descriptive.
+- ES has no tick history before the lockbox.
+
+**TPO against order flow, the cross-comparison (descriptive, BH q = 0.10 where a test is given).**
+- **D1.** Per 30-minute period (C … M, all sessions): the correlation between the period's range extension (new TPO rows above the prior high minus new rows below the prior low, in ticks / IB width) and its flow ratio cd. Proxy for all sessions, tick rule on the NQ subset.
+- **D2.** Per session: the distance between the TPO POC and the volume POC, in IB widths, and the overlap of the TPO value area with the volume value area (shared share of the union). The volume profile uses each minute's volume spread evenly over its range (tier P, as in `value-migration-nq`).
+- **D3.** Per session with an IB extension on one side only: the share where the session's cumulative delta (proxy) at 15:59 has the same sign as the extension. On the NQ subset, tick-rule CVD too.
+- **D4.** Day type (§3.10) against session CVD sign and against |close − TPO POC| / IB width.
+- **D5.** Candles alone, as a baseline for Q5: the share of 30-minute periods whose CLV ≥ 0.8 (or ≤ 0.2) are followed by a next-period close in the same direction, against the same share at random periods.
+
+**Not added.** Real aggressor flow on ES, footprint imbalances or stacks at the IB edge (the recorder days are in the lockbox), and order-book depth. These stay for a forward record.
+
+The A2 amendment (real n, the strategy-cell MDE from placebo trades, the positive-control result) follows before any scoring.
 
 ---
 
