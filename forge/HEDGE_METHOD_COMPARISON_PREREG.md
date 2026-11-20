@@ -94,4 +94,7 @@ No outcome had been computed; only the data build (dates and counts) had run.
 - **The placebo clause of the gate** means: the method's pooled variance removed must exceed the placebo's pooled variance removed (a sanity floor: a real hedge must beat a random one).
 - **If a weight cannot be solved** (singular window), the previous day's weights carry.
 
+### A2 — 2026-11-20 — POST-HOC (results seen)
+H2 and method M8 condition on **A's own worst days**. That selects on the dependent variable, which shrinks an OLS slope toward zero even when the relationship is exactly linear, so the pre-registered H2 reads "downside beta about half the full beta" for every pair (ratio 0.34 to 0.70) and M8 is mechanically too small (it was the worst method, -7.1pp). Both are reported as registered and demoted: H2 is banked `context` (artefact, not a finding), and M8's result is read as a property of that construction, not of downside hedging. `scripts/hedge-method-comparison/h2b.mjs` re-does H2 descriptively by conditioning on the **hedge leg's** worst 25%, best 25% and largest-move days. It can only describe, never promote.
+
 ## RESULTS

@@ -10,16 +10,16 @@ Generated 2026-11-20.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **568** |
-| validated | 195 |
+| claims tested (validated + null + underpowered) | **569** |
+| validated | 196 |
 | null | 214 |
 | underpowered | 159 |
-| context (base rates, descriptions: not counted as tests) | 84 |
+| context (base rates, descriptions: not counted as tests) | 85 |
 | pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 568 claims were real, tests at the usual 5% size would still pass
-about **28.4** of them by luck. 195 passed, so most passes are unlikely to be luck alone, but
-**roughly 28 of the 195 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 569 claims were real, tests at the usual 5% size would still pass
+about **28.5** of them by luck. 196 passed, so most passes are unlikely to be luck alone, but
+**roughly 29 of the 196 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -592,6 +592,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-20 | exhaustion-v2-zf-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-zn-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-zt-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | hedge-downside-beta | execution | context | forge/HEDGE_METHOD_COMPARISON_PREREG.md |
+| 2026-11-20 | hedge-method-comparison | execution | validated | forge/HEDGE_METHOD_COMPARISON_PREREG.md |
 | 2026-11-20 | ladder-v2-audcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-audchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-audjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
