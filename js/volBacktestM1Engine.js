@@ -1596,6 +1596,30 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
     }
     return { n, times, opens, highs, lows, closes, volumes };
   };
+  // Same output as pack(await readM1Parquet(source)), but decoded in row chunks straight into typed arrays. The full-file decode held every row as
+  // a JS array (EURUSD: 3.8M rows, ~1.3 GB of heap for a 100 MB result), and the atlases/session routes each do it per pair at startup, which is
+  // what pushed the server to several GB within a minute of a restart. Peak here is the file buffer plus one chunk.
+  const packChunked = async (source, chunkRows = 250_000) => {
+    let ab;
+    if (source instanceof ArrayBuffer) ab = source;
+    else { const b = readFileSync(source); ab = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); }
+    const file = { byteLength: ab.byteLength, slice: (a, b) => Promise.resolve(ab.slice(a, b)) };
+    const meta = await parquetMetadataAsync(file);
+    const total = Number(meta.num_rows ?? 0);
+    if (!total) return pack([]);
+    const times = new Int32Array(total), opens = new Float32Array(total), highs = new Float32Array(total), lows = new Float32Array(total), closes = new Float32Array(total), volumes = new Float32Array(total);
+    let at = 0;
+    for (let start = 0; start < total; start += chunkRows) {
+      let chunk;
+      await parquetRead({ file, metadata: meta, rowStart: start, rowEnd: Math.min(start + chunkRows, total), onComplete: d => (chunk = d) });
+      for (const r of chunk) {
+        times[at] = toEpoch(r[r.length - 1]);          // the timestamp is always the LAST column (6- and 8-column files)
+        opens[at] = Number(r[0]); highs[at] = Number(r[1]); lows[at] = Number(r[2]); closes[at] = Number(r[3]); volumes[at] = Number(r[4]) || 0; at++;
+      }
+      chunk = null; await new Promise(r => setImmediate(r));   // free the chunk, let the server breathe
+    }
+    return { n: at, times, opens, highs, lows, closes, volumes };
+  };
 
   // 1. R2 — decoded-snapshot cache first (see M1_DECODED_PREFIX's own doc
   // above): the raw parquet almost never changes, so most calls should skip
@@ -1618,7 +1642,7 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
       if (!packed) {
         const r2ab = await fetchFromR2(pairKey);
         if (r2ab) {
-          packed = pack(await readM1Parquet(r2ab));
+          packed = await packChunked(r2ab);
           if (currentEtag) {
             saveDecodedSnapshot(client, pairKey, packed, currentEtag)
               .catch(e => console.warn(`[M1] decoded-snapshot save failed for ${pairKey}: ${e.message}`));
@@ -1634,13 +1658,13 @@ export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
   // 2. Local disk
   if (!packed) {
     const m1File = path.join(m1Dir, `${pairKey}_m1.parquet`);
-    if (existsSync(m1File)) packed = pack(await readM1Parquet(m1File));
+    if (existsSync(m1File)) packed = await packChunked(m1File);
   }
 
   // 3. Google Drive (slow on first load, then saved to disk)
   if (!packed) {
     const driveAb = await fetchFromDrive(pairKey, m1Dir);
-    if (driveAb) packed = pack(await readM1Parquet(driveAb));
+    if (driveAb) packed = await packChunked(driveAb);
   }
 
   if (!packed) {
