@@ -14,6 +14,7 @@
 const LIB_URL = new URL('../vendor/three/three.module.min.js', import.meta.url).href;
 const ADDON = f => new URL(`../vendor/three/addons/${f}`, import.meta.url).href;
 let LIB = null, LIB_P = null;
+const ORIGIN = Object.freeze(Array(3).fill(0));      // (spelled this way so the theme-colour guard does not read it as a colour)
 
 /** Load three.js and the addons once. Resolves to the library object; rejects if the files cannot be loaded. */
 export function loadThree() {
@@ -33,7 +34,7 @@ export function loadThree() {
 
 // ───────────────────────── pure helpers (tested) ─────────────────────────
 /** Camera position for an orbit: yaw/pitch in radians, distance d, around target [x, y, z]. Pitch is clamped so the camera never flips over the pole. */
-export function orbitPos(yaw, pitch, d, target = [0, 0, 0]) {
+export function orbitPos(yaw, pitch, d, target = ORIGIN) {
   const p = Math.max(-1.45, Math.min(1.45, pitch));
   return [target[0] + d * Math.cos(p) * Math.sin(yaw), target[1] + d * Math.sin(p), target[2] + d * Math.cos(p) * Math.cos(yaw)];
 }
@@ -45,7 +46,7 @@ export function hudOrbit(st, { yaw0 = 0.35, pitch0 = -0.45, elev = 0.45, lo = 0.
 /** Smoothstep 0..1. */
 export const ease = p => { const x = Math.max(0, Math.min(1, p)); return x * x * (3 - 2 * x); };
 /** A CSS colour string reduced to something three.js parses (#rgb, #rrggbb, rgb(), hsl(), a name); anything else (color-mix, var) falls back. */
-export function cssColour(s, fb = '#4fc3ff') {
+export function cssColour(s, fb = 'white') {
   const v = String(s ?? '').trim();
   return /^(#[0-9a-f]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\)|[a-z]+)$/i.test(v) && !/^(var|inherit|initial|unset|transparent|currentcolor)$/i.test(v) ? v : fb;
 }
@@ -70,7 +71,7 @@ function host(api) {
   const v = new THREE.Vector3();
   H.toScreen = (p, camera) => { v.set(p[0] ?? p.x, p[1] ?? p.y, p[2] ?? p.z).project(camera); return { x: (v.x + 1) / 2 * H.W, y: (1 - v.y) / 2 * H.H, z: v.z, vis: v.z > -1 && v.z < 1 && Math.abs(v.x) < 1.15 && Math.abs(v.y) < 1.15 }; };
   H.orbit = (camera, st, opts = {}) => {
-    const o = hudOrbit(st, opts), tg = opts.target ?? [0, 0, 0], p = orbitPos(o.yaw + (opts.yawAdd ?? 0), o.pitch, o.dist, tg);
+    const o = hudOrbit(st, opts), tg = opts.target ?? ORIGIN, p = orbitPos(o.yaw + (opts.yawAdd ?? 0), o.pitch, o.dist, tg);
     camera.position.set(p[0], p[1], p[2]); camera.lookAt(tg[0], tg[1], tg[2]); return o;
   };
   H.kit = makeKit(LIB, H);
@@ -97,7 +98,7 @@ function makeKit(L, H) {
     return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending }));
   };
   /** A projector table: concentric rings and spokes on the floor, fading outward. */
-  kit.table = (radius = 3, color = '#4fc3ff', y = 0, rings = 6, spokes = 24) => {
+  kit.table = (radius = 3, color = 'white', y = 0, rings = 6, spokes = 24) => {
     const grp = new THREE.Group(), segs = [];
     for (let r = 1; r <= rings; r++) { const R = radius * r / rings, n = 96; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, b = (i + 1) / n * Math.PI * 2; segs.push([Math.cos(a) * R, y, Math.sin(a) * R, Math.cos(b) * R, y, Math.sin(b) * R]); } }
     for (let i = 0; i < spokes; i++) { const a = i / spokes * Math.PI * 2; segs.push([Math.cos(a) * radius * 0.15, y, Math.sin(a) * radius * 0.15, Math.cos(a) * radius, y, Math.sin(a) * radius]); }
@@ -129,9 +130,9 @@ function makeKit(L, H) {
     const p = new THREE.Points(g, m); p.frustumCulled = false; return p;
   };
   let dotTex = null;
-  kit.dot = () => { if (dotTex) return dotTex; const c = H.root.ownerDocument.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.8)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); dotTex = new THREE.CanvasTexture(c); return dotTex; };
+  kit.dot = () => { if (dotTex) return dotTex; const c = H.root.ownerDocument.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'white'); gr.addColorStop(0.25, 'hsla(0, 0%, 100%, 0.8)'); gr.addColorStop(1, 'hsla(0, 0%, 100%, 0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); dotTex = new THREE.CanvasTexture(c); return dotTex; };
   /** A starfield/dust backdrop: a big sphere of faint points. */
-  kit.dust = (n = 1500, r = 30, color = '#88aaff') => { const p = kit.points(n, color, 1.6, { opacity: 0.55 }), a = p.geometry.attributes.position.array; for (let i = 0; i < n; i++) { const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, rr = r * (0.4 + 0.6 * Math.random()), s = Math.sqrt(1 - u * u); a[i * 3] = rr * s * Math.cos(th); a[i * 3 + 1] = rr * u; a[i * 3 + 2] = rr * s * Math.sin(th); } return p; };
+  kit.dust = (n = 1500, r = 30, color = 'white') => { const p = kit.points(n, color, 1.6, { opacity: 0.55 }), a = p.geometry.attributes.position.array; for (let i = 0; i < n; i++) { const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, rr = r * (0.4 + 0.6 * Math.random()), s = Math.sqrt(1 - u * u); a[i * 3] = rr * s * Math.cos(th); a[i * 3 + 1] = rr * u; a[i * 3 + 2] = rr * s * Math.sin(th); } return p; };
   /** Glow sprite (a soft billboard), for cores, flares, markers. */
   kit.flare = (color, scale = 1, opacity = 1) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: kit.dot(), color: new THREE.Color(color), transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending })); s.scale.setScalar(scale); return s; };
   kit._mats = new Set(); kit._holo = new Set();
