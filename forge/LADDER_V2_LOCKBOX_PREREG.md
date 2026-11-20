@@ -46,3 +46,25 @@ v2 clearly worse than live. It can't prove the size of the gain. That limit is t
 
 - **VALIDATED, or UNDERPOWERED with no sign of breakage:** the owner can sign off the switch (runbook 1.9).
 - **NULL:** no switch, and the failure is investigated on new data.
+
+## Amendments
+
+### A1 — 2026-11-20, PRE-RESULTS (no holdout session scored for ladder-v2): run before the frozen evaluation
+
+The owner chose (2026-11-20) to run this lockbox now, instead of waiting for `forge/LOCKBOX_PROTOCOL.md`'s
+evaluation, which isn't wired yet: `lockbox_check --evaluate` stops at "wire the per-layer scorers". Why this is safe:
+- Layers 3, 5 and 6 are frozen by hash and can't be changed by anything this run shows.
+- This run never scores those layers. Its baseline is a yz_10 ladder refitted by the ladder-v2 code, not layer 3's
+  frozen `forecastLadderParams.js` / HAR-800.
+- The frozen evaluation stays available and still runs once, under its own rules.
+
+Data choices (made before scoring):
+- **C:** session OHLC from OANDA **5-minute** mid candles (`analysis/output/ladder-v2-data/<SYM>_m5_recent.parquet`).
+  A 5-minute high or low is the same extreme as its 1-minute bars, so HL/OH/OL/OC are identical. Exhaustion touch
+  times are resolved to 5 minutes.
+- **F:** NT8 continuous 1-minute files.
+- **σ inputs:**
+  - C: OANDA daily bars (`_d1_recent`) and the 5-minute features.
+  - F: NT8 ratio bars with the same code. Gold F stays on its banked HAR-RV 5-min on GC; NQ and EURUSD F use their
+    banked arms on futures bars.
+
