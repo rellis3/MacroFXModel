@@ -243,6 +243,7 @@ merely that it works alone.
    - same-day 10:00 NY expiries (`oi_store`).
 4. **Index break-shape rule.** 0.2σ stop, 5R target, gated by the front. It must hold on shorts.
 5. **Lead–lag and transfer entropy.** Which market leads now. It goes in step 5 as a candidate if cheap enough.
+6. **Causation next to correlation (owner, 2026-11-20).** Correlation shows what moves together; this asks what moves *because of* what. Example: does a DXY move push gold, with how much delay and how much of the move, or do they just co-move? A chart and a table beside the correlation and hedge views: lagged cross-correlation, Granger-style tests, transfer entropy, and event-window responses (a DXY shock, then gold's response). Check first whether the lead-lag work above already covers part of it, and keep the causal language honest: these tests show predictive precedence, not proof of cause. Description only, not a forecast. Not started.
 
 ### Already answered or parked
 
