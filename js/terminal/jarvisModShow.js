@@ -75,10 +75,12 @@ registerJarvisModule({
         fast: () => { ctl.rate = steps.find(x => x > ctl.rate + 1e-6) ?? 2; sync(); },
         slow: () => { ctl.rate = [...steps].reverse().find(x => x < ctl.rate - 1e-6) ?? 0.75; sync(); },
       }); api.sfx.ambient(true); sync();
+      api.voicePrefetch?.(scenes[0]?.text);
       let i = 0;
       while (i < scenes.length && my === token) {
         const sc = scenes[i]; if (i) api.sfx.whoosh(); enter(sc); api.caption(sc.text, `${sc.title.toUpperCase()}   ·   ${i + 1} / ${scenes.length}`);
         motion(sc, readSeconds(sc.text) / ctl.rate, my);
+        api.voicePrefetch?.(scenes[i + 1]?.text);   // the next line is fetched while this one plays: no gap between scenes
         await api.speak(sc.text, ctl.rate);          // the voice leads: nothing moves on until he has finished the line, or you skip it
         cancelAnimationFrame(raf); if (my !== token) break;
         if (ctl.jump != null) { i = ctl.jump === -1 ? i + 1 : Math.max(0, i - 1); ctl.jump = null; continue; }

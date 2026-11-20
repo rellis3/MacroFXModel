@@ -12,6 +12,8 @@ import { candleRows, candleLayout, candleBox, boardSummary, ROWS as CD_ROWS } fr
 import { EXTRA, loadModules, viewsOf } from './jarvisModules.js';
 import { SECTIONS, COMPANION, labelOf, itemsFor, activeSection } from './jarvisNav.js';
 import { shortLabel } from './chainBoard.js';
+import { glDisposeAll } from './jarvisGL.js';
+import { makeNeuralVoice } from './jarvisVoiceClient.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ID = 'jarvis', LS = 'jarvisPrefs:v1';
@@ -105,7 +107,7 @@ export async function openJarvis(win = window) {
   root.innerHTML = `<style>${CSS}</style><canvas id="${ID}-cv"></canvas><div class="jv-bs" id="${ID}-bs"><div class="jv-bs-t"><h1 id="${ID}-bst">J.A.R.V.I.S.</h1><div class="jv-bs-sub blink" id="${ID}-bss">&nbsp;</div></div><div class="jv-bs-b"><div class="jv-bs-log" id="${ID}-bslog"></div><div class="jv-bar"><i id="${ID}-bsbar"></i></div></div></div><div class="jv-scan"></div><div class="jv-vig"></div><i class="jv-br tl"></i><i class="jv-br tr"></i><i class="jv-br bl"></i><i class="jv-br brr"></i>
 <div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">desk intelligence · description only</span><span class="jv-sp"></span><span class="jv-cur" id="${ID}-cur"></span><button type="button" class="jv-menubtn" id="${ID}-menubtn" aria-expanded="false">☰ MENU</button>
 <div class="jv-menu" id="${ID}-menu"><span class="jv-mh">SECTIONS</span><div class="jv-nav" id="${ID}-nav"></div><span class="jv-mh">TIME WINDOW</span><span id="${ID}-win"></span><span class="jv-mh">OPTIONS</span><span id="${ID}-opts">
-<button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></span><span id="${ID}-mods" hidden></span><span id="${ID}-view" hidden></span></div></div>
+<button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-nv" aria-pressed="${prefs.neural !== false}" title="A natural neural voice from the server (ElevenLabs with a key, else a free British neural voice). Off = the browser's built-in voice">NATURAL VOICE</button><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></span><span id="${ID}-mods" hidden></span><span id="${ID}-view" hidden></span></div></div>
 <div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-cine" id="${ID}-cine"><button type="button" data-c="prev" title="Back one scene (left arrow)">⏮ BACK</button><button type="button" data-c="pause" id="${ID}-cpause" title="Pause or resume (space)">⏸ PAUSE</button><button type="button" data-c="next" title="Skip this scene (right arrow)">SKIP ⏭</button><button type="button" data-c="slow" title="Slower (minus)">−</button><span id="${ID}-crate">1.0×</span><button type="button" data-c="fast" title="Faster (plus)">+</button></div><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
 <div class="jv-scrub" id="${ID}-scrub"><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button><button type="button" id="${ID}-expl" title="Describe what was going on around this day (one model call)">EXPLAIN THIS DAY</button></div>
 <div class="jv-foot">drag to turn · wheel to zoom · click a market · Esc docks · none of this is a forecast</div>`;
@@ -202,24 +204,37 @@ export async function openJarvis(win = window) {
 
   // ── voice out (the browser's own synthesis; the best British male on offer) ──
   let voice = null; const loadVoice = () => { voice = pickVoice(win.speechSynthesis?.getVoices?.() ?? []); }; loadVoice(); win.speechSynthesis?.addEventListener?.('voiceschanged', loadVoice);
-  const say = (t, force = false) => { try { if ((!st.voice && !force) || !win.speechSynthesis) return; win.speechSynthesis.cancel(); const u = new win.SpeechSynthesisUtterance(String(t).slice(0, 1200)); if (voice) u.voice = voice; u.lang = voice?.lang ?? 'en-GB'; u.rate = 1.02; u.pitch = 0.82; win.speechSynthesis.speak(u); } catch (e) { /* no voice */ } };
+  // the NATURAL voice (server MP3: ElevenLabs with a key, else Microsoft's free British neural voice) leads; the browser's own synthesis is the fallback
+  const neural = makeNeuralVoice(win); st.neural = prefs.neural !== false;
+  const builtIn = (t, rate, onEnd) => { const u = new win.SpeechSynthesisUtterance(String(t).slice(0, 1200)); if (voice) u.voice = voice; u.lang = voice?.lang ?? 'en-GB'; u.rate = 1.02 * rate; u.pitch = 0.82; if (onEnd) { u.onend = onEnd; u.onerror = onEnd; } win.speechSynthesis.speak(u); };
+  let sayCtl = null;
+  const say = (t, force = false) => {
+    try {
+      if (!st.voice && !force) return; win.speechSynthesis?.cancel(); sayCtl?.stop(); sayCtl = null;
+      if (st.neural) { const my = {}; sayCtl = my; neural.play(t, 1).then(c => { if (c) { if (sayCtl === my) sayCtl = c; else c.stop(); } else if (sayCtl === my && win.speechSynthesis) builtIn(t, 1); }); return; }
+      if (win.speechSynthesis) builtIn(t, 1);
+    } catch (e) { /* no voice */ }
+  };
 
   // the voice LEADS: speakAsync resolves when the narration has finished (or, with the voice off, after a reading-speed pause), so a director moves the picture on only then
   function speakAsync(text, rate = 1) {
     return new Promise(res => {
-      const t = String(text ?? ''), est = Math.max(2, t.split(/\s+/).filter(Boolean).length / 2.6) * 1000 / rate; let done = false, tid = 0, left = est, since = 0, paused = false;
+      const t = String(text ?? ''), est = Math.max(2, t.split(/\s+/).filter(Boolean).length / 2.6) * 1000 / rate; let done = false, tid = 0, left = est, since = 0, paused = false, nctl = null;
       const fin = () => { if (!done) { done = true; win.clearTimeout(tid); st.speakStop = null; st.speakCtl = null; res(); } };
-      const aloud = st.voice && win.speechSynthesis;
+      const aloud = st.voice && (st.neural || win.speechSynthesis);
       const arm = ms => { win.clearTimeout(tid); since = performance.now(); left = ms; tid = win.setTimeout(fin, ms); };
-      st.speakStop = () => { try { if (aloud) win.speechSynthesis.cancel(); } catch (e) { /* idle */ } fin(); };
+      st.speakStop = () => { try { nctl?.stop(); if (win.speechSynthesis) win.speechSynthesis.cancel(); } catch (e) { /* idle */ } fin(); };
       st.speakCtl = { stop: st.speakStop, pause: on => { if (done || paused === on) return; paused = on;
-        if (aloud) { try { on ? win.speechSynthesis.pause() : win.speechSynthesis.resume(); } catch (e) { /* idle */ } if (on) win.clearTimeout(tid); else arm(est * 2.5 + 4000); }
+        if (aloud) { try { if (nctl) nctl.pause(on); else on ? win.speechSynthesis.pause() : win.speechSynthesis.resume(); } catch (e) { /* idle */ } if (on) win.clearTimeout(tid); else arm(est * 2.5 + 8000); }
         else if (on) { win.clearTimeout(tid); left -= performance.now() - since; } else arm(Math.max(200, left)); } };
       if (!aloud) { arm(est); return; }
-      try { win.speechSynthesis.cancel(); const u = new win.SpeechSynthesisUtterance(t.slice(0, 1200)); if (voice) u.voice = voice; u.lang = voice?.lang ?? 'en-GB'; u.rate = 1.02 * rate; u.pitch = 0.82; u.onend = fin; u.onerror = fin; win.speechSynthesis.speak(u); arm(est * 2.5 + 4000); }
-      catch (e) { arm(est); }
+      arm(est * 2.5 + 12000);       // a safety net: the show never hangs on a voice that never ends
+      const fallback = () => { if (done) return; try { if (!win.speechSynthesis) { arm(est); return; } win.speechSynthesis.cancel(); builtIn(t, rate, fin); } catch (e) { arm(est); } };
+      if (st.neural) { win.speechSynthesis?.cancel(); neural.play(t, rate, fin).then(c => { if (done) { c?.stop(); return; } if (c) { nctl = c; if (paused) c.pause(true); } else fallback(); }); }
+      else fallback();
     });
   }
+  const voicePrefetch = t => { if (st.voice && st.neural) neural.prefetch(t); };
   const setCaption = (text, title = '') => { const c = $('cap'); if (!text) { c.hidden = true; return; } $('capt').textContent = title; $('capx').textContent = text; c.hidden = false; };
   const setCinema = (on, stop = null, ctl = null) => { root.classList.toggle('jv-cinema', !!on); st.cinemaStop = on ? stop : null; st.cinemaCtl = on ? ctl : null; if (!on) { setCaption(null); $('cpause').textContent = '⏸ PAUSE'; } };
   const cineAct = a => { const c = st.cinemaCtl; if (!c) return; try { c[a]?.(); } catch (e) { /* the director must never break the HUD */ } };
@@ -259,9 +274,10 @@ export async function openJarvis(win = window) {
   $('win').innerHTML = [1, 5, 20].map(w => `<button type="button" data-w="${w}" aria-pressed="${w === st.win}">${w}D</button>`).join(' ');
   $('view').innerHTML = [['globe', 'GLOBE'], ['candles', 'BOARD'], ['bubbles', 'BUBBLES'], ['skyline', 'SKYLINE'], ['orbit', 'ORBIT']].map(([id, l]) => `<button type="button" data-v="${id}" aria-pressed="${id === st.view}">${l}</button>`).join(' ');
   $('win').onclick = e => { const b = e.target.closest('button[data-w]'); if (b) { blip(520, 0.05); load(+b.dataset.w, st.idx >= 0 ? st.dates[st.idx] : null); } };
-  const switchView = v => { st.view = v; lsPut({ view: v }); setCamAll(); renderNav(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); blip(720, 0.06); };
+  const switchView = v => { if (st.view !== v) { try { extraViews[st.view]?.onLeave?.(xapi); } catch (e) { /* a view must never break the HUD */ } } st.view = v; lsPut({ view: v }); setCamAll(); renderNav(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); blip(720, 0.06); };
   $('view').onclick = e => { const b = e.target.closest('button[data-v]'); if (b) switchView(b.dataset.v); };
   $('nms').onclick = e => { const n = getNameStyle() === 'names' ? 'codes' : 'names'; setNameStyle(n); e.currentTarget.setAttribute('aria-pressed', String(n === 'names')); e.currentTarget.textContent = n === 'names' ? 'NAMES' : 'CODES'; blip(600); };
+  $('nv').onclick = e => { st.neural = !st.neural; lsPut({ neural: st.neural }); e.currentTarget.setAttribute('aria-pressed', String(st.neural)); say(st.neural ? 'Natural voice on.' : 'Built-in voice.', true); };
   $('snd').onclick = e => { st.sound = !st.sound; lsPut({ sound: st.sound }); e.currentTarget.setAttribute('aria-pressed', String(st.sound)); blip(600); };
 
   const REGLAB = { world: 'WORLD', americas: 'AMERICAS', europe: 'EUROPE', asia: 'ASIA-PACIFIC', 'mideast-africa': 'MIDDLE EAST & AFRICA' };
@@ -361,7 +377,7 @@ export async function openJarvis(win = window) {
     const it = e.target.closest('button[data-i]'); if (it) { goNav(it.dataset.k, it.dataset.i); return; }
     if (e.target.closest('button[data-side]')) { const comp = COMPANION[st.view]; if (comp) { const open = st.mod === comp; lsPut({ side: !open }); setMod(open ? 'chain' : comp); } }
   };
-  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
+  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), voicePrefetch: t => voicePrefetch(t), voiceInfo: () => neural.info(), caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
     globeTo: (lat, lon, zoom = 1) => { Object.assign(st.gl, { tlat: lat, tlon: lon, tzoom: zoom }); st.spin = false; }, flyTo: (x, z) => { st.cdTarget = { x, z }; }, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
   loadModules().then(list => {
     win.setTimeout(fitTop, 0);
@@ -673,7 +689,7 @@ export async function openJarvis(win = window) {
     undock() { if (!st.docked) return; st.docked = false; root.hidden = false; dock.hidden = true; last = performance.now(); resize(); raf = win.requestAnimationFrame(frame); blip(760, 0.06); },
     off() {
       if (!open) return; open = null; stopPlay(); win.cancelAnimationFrame(raf); win.clearInterval(wTimer); win.clearInterval(mTimer); bootTimers.forEach(t => win.clearTimeout(t)); setWake(false);
-      win.removeEventListener('resize', resize); doc.removeEventListener('keydown', onKey, true); win.speechSynthesis?.cancel(); root.remove(); dock.remove();
+      win.removeEventListener('resize', resize); doc.removeEventListener('keydown', onKey, true); win.speechSynthesis?.cancel(); st.speakStop?.(); neural.stopAll(); try { glDisposeAll(); } catch (e) { /* gone */ } root.remove(); dock.remove();
     },
   };
   const CINE_KEYS = { ' ': 'pause', ArrowRight: 'next', ArrowLeft: 'prev', '+': 'fast', '=': 'fast', '-': 'slow', n: 'next', p: 'prev' };
