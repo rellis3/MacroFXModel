@@ -1182,6 +1182,8 @@ function drawSrcs() { $('srcs').innerHTML = [...CORE, ['/api/morning-brief?mode=
 /** The header's freshness line (js/atlasFreshness.js): when the data was last refreshed and whether any feed is behind. Re-drawn as feeds arrive and every minute so the age stays true. */
 function drawFresh() {
   const el = $('fresh'); if (!el) return;
+  // until the second wave of analysis feeds has landed, most feeds simply have not arrived yet: say that, rather than listing them as behind
+  if (!D.__extra) { el.textContent = 'Loading the analysis feeds… (the freshness check runs when they have arrived)'; el.className = 'sub fresh'; return; }
   try { const r = atlasFreshness(nlSources(D.hmmAt ?? D.hmmh?.updatedAt ?? null), { nowMs: Date.now(), isoDate: ukDate() }); el.textContent = r.text; el.className = 'sub fresh ' + r.tone; }
   catch (e) { el.textContent = ''; }
 }
