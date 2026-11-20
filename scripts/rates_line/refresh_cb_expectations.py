@@ -157,6 +157,39 @@ def search(ib, only):
                     print('      (no futures listed for your account)')
 
 
+CARRY_MAX_DAYS = 5
+
+
+def carry_forward(banks, prev_path, now, max_days=CARRY_MAX_DAYS):
+    """Keep a contract the previous pull priced but this one could not (a dropped IBKR connection, a thin contract with no trade).
+
+    2026-11-19 17:30: the connection dropped mid-pull and CAD came back with only its two nearest CORRA contracts, overwriting a full
+    strip, so the bias engine had no 6-month CAD contract the next morning. A missing contract (or a whole missing bank) is now copied
+    from the previous pull UNCHANGED, with its own price date and 4-week price, and marked carried: True. Readers that check a
+    contract's own date (Bias Engine V2's C3) see its true age. Only contracts priced within `max_days` and not yet expired are
+    carried, so nothing is carried for long. Returns a list of what was carried, for the log and the payload."""
+    try:
+        prev = json.loads(Path(prev_path).read_text())
+    except Exception:
+        return []
+    out, cutoff, ym_now = [], (now - timedelta(days=max_days)).strftime('%Y-%m-%d'), now.strftime('%Y%m')
+    fresh = lambda r: str(r.get('date') or '') >= cutoff and str(r.get('month') or '') >= ym_now and r.get('rate') is not None
+    for ccy, pb in (prev.get('banks') or {}).items():
+        old = [r for r in (pb.get('rungs') or []) if fresh(r)]
+        if not old:
+            continue
+        if ccy not in banks:
+            banks[ccy] = {**pb, 'rungs': [{**r, 'carried': True} for r in old]}
+            out.append(f'{ccy} whole strip ({len(old)})')
+            continue
+        have = {r.get('local') for r in banks[ccy]['rungs']}
+        add = [{**r, 'carried': True} for r in old if r.get('local') not in have]
+        if add:
+            banks[ccy]['rungs'] = sorted(banks[ccy]['rungs'] + add, key=lambda r: str(r.get('month') or ''))
+            out.append(f"{ccy} {', '.join(r['local'] for r in add)}")
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--push', action='store_true')
@@ -207,7 +240,11 @@ def main():
     ib.disconnect()
     if a.discover:
         return
-    payload = {'asOf': now.strftime('%Y-%m-%dT%H:%M:%SZ'), 'source': 'IBKR futures (laptop pull, scripts/rates_line/refresh_cb_expectations.py)', 'banks': banks, 'errors': errors}
+    carried = carry_forward(banks, OUT / 'latest.json', now)
+    if carried:
+        print('carried forward from the previous pull (own dates kept): ' + '; '.join(carried))
+    payload = {'asOf': now.strftime('%Y-%m-%dT%H:%M:%SZ'), 'source': 'IBKR futures (laptop pull, scripts/rates_line/refresh_cb_expectations.py)', 'banks': banks, 'errors': errors,
+               **({'carried': carried} if carried else {})}
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / 'latest.json').write_text(json.dumps(payload, indent=1))
     print(f'wrote {OUT / "latest.json"}: {len(banks)} banks ({", ".join(banks) or "none"})')

@@ -2497,9 +2497,24 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         const history = histRow ? { sym: histRow.sym, label: histRow.label, ...histRow._series } : null;
         const lean = allInstruments.map(({ _series, ...rest }) => rest);
 
+        // A failed per-instrument fetch used to drop that instrument from the cache until the next rebuild (2026-11-18: EUR, JPY and CAD
+        // vanished from the bias engines' COT inputs). Carry its previous row forward instead, unchanged: it keeps its own reportDate, so a
+        // reader's age check still sees how old it is, and it is marked carried: true. Nothing is invented; a never-seen instrument stays absent.
+        let prevSeries = null;
+        const carried = [];
+        if (fetchErrors.length && env.FX_SCORES) {
+          try {
+            const prevRaw = await env.FX_SCORES.get(COT_KV.extremes);
+            const prev = prevRaw ? JSON.parse(prevRaw) : null, prevRows = prev?.data?.instruments ?? prev?.instruments ?? [];
+            const have = new Set(lean.map(r => r.sym));
+            for (const r of prevRows) if (r?.sym && !have.has(r.sym)) { lean.push({ ...r, carried: true }); carried.push(r.sym); }
+            if (carried.length) { const sr = await env.FX_SCORES.get(COT_KV.series); prevSeries = sr ? JSON.parse(sr)?.series ?? null : null; }
+          } catch { /* no previous cache: the partial result stands, its fetchErrors say why */ }
+        }
+
         const payload2 = { ok: true, instruments: lean, reportDate: reportDate2,
           count: lean.length, history,
-          fetchErrors: fetchErrors.length ? fetchErrors : undefined };
+          fetchErrors: fetchErrors.length ? fetchErrors : undefined, ...(carried.length ? { carried } : {}) };
 
         if (env.FX_SCORES) {
           await env.FX_SCORES.put(COT_KV.extremes, JSON.stringify({ ts: Date.now(), data: payload2 }),
@@ -2508,6 +2523,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           // instrument's 200-week history a KV read away instead of a CFTC round trip.
           const series = {};
           for (const r of allInstruments) if (r._series) series[r.sym] = { sym: r.sym, label: r.label, ...r._series };
+          for (const sym of carried) if (!series[sym] && prevSeries?.[sym]) series[sym] = prevSeries[sym];   // a carried row keeps its old series
           await env.FX_SCORES.put(COT_KV.series, JSON.stringify({ ts: Date.now(), series }),
             { expirationTtl: 8 * 86400 }).catch(() => {});
         }
