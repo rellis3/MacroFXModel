@@ -10,6 +10,7 @@ import { CHAIN_NODES } from '../macroChain.js';
 import { marketName, getNameStyle, setNameStyle } from './jarvisNames.js';
 import { candleRows, candleLayout, candleBox, boardSummary, ROWS as CD_ROWS } from './jarvisCandles.js';
 import { EXTRA, loadModules, viewsOf } from './jarvisModules.js';
+import { SECTIONS, COMPANION, labelOf, itemsFor, activeSection } from './jarvisNav.js';
 import { shortLabel } from './chainBoard.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -83,6 +84,11 @@ const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-ind
 #${ID}.jv-compact .jv-cap{padding:50px 14px 88px}#${ID}.jv-compact .jv-cap .x{font-size:15px;line-height:1.45}#${ID}.jv-compact .jv-cap .t{font-size:10px;letter-spacing:.3em;margin-bottom:6px}
 #${ID}.jv-compact .jv-cine{bottom:8px;width:calc(100vw - 16px);flex-wrap:wrap;justify-content:center;gap:5px}#${ID}.jv-compact .jv-cinexit{right:10px;top:10px;font-size:10px}
 #${ID}.jv-compact .jv-br{width:20px;height:20px}
+#${ID} .jv-nav{display:flex;flex-direction:column;gap:6px;width:100%;order:2;pointer-events:auto}#${ID} .jv-nav-row{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
+#${ID} .jv-sec{font-size:12px;letter-spacing:.16em;padding:6px 18px}#${ID} .jv-sec[aria-pressed="true"]{background:color-mix(in srgb,var(--jva) 22%,transparent)}
+#${ID} .jv-it{font-size:11px}#${ID} .jv-it.tool{border-style:dashed}#${ID} .jv-it.side{border-color:var(--jva);color:var(--jva)}#${ID} .jv-nav-hint{font-size:10px;letter-spacing:.1em;color:var(--tx2)}
+#${ID} #${ID}-win,#${ID} #${ID}-opts{order:1}#${ID} .jv-menu>span[hidden]{display:none!important}
+#${ID}.jv-compact .jv-menu>span.jv-mh:first-child{order:-2}#${ID}.jv-compact .jv-nav{order:-1}#${ID}.jv-compact .jv-sec{font-size:10px;padding:5px 10px}
 #${ID}.jv-clean .jv-hud,#${ID}.jv-clean .jv-reg,#${ID}.jv-clean .jv-boot{opacity:0;pointer-events:none}
 #${ID}.jv-noscan .jv-scan{display:none}
 #${ID} canvas.jv-sw{animation:jv-sw .55s ease-out}@keyframes jv-sw{0%{filter:brightness(2.4) blur(5px) saturate(1.6)}100%{filter:none}}
@@ -98,8 +104,8 @@ export async function openJarvis(win = window) {
   const root = doc.createElement('div'); root.id = ID; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', 'Jarvis: the macro chain');
   root.innerHTML = `<style>${CSS}</style><canvas id="${ID}-cv"></canvas><div class="jv-bs" id="${ID}-bs"><div class="jv-bs-t"><h1 id="${ID}-bst">J.A.R.V.I.S.</h1><div class="jv-bs-sub blink" id="${ID}-bss">&nbsp;</div></div><div class="jv-bs-b"><div class="jv-bs-log" id="${ID}-bslog"></div><div class="jv-bar"><i id="${ID}-bsbar"></i></div></div></div><div class="jv-scan"></div><div class="jv-vig"></div><i class="jv-br tl"></i><i class="jv-br tr"></i><i class="jv-br bl"></i><i class="jv-br brr"></i>
 <div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">desk intelligence · description only</span><span class="jv-sp"></span><span class="jv-cur" id="${ID}-cur"></span><button type="button" class="jv-menubtn" id="${ID}-menubtn" aria-expanded="false">☰ MENU</button>
-<div class="jv-menu" id="${ID}-menu"><span class="jv-mh">PANELS</span><span id="${ID}-mods"></span><span class="jv-mh">TIME WINDOW</span><span id="${ID}-win"></span><span class="jv-mh">VIEW</span><span id="${ID}-view"></span><span class="jv-mh">OPTIONS</span><span>
-<button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></span></div></div>
+<div class="jv-menu" id="${ID}-menu"><span class="jv-mh">SECTIONS</span><div class="jv-nav" id="${ID}-nav"></div><span class="jv-mh">TIME WINDOW</span><span id="${ID}-win"></span><span class="jv-mh">OPTIONS</span><span id="${ID}-opts">
+<button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></span><span id="${ID}-mods" hidden></span><span id="${ID}-view" hidden></span></div></div>
 <div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-cine" id="${ID}-cine"><button type="button" data-c="prev" title="Back one scene (left arrow)">⏮ BACK</button><button type="button" data-c="pause" id="${ID}-cpause" title="Pause or resume (space)">⏸ PAUSE</button><button type="button" data-c="next" title="Skip this scene (right arrow)">SKIP ⏭</button><button type="button" data-c="slow" title="Slower (minus)">−</button><span id="${ID}-crate">1.0×</span><button type="button" data-c="fast" title="Faster (plus)">+</button></div><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
 <div class="jv-scrub" id="${ID}-scrub"><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button><button type="button" id="${ID}-expl" title="Describe what was going on around this day (one model call)">EXPLAIN THIS DAY</button></div>
 <div class="jv-foot">drag to turn · wheel to zoom · click a market · Esc docks · none of this is a forecast</div>`;
@@ -140,7 +146,7 @@ export async function openJarvis(win = window) {
   }
   const resize = () => {
     const cmp = root.clientWidth < 700; st.compact = cmp; root.classList.toggle('jv-compact', cmp); if (!cmp) root.classList.remove('jv-menu-open'); const d = Math.min(2, win.devicePixelRatio || 1); st.w = root.clientWidth; st.h = root.clientHeight; cv.width = st.w * d; cv.height = st.h * d; ctx.setTransform(d, 0, 0, d, 0, 0); };
-  resize(); win.addEventListener('resize', () => { resize(); fitTop(); }); fitTop();
+  resize(); win.addEventListener('resize', () => { resize(); fitTop(); }); fitTop(); try { if (win.ResizeObserver) new win.ResizeObserver(fitTop).observe(root.querySelector('.jv-top')); } catch (e) { /* layout only */ }
 
   // ── the awakening: a heartbeat in the dark, the core ignites, status lines tick through, a greeting, then the HUD fades in ──
   const bootTimers = [];
@@ -253,7 +259,7 @@ export async function openJarvis(win = window) {
   $('win').innerHTML = [1, 5, 20].map(w => `<button type="button" data-w="${w}" aria-pressed="${w === st.win}">${w}D</button>`).join(' ');
   $('view').innerHTML = [['globe', 'GLOBE'], ['candles', 'BOARD'], ['bubbles', 'BUBBLES'], ['skyline', 'SKYLINE'], ['orbit', 'ORBIT']].map(([id, l]) => `<button type="button" data-v="${id}" aria-pressed="${id === st.view}">${l}</button>`).join(' ');
   $('win').onclick = e => { const b = e.target.closest('button[data-w]'); if (b) { blip(520, 0.05); load(+b.dataset.w, st.idx >= 0 ? st.dates[st.idx] : null); } };
-  const switchView = v => { st.view = v; lsPut({ view: v }); setCamAll(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); blip(720, 0.06); };
+  const switchView = v => { st.view = v; lsPut({ view: v }); setCamAll(); renderNav(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); blip(720, 0.06); };
   $('view').onclick = e => { const b = e.target.closest('button[data-v]'); if (b) switchView(b.dataset.v); };
   $('nms').onclick = e => { const n = getNameStyle() === 'names' ? 'codes' : 'names'; setNameStyle(n); e.currentTarget.setAttribute('aria-pressed', String(n === 'names')); e.currentTarget.textContent = n === 'names' ? 'NAMES' : 'CODES'; blip(600); };
   $('snd').onclick = e => { st.sound = !st.sound; lsPut({ sound: st.sound }); e.currentTarget.setAttribute('aria-pressed', String(st.sound)); blip(600); };
@@ -333,14 +339,35 @@ export async function openJarvis(win = window) {
     for (const b of $('mods').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.m === m));
     $('pane').hidden = m === 'chain'; $('pane').onclick = null; $('boot').style.display = m === 'chain' ? '' : 'none';
     if (m === 'chain') showCard(); else { $('card').hidden = true; R[m]?.(); }
+    renderNav();
   }
   $('mods').onclick = e => { const b = e.target.closest('button[data-m]'); if (b) setMod(b.dataset.m); };
+  // ── the sections: six, each holding its pictures AND its panels; a picture with a natural companion list opens it beside it ──
+  function renderNav() {
+    const nav = $('nav'); if (!nav) return;
+    const has = (k, id) => !!(k === 'view' ? $('view').querySelector(`[data-v="${id}"]`) : $('mods').querySelector(`[data-m="${id}"]`));
+    const act = activeSection(st.mod, st.view), items = itemsFor(act, has), comp = COMPANION[st.view] ?? null, hasComp = comp && has('tool', comp);
+    nav.innerHTML = `<div class="jv-nav-row">${SECTIONS.map(x => `<button type="button" class="jv-sec" data-s="${x.id}" aria-pressed="${x.id === act.id}">${x.label}</button>`).join('')}</div>`
+      + `<div class="jv-nav-row">${items.map(i => `<button type="button" class="jv-it ${i.kind}" data-k="${i.kind}" data-i="${i.id}" aria-pressed="${i.kind === 'view' ? (st.mod === 'chain' && st.view === i.id) : st.mod === i.id}" title="${i.kind === 'view' ? 'A picture' : 'A panel of text and numbers'}">${esc(i.label)}</button>`).join('')}`
+      + `${hasComp ? `<button type="button" class="jv-it side" data-side="1" aria-pressed="${st.mod === comp}" title="The list that goes with this picture">${st.mod === comp ? '◂ HIDE' : '▸ SHOW'} ${esc(labelOf('tool', comp) ?? 'LIST')}</button>` : ''}</div>`
+      + `<div class="jv-nav-hint">${esc(act.hint)}</div>`;
+    $('cur').textContent = `${act.label} · ${(st.mod !== 'chain' ? labelOf('tool', st.mod) : labelOf('view', st.view)) ?? ''}`;
+    win.setTimeout(fitTop, 0);
+  }
+  function autoCompanion() { const comp = COMPANION[st.view]; if (!comp || st.compact || lsGet().side === false || st.mod !== 'chain' || st.cinemaStop || !$('mods').querySelector(`[data-m="${comp}"]`)) return; setMod(comp); }
+  function goNav(kind, id) { if (kind === 'view') { if (st.mod !== 'chain') setMod('chain'); switchView(id); autoCompanion(); } else setMod(id); if (st.compact) closeMenu(); }
+  $('nav').onclick = e => {
+    const sec = e.target.closest('button[data-s]'); if (sec) { const x = SECTIONS.find(y => y.id === sec.dataset.s); goNav(x.home[0], x.home[1]); return; }
+    const it = e.target.closest('button[data-i]'); if (it) { goNav(it.dataset.k, it.dataset.i); return; }
+    if (e.target.closest('button[data-side]')) { const comp = COMPANION[st.view]; if (comp) { const open = st.mod === comp; lsPut({ side: !open }); setMod(open ? 'chain' : comp); } }
+  };
   const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
     globeTo: (lat, lon, zoom = 1) => { Object.assign(st.gl, { tlat: lat, tlon: lon, tzoom: zoom }); st.spin = false; }, flyTo: (x, z) => { st.cdTarget = { x, z }; }, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
   loadModules().then(list => {
     win.setTimeout(fitTop, 0);
     for (const v of viewsOf()) { if (!$('view').querySelector(`[data-v="${v.id}"]`)) $('view').insertAdjacentHTML('beforeend', ` <button type="button" data-v="${esc(v.id)}" aria-pressed="${v.id === st.view}">${esc(v.label)}</button>`); extraViews[v.id] = v; }
     if (extraViews[st.view]) setCamAll();
+    renderNav();
     for (const m of list) { R[m.id] = () => m.render($('pane'), xapi); if (!(Array.isArray(m.views) && m.views.length) && !$('mods').querySelector(`[data-m="${m.id}"]`)) $('mods').insertAdjacentHTML('beforeend', ` <button type="button" data-m="${esc(m.id)}" aria-pressed="false">${esc(m.label)}</button>`); }
     fitTop();
   });
@@ -654,7 +681,7 @@ export async function openJarvis(win = window) {
     if (e.key === 'Escape' && st.cinemaStop) { e.preventDefault(); e.stopPropagation(); st.cinemaStop(); return; } if (e.key === 'Escape' && !st.docked) { e.preventDefault(); e.stopPropagation(); api.dock(); } };
   doc.addEventListener('keydown', onKey, true);
   open = api;
-  setCamAll(); $('reg').hidden = st.view !== 'globe'; runBoot(); raf = win.requestAnimationFrame(frame);
+  setCamAll(); renderNav(); $('reg').hidden = st.view !== 'globe'; runBoot(); raf = win.requestAnimationFrame(frame);
   await load(st.win);
   setWatch(st.watch);
   return true;
