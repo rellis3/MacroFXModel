@@ -23,7 +23,7 @@ registerJarvisModule({
 <div class="jv-row"><button type="button" data-s="go">▶ START THE SHOW</button><button type="button" data-s="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button><button type="button" data-s="voice" aria-pressed="${prefs.voice !== false}">VOICE ${prefs.voice !== false ? 'ON' : 'OFF'}</button><label class="jv-sub">length <select data-s="len"><option value="quick" selected>morning brief (about 2 min)</option><option value="full">full tour (everything)</option></select></label><label class="jv-sub">pace <select data-s="rate"><option value="0.9">calm</option><option value="1" selected>normal</option><option value="1.15">brisk</option></select></label></div>
 <p class="jv-sub" data-s="status">Ready. With the voice off it plays as subtitles at reading speed.</p>
 <p class="jv-sub">RECORD AS VIDEO: the browser will ask what to share. Choose <b>This tab</b> and tick <b>Also share tab audio</b>, then the show plays and a video file downloads at the end (MP4 where your browser can, otherwise WebM). The voice only reaches the video if it plays through the browser: a Google voice usually does, a built-in Windows voice may not. Keep VOICE ON.</p>`;
-    const q = s => pane.querySelector(`[data-s="${s}"]`), status = t => { const e = q('status'); if (e) e.textContent = t; };
+    const q = s => pane.querySelector(`[data-s="${s}"]`), status = (t, bad = false) => { const e = q('status'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--gold)' : ''; e.style.fontSize = bad ? '13px' : ''; } };
     q('rate').value = String(prefs.rate ?? 1); q('len').value = prefs.len ?? 'quick'; q('len').onchange = e => lsPut({ len: e.target.value });
     q('voice').onclick = e => { const on = !(lsGet().voice !== false); lsPut({ voice: on }); e.currentTarget.setAttribute('aria-pressed', String(on)); e.currentTarget.textContent = `VOICE ${on ? 'ON' : 'OFF'}`; };
     q('rate').onchange = e => lsPut({ rate: +e.target.value });
@@ -63,7 +63,8 @@ registerJarvisModule({
       const extra = {}; await Promise.all(SHOW_HOOKS.map(async h => { try { extra[h.id] = (await h.prepare?.(api)) ?? null; } catch (e) { extra[h.id] = null; } }));
       if (my !== token) return;
       const chain = st.sum ? { holding: st.sum.holding, broken: st.sum.broken, quiet: st.sum.quiet, headline: st.sum.headline } : null;
-      const scenes = buildScenes({ now: new Date(), movers: topMovers(rows, 5), board: rows.length ? boardSummary(rows) : null, chain, events, extra, mode: q('len').value });
+      const custom = api.win.__jarvisCustomScenes; api.win.__jarvisCustomScenes = null;      // the NEWSLETTER module hands over its own scenes
+      const scenes = custom?.length ? custom : buildScenes({ now: new Date(), movers: topMovers(rows, 5), board: rows.length ? boardSummary(rows) : null, chain, events, extra, mode: q('len').value });
       ctl.rate = +q('rate').value || 1; ctl.paused = false; ctl.jump = null; st.voice = lsGet().voice !== false;
       const sync = () => api.cineLabel(ctl.rate, ctl.paused);
       const steps = [0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -89,11 +90,28 @@ registerJarvisModule({
     }
     q('go').onclick = () => { stop(); run(); };
     // record the tab (picture, subtitles, sound) while the show plays, then offer the file; needs the browser's screen-capture permission, so it cannot start by itself
+    // A phone's browser cannot record its own tab at all, so this mode gets the show ready for the phone's OWN screen recorder: it hides every control, counts down, and plays the show clean.
+    // Two presses: the first explains (start the recorder), the second starts the show. A tap on the screen brings the controls back, which is also how you stop it.
+    let armed = false;
+    async function phoneRecord() {
+      const root = api.doc.getElementById(api.ID);
+      if (!armed) {
+        armed = true; q('rec').textContent = '▶ START NOW (I AM RECORDING)';
+        status('This phone browser cannot record the page itself. So: 1) START YOUR PHONE\'S SCREEN RECORDER first (swipe down from the top, tap Screen recorder; choose "Media sounds" so the voice is recorded). 2) Come back here and press the button again. Jarvis counts down, hides all the buttons and plays the show. Tap the screen to stop.', true);
+        return;
+      }
+      armed = false; q('rec').textContent = '⏺ RECORD AS VIDEO'; stop();
+      const my = ++token; api.cinema(true, () => { stop(); root?.classList.remove('jv-rec'); status('Ended.'); }, null); root?.classList.add('jv-rec');
+      root?.addEventListener('pointerdown', () => { root.classList.remove('jv-rec'); }, { once: true });
+      for (let n = 3; n >= 1 && my === token; n--) { api.caption(String(n), 'RECORDING STARTS'); await sleep(1000); }
+      if (my !== token) return; api.caption(null); await run(); root?.classList.remove('jv-rec');
+      status('Finished. Stop your screen recorder now; the video is in your phone\'s gallery.');
+    }
     q('rec').onclick = async () => {
       const md = navigator.mediaDevices, Rec = globalThis.MediaRecorder;
-      if (!md?.getDisplayMedia || !Rec) { status('This browser cannot record a tab. Use the computer\'s own screen recorder (on Windows: Win + G) while the show plays.'); return; }
-      const type = pickRecorderType(t => Rec.isTypeSupported(t)); if (!type) { status('This browser has no video format it can record in.'); return; }
-      let stream; try { stream = await md.getDisplayMedia({ video: { frameRate: 30 }, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include', systemAudio: 'include' }); } catch (e) { status('Recording was not started (the share window was closed).'); return; }
+      if (!md?.getDisplayMedia || !Rec) return phoneRecord();
+      const type = pickRecorderType(t => Rec.isTypeSupported(t)); if (!type) { status('This browser has no video format it can record in. Use the computer\'s own screen recorder (Windows: Win + G) while the show plays.', true); return; }
+      let stream; try { stream = await md.getDisplayMedia({ video: { frameRate: 30 }, audio: true, preferCurrentTab: true, selfBrowserSurface: 'include', systemAudio: 'include' }); } catch (e) { status('Recording was not started: the share window was closed or refused. Press the button again and choose This tab.', true); return; }
       const hasAudio = stream.getAudioTracks().length > 0, chunks = [], rec = new Rec(stream, { mimeType: type.mime, videoBitsPerSecond: 6_000_000 }), root = api.doc.getElementById(api.ID);
       rec.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
       const done = new Promise(r => { rec.onstop = r; });

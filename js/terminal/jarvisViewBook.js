@@ -39,10 +39,10 @@ function draw(ctx, g, api) {
   for (let i = -11; i <= 11; i++) { const u = i * 0.19; for (const [a, b] of [[[-2.2, 0, u], [2.2, 0, u]], [[u, 0, -1.4], [u, 0, 1.4]]]) { const p = P(...a), q = P(...b); ctx.globalAlpha = 0.08 * fade; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); } }
   { const z = ((t * 0.18) % 1) * 2.8 - 1.4, p = P(-2.2, 0, z), q = P(2.2, 0, z); ctx.globalAlpha = 0.35 * fade; ctx.strokeStyle = C.cy; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
   ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillStyle = C.tx2;
-  ROWS.forEach(([title], ri) => { if (!title) return; const p = P(-1.55, 0, (ri - (ROWS.length - 1) / 2) * 0.45); ctx.globalAlpha = 0.6 * fade; ctx.fillText(title, p.x, p.y); });
+  ROWS.forEach(([title], ri) => { if (!title || g.compact) return; const p = P(-1.55, 0, (ri - (ROWS.length - 1) / 2) * 0.45); ctx.globalAlpha = 0.6 * fade; ctx.fillText(title, p.x, p.y); });
   // the towers, far to near
   const items = B.rows.map(r => { const pos = S.layout[r.key]; if (!pos) return null; const bx = towerBox(r, pos), pts = bx.pts.map(q => P(q[0], q[1], q[2])), tip = P(...bx.tip), base = P(pos.x, 0, pos.z), mb = moveBar(r, pos); return { r, pos, bx, pts, tip, base, mb, mpts: mb?.pts.map(q => P(q[0], q[1], q[2])) }; }).filter(Boolean).sort((a, b) => b.base.z - a.base.z);
-  const selK = st.sel;
+  const selK = st.sel, lab = g.compact ? new Set(items.filter(o => o.r.call !== 0).sort((a, b) => (b.base.y - b.tip.y) - (a.base.y - a.tip.y)).slice(0, 3).map(o => o.r.key)) : null;   // phone: only the three tallest calls are named
   for (const o of items) {
     const { r } = o, call = r.call !== 0, c = r.state === 'long' ? C.up : r.state === 'short' ? C.dn : r.state === 'neutral' ? C.tx : C.tx2, fa = fade * Math.min(1, Math.max(0.3, o.base.s * 0.9));
     if (call) { const rr = (16 + 6 * Math.sin(t * 2.2 + o.pos.x * 9)) * o.base.s; ctx.globalAlpha = 0.28 * fa; ctx.strokeStyle = c; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(o.base.x, o.base.y, rr * 1.6, rr * 0.7, 0, 0, 6.2832); ctx.stroke(); }
@@ -53,7 +53,7 @@ function draw(ctx, g, api) {
     else g.poly(o.bx.faces.top, o.pts, c, (call ? 0.8 : 0.3) * fa, c);
     if (r.state === 'neutral') { ctx.globalAlpha = 0.9 * fa; ctx.strokeStyle = c; ctx.lineWidth = 1.6; const p = o.pts; ctx.beginPath(); ctx.moveTo(p[4].x, p[4].y); for (const i of [5, 6, 7]) ctx.lineTo(p[i].x, p[i].y); ctx.closePath(); ctx.stroke(); }
     if (call) { const gr = ctx.createRadialGradient(o.tip.x, o.tip.y, 1, o.tip.x, o.tip.y, 30 * o.tip.s); gr.addColorStop(0, c); gr.addColorStop(1, 'transparent'); ctx.globalAlpha = (0.4 + 0.12 * Math.sin(t * 3 + o.pos.z * 7)) * fa; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(o.tip.x, o.tip.y, 30 * o.tip.s, 0, 6.2832); ctx.fill(); }
-    if (call || selK === r.key || g.zoom > 1.5) {
+    if (g.compact ? (lab.has(r.key) || selK === r.key) : (call || selK === r.key || g.zoom > 1.5)) {
       ctx.globalAlpha = fa * (call ? 1 : 0.6); ctx.fillStyle = C.tx; ctx.font = `${Math.round(9 + 3 * Math.min(1.6, o.tip.s))}px ui-monospace,monospace`; ctx.textAlign = 'center';
       ctx.fillText(marketName(r.key, { short: true }), o.tip.x, o.tip.y + (r.call < 0 ? 14 * o.tip.s + 8 : -16 * o.tip.s));
     }
@@ -61,6 +61,7 @@ function draw(ctx, g, api) {
   }
   // the selected card: the desk's own words, kept apart from everything else
   const sel = B.rows.find(r => r.key === selK);
+  if (g.compact) { bookCompact(ctx, g, B, sel); ctx.restore(); return; }
   ctx.textAlign = 'right'; ctx.fillStyle = C.tx2; ctx.font = '11px ui-monospace,monospace'; ctx.globalAlpha = 0.85 * fade;
   const L = ['BOOK  ·  the desk\'s own written calls' + (B.date ? `, ${B.date}` : '') + (B.date && B.date !== todayLondon() ? '  (not today: the latest run)' : ''), B.partial ? 'HEIGHT  ·  conviction is not in the summary feed: every call stands one step tall' : 'HEIGHT  ·  the card\'s conviction: low, medium or high (thickness = its size)', 'GREEN rises = long  ·  RED hangs = short  ·  low plinth = flat: solid "Neutral - reviewed", dashed "Not reviewed"', 'CYAN BAR  ·  what the market actually did today against its usual move (not a verdict on the call)', 'Not shown: the bias engine\'s lean (no proven direction skill). This is a description, not a forecast.'];
   L.forEach((s, i) => ctx.fillText(s, W - 24, H - 205 + i * 16));
@@ -98,3 +99,17 @@ registerJarvisModule({
   },
   views: [{ id: 'book', label: 'BOOK', draw: (ctx, g, api) => draw(ctx, { ...g, zoom: api.st.zoom }, api), onEnter: api => { loadBook(api, true); } }],
 });
+
+/** Phone: a three-line legend above the transport bar and the selected card as a full-width block at the top. */
+function bookCompact(ctx, g, B, sel) {
+  const { C, fade, W, H } = g; ctx.textAlign = 'left'; ctx.font = '10px ui-monospace,monospace'; ctx.globalAlpha = 0.85 * fade; ctx.fillStyle = C.tx2;
+  ctx.fillText(`BOOK · the desk's own written calls${B.date ? `, ${B.date}` : ''}`, 14, H - 116);
+  ctx.fillText("green long · red short · plinth flat · cyan bar = today's move", 14, H - 100);
+  ctx.fillText("The desk's own calls: a description, not a forecast.", 14, H - 84);
+  if (sel) {
+    const x = 14, y = 100; ctx.font = '600 11px ui-monospace,monospace'; ctx.globalAlpha = 0.95 * fade; ctx.fillStyle = C.tx;
+    ctx.fillText(`${marketName(sel.key, { short: true })} · desk call: ${word(sel)}${sel.strong ? ' (strong)' : ''}`, x, y); ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace';
+    ctx.fillText(`conviction ${convWord({ conviction: sel.conv }) ?? 'n/a'} · today ${sel.move == null ? 'no read' : `${sel.move >= 0 ? '+' : ''}${sel.move.toFixed(1)}x usual`}`, x, y + 15);
+    wrap(ctx, sel.why || 'The card carries no written thesis.', W - 28).slice(0, 3).forEach((s, i) => ctx.fillText(s, x, y + 30 + i * 13));
+  }
+}

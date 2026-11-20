@@ -1,0 +1,35 @@
+{
+ "sessions": 49,
+ "periods": 637,
+ "proxy_vs_real_flow_corr": 0.5021165642558131,
+ "real_flow_vs_period_return_corr": 0.43166111548903835,
+ "proxy_flow_vs_period_return_corr": 0.8701789038922783,
+ "D1_extension_vs_real_flow_corr": 0.42718738639976905,
+ "D1_extension_vs_proxy_flow_corr": 0.5241875193681912,
+ "D1_sign_agree_real": 0.6149425287356322,
+ "n_extending": 174,
+ "D3_real_cvd_agrees_with_extension": 0.5945945945945946,
+ "D3_proxy_cvd_agrees_with_extension": 0.7837837837837838,
+ "n_one_sided": 37,
+ "real_cvd_vs_session_return_sign_agree": 0.5714285714285714,
+ "day_types": {
+  "normal variation": 24,
+  "normal": 11,
+  "neutral extreme": 6,
+  "trend": 4,
+  "one-sided other": 2,
+  "neutral centre": 2
+ },
+ "Q4_real_follow": {
+  "n": 14,
+  "slope_real": 0.10698772855500509,
+  "slope_proxy_same_events": -0.29339698331346037,
+  "corr_real_vs_proxy_x": 0.14917772339818694
+ },
+ "Q4_real_fade": {
+  "n": 29,
+  "slope_real": 0.1465471466895572,
+  "slope_proxy_same_events": 0.20085357510536989,
+  "corr_real_vs_proxy_x": 0.25374045560561614
+ }
+}

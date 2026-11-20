@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TPO Research</title>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --fg:#17202b; --muted:#5b6675; --line:#dde1e7; --grid:#e8ebf0;
+  --accent:#2457a6; --bar:#c0702a; --zero:#5b6675; --chip:#eaeef4;
+  --display:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+  --mono:ui-monospace,Consolas,"SF Mono",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f141b; --panel:#161d27; --fg:#e4e9f0; --muted:#97a3b3; --line:#2a3442; --grid:#202a36;
+  --accent:#7aa7ec; --bar:#e59a55; --zero:#97a3b3; --chip:#1f2935; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141b; --panel:#161d27; --fg:#e4e9f0; --muted:#97a3b3; --line:#2a3442; --grid:#202a36;
+  --accent:#7aa7ec; --bar:#e59a55; --zero:#97a3b3; --chip:#1f2935; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--display);font-size:15px;line-height:1.55;margin:0;
+  padding:0 max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px))}
+html,body{overflow-x:hidden}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:34px}
+h1,h2,h3{margin:0;line-height:1.2;text-wrap:balance}
+h1{font-size:clamp(26px,5vw,38px)} h2{font-size:21px} h3{font-size:16px}
+p{margin:0;max-width:72ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:12px;padding-top:20px}
+.lede{font-size:17px;max-width:66ch}
+.muted{color:var(--muted)}
+.answer{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.answer div{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.answer b{font-size:17px}
+.answer span{color:var(--muted);font-size:14px}
+.verdict{display:inline-block;align-self:flex-start;font:600 11.5px var(--mono);letter-spacing:.06em;padding:2px 8px;border-radius:5px;border:1px solid var(--muted);color:var(--muted)}
+section{display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--muted);font-size:12.5px}
+td{font-family:var(--mono);font-size:12.5px}
+td:first-child{font-family:var(--display);font-size:13.5px}
+svg text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.log{display:flex;flex-direction:column;font-size:14px}
+.log div{display:grid;grid-template-columns:112px 1fr;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
+.log time{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.note{border-left:3px solid var(--bar);padding:4px 0 4px 12px}
+a{color:var(--accent)}
+@media (max-width:600px){.log div{grid-template-columns:1fr;gap:2px}}
+</style>
+</head>
+<body>
+<div id="commandHub"></div>
+<script src="js/commandHub.js"></script>
+<div class="wrap">
+<header>
+  <div class="eyebrow">Research · TPO / Market Profile · NQ ES YM RTY · 2016 – 2026-08-21</div>
+  <h1>Does the initial balance tell you where the day goes?</h1>
+  <p class="lede">Steidlmayer's rule: if price breaks the first hour's range and <i>holds</i> outside it for an hour, follow it to the close. If it pokes out and closes back inside, fade it. We tested this with real futures volume, a flow proxy, and the 30-minute candles, against the same clock time on other days.</p>
+  <p id="headline" class="muted">Loading…</p>
+</header>
+
+<section>
+  <h2>The answer</h2>
+  <div class="answer" id="cards"></div>
+</section>
+
+<section>
+  <h2>Every scored cell</h2>
+  <p class="muted">Each row is the effect compared with the same time and direction on other days, with its 95% interval. The dashed line is the registered pass bar (0.15σ to the close, or 0.15σ per standard deviation of flow or candle strength). A pass needs the dot past the bar, a Holm-corrected p under 0.05, and the same sign in 2016–20 and 2021–26.</p>
+  <div class="panel"><div class="scroll"><svg id="forest" role="img" aria-label="Forest plot of the 16 scored cells"></svg></div></div>
+</section>
+
+<section>
+  <h2>TPO against order flow</h2>
+  <p>Do the letters and the flow tell the same story? Over the whole history we only have a <b>flow proxy</b>, which infers buying and selling from each minute's price change. Because it is built from price, it agrees with the TPO by construction. The real test is the <b>exchange's own aggressor flag</b>: 51 NQ sessions bought from Databento (12 Jun – 21 Aug 2026).</p>
+  <div class="panel"><div class="scroll"><table id="flowTable"></table></div>
+  <p class="note muted" id="flowNote"></p></div>
+</section>
+
+<section>
+  <h2>Day types (Dalton, mechanical)</h2>
+  <p class="muted">How the day ended, sorted by how far it travelled beyond the first hour. Trend and neutral-extreme days close almost a full IB width from the TPO POC. Every other type closes near it. That is a description of what happened, not something knowable at 10:30.</p>
+  <div class="panel"><div class="scroll"><table id="typeTable"></table></div></div>
+</section>
+
+<section>
+  <h2>Candles, the trades, and the profiles</h2>
+  <div class="panel"><div class="scroll"><table id="tradeTable"></table></div></div>
+  <div class="panel"><div class="scroll"><table id="miscTable"></table></div></div>
+</section>
+
+<section>
+  <h2>Running log</h2>
+  <div class="log">
+    <div><time>2026-11-18</time><span><b>Registered.</b> Initial-balance acceptance/rejection on NQ and ES, with a placebo matched on time and side (<a href="forge/TPO_INITIAL_BALANCE_PREREG.md">prereg</a>). The TPO view went live on the footprint page the same day.</span></div>
+    <div><time>2026-11-20</time><span><b>A1: order flow and candles added before any outcome.</b> Flow proxy and close-location slopes scored, plus a TPO-against-flow cross-comparison.</span></div>
+    <div><time>2026-11-20</time><span><b>A2: positive control passed.</b> A random walk returned zero in every cell. A planted +0.20σ came back as +0.215σ. 16 statistics cells powered (MDE 0.115–0.138σ); the 4 trade cells underpowered by design (MDE 0.18–0.35R).</span></div>
+    <div><time>2026-11-20</time><span><b>Scored.</b> Results below. A3 (post-hoc, description only) swapped the thin tick-rule file for the 51 Databento sessions with the real aggressor flag.</span></div>
+  </div>
+</section>
+<p class="muted">Files: <a href="analysis/output/tpo-initial-balance/RESULTS.md">RESULTS.md</a> · <a href="analysis/output/tpo-initial-balance/results.json">results.json</a> · <a href="footprint.html">footprint (TPO view, key T)</a></p>
+</div>
+
+<script>
+const f = (x, d = 3) => x == null || !isFinite(x) ? '—' : (x > 0 ? '+' : '') + x.toFixed(d);
+const pct = x => x == null || !isFinite(x) ? '—' : (100 * x).toFixed(1) + '%';
+const el = id => document.getElementById(id);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+Promise.all(['analysis/output/tpo-initial-balance/results.json', 'analysis/output/tpo-initial-balance/aggressor_arm.json']
+  .map(u => fetch(u, { cache: 'no-store' }).then(r => r.ok ? r.json() : null)))
+  .then(([R, A]) => { if (!R) throw new Error('results.json missing'); render(R, A); })
+  .catch(e => { el('headline').textContent = 'Could not load the results: ' + e.message; });
+
+function render(R, A) {
+  const cells = [...R.primary.filter(c => c.q !== 'Q3'), ...R.secondary];
+  el('headline').textContent = R.verdict_line || '';
+  const V = R.verdicts || {};
+  const card = (t, v, s) => `<div><span class="verdict">${v}</span><b>${t}</b><span>${s}</span></div>`;
+  const by = (q, sym, kind) => [...R.primary, ...R.secondary].find(c => c.q === q && c.sym === sym && c.kind === kind);
+  el('cards').innerHTML = [
+    card('Hold outside the IB → follow', V['tpo-ib-follow'] || '', `To the close, beyond the clock: NQ ${f(by('Q1','NQ','acc').est)}σ, ES ${f(by('Q1','ES','acc').est)}σ. Bar +0.15σ.`),
+    card('Poke and back in → fade', V['tpo-ib-fade'] || '', `NQ ${f(by('Q2','NQ','poke').est)}σ, ES ${f(by('Q2','ES','poke').est)}σ.`),
+    card('Order flow at the break', V['tpo-ib-flow'] || '', `Slope per SD of flow, NQ follow ${f(by('Q4','NQ','acc').est)}, ES ${f(by('Q4','ES','acc').est)}.`),
+    card('Candle strength at the break', V['tpo-ib-candle'] || '', `Slope per SD of close location, NQ follow ${f(by('Q5','NQ','acc').est)}, ES ${f(by('Q5','ES','acc').est)}.`),
+    card('The trades after costs', V['tpo-ib-strategy'] || '', `Fade loses ${f(by('Q3','NQ','poke').net.est,2)}R (NQ), ${f(by('Q3','ES','poke').net.est,2)}R (ES), the same as random entries. Follow ${f(by('Q3','NQ','acc').net.est,2)}R / ${f(by('Q3','ES','acc').net.est,2)}R.`),
+  ].join('');
+  forest(cells);
+  const D = R.descriptive;
+  const rows = [
+    ['Flow proxy vs real aggressor flow, per 30 min', A ? f(A.proxy_vs_real_flow_corr, 2) : '—', '—', 'correlation, NQ, 51 sessions'],
+    ['Range extension vs flow, extending periods (D1)', A ? f(A.D1_extension_vs_real_flow_corr, 2) : '—', f(D.D1_extension_vs_flow_NQ.extending_periods_only.est, 2) + ' / ' + f(D.D1_extension_vs_flow_ES.extending_periods_only.est, 2), 'correlation (proxy: NQ / ES, 2016–26)'],
+    ['Extension and flow point the same way', A ? pct(A.D1_sign_agree_real) : '—', pct(D.D1_extension_vs_flow_NQ.sign_agree_when_extending) + ' / ' + pct(D.D1_extension_vs_flow_ES.sign_agree_when_extending), 'share of extending periods'],
+    ['Day\'s CVD agrees with the one-sided IB extension (D3)', A ? pct(A.D3_real_cvd_agrees_with_extension) : '—', pct(D.D3_cvd_agrees_with_extension_NQ.share) + ' / ' + pct(D.D3_cvd_agrees_with_extension_ES.share), 'share of sessions'],
+    ['Flow at the break → follow outcome (Q4)', A && A.Q4_real_follow ? f(A.Q4_real_follow.slope_real, 2) + ` (n ${A.Q4_real_follow.n})` : '—', f(by('Q4','NQ','acc').est, 3) + ' / ' + f(by('Q4','ES','acc').est, 3), 'σ per SD of flow'],
+    ['Absorption at a poke → fade outcome (Q4)', A && A.Q4_real_fade ? f(A.Q4_real_fade.slope_real, 2) + ` (n ${A.Q4_real_fade.n})` : '—', f(by('Q4','NQ','poke').est, 3) + ' / ' + f(by('Q4','ES','poke').est, 3), 'σ per SD of flow'],
+  ];
+  el('flowTable').innerHTML = '<tr><th>Comparison</th><th>Real aggressor (NQ)</th><th>Proxy (NQ / ES)</th><th>Unit</th></tr>' + rows.map(r => `<tr>${r.map(x => `<td>${x}</td>`).join('')}</tr>`).join('');
+  el('flowNote').textContent = R.flow_note || '';
+  const types = ['trend', 'neutral extreme', 'normal variation', 'one-sided other', 'neutral centre', 'normal'];
+  el('typeTable').innerHTML = '<tr><th>Day type</th><th>NQ share</th><th>ES share</th><th>NQ close from TPO POC (IB widths)</th><th>ES</th><th>NQ CVD up</th></tr>' +
+    types.map(t => { const a = D.D4_day_types_NQ[t] || {}, b = D.D4_day_types_ES[t] || {};
+      return `<tr><td>${t}</td><td>${pct(a.share)}</td><td>${pct(b.share)}</td><td>${a.close_vs_tpo_poc_ibw?.toFixed(2) ?? '—'}</td><td>${b.close_vs_tpo_poc_ibw?.toFixed(2) ?? '—'}</td><td>${pct(a.cvd_up_share)}</td></tr>`; }).join('');
+  el('tradeTable').innerHTML = '<tr><th>Trade (net of costs)</th><th>n</th><th>Net R [95%]</th><th>Gross R</th><th>vs placebo</th><th>MDE</th></tr>' +
+    R.primary.filter(c => c.q === 'Q3').map(c => `<tr><td>${c.sym} ${c.kind === 'acc' ? 'follow (stop inside IB, exit 15:59)' : 'fade (stop beyond poke, target other IB edge)'}</td><td>${c.n}</td><td>${f(c.net.est, 3)} [${f(c.net.lo, 2)}, ${f(c.net.hi, 2)}]</td><td>${f(c.gross.est, 3)}</td><td>${f(c.est, 3)} [${f(c.lo, 2)}, ${f(c.hi, 2)}]</td><td>${(R.mde_R || {})[c.cell] ?? '—'}</td></tr>`).join('');
+  const c5 = s => D['D5_candle_close_next_period_' + s];
+  el('miscTable').innerHTML = '<tr><th>Description</th><th>NQ</th><th>ES</th></tr>' + [
+    ['Strong 30-min close (top 20% of its range) → next 30 min up', pct(c5('NQ').after_strong_close_up) + ' vs ' + pct(c5('NQ').base_up), pct(c5('ES').after_strong_close_up) + ' vs ' + pct(c5('ES').base_up)],
+    ['Weak 30-min close (bottom 20%) → next 30 min down', pct(c5('NQ').after_weak_close_down) + ' vs ' + pct(c5('NQ').base_down), pct(c5('ES').after_weak_close_down) + ' vs ' + pct(c5('ES').base_down)],
+    ['TPO POC to volume POC, median (IB widths)', D.D2_profiles_NQ.poc_gap_median_ibw.toFixed(2), D.D2_profiles_ES.poc_gap_median_ibw.toFixed(2)],
+    ['TPO and volume value areas overlap', pct(D.D2_profiles_NQ.va_overlap_mean), pct(D.D2_profiles_ES.va_overlap_mean)],
+    ['Follow: reaches one more IB width before the close (vs placebo)', pct(D.components.find(c => c.sym === 'NQ' && c.kind === 'follow' && c.comp.startsWith('reach')).share) + ' vs ' + pct(D.components.find(c => c.sym === 'NQ' && c.kind === 'follow' && c.comp.startsWith('reach')).share_pl), pct(D.components.find(c => c.sym === 'ES' && c.kind === 'follow' && c.comp.startsWith('reach')).share) + ' vs ' + pct(D.components.find(c => c.sym === 'ES' && c.kind === 'follow' && c.comp.startsWith('reach')).share_pl)],
+    ['Replication, follow / fade (σ)', 'YM ' + f(D.replication_YM.follow.est, 3) + ' / ' + f(D.replication_YM.fade.est, 3), 'RTY ' + f(D.replication_RTY.follow.est, 3) + ' / ' + f(D.replication_RTY.fade.est, 3)],
+  ].map(r => `<tr>${r.map(x => `<td>${x}</td>`).join('')}</tr>`).join('');
+}
+
+function forest(cells) {
+  const svg = el('forest'), W = Math.max(560, Math.min(940, svg.parentElement.clientWidth || 900)), rowH = 26, top = 26, left = 170, right = 20;
+  const H = top + cells.length * rowH + 30, lo = -0.2, hi = 0.25, X = v => left + (v - lo) / (hi - lo) * (W - left - right);
+  svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  let s = '';
+  for (let t = -0.2; t <= 0.2501; t += 0.05) { const x = X(+t.toFixed(2)); s += `<line x1="${x}" x2="${x}" y1="${top - 6}" y2="${H - 24}" stroke="${css('--grid')}"/><text x="${x}" y="${H - 8}" text-anchor="middle">${t.toFixed(2)}</text>`; }
+  s += `<line x1="${X(0)}" x2="${X(0)}" y1="${top - 10}" y2="${H - 24}" stroke="${css('--zero')}" stroke-width="1.5"/>`;
+  s += `<line x1="${X(0.15)}" x2="${X(0.15)}" y1="${top - 10}" y2="${H - 24}" stroke="${css('--bar')}" stroke-width="2" stroke-dasharray="5 4"/><text x="${X(0.15)}" y="${top - 12}" text-anchor="middle" style="fill:${css('--bar')}">pass bar</text>`;
+  cells.forEach((c, k) => {
+    const y = top + k * rowH + rowH / 2, label = `${c.q} ${c.sym} ${c.kind === 'acc' ? 'follow' : 'fade'}${c.x ? (c.x === 'x_flow' ? ' · flow' : ' · candle') : ''}`;
+    const tip = `${label}: ${f(c.est)} [${f(c.lo)}, ${f(c.hi)}] · n ${c.n} · 2016-20 ${f(c.IS)} · 2021-26 ${f(c.OOS)} · Holm p ${c.holm.toFixed(2)}`;
+    s += `<g><title>${tip}</title><rect x="0" y="${y - rowH / 2}" width="${W}" height="${rowH}" fill="transparent"/>`;
+    s += `<text x="${left - 10}" y="${y + 4}" text-anchor="end" style="fill:${css('--fg')};font-family:var(--display);font-size:12.5px">${label}</text>`;
+    s += `<line x1="${X(Math.max(lo, c.lo))}" x2="${X(Math.min(hi, c.hi))}" y1="${y}" y2="${y}" stroke="${css('--accent')}" stroke-width="2" stroke-linecap="round"/>`;
+    s += `<circle cx="${X(c.est)}" cy="${y}" r="4.5" fill="${css('--accent')}" stroke="${css('--panel')}" stroke-width="2"/></g>`;
+  });
+  svg.innerHTML = s;
+}
+</script>
+</body>
+</html>

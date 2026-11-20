@@ -57,7 +57,7 @@ export function bookScript(book) {
   if (!book?.rows?.length) return null; const s = bookSummary(book.rows);
   const parts = [s.calls ? `The desk has a view on ${s.calls} markets: ${s.long} long and ${s.short} short.` : 'The desk has no long or short call on any market this morning.'];
   if (s.top.length && !book.partial) parts.push(`The biggest conviction is ${s.topConv}, on ${list(s.top.slice(0, 3).map(spoken))}${s.top.length > 3 ? ' and others' : ''}.`);
-  if (s.flat) parts.push(book.partial ? `${s.flat} markets are flat.` : `${s.flat} markets are flat or not yet reviewed${s.unreviewed ? `, and ${s.unreviewed} of those were simply not reviewed, which is not a neutral call` : ''}.`);
+  if (s.flat) parts.push(book.partial ? `${s.flat} markets are flat.` : s.unreviewed ? `${s.neutral} markets are neutral: the desk looked and has no lean. ${s.unreviewed} were simply not reviewed, which is not a neutral call.` : `${s.flat} markets are neutral: the desk looked at each and has no lean.`);
   parts.push("That is the desk's own call, written this morning, not a forecast.");
   return parts.join(' ');
 }

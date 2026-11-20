@@ -12,7 +12,7 @@ let cache = { at: 0, wx: null };
 const compute = cd => { if (!cd?.ok) return null; if (cache.at !== cd.at) cache = { at: cd.at, wx: { groups: groupWeather(cd.rows), ccys: ccyWeather(cd.rows) } }; return cache.wx; };
 
 /** One cell: the sky, the weather, the numbers. */
-function drawCell(ctx, g, x, y, w, h, cell, t, i) {
+function drawCell(ctx, g, x, y, w, h, cell, t, i, cmp = false) {
   const C = g.C, cond = cell.cond, seed = i * 17.3 + 1, up = cell.avg > 0.15, dn = cell.avg < -0.15, tone = up ? C.up : dn ? C.dn : C.tx2;
   const sky = cond === 'storm' ? C.dn : cond === 'rain' ? C.blue : cond === 'hot' || cond === 'warm' ? C.gold : cond === 'wind' ? C.blue : cond === 'clear' ? C.blue : C.tx2;
   ctx.save(); rr(ctx, x, y, w, h, 14); ctx.clip();
@@ -51,27 +51,32 @@ function drawCell(ctx, g, x, y, w, h, cell, t, i) {
   ctx.restore();
   // the glass frame and the numbers
   ctx.globalAlpha = cond === 'storm' ? 0.95 : 0.7; ctx.strokeStyle = sky; ctx.lineWidth = cond === 'storm' ? 2 : 1.3; rr(ctx, x, y, w, h, 14); ctx.stroke();
-  ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.fillStyle = C.tx2; ctx.font = '11px ui-monospace,monospace'; ctx.fillText(cell.label.toUpperCase(), x + 12, y + 20);
-  if (cell.code) { ctx.fillStyle = C.tx2; ctx.globalAlpha = 0.6; ctx.font = '9px ui-monospace,monospace'; ctx.fillText(cell.code, x + 12 + ctx.measureText(cell.label.toUpperCase()).width * 1.05 + 6, y + 20); ctx.globalAlpha = 1; }
-  ctx.fillStyle = tone; ctx.font = `${Math.max(20, Math.min(30, w * 0.17))}px ui-monospace,monospace`; ctx.fillText(sg(cell.avg), x + 12, y + h - 38);
-  ctx.fillStyle = C.tx; ctx.font = '12px ui-monospace,monospace'; ctx.fillText(WORD[cond], x + 12, y + h - 20);
-  if (cell.top) { ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillText(`${cell.top.name} ${sg(cell.top.ratio)}`, x + w - 10, y + h - 20); ctx.textAlign = 'left'; }
+  ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.fillStyle = C.tx2; ctx.font = `${cmp ? 9 : 11}px ui-monospace,monospace`; ctx.fillText(cell.label.toUpperCase(), x + 10, y + (cmp ? 16 : 20));
+  if (cell.code && !cmp) { ctx.fillStyle = C.tx2; ctx.globalAlpha = 0.6; ctx.font = '9px ui-monospace,monospace'; ctx.fillText(cell.code, x + 12 + ctx.measureText(cell.label.toUpperCase()).width * 1.05 + 6, y + 20); ctx.globalAlpha = 1; }
+  ctx.fillStyle = tone; ctx.font = `${cmp ? 18 : Math.max(20, Math.min(30, w * 0.17))}px ui-monospace,monospace`; ctx.fillText(sg(cell.avg), x + 10, y + h - (cmp ? 28 : 38));
+  ctx.fillStyle = C.tx; ctx.font = `${cmp ? 10 : 12}px ui-monospace,monospace`; ctx.fillText(WORD[cond], x + 10, y + h - (cmp ? 10 : 20));
+  if (cell.top && !cmp) { ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillText(`${cell.top.name} ${sg(cell.top.ratio)}`, x + w - 10, y + h - 20); ctx.textAlign = 'left'; }
 }
 
 function draw(ctx, g, api) {
   const cd = api.st.cd, wx = compute(cd), C = g.C, W = g.W, H = g.H;
   if (!wx) { ctx.globalAlpha = g.fade; ctx.fillStyle = C.tx2; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText(cd ? 'The market feed is not available right now.' : 'Reading the markets...', W / 2, H / 2); if (!cd) api.candles(); return; }
-  ctx.globalAlpha = g.fade; ctx.textAlign = 'left'; ctx.fillStyle = C.blue; ctx.font = '13px ui-monospace,monospace'; ctx.fillText('M A R K E T   W E A T H E R   ·   so far today', 36, 168);
-  const mx = 36, gap = 14, top = 190, rowH = Math.max(120, Math.min(190, (H - top - 150) / 2));
-  const rows = [['ASSETS', wx.groups], ['CURRENCIES', wx.ccys]];
-  let idx = 0;
-  rows.forEach(([name, cells], ri) => {
-    const y = top + ri * (rowH + 34) + (ri ? 18 : 0), n = cells.length; if (!n) return;
-    ctx.globalAlpha = g.fade * 0.7; ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'left'; ctx.fillText(name, mx, y - 8);
-    const cw = Math.min(210, (W - 2 * mx - gap * (n - 1)) / n), total = cw * n + gap * (n - 1), x0 = (W - total) / 2;
-    cells.forEach((c, k) => { ctx.globalAlpha = g.fade; drawCell(ctx, g, x0 + k * (cw + gap), y + Math.sin(g.t * 0.8 + idx) * 2.5, cw, rowH, c, g.t, idx++); });
+  ctx.globalAlpha = g.fade; ctx.textAlign = 'left'; ctx.fillStyle = C.blue; ctx.font = '13px ui-monospace,monospace'; ctx.fillText('M A R K E T   W E A T H E R   ·   so far today', g.compact ? 10 : 36, g.compact ? 104 : 168);
+  const cmp = g.compact, mx = cmp ? 10 : 36, gap = cmp ? 8 : 14, top = cmp ? 128 : 190, rowH = cmp ? 84 : Math.max(120, Math.min(190, (H - top - 150) / 2));
+  const rows = [['ASSETS', wx.groups, cmp ? 3 : wx.groups.length], ['CURRENCIES', wx.ccys, cmp ? 4 : wx.ccys.length]];
+  let idx = 0, y = top;
+  rows.forEach(([name, cells, cols]) => {
+    const n = cells.length; if (!n) return; cols = Math.max(1, Math.min(cols, n));
+    ctx.globalAlpha = g.fade * 0.7; ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'left'; ctx.fillText(name, mx, y - 6);
+    const cw = Math.min(210, (W - 2 * mx - gap * (cols - 1)) / cols), nr = Math.ceil(n / cols);
+    cells.forEach((c, k) => {
+      const r = Math.floor(k / cols), cc = k % cols, inRow = Math.min(cols, n - r * cols), total = cw * inRow + gap * (inRow - 1), x0 = cmp ? mx : (W - total) / 2;
+      ctx.globalAlpha = g.fade; drawCell(ctx, g, x0 + cc * (cw + gap), y + r * (rowH + gap) + Math.sin(g.t * 0.8 + idx) * (cmp ? 1 : 2.5), cw, rowH, c, g.t, idx++, cmp);
+    });
+    y += nr * (rowH + gap) + (cmp ? 22 : 34);
   });
   ctx.globalAlpha = g.fade * 0.75; ctx.fillStyle = C.tx2; ctx.font = '11px ui-monospace,monospace'; ctx.textAlign = 'left';
+  if (g.compact) { ctx.fillText('Average move so far today vs each market\'s usual. A description, not a forecast.', 10, H - 92); return; }
   const ly = H - 122; ['Each box is one group\'s average move so far today, against each market\'s own usual move (×). Sun and heat = rising · cloud and rain = falling · storm = falling hard · wind = big moves both ways · clear = quiet.',
     'The little name is that group\'s biggest mover. This describes today so far. It is not an outlook and not a forecast.'].forEach((l, k) => ctx.fillText(l, 36, ly + k * 16));
 }

@@ -77,7 +77,7 @@ function draw(ctx, g, api) {
   });
   ctx.globalCompositeOperation = 'source-over';
   ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'center';
-  top.forEach((pr, n) => { if (n >= 5) return; ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.gold; ctx.fillText(`${marketName(pr.key, { short: true })}  ${pr.ratio >= 0 ? '+' : '-'}${Math.abs(pr.ratio).toFixed(1)}x`, S.ax[n], S.ay[n] - 8); });
+  top.forEach((pr, n) => { if (n >= (g.compact ? 2 : 5)) return; ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.gold; ctx.fillText(`${marketName(pr.key, { short: true })}  ${pr.ratio >= 0 ? '+' : '-'}${Math.abs(pr.ratio).toFixed(1)}x`, S.ax[n], S.ay[n] - 8); });
   // spheres far to near
   const order = [0, 1, 2, 3, 4, 5, 6, 7].sort((a, b) => S.pz[b] - S.pz[a]);
   for (const i of order) {
@@ -86,10 +86,11 @@ function draw(ctx, g, api) {
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = fade * 0.88; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill();
     const hl = ctx.createRadialGradient(x - rad * 0.35, y - rad * 0.4, 1, x - rad * 0.2, y - rad * 0.25, rad * 1.05); hl.addColorStop(0, C.tx); hl.addColorStop(1, 'transparent'); ctx.globalAlpha = fade * 0.62; ctx.fillStyle = hl; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.fill();
     ctx.globalAlpha = fade * (hot ? 1 : 0.7); ctx.strokeStyle = hot ? C.tx : C.gold; ctx.lineWidth = hot ? 2 : 1; ctx.beginPath(); ctx.arc(x, y, rad, 0, TAU); ctx.stroke();
-    ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.font = `${Math.round(10 + 5 * Math.min(1.4, S.ps[i]))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(currencyName(r.ccy, { short: true }), x, y - rad - 7); if (getNameStyle() === 'names') { ctx.font = '9px ui-monospace,monospace'; ctx.globalAlpha = fade * 0.6; ctx.fillText(r.ccy, x, y - rad + 3); }
-    ctx.globalAlpha = fade * 0.8; ctx.fillStyle = c; ctx.font = '10px ui-monospace,monospace'; ctx.fillText(signed(r.s), x, y + rad + 13);
+    ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.font = `${Math.round((g.compact ? 9 : 10) + (g.compact ? 3 : 5) * Math.min(1.4, S.ps[i]))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(currencyName(r.ccy, { short: true }), x, y - rad - 7); if (getNameStyle() === 'names' && !g.compact) { ctx.font = '9px ui-monospace,monospace'; ctx.globalAlpha = fade * 0.6; ctx.fillText(r.ccy, x, y - rad + 3); }
+    if (!g.compact) { ctx.globalAlpha = fade * 0.8; ctx.fillStyle = c; ctx.font = '10px ui-monospace,monospace'; ctx.fillText(signed(r.s), x, y + rad + 13); }
     g.hit(r.ccy, x, y);
   }
+  if (g.compact) { boardCompact(ctx, g, R, sel, col, maxAbs); ctx.restore(); return; }
   // the leaderboard, floating on the left
   const px = 24, py = 118, pw = 262, rh = 27, ph = 58 + 8 * rh;
   ctx.globalAlpha = fade * 0.55; ctx.fillStyle = 'black'; ctx.fillRect(px, py, pw, ph); ctx.globalAlpha = fade * 0.7; ctx.strokeStyle = C.gold; ctx.lineWidth = 1; ctx.strokeRect(px + 0.5, py + 0.5, pw, ph);
@@ -143,3 +144,20 @@ registerJarvisModule({
   },
   views: [{ id: 'ccy', label: 'CURRENCIES', env: { accent: 'gold', chrome: 'clean', scan: false }, draw: (ctx, g, api) => draw(ctx, g, api), onEnter: api => { init(); api.st.spin = true; loadCcy(api, true); } }],
 });
+
+/** Phone: the leaderboard is a slim table below the orrery and the legend is one caveat line. */
+function boardCompact(ctx, g, R, sel, col, maxAbs) {
+  const { C, fade, W, H } = g, x0 = 14, rh = 18, y0 = H - 92 - 8 * rh - 6, mid = Math.round(W * 0.5), half = Math.min(70, W * 0.14);
+  ctx.textAlign = 'left'; ctx.globalAlpha = fade * 0.9; ctx.fillStyle = C.gold; ctx.font = '11px ui-monospace,monospace'; ctx.fillText('CURRENCY STRENGTH, so far today', x0, y0 - 8);
+  R.list.forEach((r, i) => {
+    const y = y0 + i * rh, c = col(r.s), hot = sel === r.ccy;
+    if (hot) { ctx.globalAlpha = fade * 0.18; ctx.fillStyle = C.gold; ctx.fillRect(x0 - 4, y - 2, W - 2 * x0 + 8, rh - 1); }
+    ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.font = '11px ui-monospace,monospace'; ctx.textAlign = 'left'; ctx.fillText(`${i + 1} ${currencyName(r.ccy, { short: true })}`, x0, y + 11);
+    const w = half * Math.min(1, Math.abs(r.s) / (maxAbs || 1)); ctx.globalAlpha = fade * 0.8; ctx.fillStyle = c; ctx.fillRect(r.s >= 0 ? mid : mid - w, y + 2, w, 9);
+    ctx.globalAlpha = fade * 0.4; ctx.fillStyle = C.tx2; ctx.fillRect(mid, y, 1, 13);
+    ctx.globalAlpha = fade; ctx.fillStyle = c; ctx.textAlign = 'right'; ctx.fillText(signed(r.s), W - x0, y + 11); g.hit(r.ccy, x0 + 40, y + 8);
+  });
+  if (sel) { const m = R.pairs.filter(p => p.base === sel || p.quote === sel)[0]; if (m) { ctx.textAlign = 'left'; ctx.globalAlpha = fade * 0.9; ctx.fillStyle = C.tx; ctx.font = '10px ui-monospace,monospace'; ctx.fillText(`${currencyName(sel, { short: true })}: biggest pair ${marketName(m.key, { short: true })} ${m.ratio >= 0 ? '+' : '-'}${Math.abs(m.ratio).toFixed(1)}x usual`, x0, 100); } }
+  ctx.textAlign = 'center'; ctx.globalAlpha = fade * 0.8; ctx.fillStyle = C.tx2; ctx.font = '10px ui-monospace,monospace';
+  ctx.fillText('Size = strength (green up, red down). Past moves, not a forecast.', W / 2, H - 84);
+}

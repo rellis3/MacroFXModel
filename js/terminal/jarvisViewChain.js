@@ -118,7 +118,7 @@ function draw(ctx, g, api) {
 
   // ── the markets: pylon, orb, ring; far to near ──
   const nodes = api.st.graph.nodes, ord = nodes.map(n => { pr(layout.pos[n.key], o); return { n, z: o.z, x: px(o), y: py(o) }; }).filter(r => r.z > 0.3).sort((a, b) => b.z - a.z);
-  const stopIdx = new Map(route.stops.map((s, i) => [s.key, i]));
+  const stopIdx = new Map(route.stops.map((s, i) => [s.key, i])); let named = 0;
   for (const r of ord) {
     const n = r.n, P = layout.pos[n.key], col = toneCol(C, n.style.tone), fa = fade * fogAlpha(r.z, 13), si = stopIdx.get(n.key), isStop = si != null, la = isStop ? labelAlpha(times, si, p) : 0;
     const k = (1.25 * zoom / r.z) * SC * 0.02, rad = Math.max(2, (0.13 + 0.2 * n.style.size) * k * 14 * (1 + 0.25 * la));
@@ -143,8 +143,8 @@ function draw(ctx, g, api) {
     if (pv) { pv.x = r.x; pv.y = r.y; } else S.nodePrev.set(n.key, { x: r.x, y: r.y });
     g.hit(n.key, r.x, r.y);
     // names: small when near, a flashing card when the camera is passing a stop
-    if (la > 0.02) { /* the card for this stop is drawn after the loop: the camera is beside the node, so the card cannot hang off it */ } else if (fa > 0.12 && r.z < 9 && r.x > 0 && r.x < W) {
-      ctx.globalAlpha = fa * 0.7; ctx.fillStyle = C.tx2; ctx.textAlign = 'center'; ctx.font = `${clamp(Math.round(k * 9), 8, 13)}px ui-monospace,monospace`; ctx.fillText((api.names[n.key] ?? n.key).replace(/\s*\(.*\)/, ''), r.x, r.y + rad * 1.9 + 10);
+    if (la > 0.02) { /* the card for this stop is drawn after the loop: the camera is beside the node, so the card cannot hang off it */ } else if (fa > 0.12 && r.z < (g.compact ? 4.5 : 9) && r.x > 8 && r.x < W - 8 && (!g.compact || ++named <= 3)) {   // phone: at most three names at once, kept on screen
+      ctx.globalAlpha = fa * 0.7; ctx.fillStyle = C.tx2; ctx.textAlign = 'center'; ctx.font = `${clamp(Math.round(k * 9), g.compact ? 9 : 8, 13)}px ui-monospace,monospace`; const nm = (api.names[n.key] ?? n.key).replace(/\s*\(.*\)/, ''), hw = g.compact ? ctx.measureText(nm).width / 2 + 6 : 0; ctx.fillText(nm, clamp(r.x, hw, W - hw), r.y + rad * 1.9 + 10);
     }
   }
   // ── the card: the market's name and its measured move flash up as the camera passes through its ring ──
@@ -152,10 +152,10 @@ function draw(ctx, g, api) {
     const la = labelAlpha(times, si, p); if (la < 0.02) return;
     const col = toneCol(C, nodes.find(n => n.key === stop.key)?.style.tone), e = la * la * (3 - 2 * la), x = W * 0.5, y = H * 0.27 - (1 - e) * 18, sc = 0.85 + 0.2 * e;
     ctx.globalAlpha = fade * e; ctx.textAlign = 'center'; ctx.shadowColor = col; ctx.shadowBlur = 22;
-    ctx.fillStyle = C.tx; ctx.font = `${Math.round(20 * sc)}px ui-monospace,monospace`; ctx.fillText(stop.label.toUpperCase(), x, y);
-    ctx.fillStyle = col; ctx.font = `${Math.round(46 * sc)}px ui-monospace,monospace`; ctx.fillText(stop.text || '', x, y + 50 * sc);
-    ctx.shadowBlur = 0; ctx.fillStyle = stop.kind === 'broken' ? C.gold : stop.kind === 'holding' ? C.blue : C.tx2; ctx.font = '12px ui-monospace,monospace'; ctx.fillText(KIND[stop.kind] ?? '', x, y + 74 * sc);
-    ctx.globalAlpha = fade * e * 0.5; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 90, y + 86 * sc); ctx.lineTo(x + 90, y + 86 * sc); ctx.stroke();
+    const cs = g.compact ? 0.62 : 1; ctx.fillStyle = C.tx; ctx.font = `${Math.round(20 * sc * cs)}px ui-monospace,monospace`; ctx.fillText(stop.label.toUpperCase(), x, y);
+    ctx.fillStyle = col; ctx.font = `${Math.round(46 * sc * cs)}px ui-monospace,monospace`; ctx.fillText(stop.text || '', x, y + 50 * sc * cs);
+    ctx.shadowBlur = 0; ctx.fillStyle = stop.kind === 'broken' ? C.gold : stop.kind === 'holding' ? C.blue : C.tx2; ctx.font = '12px ui-monospace,monospace'; ctx.fillText(KIND[stop.kind] ?? '', x, y + 74 * sc * cs);
+    ctx.globalAlpha = fade * e * 0.5; ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 90 * cs, y + 86 * sc * cs); ctx.lineTo(x + 90 * cs, y + 86 * sc * cs); ctx.stroke();
   });
   ctx.restore();
 
@@ -163,12 +163,12 @@ function draw(ctx, g, api) {
   if (t - hudAt > 1) { hudAt = t; try { hudTop = parseFloat(api.doc.getElementById(api.ID).style.getPropertyValue('--jvtop')) || 70; } catch (e) { /* layout only */ } }
   const ly = hudTop + 18, cx = W / 2, f = g.fade;
   ctx.save(); ctx.textAlign = 'center'; ctx.font = '11px ui-monospace,monospace';
-  const items = [[C.blue, 'link HOLDING: steady blue', 1.8], [C.gold, 'link BROKEN: thick, flickering gold', 4], [C.tx2, 'quiet: barely visible', 0.8]];
+  const items = g.compact ? [[C.blue, 'holding', 1.8], [C.gold, 'broken', 4], [C.tx2, 'quiet', 0.8]] : [[C.blue, 'link HOLDING: steady blue', 1.8], [C.gold, 'link BROKEN: thick, flickering gold', 4], [C.tx2, 'quiet: barely visible', 0.8]];
   let tot = 0; const wd = items.map(([, s]) => { const w = ctx.measureText(s).width + 44; tot += w; return w; }); let x = cx - tot / 2;
   items.forEach(([c, s, lw], i) => { ctx.globalAlpha = f * 0.9; ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(x, ly); ctx.lineTo(x + 28, ly); ctx.stroke(); ctx.fillStyle = C.tx2; ctx.textAlign = 'left'; ctx.fillText(s, x + 34, ly + 4); x += wd[i]; });
-  ctx.textAlign = 'center'; ctx.globalAlpha = f * 0.75; ctx.fillStyle = C.tx2; ctx.fillText('flow runs cause to effect, towards you  ·  description of which links held or broke over the window, not a signal', cx, ly + 20);
+  ctx.textAlign = 'center'; ctx.globalAlpha = f * 0.75; ctx.fillStyle = C.tx2; ctx.fillText(g.compact ? 'Cause to effect. Which links held or broke: not a signal.' : 'flow runs cause to effect, towards you  ·  description of which links held or broke over the window, not a signal', cx, ly + 20);
   // the route strip
-  const sw = Math.min(W * 0.5, 520), sx = cx - sw / 2, sy = ly + 38;
+  const sw = g.compact ? W - 48 : Math.min(W * 0.5, 520), sx = cx - sw / 2, sy = ly + 38;
   ctx.globalAlpha = f * 0.35; ctx.strokeStyle = C.tx2; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + sw, sy); ctx.stroke();
   route.stops.forEach((s, i) => { const tx = sx + sw * times[i + 1]; ctx.globalAlpha = f * 0.85; ctx.fillStyle = s.kind === 'broken' ? C.gold : s.kind === 'holding' ? C.blue : C.tx2; ctx.beginPath(); ctx.arc(tx, sy, s.kind === 'broken' ? 3.5 : 2.5, 0, 6.2832); ctx.fill(); });
   ctx.globalAlpha = f; ctx.fillStyle = C.tx; ctx.beginPath(); ctx.moveTo(sx + sw * p, sy - 3); ctx.lineTo(sx + sw * p + 4, sy - 9); ctx.lineTo(sx + sw * p - 4, sy - 9); ctx.closePath(); ctx.fill();

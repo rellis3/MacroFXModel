@@ -33,7 +33,7 @@ function drawGlobe(ctx, g, api) {
     ctx.globalAlpha = a; ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = sel ? 2 : 1;
     ctx.beginPath(); ctx.arc(p.x, p.y, r + 2, 0, 6.2832); ctx.stroke();
     ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1.2, r * 0.45), 0, 6.2832); ctx.fill();
-    if (sel || top.has(k) || g.zoom > 1.7) { ctx.fillStyle = C.tx; ctx.globalAlpha = a; ctx.fillText(`${marketName(k, { short: true })} ${s.move >= 0 ? '+' : ''}${s.move.toFixed(1)}%`, p.x + r + 5, p.y); }
+    if (sel || top.has(k) || (g.zoom > 1.7 && !g.compact)) { ctx.fillStyle = C.tx; ctx.globalAlpha = a; ctx.fillText(`${marketName(k, { short: true })} ${s.move >= 0 ? '+' : ''}${s.move.toFixed(1)}%`, p.x + r + 5, p.y); }
   }
   ctx.restore();
 }

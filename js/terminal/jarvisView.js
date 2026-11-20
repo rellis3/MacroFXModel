@@ -10,6 +10,7 @@ import { CHAIN_NODES } from '../macroChain.js';
 import { marketName, getNameStyle, setNameStyle } from './jarvisNames.js';
 import { candleRows, candleLayout, candleBox, boardSummary, ROWS as CD_ROWS } from './jarvisCandles.js';
 import { EXTRA, loadModules, viewsOf } from './jarvisModules.js';
+import { SECTIONS, COMPANION, labelOf, itemsFor, activeSection } from './jarvisNav.js';
 import { shortLabel } from './chainBoard.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -70,6 +71,24 @@ const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-ind
 @media (max-width:1560px){#${ID} .jv-top .jv-sub{display:none}}
 @media (max-width:640px){#${ID} .jv-boot,#${ID} .jv-hud{display:none}#${ID} .jv-title{font-size:14px}#${ID} .jv-scrub{bottom:34px}}
 @media (prefers-reduced-motion:reduce){#${ID},#${ID} .jv-scan,#${ID} .jv-title{animation:none}}
+#${ID} .jv-menubtn,#${ID} .jv-cur{display:none}#${ID} .jv-menu{display:contents}#${ID} .jv-menu>span{display:contents}#${ID} .jv-menu>span.jv-mh{display:none}
+#${ID}.jv-compact .jv-top{padding:10px 12px;gap:6px 8px;pointer-events:none}#${ID}.jv-compact .jv-title{font-size:13px;letter-spacing:.28em}#${ID}.jv-compact .jv-sub{display:none}
+#${ID}.jv-compact .jv-menubtn,#${ID}.jv-compact .jv-cur{display:inline-flex}#${ID}.jv-compact .jv-cur{font-size:10px;letter-spacing:.14em;color:var(--jva);padding:5px 4px}
+#${ID}.jv-compact .jv-menu{display:none;width:100%;flex-wrap:wrap;gap:6px;max-height:62vh;overflow:auto;padding:10px;border:1px solid var(--jva);border-radius:12px;background:color-mix(in srgb,var(--bg1) 94%,transparent);pointer-events:auto}
+#${ID}.jv-compact.jv-menu-open .jv-menu{display:flex}
+#${ID}.jv-compact .jv-menu>span{display:flex;flex-wrap:wrap;gap:6px;width:100%}#${ID}.jv-compact .jv-menu>span.jv-mh{display:block;width:100%;font-size:9px;letter-spacing:.22em;color:var(--tx2);margin-top:4px}
+#${ID}.jv-compact button{font-size:10px;padding:4px 9px}
+#${ID}.jv-compact .jv-reg{left:0;transform:none;width:100%;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding:0 12px;box-sizing:border-box}
+#${ID}.jv-compact .jv-pane,#${ID}.jv-compact .jv-card{left:10px;right:10px;width:auto;bottom:74px;max-height:50vh}#${ID}.jv-compact .jv-pane{top:calc(var(--jvtop,62px) + 6px);max-height:none}
+#${ID}.jv-compact .jv-scrub{left:10px;right:10px;bottom:10px;padding:5px 8px;gap:6px}#${ID}.jv-compact .jv-scrub #${ID}-sd,#${ID}.jv-compact .jv-foot{display:none}
+#${ID}.jv-compact .jv-cap{padding:50px 14px 88px}#${ID}.jv-compact .jv-cap .x{font-size:15px;line-height:1.45}#${ID}.jv-compact .jv-cap .t{font-size:10px;letter-spacing:.3em;margin-bottom:6px}
+#${ID}.jv-compact .jv-cine{bottom:8px;width:calc(100vw - 16px);flex-wrap:wrap;justify-content:center;gap:5px}#${ID}.jv-compact .jv-cinexit{right:10px;top:10px;font-size:10px}
+#${ID}.jv-compact .jv-br{width:20px;height:20px}
+#${ID} .jv-nav{display:flex;flex-direction:column;gap:6px;width:100%;order:2;pointer-events:auto}#${ID} .jv-nav-row{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
+#${ID} .jv-sec{font-size:12px;letter-spacing:.16em;padding:6px 18px}#${ID} .jv-sec[aria-pressed="true"]{background:color-mix(in srgb,var(--jva) 22%,transparent)}
+#${ID} .jv-it{font-size:11px}#${ID} .jv-it.tool{border-style:dashed}#${ID} .jv-it.side{border-color:var(--jva);color:var(--jva)}#${ID} .jv-nav-hint{font-size:10px;letter-spacing:.1em;color:var(--tx2)}
+#${ID} #${ID}-win,#${ID} #${ID}-opts{order:1}#${ID} .jv-menu>span[hidden]{display:none!important}
+#${ID}.jv-compact .jv-menu>span.jv-mh:first-child{order:-2}#${ID}.jv-compact .jv-nav{order:-1}#${ID}.jv-compact .jv-sec{font-size:10px;padding:5px 10px}
 #${ID}.jv-clean .jv-hud,#${ID}.jv-clean .jv-reg,#${ID}.jv-clean .jv-boot{opacity:0;pointer-events:none}
 #${ID}.jv-noscan .jv-scan{display:none}
 #${ID} canvas.jv-sw{animation:jv-sw .55s ease-out}@keyframes jv-sw{0%{filter:brightness(2.4) blur(5px) saturate(1.6)}100%{filter:none}}
@@ -84,9 +103,9 @@ export async function openJarvis(win = window) {
   const prefs = lsGet();
   const root = doc.createElement('div'); root.id = ID; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', 'Jarvis: the macro chain');
   root.innerHTML = `<style>${CSS}</style><canvas id="${ID}-cv"></canvas><div class="jv-bs" id="${ID}-bs"><div class="jv-bs-t"><h1 id="${ID}-bst">J.A.R.V.I.S.</h1><div class="jv-bs-sub blink" id="${ID}-bss">&nbsp;</div></div><div class="jv-bs-b"><div class="jv-bs-log" id="${ID}-bslog"></div><div class="jv-bar"><i id="${ID}-bsbar"></i></div></div></div><div class="jv-scan"></div><div class="jv-vig"></div><i class="jv-br tl"></i><i class="jv-br tr"></i><i class="jv-br bl"></i><i class="jv-br brr"></i>
-<div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">desk intelligence · description only</span><span class="jv-sp"></span>
-<span id="${ID}-mods"></span><span id="${ID}-win"></span><span id="${ID}-view"></span>
-<button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></div>
+<div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">desk intelligence · description only</span><span class="jv-sp"></span><span class="jv-cur" id="${ID}-cur"></span><button type="button" class="jv-menubtn" id="${ID}-menubtn" aria-expanded="false">☰ MENU</button>
+<div class="jv-menu" id="${ID}-menu"><span class="jv-mh">SECTIONS</span><div class="jv-nav" id="${ID}-nav"></div><span class="jv-mh">TIME WINDOW</span><span id="${ID}-win"></span><span class="jv-mh">OPTIONS</span><span id="${ID}-opts">
+<button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></span><span id="${ID}-mods" hidden></span><span id="${ID}-view" hidden></span></div></div>
 <div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-cine" id="${ID}-cine"><button type="button" data-c="prev" title="Back one scene (left arrow)">⏮ BACK</button><button type="button" data-c="pause" id="${ID}-cpause" title="Pause or resume (space)">⏸ PAUSE</button><button type="button" data-c="next" title="Skip this scene (right arrow)">SKIP ⏭</button><button type="button" data-c="slow" title="Slower (minus)">−</button><span id="${ID}-crate">1.0×</span><button type="button" data-c="fast" title="Faster (plus)">+</button></div><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
 <div class="jv-scrub" id="${ID}-scrub"><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button><button type="button" id="${ID}-expl" title="Describe what was going on around this day (one model call)">EXPLAIN THIS DAY</button></div>
 <div class="jv-foot">drag to turn · wheel to zoom · click a market · Esc docks · none of this is a forecast</div>`;
@@ -102,7 +121,7 @@ export async function openJarvis(win = window) {
   const fitTop = () => { try { const tp = root.querySelector('.jv-top'); if (tp) root.style.setProperty('--jvtop', `${tp.offsetHeight}px`); } catch (e) { /* layout only */ } };
   const noBoot = !!win.__jarvisNoBoot, calm = !!win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches, BOOT = noBoot ? 0 : calm ? 0.8 : 4.2;
   if (BOOT) root.classList.add('jv-booting'); else $('bs').remove();
-  const st = { cd: null, cdBusy: null, cdCam: { x: 0, z: 0 }, cdTarget: { x: 0, z: 0 }, cinemaStop: null, speakStop: null, mod: 'chain', view: prefs.view ?? 'globe', gl: { lat: 20, lon: 15, zoom: 1, tlat: 20, tlon: 15, tzoom: 1 }, land: null, bl: null, region: 'world', voice: false, sound: prefs.sound !== false, wake: false, watch: prefs.watch !== false, win: 5, graph: null, sum: null, sel: null, yaw: 0.55, pitch: -0.7, zoom: 1, spin: true, t0: performance.now() - (win.__jarvisNoBoot ? 5000 : 0), drag: null, w: 0, h: 0, proj: [], disp: {}, dates: [], idx: -1, play: 0, docked: false, alerts: [], snap: null, lastCheck: null, memLimit: prefs.memLimit ?? 0, mem: null };
+  const st = { compact: false, cd: null, cdBusy: null, cdCam: { x: 0, z: 0 }, cdTarget: { x: 0, z: 0 }, cinemaStop: null, speakStop: null, mod: 'chain', view: prefs.view ?? 'globe', gl: { lat: 20, lon: 15, zoom: 1, tlat: 20, tlon: 15, tzoom: 1 }, land: null, bl: null, region: 'world', voice: false, sound: prefs.sound !== false, wake: false, watch: prefs.watch !== false, win: 5, graph: null, sum: null, sel: null, yaw: 0.55, pitch: -0.7, zoom: 1, spin: true, t0: performance.now() - (win.__jarvisNoBoot ? 5000 : 0), drag: null, w: 0, h: 0, proj: [], disp: {}, dates: [], idx: -1, play: 0, docked: false, alerts: [], snap: null, lastCheck: null, memLimit: prefs.memLimit ?? 0, mem: null };
   const setCam = () => { if (st.view === 'globe') { st.gl.zoom = st.gl.tzoom = 1; $('reg').hidden = false; } else $('reg').hidden = true; if (st.view === 'bubbles') st.bl = null; if (st.view === 'skyline') Object.assign(st, { yaw: 0.55, pitch: -0.7, zoom: 1 }); else Object.assign(st, { yaw: 0.6, pitch: 0.28, zoom: 1 }); };
   const extraViews = {};
   // every view has its own world: an accent that re-themes the glow, borders, buttons and canvas colours, and a chrome style
@@ -113,7 +132,7 @@ export async function openJarvis(win = window) {
     root.classList.toggle('jv-clean', e.chrome === 'clean'); root.classList.toggle('jv-noscan', e.scan === false);
     cv.classList.remove('jv-sw'); void cv.offsetWidth; cv.classList.add('jv-sw');
   }
-  const setCamAll = () => { applyEnv(); setCam(); $('reg').hidden = st.view !== 'globe'; if (extraViews[st.view]) { Object.assign(st, { yaw: 0.35, pitch: -0.45, zoom: 1 }); try { extraViews[st.view].onEnter?.(xapi); } catch (e) { /* a view must never break the HUD */ } } if (st.view === 'candles') { Object.assign(st, { yaw: 0.3, pitch: -0.5, zoom: 1 }); st.cdTarget = { x: 0, z: 0 }; st.cdCam = { x: 0, z: 0 }; ensureCandles(); } };
+  const setCamAll = () => { applyEnv(); try { const b = $('view').querySelector(`[data-v="${st.view}"]`); $('cur').textContent = (b?.textContent ?? st.view).toUpperCase(); } catch (e) { /* label only */ } setCam(); $('reg').hidden = st.view !== 'globe'; if (extraViews[st.view]) { Object.assign(st, { yaw: 0.35, pitch: -0.45, zoom: 1 }); try { extraViews[st.view].onEnter?.(xapi); } catch (e) { /* a view must never break the HUD */ } } if (st.view === 'candles') { Object.assign(st, { yaw: 0.3, pitch: -0.5, zoom: 1 }); st.cdTarget = { x: 0, z: 0 }; st.cdCam = { x: 0, z: 0 }; ensureCandles(); } };
   async function ensureCandles(force = false) {
     if (!force && st.cd && Date.now() - st.cd.at < 60_000) return st.cd;
     if (st.cdBusy) return st.cdBusy;
@@ -125,8 +144,9 @@ export async function openJarvis(win = window) {
     })();
     return st.cdBusy;
   }
-  const resize = () => { const d = Math.min(2, win.devicePixelRatio || 1); st.w = root.clientWidth; st.h = root.clientHeight; cv.width = st.w * d; cv.height = st.h * d; ctx.setTransform(d, 0, 0, d, 0, 0); };
-  resize(); win.addEventListener('resize', () => { resize(); fitTop(); }); fitTop();
+  const resize = () => {
+    const cmp = root.clientWidth < 700; st.compact = cmp; root.classList.toggle('jv-compact', cmp); if (!cmp) root.classList.remove('jv-menu-open'); const d = Math.min(2, win.devicePixelRatio || 1); st.w = root.clientWidth; st.h = root.clientHeight; cv.width = st.w * d; cv.height = st.h * d; ctx.setTransform(d, 0, 0, d, 0, 0); };
+  resize(); win.addEventListener('resize', () => { resize(); fitTop(); }); fitTop(); try { if (win.ResizeObserver) new win.ResizeObserver(fitTop).observe(root.querySelector('.jv-top')); } catch (e) { /* layout only */ }
 
   // ── the awakening: a heartbeat in the dark, the core ignites, status lines tick through, a greeting, then the HUD fades in ──
   const bootTimers = [];
@@ -239,7 +259,7 @@ export async function openJarvis(win = window) {
   $('win').innerHTML = [1, 5, 20].map(w => `<button type="button" data-w="${w}" aria-pressed="${w === st.win}">${w}D</button>`).join(' ');
   $('view').innerHTML = [['globe', 'GLOBE'], ['candles', 'BOARD'], ['bubbles', 'BUBBLES'], ['skyline', 'SKYLINE'], ['orbit', 'ORBIT']].map(([id, l]) => `<button type="button" data-v="${id}" aria-pressed="${id === st.view}">${l}</button>`).join(' ');
   $('win').onclick = e => { const b = e.target.closest('button[data-w]'); if (b) { blip(520, 0.05); load(+b.dataset.w, st.idx >= 0 ? st.dates[st.idx] : null); } };
-  const switchView = v => { st.view = v; lsPut({ view: v }); setCamAll(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); blip(720, 0.06); };
+  const switchView = v => { st.view = v; lsPut({ view: v }); setCamAll(); renderNav(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); blip(720, 0.06); };
   $('view').onclick = e => { const b = e.target.closest('button[data-v]'); if (b) switchView(b.dataset.v); };
   $('nms').onclick = e => { const n = getNameStyle() === 'names' ? 'codes' : 'names'; setNameStyle(n); e.currentTarget.setAttribute('aria-pressed', String(n === 'names')); e.currentTarget.textContent = n === 'names' ? 'NAMES' : 'CODES'; blip(600); };
   $('snd').onclick = e => { st.sound = !st.sound; lsPut({ sound: st.sound }); e.currentTarget.setAttribute('aria-pressed', String(st.sound)); blip(600); };
@@ -319,14 +339,35 @@ export async function openJarvis(win = window) {
     for (const b of $('mods').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.m === m));
     $('pane').hidden = m === 'chain'; $('pane').onclick = null; $('boot').style.display = m === 'chain' ? '' : 'none';
     if (m === 'chain') showCard(); else { $('card').hidden = true; R[m]?.(); }
+    renderNav();
   }
   $('mods').onclick = e => { const b = e.target.closest('button[data-m]'); if (b) setMod(b.dataset.m); };
+  // ── the sections: six, each holding its pictures AND its panels; a picture with a natural companion list opens it beside it ──
+  function renderNav() {
+    const nav = $('nav'); if (!nav) return;
+    const has = (k, id) => !!(k === 'view' ? $('view').querySelector(`[data-v="${id}"]`) : $('mods').querySelector(`[data-m="${id}"]`));
+    const act = activeSection(st.mod, st.view), items = itemsFor(act, has), comp = COMPANION[st.view] ?? null, hasComp = comp && has('tool', comp);
+    nav.innerHTML = `<div class="jv-nav-row">${SECTIONS.map(x => `<button type="button" class="jv-sec" data-s="${x.id}" aria-pressed="${x.id === act.id}">${x.label}</button>`).join('')}</div>`
+      + `<div class="jv-nav-row">${items.map(i => `<button type="button" class="jv-it ${i.kind}" data-k="${i.kind}" data-i="${i.id}" aria-pressed="${i.kind === 'view' ? (st.mod === 'chain' && st.view === i.id) : st.mod === i.id}" title="${i.kind === 'view' ? 'A picture' : 'A panel of text and numbers'}">${esc(i.label)}</button>`).join('')}`
+      + `${hasComp ? `<button type="button" class="jv-it side" data-side="1" aria-pressed="${st.mod === comp}" title="The list that goes with this picture">${st.mod === comp ? '◂ HIDE' : '▸ SHOW'} ${esc(labelOf('tool', comp) ?? 'LIST')}</button>` : ''}</div>`
+      + `<div class="jv-nav-hint">${esc(act.hint)}</div>`;
+    $('cur').textContent = `${act.label} · ${(st.mod !== 'chain' ? labelOf('tool', st.mod) : labelOf('view', st.view)) ?? ''}`;
+    win.setTimeout(fitTop, 0);
+  }
+  function autoCompanion() { const comp = COMPANION[st.view]; if (!comp || st.compact || lsGet().side === false || st.mod !== 'chain' || st.cinemaStop || !$('mods').querySelector(`[data-m="${comp}"]`)) return; setMod(comp); }
+  function goNav(kind, id) { if (kind === 'view') { if (st.mod !== 'chain') setMod('chain'); switchView(id); autoCompanion(); } else setMod(id); if (st.compact) closeMenu(); }
+  $('nav').onclick = e => {
+    const sec = e.target.closest('button[data-s]'); if (sec) { const x = SECTIONS.find(y => y.id === sec.dataset.s); goNav(x.home[0], x.home[1]); return; }
+    const it = e.target.closest('button[data-i]'); if (it) { goNav(it.dataset.k, it.dataset.i); return; }
+    if (e.target.closest('button[data-side]')) { const comp = COMPANION[st.view]; if (comp) { const open = st.mod === comp; lsPut({ side: !open }); setMod(open ? 'chain' : comp); } }
+  };
   const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
     globeTo: (lat, lon, zoom = 1) => { Object.assign(st.gl, { tlat: lat, tlon: lon, tzoom: zoom }); st.spin = false; }, flyTo: (x, z) => { st.cdTarget = { x, z }; }, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
   loadModules().then(list => {
     win.setTimeout(fitTop, 0);
     for (const v of viewsOf()) { if (!$('view').querySelector(`[data-v="${v.id}"]`)) $('view').insertAdjacentHTML('beforeend', ` <button type="button" data-v="${esc(v.id)}" aria-pressed="${v.id === st.view}">${esc(v.label)}</button>`); extraViews[v.id] = v; }
     if (extraViews[st.view]) setCamAll();
+    renderNav();
     for (const m of list) { R[m.id] = () => m.render($('pane'), xapi); if (!(Array.isArray(m.views) && m.views.length) && !$('mods').querySelector(`[data-m="${m.id}"]`)) $('mods').insertAdjacentHTML('beforeend', ` <button type="button" data-m="${esc(m.id)}" aria-pressed="false">${esc(m.label)}</button>`); }
     fitTop();
   });
@@ -414,7 +455,7 @@ export async function openJarvis(win = window) {
       ctx.globalAlpha = (n.style.tone === 'quiet' || n.style.tone === 'none' ? 0.18 : 0.5) * f2; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(p.x, p.y, r * 3.2 * pulse, 0, 6.2832); ctx.fill();
       ctx.globalAlpha = f2; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.55 * pulse, 0, 6.2832); ctx.fill();
       if (selK === n.key) { ctx.strokeStyle = C.tx; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.4, 0, 6.2832); ctx.stroke(); }
-      if (p.z < 0.6 || selK === n.key) { ctx.globalAlpha = f2 * (n.style.tone === 'quiet' ? 0.6 : 1); ctx.fillStyle = C.tx; ctx.font = `${Math.round(10 + 3 * p.s)}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[n.key] ? shortLabel(CHAIN_NODES[n.key]) : n.key, p.x, p.y + r * 1.9 + 8); }
+      if (st.compact ? (selK === n.key || (n.style.tone !== 'quiet' && p.z < 0.3)) : (p.z < 0.6 || selK === n.key)) { ctx.globalAlpha = f2 * (n.style.tone === 'quiet' ? 0.6 : 1); ctx.fillStyle = C.tx; ctx.font = `${Math.round(10 + 3 * p.s)}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[n.key] ? shortLabel(CHAIN_NODES[n.key]) : n.key, p.x, p.y + r * 1.9 + 8); }
       st.proj.push({ key: n.key, sx: p.x, sy: p.y });
     }
   }
@@ -443,7 +484,7 @@ export async function openJarvis(win = window) {
       poly(o.b.faces.top, o.pts, c, (live ? 0.7 : 0.25) * fade * pulse, c);
       if (live) { const gr = ctx.createRadialGradient(o.top.x, o.top.y, 0, o.top.x, o.top.y, 26 * o.top.s); gr.addColorStop(0, c); gr.addColorStop(1, 'transparent'); ctx.globalAlpha = 0.45 * fade; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(o.top.x, o.top.y, 26 * o.top.s, 0, 6.2832); ctx.fill(); }
       if (selK === o.n.key) { ctx.globalAlpha = fade; ctx.strokeStyle = C.tx; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(o.top.x, o.top.y, 16 * o.top.s, 0, 6.2832); ctx.stroke(); }
-      if (live || selK === o.n.key || o.tw.h > 0.2) { ctx.globalAlpha = fade * (live ? 1 : 0.55); ctx.fillStyle = C.tx; ctx.font = `${Math.round(10 + 3 * o.top.s)}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[o.n.key] ? shortLabel(CHAIN_NODES[o.n.key]) : o.n.key, o.top.x, o.top.y - 12 * o.top.s - 4); }
+      if ((live && (!st.compact || o.tw.h > 0.3)) || selK === o.n.key || (o.tw.h > 0.2 && !st.compact)) { ctx.globalAlpha = fade * (live ? 1 : 0.55); ctx.fillStyle = C.tx; ctx.font = `${Math.round(10 + 3 * o.top.s)}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[o.n.key] ? shortLabel(CHAIN_NODES[o.n.key]) : o.n.key, o.top.x, o.top.y - 12 * o.top.s - 4); }
       st.proj.push({ key: o.n.key, sx: o.top.x, sy: o.top.y });
     }
   }
@@ -476,6 +517,7 @@ export async function openJarvis(win = window) {
     }
     // markers: a pillar standing on the surface, its height and glow the size of the move
     const items = gr.nodes.filter(n => GEO[n.key]).map(n => { const v = vec(n.key), size = st.disp[n.key] ?? n.style.size, base = P(v, 0), tip = P(v, 0.04 + 0.26 * size); return { n, size, base, tip }; }).filter(o => o.base.z > 0.02).sort((a, b) => a.base.z - b.base.z);
+    const loudG = new Set([...items].sort((a, b) => b.size - a.size).slice(0, 5).map(o => o.n.key));      // on a phone only the five biggest moves carry a name
     for (const o of items) {
       const c = tcol(o.n.style.tone), live = o.n.style.tone !== 'quiet' && o.n.style.tone !== 'none', fa = Math.min(1, o.base.z * 2.2) * fade, pulse = o.n.style.tone === 'wrong' ? 1 + 0.2 * Math.sin(t * 4) : 1, r = (3 + o.size * 7) * Math.sqrt(g.zoom) * pulse;
       ctx.globalAlpha = 0.5 * fa; ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(o.base.x, o.base.y, 6 * Math.sqrt(g.zoom), 3 * Math.sqrt(g.zoom), 0, 0, 6.2832); ctx.fill();
@@ -483,14 +525,14 @@ export async function openJarvis(win = window) {
       if (live) { const gg = ctx.createRadialGradient(o.tip.x, o.tip.y, 0, o.tip.x, o.tip.y, r * 3); gg.addColorStop(0, c); gg.addColorStop(1, 'transparent'); ctx.globalAlpha = 0.5 * fa; ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(o.tip.x, o.tip.y, r * 3, 0, 6.2832); ctx.fill(); }
       ctx.globalAlpha = fa; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(o.tip.x, o.tip.y, r, 0, 6.2832); ctx.fill();
       if (selK === o.n.key) { ctx.strokeStyle = C.tx; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(o.tip.x, o.tip.y, r + 5, 0, 6.2832); ctx.stroke(); }
-      if (live || selK === o.n.key || g.zoom > 1.7) { ctx.globalAlpha = fa * (live ? 1 : 0.6); ctx.fillStyle = C.tx; ctx.font = `${Math.round(10 + 1.5 * Math.min(2, g.zoom))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[o.n.key] ? shortLabel(CHAIN_NODES[o.n.key]) : o.n.key, o.tip.x, o.tip.y - r - 8); if (g.zoom > 1.7 || selK === o.n.key) { ctx.globalAlpha = fa * 0.55; ctx.font = '9px ui-monospace,monospace'; ctx.fillText(GEO[o.n.key][2], o.tip.x, o.tip.y - r + 3); } }
+      if ((live && (!st.compact || loudG.has(o.n.key))) || selK === o.n.key || (g.zoom > 1.7 && !st.compact)) { ctx.globalAlpha = fa * (live ? 1 : 0.6); ctx.fillStyle = C.tx; ctx.font = `${Math.round(10 + 1.5 * Math.min(2, g.zoom))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[o.n.key] ? shortLabel(CHAIN_NODES[o.n.key]) : o.n.key, o.tip.x, o.tip.y - r - 8); if ((g.zoom > 1.7 && !st.compact) || selK === o.n.key) { ctx.globalAlpha = fa * 0.55; ctx.font = '9px ui-monospace,monospace'; ctx.fillText(GEO[o.n.key][2], o.tip.x, o.tip.y - r + 3); } }
       st.proj.push({ key: o.n.key, sx: o.tip.x, sy: o.tip.y });
     }
-    for (const m of EXTRA) { try { m.drawGlobe?.(ctx, { P, X, Y, Rg, ctr, t, fade, zoom: g.zoom }, xapi); } catch (e) { /* a layer must never stop the frame */ } }
+    for (const m of EXTRA) { try { m.drawGlobe?.(ctx, { P, X, Y, Rg, ctr, t, fade, zoom: g.zoom, compact: st.compact }, xapi); } catch (e) { /* a layer must never stop the frame */ } }
   }
 
   function drawExtra(v, t, fade, dt) {
-    const SC = Math.min(st.w * 0.5, st.h * 0.95) * 0.3, g = { t, fade, dt, W: st.w, H: st.h, cx: cx(), cy: cy(), SC, C, poly, hit: (key, x, y) => st.proj.push({ key, sx: x, sy: y }),
+    const SC = Math.min(st.w * 0.5, st.h * 0.95) * 0.3, g = { t, fade, dt, W: st.w, H: st.h, compact: st.compact, cx: cx(), cy: cy(), SC, C, poly, hit: (key, x, y) => st.proj.push({ key, sx: x, sy: y }),
       proj: (p, c) => { const q = project(p, c ?? cam()); return { x: cx() + q.x * SC, y: cy() + q.y * SC, s: q.s, z: q.z }; } };
     try { v.draw(ctx, g, xapi); } catch (e) { /* a view must never stop the frame */ }
   }
@@ -503,9 +545,9 @@ export async function openJarvis(win = window) {
     ctx.lineWidth = 1; ctx.strokeStyle = C.blue;
     for (let i = -11; i <= 11; i++) { const u = i * 0.19; for (const [a, b] of [[[-2.2, 0, u], [2.2, 0, u]], [[u, 0, -1.4], [u, 0, 1.4]]]) { const p = P(...a), q = P(...b); if (p.ok && q.ok) { ctx.globalAlpha = 0.08 * fade; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); } } }
     ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'right'; ctx.fillStyle = C.tx2;
-    CD_ROWS.forEach(([title], ri) => { if (!title) return; const z = (ri - (CD_ROWS.length - 1) / 2) * 0.45, p = P(-1.55, 0, z); if (p.ok) { ctx.globalAlpha = 0.6 * fade; ctx.fillText(title, p.x, p.y); } });
+    CD_ROWS.forEach(([title], ri) => { if (!title || st.compact) return; const z = (ri - (CD_ROWS.length - 1) / 2) * 0.45, p = P(-1.55, 0, z); if (p.ok) { ctx.globalAlpha = 0.6 * fade; ctx.fillText(title, p.x, p.y); } });
     const items = cd.rows.map(r => { const pos = cd.layout[r.key]; if (!pos) return null; const b = candleBox(r, pos), pts = b.pts.map(q => P(q[0], q[1], q[2])), w0 = P(...b.wick[0]), w1 = P(...b.wick[1]), tip = P(b.tip[0], b.tip[1] + 0.1, b.tip[2]); return { r, b, pts, w0, w1, tip, depth: P(pos.x, 0, pos.z).z }; }).filter(o => o && o.tip.ok).sort((a, b) => b.depth - a.depth);
-    const selK = st.sel, loud = new Set([...items].sort((a, b) => Math.abs(b.r.ratio) - Math.abs(a.r.ratio)).slice(0, 9).map(o => o.r.key));      // only the loudest candles carry a name, so the field stays readable
+    const selK = st.sel, loud = new Set([...items].sort((a, b) => Math.abs(b.r.ratio) - Math.abs(a.r.ratio)).slice(0, st.compact ? 4 : 9).map(o => o.r.key));      // only the loudest candles carry a name, so the field stays readable
     for (const o of items) {
       const c = tcol(o.r.tone === 'up' ? 'up' : o.r.tone === 'dn' ? 'dn' : 'quiet'), live = o.r.tone !== 'quiet', fa = fade * Math.min(1, Math.max(0.25, o.tip.s * 0.9));
       ctx.globalAlpha = (live ? 0.9 : 0.4) * fa; ctx.strokeStyle = c; ctx.lineWidth = Math.max(1, 1.6 * o.tip.s); ctx.beginPath(); ctx.moveTo(o.w0.x, o.w0.y); ctx.lineTo(o.w1.x, o.w1.y); ctx.stroke();    // the wick
@@ -520,6 +562,7 @@ export async function openJarvis(win = window) {
       if (selK === o.r.key || (live && loud.has(o.r.key) && Math.abs(o.r.ratio) > 1)) { ctx.globalAlpha = fa * (live ? 1 : 0.6); ctx.fillStyle = C.tx; ctx.font = `${Math.round(9 + 3 * Math.min(1.6, o.tip.s))}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(marketName(o.r.key, { short: true }), o.tip.x, o.tip.y - 16 * o.tip.s - 4); }
       st.proj.push({ key: o.r.key, sx: o.tip.x, sy: o.tip.y });
     }
+    if (st.compact) return;
     ctx.globalAlpha = 0.7 * fade; ctx.fillStyle = C.tx2; ctx.font = '11px ui-monospace,monospace'; ctx.textAlign = 'left';
     ctx.fillText('CANDLES  ·  today\'s session against each market\'s usual move  ·  green above the floor, red below', 24, st.h - 215); ctx.fillText('CHEVRONS  ·  the bias engine\'s lean (back-test: no proven skill)', 24, st.h - 199);
   }
@@ -544,7 +587,7 @@ export async function openJarvis(win = window) {
       const gg = ctx.createRadialGradient(p.x - R2 * 0.35, p.y - R2 * 0.4, R2 * 0.1, p.x, p.y, R2); gg.addColorStop(0, C.tx); gg.addColorStop(0.25, c); gg.addColorStop(1, 'transparent');
       ctx.globalAlpha = (live ? 0.55 : 0.22) * fade; ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(p.x, p.y, R2, 0, 6.2832); ctx.fill();
       ctx.globalAlpha = (live ? 0.95 : 0.4) * fade; ctx.strokeStyle = c; ctx.lineWidth = selK === k ? 3 : 1.4; ctx.beginPath(); ctx.arc(p.x, p.y, R2, 0, 6.2832); ctx.stroke();
-      ctx.globalAlpha = (live ? 1 : 0.6) * fade; ctx.fillStyle = C.tx; ctx.font = `${live ? 11 : 10}px ui-monospace,monospace`; ctx.textAlign = 'center'; ctx.fillText(CHAIN_NODES[k] ? shortLabel(CHAIN_NODES[k]) : marketName(k, { short: true }), p.x, p.y + (live ? -1 : 3));
+      ctx.globalAlpha = (live ? 1 : 0.6) * fade; ctx.fillStyle = C.tx; ctx.font = `${live ? 11 : 10}px ui-monospace,monospace`; ctx.textAlign = 'center'; if (live || !st.compact) ctx.fillText(CHAIN_NODES[k] ? shortLabel(CHAIN_NODES[k]) : marketName(k, { short: true }), p.x, p.y + (live ? -1 : 3));
       if (live && n.end?.text) { ctx.globalAlpha = 0.8 * fade; ctx.font = '10px ui-monospace,monospace'; ctx.fillText(n.end.text, p.x, p.y + 12); }
       st.proj.push({ key: k, sx: p.x, sy: p.y });
     }
@@ -596,6 +639,9 @@ export async function openJarvis(win = window) {
     if (flash) { dock.classList.remove('al'); void dock.offsetWidth; dock.classList.add('al'); }
   }
   dock.onclick = e => { const b = e.target.closest('button[data-d]'); if (!b) return; const d = b.dataset.d; if (d === 'open') api.undock(); else if (d === 'alerts') { api.undock(); setMod('alerts'); } else if (d === 'mic') setWake(!st.wake); else if (d === 'off') api.off(); };
+  const closeMenu = () => { root.classList.remove('jv-menu-open'); $('menubtn').setAttribute('aria-expanded', 'false'); win.setTimeout(fitTop, 0); };
+  $('menubtn').onclick = () => { const o = root.classList.toggle('jv-menu-open'); $('menubtn').setAttribute('aria-expanded', String(o)); win.setTimeout(fitTop, 0); };
+  $('menu').addEventListener('click', e => { if (st.compact && e.target.closest('button') && !e.target.closest('#' + ID + '-snd,#' + ID + '-nms,#' + ID + '-wake')) closeMenu(); });
   $('dockb').onclick = () => api.dock(); $('stop').onclick = () => st.cinemaStop?.();
   $('cine').onclick = e => { const b = e.target.closest('button[data-c]'); if (b) cineAct(b.dataset.c); };
   $('off').onclick = () => api.off();
@@ -635,7 +681,7 @@ export async function openJarvis(win = window) {
     if (e.key === 'Escape' && st.cinemaStop) { e.preventDefault(); e.stopPropagation(); st.cinemaStop(); return; } if (e.key === 'Escape' && !st.docked) { e.preventDefault(); e.stopPropagation(); api.dock(); } };
   doc.addEventListener('keydown', onKey, true);
   open = api;
-  setCamAll(); $('reg').hidden = st.view !== 'globe'; runBoot(); raf = win.requestAnimationFrame(frame);
+  setCamAll(); renderNav(); $('reg').hidden = st.view !== 'globe'; runBoot(); raf = win.requestAnimationFrame(frame);
   await load(st.win);
   setWatch(st.watch);
   return true;
