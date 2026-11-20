@@ -6,27 +6,160 @@
 //   - an outer zone: -> + 75th-percentile run-past (lighter)
 //   - a label with the chance a touch NOW goes on to the next line (p90: a further 0.25σ), from the current
 //     London time bucket (00-07 / 07-12 / 12-16 / 16-22).
+// Inverted futures (6J / 6S / 6C) draw the export's OH lines below the open and OL above (1/x swaps up and down).
 // Research behind it: reversal-zones (zones are how price behaves past ANY level, not a line effect) and
 // exhaustion-v2 (next-line odds fall through the day). Shadow only.
 indicator("Exhaustion Zones (ladder-v2 shadow)", overlay=true, max_lines_count=100, max_boxes_count=100, max_labels_count=100)
 
 exText = input.text_area("", "Paste EXHAUSTION export")
-symSel = input.string("Auto", "Symbol block", options=["Auto", "GOLD", "NQ", "EURUSD"])
+symSel = input.string("Auto", "Symbol block", tooltip="Auto, or the export block name (e.g. GBPUSD, SPX500, WTI)")
 showOuter = input.bool(true, "Show outer (75th) zone")
 colUp = input.color(color.new(color.orange, 0), "Upside colour")
 colDn = input.color(color.new(color.red, 0), "Downside colour")
 
-f_auto() =>
-    u = str.upper(syminfo.ticker)
-    r = str.upper(syminfo.root)
+f_futuresMap(rt) =>
     string s = ""
-    if str.contains(u, "XAU") or str.contains(u, "GOLD") or r == "GC" or r == "MGC"
-        s := "GOLD"
-    else if str.contains(u, "EURUSD") or r == "6E" or r == "M6E"
+    bool inv = false
+    // FX — direct quotes
+    if rt == "6E" or rt == "M6E" or rt == "E7"
         s := "EURUSD"
-    else if str.contains(u, "NAS100") or str.contains(u, "US100") or str.contains(u, "USTEC") or str.contains(u, "NDX") or r == "NQ" or r == "MNQ"
+    else if rt == "6B" or rt == "M6B"
+        s := "GBPUSD"
+    else if rt == "6A" or rt == "M6A"
+        s := "AUDUSD"
+    else if rt == "6N"
+        s := "NZDUSD"
+    else if rt == "RP"
+        s := "EURGBP"
+    else if rt == "RY"
+        s := "EURJPY"
+    else if rt == "RF"
+        s := "EURCHF"
+    // FX — inverted (USD per foreign unit)
+    else if rt == "6J" or rt == "MJY" or rt == "J7"
+        s := "USDJPY"
+        inv := true
+    else if rt == "6S" or rt == "MSF"
+        s := "USDCHF"
+        inv := true
+    else if rt == "6C" or rt == "MCD"
+        s := "USDCAD"
+        inv := true
+    // Metals
+    else if rt == "GC" or rt == "MGC" or rt == "1OZ"
+        s := "GOLD"
+    else if rt == "SI" or rt == "SIL"
+        s := "SILVER"
+    else if rt == "HG" or rt == "MHG"
+        s := "COPPER"
+    else if rt == "PL"
+        s := "PLATINUM"
+    else if rt == "PA"
+        s := "PALLADIUM"
+    // Energy
+    else if rt == "CL" or rt == "MCL" or rt == "QM"
+        s := "WTI"
+    else if rt == "BZ" or rt == "BRN" or rt == "B"
+        s := "BRENT"
+    else if rt == "NG" or rt == "QG" or rt == "MNG"
+        s := "NATGAS"
+    // Grains / softs
+    else if rt == "ZS" or rt == "XK"
+        s := "SOYBEAN"
+    else if rt == "ZW" or rt == "XW"
+        s := "WHEAT"
+    else if rt == "ZC" or rt == "XC"
+        s := "CORN"
+    else if rt == "SB"
+        s := "SUGAR"
+    // Equity indices
+    else if rt == "NQ" or rt == "MNQ"
         s := "NQ"
+    else if rt == "ES" or rt == "MES"
+        s := "SPX500"
+    else if rt == "YM" or rt == "MYM"
+        s := "US30"
+    else if rt == "RTY" or rt == "M2K"
+        s := "US2000"
+    else if rt == "FDAX" or rt == "FDXM" or rt == "FDXS"
+        s := "DE30"
+    else if rt == "Z" or rt == "FFI"
+        s := "UK100"
+    // Crypto
+    else if rt == "BTC" or rt == "MBT"
+        s := "BTCUSD"
+    [s, inv]
+
+f_cleanTicker(t) =>
+    u = str.upper(t)
+    u := str.replace_all(u, ".", "")
+    u := str.replace_all(u, "_", "")
+    u := str.replace_all(u, "/", "")
+    u := str.replace_all(u, "-", "")
+    u := str.replace_all(u, "+", "")
+    u := str.replace_all(u, "#", "")
+    u := str.replace_all(u, "$", "")
+    u
+
+f_cfdMap(u) =>
+    string s = ""
+    fx = array.from("EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "NZDUSD", "USDCAD", "USDCHF",
+         "GBPJPY", "EURGBP", "EURJPY", "EURCHF", "GBPCHF", "AUDJPY", "CADJPY", "EURAUD",
+         "EURCAD", "EURNZD", "GBPAUD", "GBPCAD", "AUDCAD", "NZDCAD", "NZDJPY", "BTCUSD",
+         "AUDCHF", "AUDNZD", "CADCHF", "CHFJPY", "GBPNZD")
+    for p in fx
+        if s == "" and str.contains(u, p)
+            s := p
+    if s == ""
+        if str.contains(u, "XAUUSD") or str.startswith(u, "GOLD")
+            s := "GOLD"
+        else if str.contains(u, "XAGUSD") or str.startswith(u, "SILVER")
+            s := "SILVER"
+        else if str.contains(u, "XPTUSD") or str.startswith(u, "PLATINUM")
+            s := "PLATINUM"
+        else if str.contains(u, "XPDUSD") or str.startswith(u, "PALLADIUM")
+            s := "PALLADIUM"
+        else if str.contains(u, "XCUUSD") or str.startswith(u, "COPPER")
+            s := "COPPER"
+        else if str.startswith(u, "WTI") or str.startswith(u, "USOIL") or str.startswith(u, "XTIUSD") or str.startswith(u, "CRUDE")
+            s := "WTI"
+        else if str.startswith(u, "BCO") or str.startswith(u, "UKOIL") or str.startswith(u, "XBRUSD") or str.startswith(u, "BRENT")
+            s := "BRENT"
+        else if str.startswith(u, "NATGAS") or str.startswith(u, "XNGUSD") or str.startswith(u, "NGAS")
+            s := "NATGAS"
+        else if str.startswith(u, "SOYB")
+            s := "SOYBEAN"
+        else if str.startswith(u, "WHEAT")
+            s := "WHEAT"
+        else if str.startswith(u, "CORN")
+            s := "CORN"
+        else if str.startswith(u, "SUGAR")
+            s := "SUGAR"
+        else if str.startswith(u, "NAS100") or str.startswith(u, "US100") or str.startswith(u, "USTEC") or str.startswith(u, "NDX") or str.startswith(u, "USNAS100") or str.startswith(u, "NASDAQ")
+            s := "NQ"
+        else if str.startswith(u, "SPX500") or str.startswith(u, "US500") or str.startswith(u, "SP500") or str.startswith(u, "SPXUSD")
+            s := "SPX500"
+        else if str.startswith(u, "GER40") or str.startswith(u, "GER30") or str.startswith(u, "DE40") or str.startswith(u, "DE30") or str.startswith(u, "DAX")
+            s := "DE30"
+        else if str.startswith(u, "UK100") or str.startswith(u, "FTSE")
+            s := "UK100"
+        else if str.startswith(u, "US2000") or str.startswith(u, "US2K") or str.startswith(u, "RUSSELL")
+            s := "US2000"
+        else if str.startswith(u, "US30") or str.startswith(u, "DJ30") or str.startswith(u, "WS30") or str.startswith(u, "DJIA")
+            s := "US30"
     s
+
+// [export block, inverted?]: futures by root (6C/6S/6J are quoted the other way up), CFDs by cleaned ticker
+f_auto() =>
+    string s = ""
+    bool inv = false
+    if syminfo.type == "futures"
+        [fs, fi] = f_futuresMap(str.upper(syminfo.root))
+        s := fs
+        inv := fi
+    if s == ""
+        s := f_cfdMap(f_cleanTicker(syminfo.ticker))
+    [s, inv]
 
 f_num(string t) =>
     str.tonumber(str.replace_all(str.replace_all(str.trim(t), "%", ""), "+", ""))
@@ -52,6 +185,7 @@ f_odds(string src) =>
     arr
 
 var string sym = ""
+var bool inv = false
 var float z50 = na
 var float z75 = na
 var array<float> lvl = array.new_float(6, na)          // OH50 OH75 OH90 OL50 OL75 OL90 (%)
@@ -59,7 +193,9 @@ var matrix<float> odds = matrix.new<float>(6, 4, na)
 var array<string> names = array.from("OH p50", "OH p75", "OH p90", "OL p50", "OL p75", "OL p90")
 
 if barstate.isfirst
-    sym := symSel == "Auto" ? f_auto() : symSel
+    [aS, aI] = f_auto()
+    sym := symSel == "Auto" ? aS : str.upper(symSel)
+    inv := symSel == "Auto" ? aI : false
     bool inBlock = false
     for row in str.split(exText, "\n")
         r = str.trim(row)
@@ -109,7 +245,7 @@ if newDay and not na(z50) and sym != ""
     for i = 0 to 5
         p = array.get(lvl, i)
         if not na(p)
-            up = i < 3
+            up = (i < 3) != inv            // inverted futures: the export's OH is the chart's downside
             sgn = up ? 1.0 : -1.0
             c = up ? colUp : colDn
             L = dOpen * (1 + sgn * p / 100)
