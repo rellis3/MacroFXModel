@@ -520,7 +520,18 @@ import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
 import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic, resetBackfillStore as tdeResetBackfillStore, TDE_BACKFILL_PAIRS } from './Trade_Decision_Engine/backfill.js';
-import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs, the corr-history build (off the main loop)
+import { Worker as _RawNodeWorker } from 'node:worker_threads';
+// Every worker thread is listed while it runs (file + start time), so /api/services can show which one was alive when memory climbed: a worker's own heap counts in the process RSS but not in
+// process.memoryUsage().heapUsed, which is how a 3.8 GB process can show a 434 MB heap.
+const _liveWorkers = new Map();
+class _NodeWorker extends _RawNodeWorker {
+  constructor(file, opts) {
+    super(file, opts);
+    const label = String(file?.pathname ?? file).split(/[\/]/).pop(), id = this.threadId;
+    _liveWorkers.set(id, { label, since: Date.now(), maxOldMb: opts?.resourceLimits?.maxOldGenerationSizeMb ?? null });
+    this.once('exit', () => _liveWorkers.delete(id));
+  }
+}   // fx-factor-v2 / ou-pairs research runs, the corr-history build (off the main loop)
 import { pearson as corrPearson } from './js/corrHistoryCompute.js';   // the corr-history maths (built in js/corrHistoryWorker.js)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { createSnapshotService as _createSnapshotService } from './js/deskSnapshotStore.js';   // the Desk Terminal time machine: CORE + FULL snapshots, KV window, R2 record (plans/TIME_MACHINE.md)
@@ -45866,6 +45877,8 @@ app.get('/api/services', (req, res) => {
       arrayBuffersMB: mb(mem.arrayBuffers),
       peakRssMB: mb(_memPeak.rssBytes),
       peakAt: _memPeak.at,
+      workers: [..._liveWorkers.values()].map(x => ({ file: x.label, ageSec: Math.round((Date.now() - x.since) / 1000), maxOldMb: x.maxOldMb })),
+      trace: _memTrace,
       sampledAt: new Date().toISOString(),
       note: 'This process only, not the container total (start.sh bots run as separate OS processes with their own RSS Railway meters separately). '
           + 'peakRssMB is the highest 60s sample since boot, not the true peak, and resets on every redeploy — there is no R2 persistence for '
@@ -47544,7 +47557,16 @@ let _memPeak = { rssBytes: 0, at: null };
 svcInterval('memSample', () => {
   const m = process.memoryUsage();
   if (m.rss > _memPeak.rssBytes) _memPeak = { rssBytes: m.rss, at: new Date().toISOString() };
+  _memTracePush(m);
 }, 60_000);
+// A rolling trace (every 5 s for the first 10 minutes after boot, then every minute): rss, JS heap, buffers, and which worker threads were alive. Read it at /api/services -> memory.trace.
+const _memTrace = [];
+function _memTracePush(m = process.memoryUsage()) {
+  const mb = n => Math.round(n / 1048576);
+  _memTrace.push({ t: new Date().toISOString().slice(11, 19), rss: mb(m.rss), heap: mb(m.heapUsed), ext: mb(m.external + m.arrayBuffers), other: mb(m.rss - m.heapTotal - m.external), w: [..._liveWorkers.values()].map(x => x.label).join(',') || null });
+  if (_memTrace.length > 360) _memTrace.shift();
+}
+{ const fast = setInterval(() => { if (Date.now() - _serverBootedAt > 600_000) { clearInterval(fast); return; } _memTracePush(); }, 5000); fast.unref?.(); }
 
 svcInterval('monitor', monitorTick, MONITOR_MS);
 if (svcEnabled('monitor')) svcRun('monitor', monitorTick).catch(console.error);
