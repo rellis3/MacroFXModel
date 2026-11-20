@@ -156,9 +156,9 @@ test('planBroadcast in the afternoon does not call itself a morning briefing', (
 
 test('wantedSceneIds: every hook scene the programme may ask for, no built-ins', () => {
   const w = wantedSceneIds();
-  for (const id of ['reactor', 'chainfly', 'cbpaths', 'yields', 'fxgrid', 'ccy', 'ivsurf', 'vol', 'gpillar', 'gterrain', 'gamma', 'dayahead', 'wx']) assert.ok(w.includes(id), id);
+  for (const id of ['reactor', 'chainfly', 'surprise', 'cycle', 'cbpaths', 'yields', 'fxgrid', 'ccy', 'ivsurf', 'vol', 'gpillar', 'gterrain', 'cot', 'gamma', 'dayahead', 'shockwave', 'wx']) assert.ok(w.includes(id), id);
   assert.ok(!w.includes('candles') && !w.includes('chain') && !w.includes('ahead'));
-  assert.equal(SEGMENTS.length, 7);
+  assert.equal(SEGMENTS.length, 8);
 });
 
 test('the ticker: biggest against its usual move first, arrows and signs, quiet markets marked, junk dropped', () => {

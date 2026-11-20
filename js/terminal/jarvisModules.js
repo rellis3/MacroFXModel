@@ -15,6 +15,6 @@ export const EXTRA = [];
 export const registerJarvisModule = m => { if (m?.id && typeof m.render === 'function' && !EXTRA.some(x => x.id === m.id)) EXTRA.push(m); return m; };
 export const MODULE_FILES = ['./jarvisModPrecedent.js', './jarvisModPapers.js', './jarvisModExplain.js', './jarvisModFilm.js', './jarvisModMarkets.js', './jarvisModShow.js', './jarvisViewSession.js', './jarvisViewBook.js', './jarvisViewChain.js', './jarvisViewYields.js', './jarvisViewWx.js', './jarvisViewCcy.js', './jarvisViewNet.js', './jarvisViewVol.js', './jarvisViewGamma.js', './jarvisModNews.js',
   // the hologram views (WebGL, js/terminal/jarvisGL.js); a file that is not there yet is simply skipped
-  './jarvisViewReactor.js', './jarvisViewGammaPillar.js', './jarvisViewGammaTerrain.js', './jarvisViewVolSurface.js', './jarvisViewRatePaths.js', './jarvisViewFxMatrix.js', './jarvisViewDayAhead.js', './jarvisModBroadcast.js'];
+  './jarvisViewReactor.js', './jarvisViewGammaPillar.js', './jarvisViewGammaTerrain.js', './jarvisViewVolSurface.js', './jarvisViewRatePaths.js', './jarvisViewFxMatrix.js', './jarvisViewDayAhead.js', './jarvisViewSurprise.js', './jarvisViewShockwave.js', './jarvisViewCot.js', './jarvisViewCycle.js', './jarvisModBroadcast.js'];
 export const viewsOf = () => EXTRA.flatMap(m => (Array.isArray(m.views) ? m.views : []));
 export async function loadModules() { await Promise.all(MODULE_FILES.map(f => import(f).catch(() => null))); return EXTRA; }

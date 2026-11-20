@@ -137,15 +137,16 @@ const CORE_VIEWS = new Set(['globe', 'candles', 'skyline', 'bubbles', 'orbit']);
 export const SEGMENTS = [
   { id: 'markets', name: 'Markets', segue: 'First, the markets.', tiers: [['candles', 'wx']] },
   { id: 'chain', name: 'The Chain', segue: 'Now, the chain.', tiers: [['reactor'], ['chainfly'], ['chain']] },
+  { id: 'macro', name: 'The Macro', segue: 'The bigger picture.', tiers: [['surprise', 'cycle']] },
   { id: 'rates', name: 'Rates', segue: 'To rates.', tiers: [['cbpaths', 'yields']] },
   { id: 'ccy', name: 'Currencies', segue: 'Currencies.', tiers: [['fxgrid'], ['ccy']] },
   { id: 'vol', name: 'Volatility', segue: 'Volatility.', tiers: [['ivsurf'], ['vol']] },
-  { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', tiers: [['gpillar', 'gterrain'], ['gamma']] },
-  { id: 'ahead', name: 'The Day Ahead', segue: 'And the day ahead.', tiers: [['dayahead'], ['ahead']] },
+  { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', tiers: [['gpillar', 'gterrain', 'cot'], ['gamma']] },
+  { id: 'ahead', name: 'The Day Ahead', segue: 'And the day ahead.', tiers: [['dayahead', 'shockwave'], ['ahead']] },
 ];
 /** Every hook scene id the programme may use (so the director only prepares those). */
 export const wantedSceneIds = () => [...new Set(SEGMENTS.flatMap(s => s.tiers.flat()))].filter(id => !BUILTIN[id]);
-/** In the QUICK broadcast a scene's line is cut to whole sentences of about this many words (seven segments, about two minutes). */
+/** In the QUICK broadcast a scene's line is cut to whole sentences of about this many words (eight segments, a little over two minutes). */
 export const QUICK_WORDS = 34;
 export const SIGNOFF_TEXT = 'That is the briefing. Description, not advice. Until tomorrow.';
 
