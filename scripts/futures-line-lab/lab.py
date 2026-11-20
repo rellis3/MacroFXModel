@@ -70,6 +70,7 @@ CACHE_VERSION = 1
 
 DEFAULTS = {
     "instruments": ["NQ", "EURUSD", "GOLD"],
+    "lines": "v3",
     "select": {"kinds": ["line"], "groups": None, "rungs": None, "sides": None, "set": "all",
                "stack": {"unit": "ticks", "width": 5}, "query": None, "dedupe_bar": False},
     "by": ["instrument"],
@@ -108,15 +109,38 @@ def _vwaps(f):
     return out
 
 
-def load_instrument(name):
+# ladder-v2 futures sigma per instrument (as scripts/ladder-v2/export_shadow.py FUT pastes; ledger ladder-v2-nq/-gold/
+# -eurusd): walk-forward widths from analysis/output/ladder-v2-<sym>/test_F.parquet, sessions 2018-01-02 -> 2026-08-21.
+V2_ARMS = {"NQ": ("nq", "E6"), "GOLD": ("gold", "R5"), "EURUSD": ("eurusd", "HARCJ")}
+
+
+def line_days(name, lines):
+    """Per London day: widths (% of the open) and sigma. v3 = day-reconstruction archive (production calc, what the
+    earlier runs used); v2 = the ladder-v2 futures sigma (re-synced volatility), same date key, 2018+ only."""
+    days = pd.read_parquet(B.ARC / f"{name}_days.parquet")
+    if lines == "v3":
+        return days
+    sub, arm = V2_ARMS[name]
+    t = pd.read_parquet(ROOT / f"analysis/output/ladder-v2-{sub}/test_F.parquet")
+    t["date"] = pd.to_datetime(t["date"]).dt.strftime("%Y-%m-%d")
+    cols = {"sigma_used_pct": arm}
+    for r in ("50", "75", "90"):
+        cols.update({f"oh_p{r}_pct": f"{arm}_oh_{r}", f"ol_p{r}_pct": f"{arm}_ol_{r}", f"oc_p{r}": f"{arm}_oc_{r}",
+                     f"hl_p{r}": f"{arm}_hl_{r}"})
+    v = t[["date"] + list(cols.values())].rename(columns={b: a for a, b in cols.items()})
+    days = days.drop(columns=list(cols)).merge(v, on="date", how="inner")
+    return days[np.isfinite(days[list(cols)]).all(axis=1)]
+
+
+def load_instrument(name, lines="v3"):
     """Touch table (every line, every kind) + per-day bar arrays, cached."""
     CACHE.mkdir(parents=True, exist_ok=True)
-    cp = CACHE / f"{name}_v{CACHE_VERSION}.pkl"
+    cp = CACHE / (f"{name}_v{CACHE_VERSION}.pkl" if lines == "v3" else f"{name}_{lines}_v{CACHE_VERSION}.pkl")
     if cp.exists():
         with open(cp, "rb") as fh:
             return pickle.load(fh)
     root, mult, tick, unit = B.MAP[name]
-    days = pd.read_parquet(B.ARC / f"{name}_days.parquet")
+    days = line_days(name, lines)
     f = pd.read_parquet(B.FUT / f"{root}_1m_unadj.parquet")
     f["t"] = pd.to_datetime(f["timestamp"], utc=True) - pd.Timedelta(minutes=1)
     lon = f["t"].dt.tz_convert("Europe/London")
@@ -196,6 +220,8 @@ def stack_counts(t, st):
 
 def select(t, sel, discovery_end):
     t = t[t["kind"].isin(sel["kinds"])].copy()
+    if sel.get("date_from"):
+        t = t[t["date"] >= sel["date_from"]]
     if sel.get("dedupe_bar"):
         # one touch per (day, kind, bar, side): the outermost line, before any other filter (as futures-exhaustion-vwap)
         t = t.assign(_o=np.where(t["up"], t["level"], -t["level"]))
@@ -463,7 +489,7 @@ def run(cfg, name):
     res = {"excursions": [], "stacks": [], "trade": []}
     keep = []
     for inst in cfg["instruments"]:
-        data = load_instrument(inst)
+        data = load_instrument(inst, cfg.get("lines", "v3"))
         mult, tick, bars = data["mult"], data["tick"], data["bars"]
         need = any(s in cfg["steps"] for s in ("excursions", "stacks")) or any(
             cfg["trade"][x]["type"] in ("median_mae", "median_mfe") for x in ("stop", "target"))

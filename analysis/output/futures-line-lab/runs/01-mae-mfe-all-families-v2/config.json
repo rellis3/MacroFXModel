@@ -1,0 +1,59 @@
+{
+  "instruments": [
+    "NQ",
+    "EURUSD",
+    "GOLD"
+  ],
+  "lines": "v2",
+  "select": {
+    "kinds": [
+      "line",
+      "placebo_085",
+      "placebo_115"
+    ],
+    "groups": null,
+    "rungs": null,
+    "sides": null,
+    "set": "all",
+    "stack": {
+      "unit": "ticks",
+      "width": 5
+    },
+    "query": null,
+    "dedupe_bar": false
+  },
+  "by": [
+    "instrument",
+    "kind",
+    "group",
+    "rung"
+  ],
+  "steps": [
+    "excursions"
+  ],
+  "trade": {
+    "mode": "fade",
+    "horizon": "60m",
+    "stop": {
+      "type": "sigma",
+      "mult": 0.25
+    },
+    "target": {
+      "type": "rr",
+      "mult": 1.0
+    },
+    "cost": {
+      "ticks": 0,
+      "commission_usd": 0
+    },
+    "min_k": 30
+  },
+  "splits": {
+    "discovery_end": "2023-01-01"
+  },
+  "boot": {
+    "B": 1000,
+    "seed": 20261118
+  },
+  "description": "Step 1 (line-touch-mae-futures v2): MAE/MFE at every touch of OH/OL, OC and HL p50/p75/p90, by line group and rung, forecast lines vs the x0.85 / x1.15 placebo ladders."
+}
