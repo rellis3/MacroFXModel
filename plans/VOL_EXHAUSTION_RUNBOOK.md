@@ -158,7 +158,7 @@ Lean version agreed with the owner: no separate site page; the signature plot wa
 ### 1.5 Event multipliers  (C+F)  `[ ]`
 - [ ] Re-fit NFP/CPI/FOMC multipliers per instrument and check them by quintile. Gold on the NFP day 2026-11-06 suggests ours is too small: rival Close median 1.17% vs ours 0.79%.
 
-### 1.6 Lockbox, one shot  `[ ]`
+### 1.6 Lockbox, one shot  `[x]` 2026-11-20 (`ladder-v2-lockbox` UNDERPOWERED, no breakage; `exhaustion-v2-lockbox` VALIDATED)
 
 ### 1.7 Shadow export  `[x]` 2026-11-19 (NQ, GOLD, EURUSD)
 - [x] vol-forecast-v3 Export menu: ⬇ v2 Forecast · CFD / · Futures (route `/api/vol-forecast/ladder-v2/export`, `js/ladderV2Shadow.js`,
