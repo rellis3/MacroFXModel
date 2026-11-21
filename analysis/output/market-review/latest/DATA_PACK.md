@@ -1,6 +1,6 @@
 # Market Review Data Pack: 2026-11-21
 
-Fetched 2026-11-21T03:26:23+00:00. Descriptive numbers for the weekly review (read with `education/market_reviews/PLAYBOOK.md`). Correlations are of daily moves: last 20 sessions vs the 60 before. They are noisy; a flip is a question, not a signal.
+Fetched 2026-11-21T15:35:33+00:00. Descriptive numbers for the weekly review (read with `education/market_reviews/PLAYBOOK.md`). Correlations are of daily moves: last 20 sessions vs the 60 before. They are noisy; a flip is a question, not a signal.
 
 **Data notes:** fred DGS2: The read operation timed out · fred DFII10: The read operation timed out · fred T10YIE: The read operation timed out · fred BAMLH0A0HYM2: The read operation timed out · fred BAMLC0A0CM: The read operation timed out · FRED DGS2 missing: US 2y = US 5y stand-in for this run · No local OAT/Bund futures: French spread proxy unavailable
 
@@ -8,12 +8,12 @@ Fetched 2026-11-21T03:26:23+00:00. Descriptive numbers for the weekly review (re
 
 | Pair | Recent | Before | Textbook sign | Status | What it means |
 |---|---|---|---|---|---|
-| CL=F vs US10Y | +0.18 | +0.08 | + | weak | Oil vs yields: + = oil is an inflation story; - = oil is a growth tax (2008-style) |
+| CL=F vs US10Y | +0.17 | +0.08 | + | weak | Oil vs yields: + = oil is an inflation story; - = oil is a growth tax (2008-style) |
 | ^NDX vs US10Y | +0.52 | -0.04 | − | INVERTED | Stocks vs yields: - = rates drive stocks; + = growth scare, bonds hedge stocks |
 | HYG_TLT vs ^NDX | +0.58 | +0.16 | + | textbook | Credit vs tech: high + = credit and equities are one trade (credit stress leading) |
-| DX-Y.NYB vs ^GSPC | -0.03 | +0.02 | − | weak | Dollar vs stocks: - = safe-haven dollar; ~0/+ = "sell America" or liquidity dash |
+| DX-Y.NYB vs ^GSPC | -0.02 | +0.02 | − | weak | Dollar vs stocks: - = safe-haven dollar; ~0/+ = "sell America" or liquidity dash |
 | AUDUSD=X vs ^NDX | +0.41 | +0.32 | + | textbook | Aussie vs tech: near 0 = AUD trading commodities not risk |
-| BTC-USD vs ^NDX | +0.47 | +0.42 | + | textbook | Bitcoin vs tech: high = one liquidity complex |
+| BTC-USD vs ^NDX | +0.66 | +0.42 | + | textbook | Bitcoin vs tech: high = one liquidity complex |
 | XLE vs CL=F | +0.53 | +0.28 | + | textbook | Energy stocks vs oil: falling = equity investors fade the oil move |
 | USDJPY=X vs US10Y | +0.42 | +0.38 | + | textbook | Yen vs yields: high = yen is a pure rates trade |
 
@@ -23,15 +23,15 @@ Equity vol vs bond vol: VIX 35.9 (1y pct 100) · MOVE 106 (1y pct 96). When bond
 
 ### EURUSD  `EURUSD=X`  1.097 (2026-11-20)
 **Move:** 1w -0.7% · 4w -2.2% (79th pct of 2y 4w moves) · 13w -6.1% · 52w range position 0% (lo 1.097 / hi 1.202)
-**Drivers (recent corr):** US_EA2 -0.21 [weak] · US_DE10 -0.17 [weak] · FR_DE (missing) · ^STOXX50E -0.12 [weak] · BZ=F -0.25 [weak] → **no clear driver** (every |corr| < 0.3: drivers cancel or something off-list is moving it)
-**Last 20 sessions decomposed (R² 0.05, n=60):** actual -2.3% = BZ=F +0.3% · US_EA2 +0.2% · ^STOXX50E -0.1% · US_DE10 -0.0% · unexplained -2.7%
+**Drivers (recent corr):** US_EA2 -0.21 [weak] · US_DE10 -0.17 [weak] · FR_DE (missing) · ^STOXX50E -0.12 [weak] · BZ=F -0.23 [weak] → **no clear driver** (every |corr| < 0.3: drivers cancel or something off-list is moving it)
+**Last 20 sessions decomposed (R² 0.05, n=60):** actual -2.3% = US_EA2 +0.2% · BZ=F +0.2% · ^STOXX50E -0.1% · US_DE10 -0.0% · unexplained -2.7%
 **Positioning (CFTC EURO FX, 2026-11-17, + = long EURUSD):** lev funds -76,587 (-9% OI, 4w -7,747, 1st pct of 3y) · asset mgrs +147,234 (+17% OI, 4w -43,187, 1st pct of 3y)
 **This week:** 11-25 02:00 ET Germany: German GDP (cons 0.2%, prev 0.2%) · 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%)
 
 ### USDJPY  `USDJPY=X`  159.7 (2026-11-20)
 **Move:** 1w -0.1% · 4w +2.1% (68th pct of 2y 4w moves) · 13w +0.5% · 52w range position 64% (lo 152.5 / hi 163.9)
 **Drivers (recent corr):** US10Y +0.42 [textbook] · US_JP10 +0.18 [weak] · ^NDX +0.62 [textbook] · ^VIX -0.55 [textbook] → **in charge: ^NDX** (Risk appetite: carry trades fund in yen)
-**Last 20 sessions decomposed (R² 0.14, n=60):** actual +2.0% = ^NDX -1.1% · ^VIX +0.6% · US10Y -0.3% · US_JP10 +0.2% · unexplained +2.6%
+**Last 20 sessions decomposed (R² 0.14, n=60):** actual +2.0% = ^NDX -0.9% · ^VIX +0.4% · US10Y -0.3% · US_JP10 +0.2% · unexplained +2.6%
 **Positioning (CFTC JAPANESE YEN, 2026-11-17, + = long USDJPY):** lev funds +23,790 (+6% OI, 4w +900, 30th pct of 3y) · asset mgrs -84,681 (-22% OI, 4w -5,578, 12th pct of 3y)
 **This week:** 11-25 24H ET Japan: BoJ Core CPI · 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%)
 
@@ -51,8 +51,8 @@ Equity vol vs bond vol: VIX 35.9 (1y pct 100) · MOVE 106 (1y pct 96). When bond
 
 ### AUDUSD  `AUDUSD=X`  0.6656 (2026-11-20)
 **Move:** 1w -2.2% · 4w -5.2% (98th pct of 2y 4w moves) · 13w -6.5% · 52w range position 26% (lo 0.6449 / hi 0.7255)
-**Drivers (recent corr):** HG=F +0.33 [textbook] · ^NDX +0.41 [textbook] · GC=F +0.31 [textbook] → **in charge: ^NDX** (Global risk proxy)
-**Last 20 sessions decomposed (R² 0.16, n=60):** actual -5.3% = ^NDX -1.3% · HG=F -0.3% · GC=F -0.0% · unexplained -3.7%
+**Drivers (recent corr):** HG=F +0.34 [textbook] · ^NDX +0.41 [textbook] · GC=F +0.29 [weak] → **in charge: ^NDX** (Global risk proxy)
+**Last 20 sessions decomposed (R² 0.16, n=60):** actual -5.3% = ^NDX -1.3% · HG=F -0.4% · GC=F +0.1% · unexplained -3.7%
 **Positioning (CFTC AUSTRALIAN DOLLAR, 2026-11-17, + = long AUDUSD):** lev funds +37,980 (+10% OI, 4w -14,517, 75th pct of 3y) · asset mgrs -182,725 (-49% OI, 4w -53,986, 1st pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
@@ -65,8 +65,8 @@ Equity vol vs bond vol: VIX 35.9 (1y pct 100) · MOVE 106 (1y pct 96). When bond
 
 ### USDCHF  `USDCHF=X`  0.8441 (2026-11-20)
 **Move:** 1w +1.0% · 4w +3.0% (87th pct of 2y 4w moves) · 13w +5.6% · 52w range position 100% (lo 0.7632 / hi 0.8441)
-**Drivers (recent corr):** US10Y +0.41 [textbook] · ^VIX -0.23 [weak] · GC=F -0.10 [weak] → **in charge: US10Y** (US yields)
-**Last 20 sessions decomposed (R² 0.28, n=60):** actual +2.9% = US10Y -0.3% · ^VIX +0.2% · GC=F +0.1% · unexplained +2.9%
+**Drivers (recent corr):** US10Y +0.41 [textbook] · ^VIX -0.23 [weak] · GC=F -0.09 [weak] → **in charge: US10Y** (US yields)
+**Last 20 sessions decomposed (R² 0.28, n=60):** actual +2.9% = US10Y -0.3% · GC=F +0.2% · ^VIX +0.2% · unexplained +2.9%
 **Positioning (CFTC SWISS FRANC, 2026-11-17, + = long USDCHF):** lev funds +19,763 (+16% OI, 4w +6,156, 97th pct of 3y) · asset mgrs +11,204 (+9% OI, 4w -14,331, 10th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
@@ -76,7 +76,7 @@ Equity vol vs bond vol: VIX 35.9 (1y pct 100) · MOVE 106 (1y pct 96). When bond
 ### AUDNZD  `AUDNZD=X`  1.214 (2026-11-20)
 **Move:** 1w -1.1% · 4w -1.6% (77th pct of 2y 4w moves) · 13w +1.6% · 52w range position 65% (lo 1.141 / hi 1.254)
 **Drivers (recent corr):** HG=F +0.07 [weak] · ^AXJO -0.13 [weak] → **no clear driver** (every |corr| < 0.3: drivers cancel or something off-list is moving it)
-**Last 20 sessions decomposed (R² 0.07, n=60):** actual -1.6% = HG=F -0.7% · ^AXJO +0.2% · unexplained -1.1%
+**Last 20 sessions decomposed (R² 0.07, n=60):** actual -1.6% = HG=F -0.7% · ^AXJO +0.2% · unexplained -1.2%
 **This week:** 11-22 16:45 ET New Zealand: Retail Sales · 11-22 16:45 ET New Zealand: Retail Sales Quarterly Vs. Year Ago
 
 ### EURGBP  `EURGBP=X`  0.838 (2026-11-20)
@@ -96,22 +96,22 @@ Equity vol vs bond vol: VIX 35.9 (1y pct 100) · MOVE 106 (1y pct 96). When bond
 
 ### USDMXN  `USDMXN=X`  19.09 (2026-11-20)
 **Move:** 1w +2.7% · 4w +2.0% (66th pct of 2y 4w moves) · 13w +12.7% · 52w range position 100% (lo 16.89 / hi 19.09)
-**Drivers (recent corr):** ^VIX +0.26 [weak] · ^GSPC -0.29 [weak] · CL=F +0.54 [INVERTED] · USDBRL=X -0.03 [weak] → **in charge: CL=F** (Oil)
-**Last 20 sessions decomposed (R² 0.15, n=60):** actual +2.0% = ^GSPC +2.4% · USDBRL=X +1.6% · CL=F -1.1% · ^VIX -1.0% · unexplained +0.1%
+**Drivers (recent corr):** ^VIX +0.26 [weak] · ^GSPC -0.29 [weak] · CL=F +0.53 [INVERTED] · USDBRL=X -0.03 [weak] → **in charge: CL=F** (Oil)
+**Last 20 sessions decomposed (R² 0.15, n=60):** actual +2.0% = ^GSPC +2.2% · USDBRL=X +1.6% · CL=F -1.1% · ^VIX -0.8% · unexplained +0.0%
 **Positioning (CFTC MEXICAN PESO, 2026-11-17, + = long USDMXN):** lev funds -62,245 (-22% OI, 4w +1,569, 15th pct of 3y) · asset mgrs +39,550 (+14% OI, 4w +15,486, 99th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
 ### USDBRL  `USDBRL=X`  5.933 (2026-11-20)
 **Move:** 1w +5.2% · 4w +17.5% (100th pct of 2y 4w moves) · 13w +14.3% · 52w range position 100% (lo 4.906 / hi 5.933)
-**Drivers (recent corr):** ^VIX +0.04 [weak] · HG=F +0.11 [weak] · EWZ -0.93 [textbook] → **in charge: EWZ** (Brazil equities (local flows))
+**Drivers (recent corr):** ^VIX +0.04 [weak] · HG=F +0.10 [weak] · EWZ -0.93 [textbook] → **in charge: EWZ** (Brazil equities (local flows))
 **Last 20 sessions decomposed (R² 0.84, n=60):** actual +16.1% = EWZ +11.9% · HG=F +0.9% · ^VIX -0.2% · unexplained +3.5%
 **Positioning (CFTC BRAZILIAN REAL, 2026-11-17, + = long USDBRL):** lev funds -27,429 (-25% OI, 4w -8,752, 3rd pct of 3y) · asset mgrs -31,278 (-28% OI, 4w +19,990, 66th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
 ### USDZAR  `USDZAR=X`  17.49 (2026-11-20)
 **Move:** 1w +4.4% · 4w +6.2% (96th pct of 2y 4w moves) · 13w +8.6% · 52w range position 100% (lo 15.71 / hi 17.49)
-**Drivers (recent corr):** GC=F -0.50 [textbook] · ^VIX +0.27 [weak] · HG=F -0.45 [textbook] → **in charge: GC=F** (Gold / precious metals exporter)
-**Last 20 sessions decomposed (R² 0.17, n=60):** actual +6.0% = ^VIX +1.1% · GC=F +1.1% · HG=F +0.6% · unexplained +3.3%
+**Drivers (recent corr):** GC=F -0.48 [textbook] · ^VIX +0.27 [weak] · HG=F -0.46 [textbook] → **in charge: GC=F** (Gold / precious metals exporter)
+**Last 20 sessions decomposed (R² 0.16, n=60):** actual +6.0% = ^VIX +1.1% · GC=F +1.0% · HG=F +0.7% · unexplained +3.3%
 **Positioning (CFTC SO AFRICAN RAND, 2026-11-17, + = long USDZAR):** lev funds -3,934 (-10% OI, 4w +954, 34th pct of 3y) · asset mgrs -13,570 (-36% OI, 4w +4,392, 35th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
@@ -133,7 +133,7 @@ Equity vol vs bond vol: VIX 35.9 (1y pct 100) · MOVE 106 (1y pct 96). When bond
 ### EURPLN  `EURPLN=X`  4.436 (2026-11-20)
 **Move:** 1w +0.8% · 4w +1.4% (89th pct of 2y 4w moves) · 13w +2.8% · 52w range position 100% (lo 4.197 / hi 4.436)
 **Drivers (recent corr):** ^STOXX50E -0.18 [weak] · ^VIX +0.39 [textbook] → **in charge: ^VIX** (Risk)
-**Last 20 sessions decomposed (R² 0.15, n=60):** actual +1.4% = ^VIX +0.5% · ^STOXX50E +0.1% · unexplained +0.8%
+**Last 20 sessions decomposed (R² 0.14, n=60):** actual +1.4% = ^VIX +0.5% · ^STOXX50E +0.1% · unexplained +0.8%
 **This week:** 11-25 02:00 ET Germany: German GDP (cons 0.2%, prev 0.2%) · 11-27 02:45 ET France: French GDP (cons -0.1%, prev 0.5%) · 11-27 03:00 ET Spain: Core CPI · 11-27 03:00 ET Spain: Spanish Retail Sales · 11-27 03:55 ET Germany: German Unemployment Change · 11-27 03:55 ET Germany: German Unemployment Rate
 
 
@@ -141,15 +141,15 @@ Equity vol vs bond vol: VIX 35.9 (1y pct 100) · MOVE 106 (1y pct 96). When bond
 
 ### S&P 500  `^GSPC`  6,910 (2026-11-20)
 **Move:** 1w -8.6% · 4w -9.4% (96th pct of 2y 4w moves) · 13w -10.0% · 52w range position 38% (lo 6,344 / hi 7,819)
-**Drivers (recent corr):** US10Y +0.46 [INVERTED] · HYG_TLT +0.55 [textbook] · DX-Y.NYB -0.03 [weak] · CL=F -0.38 [textbook] · ^VIX -0.97 [textbook] → **in charge: ^VIX** (Vol)
-**Last 20 sessions decomposed (R² 0.89, n=60):** actual -9.8% = ^VIX -6.8% · HYG_TLT -0.4% · CL=F +0.3% · US10Y +0.3% · DX-Y.NYB -0.0% · unexplained -3.1%
+**Drivers (recent corr):** US10Y +0.46 [INVERTED] · HYG_TLT +0.55 [textbook] · DX-Y.NYB -0.02 [weak] · CL=F -0.40 [textbook] · ^VIX -0.97 [textbook] → **in charge: ^VIX** (Vol)
+**Last 20 sessions decomposed (R² 0.89, n=60):** actual -9.8% = ^VIX -6.8% · HYG_TLT -0.4% · CL=F +0.3% · US10Y +0.3% · DX-Y.NYB -0.1% · unexplained -3.1%
 **Positioning (CFTC E-MINI S&P 500, 2026-11-17, + = long S&P 500):** lev funds -234,978 (-11% OI, 4w +136,267, 94th pct of 3y) · asset mgrs +895,049 (+43% OI, 4w -6,328, 27th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
 ### Nasdaq 100  `^NDX`  25,029 (2026-11-20)
 **Move:** 1w -10.4% · 4w -13.6% (96th pct of 2y 4w moves) · 13w -14.6% · 52w range position 25% (lo 22,953 / hi 31,224)
-**Drivers (recent corr):** US10Y +0.52 [INVERTED] · SOXX +0.96 [textbook] · HYG_TLT +0.58 [textbook] · BTC-USD +0.47 [textbook] → **in charge: SOXX** (Semis / AI capex)
-**Last 20 sessions decomposed (R² 0.91, n=60):** actual -14.6% = SOXX -10.1% · BTC-USD -3.3% · HYG_TLT -0.5% · US10Y +0.4% · unexplained -1.0%
+**Drivers (recent corr):** US10Y +0.52 [INVERTED] · SOXX +0.96 [textbook] · HYG_TLT +0.58 [textbook] · BTC-USD +0.66 [textbook] → **in charge: SOXX** (Semis / AI capex)
+**Last 20 sessions decomposed (R² 0.92, n=60):** actual -14.6% = SOXX -9.8% · BTC-USD -4.7% · HYG_TLT -0.5% · US10Y +0.4% · unexplained +0.0%
 **Positioning (CFTC NASDAQ MINI, 2026-11-17, + = long Nasdaq 100):** lev funds -10,928 (-4% OI, 4w -11,878, 84th pct of 3y) · asset mgrs +82,900 (+28% OI, 4w +5,110, 76th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
@@ -161,8 +161,8 @@ Equity vol vs bond vol: VIX 35.9 (1y pct 100) · MOVE 106 (1y pct 96). When bond
 
 ### Euro Stoxx 50  `^STOXX50E`  5,942 (2026-11-20)
 **Move:** 1w -7.0% · 4w -2.1% (42nd pct of 2y 4w moves) · 13w -8.1% · 52w range position 42% (lo 5,501 / hi 6,551)
-**Drivers (recent corr):** FR_DE (missing) · ^GSPC +0.72 [textbook] · BZ=F -0.36 [textbook] · EURUSD=X -0.12 [weak] → **in charge: ^GSPC** (US lead)
-**Last 20 sessions decomposed (R² 0.41, n=60):** actual -2.1% = ^GSPC -4.8% · BZ=F +1.8% · EURUSD=X -0.0% · unexplained +0.9%
+**Drivers (recent corr):** FR_DE (missing) · ^GSPC +0.72 [textbook] · BZ=F -0.45 [textbook] · EURUSD=X -0.12 [weak] → **in charge: ^GSPC** (US lead)
+**Last 20 sessions decomposed (R² 0.42, n=60):** actual -2.1% = ^GSPC -4.6% · BZ=F +1.8% · EURUSD=X -0.0% · unexplained +0.8%
 **This week:** 11-25 02:00 ET Germany: German GDP (cons 0.2%, prev 0.2%) · 11-27 02:45 ET France: French GDP (cons -0.1%, prev 0.5%) · 11-27 03:00 ET Spain: Core CPI · 11-27 03:00 ET Spain: Spanish Retail Sales · 11-27 03:55 ET Germany: German Unemployment Change · 11-27 03:55 ET Germany: German Unemployment Rate
 
 ### CAC 40  `^FCHI`  7,928 (2026-11-20)
@@ -179,8 +179,8 @@ Equity vol vs bond vol: VIX 35.9 (1y pct 100) · MOVE 106 (1y pct 96). When bond
 
 ### FTSE 100  `^FTSE`  10,346 (2026-11-20)
 **Move:** 1w -5.1% · 4w -3.2% (73rd pct of 2y 4w moves) · 13w -4.3% · 52w range position 59% (lo 9,535 / hi 10,911)
-**Drivers (recent corr):** BZ=F -0.41 [INVERTED] · GBPUSD=X +0.10 [weak] · GB10Y -0.28 [weak] → **in charge: BZ=F** (Energy-heavy index)
-**Last 20 sessions decomposed (R² 0.25, n=60):** actual -3.3% = BZ=F +0.5% · GB10Y +0.4% · GBPUSD=X -0.2% · unexplained -4.0%
+**Drivers (recent corr):** BZ=F -0.45 [INVERTED] · GBPUSD=X +0.10 [weak] · GB10Y -0.28 [weak] → **in charge: BZ=F** (Energy-heavy index)
+**Last 20 sessions decomposed (R² 0.25, n=60):** actual -3.3% = BZ=F +0.6% · GB10Y +0.4% · GBPUSD=X -0.2% · unexplained -4.1%
 **This week:** 11-26 05:30 ET United Kingdom: BoE FPC Meeting Minutes
 
 ### Nikkei 225  `^N225`  56,437 (2026-11-20)
@@ -210,15 +210,15 @@ Equity vol vs bond vol: VIX 35.9 (1y pct 100) · MOVE 106 (1y pct 96). When bond
 
 ### US 2y  `US2Y`  4.70% (2026-11-20)
 **Move:** 1w -28bp · 4w -10bp (43rd pct of 2y 4w moves) · 13w +28bp · 52w range position 75% (lo 3.512 / hi 5.089)
-**Drivers (recent corr):** CL=F +0.09 [weak] · ^GSPC +0.53 [textbook] → **in charge: ^GSPC** (Risk-on = fewer cuts / more hikes)
-**Last 20 sessions decomposed (R² 0.08, n=60):** actual -10bp = ^GSPC -17bp · CL=F -4bp · unexplained +11bp
+**Drivers (recent corr):** CL=F +0.07 [weak] · ^GSPC +0.53 [textbook] → **in charge: ^GSPC** (Risk-on = fewer cuts / more hikes)
+**Last 20 sessions decomposed (R² 0.08, n=60):** actual -10bp = ^GSPC -17bp · CL=F -4bp · unexplained +10bp
 **Positioning (CFTC UST 2Y NOTE, 2026-11-17, + = long US 2y):** lev funds +1,288,895 (+29% OI, 4w +3,347, 5th pct of 3y) · asset mgrs -1,655,991 (-37% OI, 4w +67,589, 80th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
 ### US 10y  `US10Y`  4.91% (2026-11-20)
 **Move:** 1w -24bp · 4w -8bp (34th pct of 2y 4w moves) · 13w +17bp · 52w range position 70% (lo 3.962 / hi 5.311)
-**Drivers (recent corr):** CL=F +0.18 [weak] · ^NDX +0.52 [INVERTED] · T10YIE (missing) · DE10Y +0.31 [textbook] → **in charge: ^NDX** (Textbook: yields up hurt stocks; + means bonds hedge stocks)
-**Last 20 sessions decomposed (R² 0.17, n=60):** actual -8bp = ^NDX -17bp · CL=F -5bp · DE10Y +0bp · unexplained +13bp
+**Drivers (recent corr):** CL=F +0.17 [weak] · ^NDX +0.52 [INVERTED] · T10YIE (missing) · DE10Y +0.31 [textbook] → **in charge: ^NDX** (Textbook: yields up hurt stocks; + means bonds hedge stocks)
+**Last 20 sessions decomposed (R² 0.17, n=60):** actual -8bp = ^NDX -17bp · CL=F -4bp · DE10Y +0bp · unexplained +13bp
 **Positioning (CFTC UST 10Y NOTE, 2026-11-17, + = long US 10y):** lev funds +2,482,443 (+40% OI, 4w +375,219, 99th pct of 3y) · asset mgrs -3,270,834 (-52% OI, 4w -345,418, 1st pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
@@ -231,8 +231,8 @@ Equity vol vs bond vol: VIX 35.9 (1y pct 100) · MOVE 106 (1y pct 96). When bond
 
 ### Bund 10y  `DE10Y`  3.37% (2026-11-20)
 **Move:** 1w -4bp · 4w +1bp (8th pct of 2y 4w moves) · 13w +10bp · 52w range position 70% (lo 2.69 / hi 3.66)
-**Drivers (recent corr):** US10Y +0.31 [textbook] · BZ=F +0.02 [weak] · FR_DE (missing) → **in charge: US10Y** (US spillover)
-**Last 20 sessions decomposed (R² 0.05, n=60):** actual +1bp = US10Y -1bp · BZ=F -1bp · unexplained +3bp
+**Drivers (recent corr):** US10Y +0.31 [textbook] · BZ=F -0.04 [weak] · FR_DE (missing) → **in charge: US10Y** (US spillover)
+**Last 20 sessions decomposed (R² 0.05, n=60):** actual +1bp = US10Y -1bp · BZ=F -0bp · unexplained +3bp
 **This week:** 11-25 02:00 ET Germany: German GDP (cons 0.2%, prev 0.2%) · 11-27 02:45 ET France: French GDP (cons -0.1%, prev 0.5%) · 11-27 03:00 ET Spain: Core CPI · 11-27 03:00 ET Spain: Spanish Retail Sales · 11-27 03:55 ET Germany: German Unemployment Change · 11-27 03:55 ET Germany: German Unemployment Rate
 
 ### Gilt 10y  `GB10Y`  5.29% (2026-11-20)
@@ -259,48 +259,48 @@ _no data_
 
 ## 8. Commodities
 
-### WTI crude  `CL=F`  83.62 (2026-11-20)
-**Move:** 1w -5.6% · 4w -19.0% (87th pct of 2y 4w moves) · 13w -4.0% · 52w range position 49% (lo 55.27 / hi 112.9)
-**Drivers (recent corr):** XLE +0.53 [textbook] · ^GSPC -0.38 [INVERTED] · HG=F -0.32 [INVERTED] · DX-Y.NYB +0.28 [weak] → **in charge: XLE** (Energy equities (do they believe the move?))
-**Last 20 sessions decomposed (R² 0.25, n=60):** actual -21.1% = XLE -9.9% · HG=F +7.3% · ^GSPC +5.9% · DX-Y.NYB -1.3% · unexplained -23.1%
+### WTI crude  `CL=F`  83.98 (2026-11-20)
+**Move:** 1w -5.2% · 4w -18.7% (87th pct of 2y 4w moves) · 13w -3.5% · 52w range position 50% (lo 55.27 / hi 112.9)
+**Drivers (recent corr):** XLE +0.53 [textbook] · ^GSPC -0.40 [INVERTED] · HG=F -0.33 [INVERTED] · DX-Y.NYB +0.27 [weak] → **in charge: XLE** (Energy equities (do they believe the move?))
+**Last 20 sessions decomposed (R² 0.26, n=60):** actual -20.7% = XLE -9.9% · HG=F +7.3% · ^GSPC +6.1% · DX-Y.NYB -1.3% · unexplained -22.9%
 **Positioning (CFTC WTI-PHYSICAL, 2026-11-17, + = long WTI crude):** managed money +15,814 (+1% OI, 4w -20,373, 10th pct of 3y) · producers +385,227 (+21% OI, 4w +25,659, 99th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
-### Gold  `GC=F`  3,539 (2026-11-20)
-**Move:** 1w -8.9% · 4w -11.7% (95th pct of 2y 4w moves) · 13w -24.4% · 52w range position 0% (lo 3,539 / hi 5,318)
-**Drivers (recent corr):** DFII10 (missing) · DX-Y.NYB -0.29 [weak] · SI=F +0.91 [textbook] · BTC-USD +0.36 [textbook] → **in charge: SI=F** (Precious block)
-**Last 20 sessions decomposed (R² 0.79, n=60):** actual -12.4% = SI=F -12.9% · BTC-USD +1.5% · DX-Y.NYB -0.8% · unexplained -0.3%
+### Gold  `GC=F`  3,515 (2026-11-20)
+**Move:** 1w -9.5% · 4w -12.3% (96th pct of 2y 4w moves) · 13w -24.9% · 52w range position 0% (lo 3,515 / hi 5,318)
+**Drivers (recent corr):** DFII10 (missing) · DX-Y.NYB -0.26 [weak] · SI=F +0.91 [textbook] · BTC-USD +0.54 [textbook] → **in charge: SI=F** (Precious block)
+**Last 20 sessions decomposed (R² 0.79, n=60):** actual -13.1% = SI=F -13.3% · BTC-USD +1.3% · DX-Y.NYB -0.7% · unexplained -0.5%
 **Positioning (CFTC GOLD, 2026-11-17, + = long Gold):** managed money +102,942 (+25% OI, 4w -1,264, 22nd pct of 3y) · producers -4,591 (-1% OI, 4w +10,192, 100th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
-### Silver  `SI=F`  41.08 (2026-11-20)
-**Move:** 1w -16.2% · 4w -23.5% (93rd pct of 2y 4w moves) · 13w -40.9% · 52w range position 0% (lo 41.08 / hi 115.1)
-**Drivers (recent corr):** GC=F +0.91 [textbook] · HG=F +0.72 [textbook] → **in charge: GC=F** (Gold)
-**Last 20 sessions decomposed (R² 0.83, n=60):** actual -26.8% = GC=F -16.3% · HG=F -8.2% · unexplained -2.4%
+### Silver  `SI=F`  41.03 (2026-11-20)
+**Move:** 1w -16.3% · 4w -23.6% (93rd pct of 2y 4w moves) · 13w -40.9% · 52w range position 0% (lo 41.03 / hi 115.1)
+**Drivers (recent corr):** GC=F +0.91 [textbook] · HG=F +0.71 [textbook] → **in charge: GC=F** (Gold)
+**Last 20 sessions decomposed (R² 0.84, n=60):** actual -26.9% = GC=F -17.0% · HG=F -8.0% · unexplained -2.0%
 **Positioning (CFTC SILVER, 2026-11-17, + = long Silver):** managed money +1,280 (+1% OI, 4w -2,225, 3rd pct of 3y) · producers -12,877 (-10% OI, 4w +2,152, 98th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
-### Copper  `HG=F`  5.465 (2026-11-20)
-**Move:** 1w -10.1% · 4w -15.6% (95th pct of 2y 4w moves) · 13w -16.9% · 52w range position 27% (lo 4.962 / hi 6.804)
-**Drivers (recent corr):** ^GSPC +0.47 [textbook] → **in charge: ^GSPC** (Global growth)
-**Last 20 sessions decomposed (R² 0.13, n=60):** actual -17.0% = ^GSPC -5.2% · unexplained -11.8%
+### Copper  `HG=F`  5.477 (2026-11-20)
+**Move:** 1w -9.9% · 4w -15.4% (95th pct of 2y 4w moves) · 13w -16.8% · 52w range position 28% (lo 4.962 / hi 6.804)
+**Drivers (recent corr):** ^GSPC +0.46 [textbook] → **in charge: ^GSPC** (Global growth)
+**Last 20 sessions decomposed (R² 0.13, n=60):** actual -16.8% = ^GSPC -5.1% · unexplained -11.7%
 **Positioning (CFTC COPPER- #1, 2026-11-17, + = long Copper):** managed money +28,692 (+9% OI, 4w -18,998, 42nd pct of 3y) · producers -33,014 (-10% OI, 4w +44,392, 86th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
-### Nat gas (US)  `NG=F`  3.791 (2026-11-20)
-**Move:** 1w +17.4% · 4w +43.6% (98th pct of 2y 4w moves) · 13w +36.7% · 52w range position 26% (lo 2.523 / hi 7.46)
-**Drivers (recent corr):** CL=F +0.02 [weak] → **no clear driver** (every |corr| < 0.3: drivers cancel or something off-list is moving it)
-**Last 20 sessions decomposed (R² 0.00, n=60):** actual +36.2% = CL=F +0.3% · unexplained +35.9%
+### Nat gas (US)  `NG=F`  3.411 (2026-11-20)
+**Move:** 1w +5.6% · 4w +29.2% (94th pct of 2y 4w moves) · 13w +23.0% · 52w range position 18% (lo 2.523 / hi 7.46)
+**Drivers (recent corr):** CL=F -0.05 [weak] → **no clear driver** (every |corr| < 0.3: drivers cancel or something off-list is moving it)
+**Last 20 sessions decomposed (R² 0.00, n=60):** actual +25.6% = CL=F +0.4% · unexplained +25.2%
 **Positioning (CFTC NAT GAS NYME, 2026-11-17, + = long Nat gas (US)):** managed money -211,545 (-13% OI, 4w -54,136, 2nd pct of 3y) · producers +17,473 (+1% OI, 4w +30,627, 96th pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
 
 ## 9. Crypto
 
-### Bitcoin  `BTC-USD`  61,902 (2026-11-20)
-**Move:** 1w -9.3% · 4w -23.6% (95th pct of 2y 4w moves) · 13w -21.0% · 52w range position 9% (lo 58,559 / hi 96,929)
-**Drivers (recent corr):** ^NDX +0.47 [textbook] · DX-Y.NYB -0.21 [weak] · GC=F +0.36 [textbook] → **in charge: ^NDX** (Tech / speculation)
-**Last 20 sessions decomposed (R² 0.31, n=60):** actual -27.0% = ^NDX -10.9% · DX-Y.NYB -1.8% · GC=F +1.1% · unexplained -15.4%
+### Bitcoin  `BTC-USD`  58,799 (2026-11-20)
+**Move:** 1w -13.8% · 4w -27.5% (99th pct of 2y 4w moves) · 13w -24.9% · 52w range position 1% (lo 58,559 / hi 96,929)
+**Drivers (recent corr):** ^NDX +0.66 [textbook] · DX-Y.NYB -0.15 [weak] · GC=F +0.54 [textbook] → **in charge: ^NDX** (Tech / speculation)
+**Last 20 sessions decomposed (R² 0.42, n=60):** actual -32.1% = ^NDX -13.0% · DX-Y.NYB -1.1% · GC=F -0.8% · unexplained -17.2%
 **Positioning (CFTC BITCOIN, 2026-11-17, + = long Bitcoin):** lev funds -1,211 (-6% OI, 4w +3,731, 100th pct of 3y) · asset mgrs +2,285 (+12% OI, 4w -714, 3rd pct of 3y)
 **This week:** 11-25 08:30 ET United States: Core PCE Price Index (cons 0.3%, prev 0.3%) · 11-25 08:30 ET United States: Core PCE Prices (cons 2.50%, prev 2.50%) · 11-25 08:30 ET United States: GDP (cons 3.4%, prev 3.4%) · 11-25 08:30 ET United States: GDP Price Index (cons 2.2%, prev 2.2%) · 11-25 08:30 ET United States: GDP Sales (cons 1.7%, prev 1.7%) · 11-25 08:30 ET United States: PCE price index (cons 0.3%, prev 0.5%)
 
