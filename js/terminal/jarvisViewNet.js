@@ -351,6 +351,7 @@ function setup(L, H, api) {
   function overlay(ctx, g, api) {
     const { W, H: Hh, C, fade } = g, cp = g.compact, net = S.net;
     if (g.t - S.hudAt > 1) { S.hudAt = g.t; try { S.hudTop = parseFloat(api.win.getComputedStyle(api.doc.getElementById(api.ID)).getPropertyValue('--jvtop')) || 70; } catch (e) { S.hudTop = 70; } }
+    if (g.top > 0) S.hudTop = 62;   // the HUD has shifted this view below its menus (the safe area): lay out as under the plain top bar
     ctx.save(); ctx.textBaseline = 'alphabetic';
     if (!net || !S.cur || !S.D || !world) {
       ctx.globalAlpha = fade; ctx.fillStyle = C.tx2; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center';

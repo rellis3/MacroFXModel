@@ -203,6 +203,7 @@ async function setup(L, H, api) {
   function overlay(ctx, g, api2) {
     const { W, H: Hh, C, fade } = g, cp = g.compact, st = api2.st, gs = st.gl ?? {}, cam = S.cam; if (!cam) return;
     if (g.t - S.hudAt > 1) { S.hudAt = g.t; try { S.hudTop = parseFloat(api2.win.getComputedStyle(api2.doc.getElementById(api2.ID)).getPropertyValue('--jvtop')) || 70; } catch (e) { S.hudTop = 70; } }
+    if (g.top > 0) S.hudTop = 62;   // the HUD has shifted this view below its menus (the safe area): lay out as under the plain top bar
     ctx.save(); ctx.globalAlpha = fade; ctx.textBaseline = 'alphabetic';
     const top = S.hudTop + (cp ? 40 : 36), keyY = Hh - (cp ? 80 : 70), obst = [];
     if (!cp) obst.push({ x: 0, y: S.hudTop, w: 250, h: 140 });                                  // the HUD's own readout, top left

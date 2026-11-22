@@ -294,6 +294,7 @@ function toolbar(ctx, g, key) {
 function overlay(ctx, g, api, H, camera) {
   const st = api.st, C = g.C, cur = S.cur;
   if (g.t - S.topAt > 1) { S.topAt = g.t; try { const v = parseFloat(api.win?.getComputedStyle?.(api.$('cv').parentElement).getPropertyValue('--jvtop')); if (v > 0) S.top = v; } catch (x) { /* keep the default */ } }
+  if (g.top > 0) S.top = 62;   // the HUD has shifted this view below its menus (the safe area): lay out as under the plain top bar
   if (!cur) { S.hov = -1; return msg(ctx, g, 'Reading the markets...'); }
   toolbar(ctx, g, cur.key);
   const e = cur.e;
@@ -391,7 +392,7 @@ const view = glView({
     S.spin = api.st.spin; Object.assign(api.st, { yaw: 0.16, pitch: -0.26, zoom: 1, spin: false }); S.t0 = null; S.key = null; S.dolly = S.dollyT = 0; S.showP = -1; S.hov = -1;
     if (MARKET_KEYS.includes(api.st.sel)) loadChart(api.st.sel, S.tf, api); else loadVol(api);
     try {
-      const cv = api.$('cv'), mv = ev => { const r = cv.getBoundingClientRect(); S.mx = ev.clientX - r.left; S.my = ev.clientY - r.top; }, lv = () => { S.mx = S.my = null; };
+      const cv = api.$('cv'), mv = ev => { const r = cv.getBoundingClientRect(); S.mx = ev.clientX - r.left; S.my = ev.clientY - r.top - (api.st.safeTop ?? 0); }, lv = () => { S.mx = S.my = null; };
       cv.addEventListener('pointermove', mv); cv.addEventListener('pointerleave', lv); bound = { cv, mv, lv };
     } catch (x) { /* no pointer readout; the chart still draws */ }
   },

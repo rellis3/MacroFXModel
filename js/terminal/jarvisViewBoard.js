@@ -184,7 +184,7 @@ function overlay(ctx, g, api, H, camera, recs, rowsW, post) {
   // title and the tally
   const ty = cp ? 92 : 104; ctx.textAlign = 'left'; ctx.globalAlpha = fade; ctx.fillStyle = C.blue; ctx.font = `600 ${cp ? 13 : 15}px ui-monospace,monospace`; ctx.fillText('MARKET BOARD', 16, ty);
   ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = C.tx2;
-  ctx.fillText(cp ? `today so far vs each market's usual move${cd.at ? ` · ${londonTime(cd.at)}` : ''}` : `today's session so far, each candle sized against its market's usual open-to-close move${cd.at ? ` · read ${londonTime(cd.at)} London` : ''}`, 16, ty + 16);
+  if (cd.label) ctx.fillText(`${cd.label} · each candle sized against its market's usual open-to-close move`, 16, ty + 16); else ctx.fillText(cp ? `today so far vs each market's usual move${cd.at ? ` · ${londonTime(cd.at)}` : ''}` : `today's session so far, each candle sized against its market's usual open-to-close move${cd.at ? ` · read ${londonTime(cd.at)} London` : ''}`, 16, ty + 16);
   let x = 16; const y2 = ty + 33; ctx.font = '600 11px ui-monospace,monospace';
   for (const [t2, c] of [[`▲ ${bd.up ?? 0} up`, C.up], [`▼ ${bd.dn ?? 0} down`, C.dn], [`• ${bd.quiet ?? 0} barely moving`, C.tx2]]) { ctx.fillStyle = c; ctx.fillText(t2, x, y2); x += ctx.measureText(t2).width + 14; }
   if (bd.haveLean) { ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = C.blue; ctx.fillText(cp ? `lean: ▲${bd.bull} ▼${bd.bear} •${bd.flat} (no proven skill)` : `engine leans ▲ bullish ${bd.bull} · ▼ bearish ${bd.bear} · • neutral ${bd.flat}  (back-test: no proven skill)`, 16, y2 + 16); }
@@ -235,7 +235,7 @@ function overlay(ctx, g, api, H, camera, recs, rowsW, post) {
 function loudest(ctx, g, movers, ty, w) {
   const { W, C, fade } = g, x = W - w - 16, y0 = ty; if (!movers.length) return;
   ctx.globalAlpha = fade * 0.7; ctx.fillStyle = 'rgba(0,0,0,0.78)'; ctx.fillRect(x - 8, y0 - 14, w + 16, 22 + movers.length * 17);
-  ctx.textAlign = 'left'; ctx.globalAlpha = fade; ctx.fillStyle = C.blue; ctx.font = '600 11px ui-monospace,monospace'; ctx.fillText('LOUDEST TODAY  ·  click to fly there', x, y0);
+  ctx.textAlign = 'left'; ctx.globalAlpha = fade; ctx.fillStyle = C.blue; ctx.font = '600 11px ui-monospace,monospace'; ctx.fillText(`${S.cd?.label ? 'LOUDEST, LAST SESSION' : 'LOUDEST TODAY'}  ·  click to fly there`, x, y0);
   ctx.font = '11px ui-monospace,monospace';
   movers.forEach((r, i) => {
     const yy = y0 + 18 + i * 17, len = Math.min(1, Math.abs(r.ratio) / CAP) * 60, c = toneCol(C, r);

@@ -182,7 +182,7 @@ function build(L, H, api) {
     const nG = wx.groups.length, sel = S.sel;
     // header
     const hx = cp ? 12 : 22, hy = cp ? 116 : 166;
-    ctx.globalAlpha = fade; ctx.fillStyle = C.blue; ctx.font = `600 ${cp ? 12 : 14}px ui-monospace,monospace`; ctx.fillText('MARKET WEATHER · so far today', hx, hy);
+    ctx.globalAlpha = fade; ctx.fillStyle = C.blue; ctx.font = `600 ${cp ? 12 : 14}px ui-monospace,monospace`; ctx.fillText(cd?.label ? `MARKET WEATHER · ${cd.label}` : 'MARKET WEATHER · so far today', hx, hy);
     ctx.globalAlpha = fade * 0.85; ctx.fillStyle = C.tx2; ctx.font = `${cp ? 10 : 11}px ui-monospace,monospace`;
     ctx.fillText(cp ? 'avg move vs each market\'s usual (×) · tap a panel' : 'each panel = a group\'s average move today vs its members\' usual move (×) · dots = members', hx, hy + (cp ? 14 : 17));
     // per-panel text, projected from the panel's corners so it rides with the glass

@@ -219,6 +219,7 @@ function setup(L, H, api) {
   function overlay(ctx, g, api) {
     const { W, H: Hh, C, fade } = g, cp = g.compact, st = api.st;
     if (g.t - S.hudAt > 1) { S.hudAt = g.t; try { S.hudTop = parseFloat(api.win.getComputedStyle(api.doc.getElementById(api.ID)).getPropertyValue('--jvtop')) || 70; } catch (e) { S.hudTop = 70; } }
+    if (g.top > 0) S.hudTop = 62;   // the HUD has shifted this view below its menus (the safe area): lay out as under the plain top bar
     ctx.save(); ctx.globalAlpha = fade; ctx.textBaseline = 'alphabetic';
     if (!st.graph || !(st.graph.nodes?.length)) { ctx.fillStyle = C.tx2; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText('The macro chain is not loaded yet, so there is no ring to draw.', W / 2, Hh / 2); ctx.restore(); return; }
     const top = S.hudTop + 8, obst = [], keyY = Hh - (cp ? 104 : 96);

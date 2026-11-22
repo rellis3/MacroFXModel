@@ -207,7 +207,7 @@ function build(L, H, api) {
   const geo = g => {   // where the HUD text blocks sit
     const cp = g.compact, W = g.W, Hh = g.H;
     return cp ? { hx: 14, hy: 118, bx: 10, by: Hh - 128 - 8 * 16, bw: W - 20, rh: 16, cx: 10, cy: 168, cw: W - 20, ky: Hh - 70 }
-      : { hx: 22, hy: 166, bx: 22, by: 214, bw: 290, rh: 24, cx: 22, cy: 214 + 50 + 8 * 24 + 16, cw: 330, ky: Hh - 64 };
+      : (() => { const hy = g.top > 0 ? 100 : 166, by = hy + 48; return { hx: 22, hy, bx: 22, by, bw: 290, rh: 24, cx: 22, cy: by + 50 + 8 * 24 + 16, cw: 330, ky: Hh - 64 }; })();   // (under the HUD's safe area the menus are already cleared)
   };
   function blocks(g, sel) {
     const q = geo(g), out = [[q.hx - 4, q.hy - 16, g.compact ? g.W - 20 : 470, 40], [q.bx - 4, q.by - 4, q.bw + 8, 40 + 8 * q.rh], [8, q.ky - (g.compact ? 34 : 18), g.W - 16, g.compact ? 50 : 28]];
@@ -216,7 +216,7 @@ function build(L, H, api) {
   }
   function header(ctx, g) {
     const { C, fade } = g, q = geo(g), cp = g.compact; ctx.textAlign = 'left';
-    ctx.globalAlpha = fade; ctx.fillStyle = C.gold; ctx.font = `600 ${cp ? 12 : 14}px ui-monospace,monospace`; ctx.fillText('CURRENCIES · the eight majors, so far today', q.hx, q.hy);
+    ctx.globalAlpha = fade; ctx.fillStyle = C.gold; ctx.font = `600 ${cp ? 12 : 14}px ui-monospace,monospace`; ctx.fillText(/^LAST SESSION/.test(S.label) ? 'CURRENCIES · the eight majors, last session' : 'CURRENCIES · the eight majors, so far today', q.hx, q.hy);
     ctx.globalAlpha = fade * 0.85; ctx.fillStyle = C.tx2; ctx.font = `${cp ? 10 : 11}px ui-monospace,monospace`;
     ctx.fillText(`${S.label && !cp ? S.label + ' · ' : ''}strength = avg pair move vs its usual move`, q.hx, q.hy + (cp ? 14 : 17));
   }

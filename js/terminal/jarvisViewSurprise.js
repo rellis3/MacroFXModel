@@ -183,6 +183,7 @@ function setup(L, H, api) {
   function overlay(ctx, g, api) {
     const { W, H: Hh, C, fade } = g, cp = g.compact, D = S.D, B = D?.B;
     if (g.t - S.hudAt > 1) { S.hudAt = g.t; try { const cs = api.win.getComputedStyle(api.doc.getElementById(api.ID)); S.hudTop = parseFloat(cs.getPropertyValue('--jvtop')) || 70; S.bg = api.win.getComputedStyle(api.doc.documentElement).getPropertyValue('--bg1').trim() || 'black'; } catch (e) { S.hudTop = 70; } }
+    if (g.top > 0) S.hudTop = 62;   // the HUD has shifted this view below its menus (the safe area): lay out as under the plain top bar
     ctx.save(); ctx.globalAlpha = fade; ctx.textBaseline = 'alphabetic';
     const say = txt => { ctx.fillStyle = C.tx2; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center'; wrap(ctx, txt, W - 40, 3).forEach((l, i) => ctx.fillText(l, W / 2, Hh / 2 + i * 18)); };
     if (!D || (D.busy && !B)) { say('Reading the surprise store...'); ctx.restore(); return; }

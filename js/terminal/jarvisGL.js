@@ -61,6 +61,7 @@ function host(api) {
   const { THREE } = LIB, canvas = api.doc.createElement('canvas');
   canvas.className = 'jv-gl'; canvas.setAttribute('aria-hidden', 'true');
   canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none;z-index:0';
+  canvas.style.maskImage = canvas.style.webkitMaskImage = 'linear-gradient(to bottom, transparent, black 56px, black calc(100% - 28px), transparent)';   // soft top and bottom edges where the HUD chrome sits
   root.insertBefore(canvas, root.querySelector('canvas'));          // UNDER the HUD canvas: labels stay on top
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance', preserveDrawingBuffer: false }); }
@@ -205,6 +206,7 @@ export function glView(spec) {
     if (!e.composer) makeComposer(e, H);
     if (e.w !== g.W || e.h !== g.H) { e.w = g.W; e.h = g.H; e.composer.setPixelRatio(dpr); e.composer.setSize(g.W, g.H); if (e.inst.camera.isPerspectiveCamera) { e.inst.camera.aspect = g.W / Math.max(1, g.H); e.inst.camera.updateProjectionMatrix(); } }
     if (H.active !== id) { e.enterT = performance.now(); for (const [k, o] of INST) if (k !== id && o.composer) freeComposer(o); }
+    const top = g.top ?? 0; if (H.top !== top || H.ch !== g.H) { H.top = top; H.ch = g.H; H.canvas.style.top = top + 'px'; H.canvas.style.height = g.H + 'px'; H.canvas.style.bottom = 'auto'; }   // the layer sits in the HUD's safe area, so 3D and labels line up
     H.active = id; H.lastDraw = performance.now(); if (H.canvas.style.display !== 'block') H.canvas.style.display = 'block';
     H.canvas.style.opacity = String(g.fade);
     const k = Math.min(1, (performance.now() - e.enterT) / (H.calm ? 350 : 900)), b0 = e.inst.bloom?.strength ?? 1.15;

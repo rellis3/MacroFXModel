@@ -147,7 +147,7 @@ export async function openJarvis(win = window) {
     if (!force && st.cd && Date.now() - st.cd.at < 60_000) return st.cd;
     if (st.cdBusy) return st.cdBusy;
     st.cdBusy = (async () => {
-      try { const [v, b] = await Promise.all([jf('/api/vol-forecast/live'), jf('/api/bias-engine').catch(() => null)]); const rows = candleRows(v?.instruments ?? {}, b?.markets ?? {}); st.cd = { at: Date.now(), rows, layout: candleLayout(rows.map(r => r.key)), board: boardSummary(rows), ok: rows.length > 0 }; }
+      try { const [v, b] = await Promise.all([jf('/api/vol-forecast/live'), jf('/api/bias-engine').catch(() => null)]); const rows = candleRows(v?.instruments ?? {}, b?.markets ?? {}); st.cd = { at: Date.now(), rows, layout: candleLayout(rows.map(r => r.key)), board: boardSummary(rows), ok: rows.length > 0, label: v?.fallback ? v.session_label : null }; }
       catch (e) { st.cd = { at: Date.now(), rows: [], layout: {}, board: null, ok: false }; }
       finally { st.cdBusy = null; }
       return st.cd;
@@ -260,7 +260,19 @@ export async function openJarvis(win = window) {
   const cineAct = a => { const c = st.cinemaCtl; if (!c) return; try { c[a]?.(); } catch (e) { /* the director must never break the HUD */ } };
 
   // ── data ──
-  const jf = (u, o) => win.fetch(u, o).then(r => r.json());
+  const jf0 = (u, o) => win.fetch(u, o).then(r => r.json());
+  // WEEKEND / PRE-OPEN FALLBACK: the live move feed is empty until the new session prints ("No bars since midnight"), which left the currency, weather, board and book pictures blank all
+  // weekend. When fewer than 3 markets have a move, every view is handed the LAST COMPLETE session snapshot instead, clearly labelled with when it was taken (never passed off as today).
+  const usable = j => Object.values(j?.instruments ?? {}).filter(x => x && !x.error && x.oc != null).length;
+  let lastSess = null;
+  const lastSession = () => (lastSess && Date.now() - lastSess.at < 10 * 60_000) ? lastSess.p : (lastSess = { at: Date.now(), p: (async () => {
+    for (let k = 1; k <= 6; k++) {
+      const d = new Date(Date.now() - k * 86_400_000).toISOString().slice(0, 10);
+      try { const j = await jf0(`/api/vol-forecast/session?date=${d}`); if (usable(j) >= 10) { const at = new Date(j.fetched_at ?? d); return { ...j, fallback: true, session_label: `LAST SESSION · AS OF ${at.toUTCString().slice(0, 22).toUpperCase()} UTC` }; } } catch (e) { /* try the day before */ }
+    }
+    return null;
+  })() }).p;
+  const jf = (u, o) => jf0(u, o).then(async j => (String(u).split('?')[0] === '/api/vol-forecast/live' && usable(j) < 3) ? ((await lastSession().catch(() => null)) ?? j) : j);
   async function loadAt(w, date = null) {
     let r = null; try { r = await win.deskChainData?.(w, date); } catch (e) { r = null; }
     if (!r?.links?.length) return null;
@@ -584,7 +596,29 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
     for (const m of EXTRA) { try { m.drawGlobe?.(ctx, { P, X, Y, Rg, ctr, t, fade, zoom: g.zoom, compact: st.compact }, xapi); } catch (e) { /* a layer must never stop the frame */ } }
   }
 
+  // the SAFE AREA a hologram draws in: below the top bar and menus, above the time bar, so a view's readout and key never sit under the HUD's own chrome (re-measured a few times a second)
+  let safe = { top: 0, bot: 0, at: -1 };
+  const safeArea = () => {
+    const now = performance.now(); if (now - safe.at < 400) return safe;
+    let top = 0, bot = st.h;
+    try {
+      const r0 = root.getBoundingClientRect(), vis = el => el && el.offsetParent !== null && el.getClientRects().length;
+      for (const sel of ['.jv-top', '.jv-nav']) { const el = root.querySelector(sel); if (vis(el)) top = Math.max(top, el.getBoundingClientRect().bottom - r0.top + 6); }
+      const sc = root.querySelector('.jv-scrub'); if (vis(sc)) bot = Math.min(bot, sc.getBoundingClientRect().top - r0.top - 6);
+    } catch (e) { /* layout only */ }
+    if (bot - top < st.h * 0.5) { top = 0; bot = st.h; }          // never squeeze a picture below half the screen (a very tall menu on a phone): draw full screen instead
+    top = Math.max(0, top - 84);                                    // views already leave ~84px for the top bar: shift them only by how far the menus reach past that
+    safe = { top: Math.round(top), bot: Math.round(bot), at: now }; st.safeTop = safe.top; return safe;
+  };
   function drawExtra(v, t, fade, dt) {
+    if (v.gl) {
+      const s = safeArea(), top = s.top, H = s.bot - s.top, SC = Math.min(st.w * 0.5, H * 0.95) * 0.3;
+      const g = { t, fade, dt, W: st.w, H, top, compact: st.compact, cinema: !!st.cinemaCtl, attract: !!attract, cx: st.w / 2, cy: H / 2, SC, C, poly, hit: (key, x, y) => st.proj.push({ key, sx: x, sy: y + top }),
+        proj: (p, c) => { const q = project(p, c ?? cam()); return { x: st.w / 2 + q.x * SC, y: H / 2 + q.y * SC, s: q.s, z: q.z }; } };
+      ctx.save(); ctx.translate(0, top);
+      try { v.draw(ctx, g, xapi); } catch (e) { /* a view must never stop the frame */ }
+      ctx.restore(); return;
+    }
     const SC = Math.min(st.w * 0.5, st.h * 0.95) * 0.3, g = { t, fade, dt, W: st.w, H: st.h, compact: st.compact, cinema: !!st.cinemaCtl, attract: !!attract, cx: cx(), cy: cy(), SC, C, poly, hit: (key, x, y) => st.proj.push({ key, sx: x, sy: y }),
       proj: (p, c) => { const q = project(p, c ?? cam()); return { x: cx() + q.x * SC, y: cy() + q.y * SC, s: q.s, z: q.z }; } };
     try { v.draw(ctx, g, xapi); } catch (e) { /* a view must never stop the frame */ }

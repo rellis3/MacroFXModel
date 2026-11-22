@@ -129,7 +129,7 @@ function setup(L, H, api) {
 
   const view = { cam: null, p: 0, wrap: 1, eye: Array(3).fill(0) };
   return {
-    scene, camera, bloom: { strength: 0.85, radius: 0.5, threshold: 0.12 }, trail: H.calm ? 0 : 0.55,
+    scene, camera, bloom: { strength: 0.7, radius: 0.45, threshold: 0.2 }, trail: H.calm ? 0 : 0.35,   // (toned down after a live check: close passes washed the picture white)
     update(t, dt, api_, g) {
       const st = api.st, fly = flyFor(api); st.spin = false;
       if (!fly || !fly.route.stops.length) { if (grp) drop(); built = null; return; }
@@ -179,7 +179,7 @@ function setup(L, H, api) {
         const la = nd.isStop ? labelAlpha(times, nd.si, p) : 0, pulse = H.calm ? 1 : 1 + 0.08 * Math.sin(t * 5 + nd.ph);
         nd.ring.scale.setScalar(pulse * (1 + 0.12 * la)); nd.ring.rotation.z = H.calm ? 0 : t * (nd.isStop ? 0.25 : 0.1);
         for (const [m, b] of nd.mats) m.opacity = b * (1 + 1.6 * la);
-        const dn = Math.hypot(nd.w[0] - e[0], nd.w[1] - e[1], nd.w[2] - e[2]), near = clamp((dn - 0.5) / 2.2, 0, 1);   // a glow the camera is inside would wash out the picture
+        const dn = Math.hypot(nd.w[0] - e[0], nd.w[1] - e[1], nd.w[2] - e[2]), near = clamp((dn - 0.8) / 3, 0, 1);   // a glow the camera is inside would wash out the picture
         nd.glow.material.opacity = (0.35 + 0.3 * la) * near; nd.glow.scale.setScalar(nd.r * 4.5 * (1 + 0.4 * la)); nd.core.material.opacity = 0.7 * near;
         nd.orb.material.uniforms.op.value = (0.7 + 0.3 * la) * clamp((dn - 0.4) / 2.2, 0.15, 1);
       }
