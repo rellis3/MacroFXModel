@@ -58,7 +58,7 @@ export function arcPoint(a, b, t, bow = 0.35) {
 export function bootLines(sum, win) {
   const w = win === 1 ? 'one-day' : `${win}-day`;
   return [
-    'M.A.C.H. · macro analytics & cognitive hub · description only, never a trade',
+    'H.E.L.I.X. · holographic economic links & intermarket explorer · description only, never a trade',
     `Reading the macro chain over ${w} closes…`,
     sum ? `${sum.holding} holding · ${sum.broken} broken · ${sum.quiet} quiet · ${sum.judged} judged` : 'The chain feeds are not loaded.',
     sum?.headline ?? '',
@@ -130,7 +130,7 @@ export function pickVoice(voices) {
 
 /** "hey jarvis what is oil doing" -> { woke: true, query: 'what is oil doing' }. A bare "jarvis" wakes him with no query. Matches the word anywhere so a clipped "hey" does not matter. */
 export function wakeParse(text) {
-  const t = String(text ?? '').trim(), m = t.match(/\b(?:mach|mac|mack|jarvis)\b[\s,.:;!?-]*(.*)$/i);
+  const t = String(text ?? '').trim(), m = t.match(/\b(?:helix|helics|felix|mach|jarvis)\b[\s,.:;!?-]*(.*)$/i);
   return m ? { woke: true, query: m[1].trim() } : { woke: false, query: '' };
 }
 

@@ -9,7 +9,7 @@ registerJarvisModule({
   id: 'news', label: 'NEWSLETTER',
   render(pane, api) {
     const { esc } = api;
-    pane.innerHTML = '<h3>NEWSLETTER AS A SHOW</h3><p>Pick an issue and Mach reads it to you, section by section, over a 3D view that fits each topic. It reads what the issue already says: nothing added, nothing is advice.</p><div data-n="list"><p class="jv-sub">Looking for the latest issues...</p></div><p class="jv-sub" data-n="status"></p>';
+    pane.innerHTML = '<h3>NEWSLETTER AS A SHOW</h3><p>Pick an issue and Helix reads it to you, section by section, over a 3D view that fits each topic. It reads what the issue already says: nothing added, nothing is advice.</p><div data-n="list"><p class="jv-sub">Looking for the latest issues...</p></div><p class="jv-sub" data-n="status"></p>';
     const status = (t, bad = false) => { const e = pane.querySelector('[data-n="status"]'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--gold)' : ''; } };
     const have = () => new Set([...CORE_VIEWS, ...viewsOf().map(v => v.id)]);
     async function play(i) {

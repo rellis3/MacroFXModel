@@ -167,7 +167,7 @@ def encode(cap: dict) -> Path:
     db = max_volume(r.stderr)
     log(f'encoded {mp4.name}: {secs:.1f} s, loudest moment {db} dB')
     if is_silent(db):
-        raise RuntimeError(f'the recording has no sound on it (loudest {db} dB): not uploading. Check the voice (M.A.C.H. OPTIONS / /api/jarvis/voice/info).')
+        raise RuntimeError(f'the recording has no sound on it (loudest {db} dB): not uploading. Check the voice (H.E.L.I.X. OPTIONS / /api/jarvis/voice/info).')
     w = short_warning(secs)
     if w:
         log('note: ' + w)

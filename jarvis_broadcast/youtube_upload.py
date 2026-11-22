@@ -48,7 +48,7 @@ def upload(path: Path, title: str, description: str, privacy: str = 'unlisted', 
     from googleapiclient.errors import HttpError
     yt = build('youtube', 'v3', credentials=authorise(), cache_discovery=False)
     body = {
-        'snippet': {'title': title, 'description': description, 'categoryId': category, 'tags': ['MACH', 'Macro Analytics', 'morning briefing', 'markets', 'Shorts']},
+        'snippet': {'title': title, 'description': description, 'categoryId': category, 'tags': ['HELIX', 'macro', 'morning briefing', 'markets', 'Shorts']},
         'status': {'privacyStatus': privacy, 'selfDeclaredMadeForKids': False},
     }
     req = yt.videos().insert(part='snippet,status', body=body, media_body=MediaFileUpload(str(path), mimetype='video/mp4', chunksize=8 * 1024 * 1024, resumable=True))

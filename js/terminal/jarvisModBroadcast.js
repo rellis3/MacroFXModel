@@ -8,6 +8,7 @@
 import { registerJarvisModule, viewsOf } from './jarvisModules.js';
 import { SHOW_HOOKS } from './showCore.js';
 import { glWarm } from './jarvisGL.js';
+import { helixLogo } from './helixLogo.js';
 import { planBroadcast, wantedSceneIds, subtitleChunks, chunkAt, itemSeconds, durText, tickerText, dateWords, partOfDay } from './broadcastCore.js';
 import { boardSummary, topMovers } from './jarvisCandles.js';
 import { enterScene, sceneMotion, makeRecorder, voiceButton, voiceWord } from './jarvisModShow.js';
@@ -45,6 +46,7 @@ const css = R => `
 #${R} .bc-scan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 2px,color-mix(in srgb,var(--bca) 6%,transparent) 2px 3px);pointer-events:none}
 /* cold open + sign-off */
 #${R} .bc-open,#${R} .bc-close{background:radial-gradient(ellipse at 50% 50%,color-mix(in srgb,var(--bg) 55%,transparent) 0%,color-mix(in srgb,var(--bg) 92%,transparent) 70%)}
+#${R} .bc-helix{display:block;margin:0 auto 14px;width:min(460px,80vw);height:84px}
 #${R} .bc-tc{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1100px,92vw);text-align:center}
 #${R} .bc-ring{position:absolute;left:50%;top:50%;width:min(620px,86vw);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;border:1px solid color-mix(in srgb,var(--bca) 30%,transparent);box-shadow:0 0 60px color-mix(in srgb,var(--bca) 12%,transparent),inset 0 0 60px color-mix(in srgb,var(--bca) 10%,transparent)}
 #${R} .bc-ring::before,#${R} .bc-ring::after{content:"";position:absolute;inset:7%;border-radius:50%;border:1px dashed color-mix(in srgb,var(--bca) 35%,transparent);animation:bc-spin 40s linear infinite}
@@ -135,7 +137,7 @@ function makeOverlay(api) {
   doc.getElementById(`${api.ID}-bc`)?.remove();
   const el = doc.createElement('div'); el.className = 'bc'; el.id = `${api.ID}-bc`; el.setAttribute('aria-live', 'polite');
   el.innerHTML = `<style>${css(api.ID)}</style><div class="bc-veil"></div>
-<div class="bc-card bc-open"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-line"></div><div class="bc-tc bc-reveal"><div class="bc-kick">M.A.C.H.</div><h1 class="bc-h1">THE <b data-b="part">MORNING</b> BRIEFING</h1><div class="bc-date" data-b="odate"></div></div></div>
+<div class="bc-card bc-open"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-line"></div><div class="bc-tc bc-reveal"><canvas class="bc-helix" data-b="hx" aria-hidden="true"></canvas><div class="bc-kick">H.E.L.I.X.</div><h1 class="bc-h1">THE <b data-b="part">MORNING</b> BRIEFING</h1><div class="bc-date" data-b="odate"></div></div></div>
 <div class="bc-card bc-lead"><div class="bc-ghost" data-b="ghost"></div><div class="bc-lw"><div class="bc-tag">THE LEAD <span data-b="lnum"></span></div><div class="bc-fig" data-b="fig"></div><div class="bc-figl" data-b="figl"></div><div class="bc-hl" data-b="hl"></div><div class="bc-hs" data-b="hs"></div><div class="bc-pips" data-b="pips"></div></div></div>
 <div class="bc-card bc-bump"><div class="bc-scan"></div><div class="bc-tc"><div class="bc-bn" data-b="bn"></div><div class="bc-bname" data-b="bname"></div><div class="bc-bar"></div></div></div>
 <div class="bc-card bc-close"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-tc"><div class="bc-h1">That is the briefing.</div><div class="bc-not">Description, not advice.</div><div class="bc-date" data-b="cdate"></div><div class="bc-sig" data-b="sig">J.A.R.V.I.S. · THE MORNING BRIEFING</div></div></div>
@@ -143,19 +145,23 @@ function makeOverlay(api) {
 <div class="bc-sub off" data-b="sub"></div>
 <div class="bc-tick"><div class="lb">MARKETS <small>MOVE · ×USUAL</small></div><div class="cw"><div class="tr" data-b="tr"></div></div></div>
 <div class="bc-wipe"></div>
-<div class="bc-bug"><i></i><span>M.A.C.H. · <span class="ld">LIVE DATA · </span><span class="d">DESCRIPTION ONLY</span></span><span class="clk" data-b="clk"></span></div>
+<div class="bc-bug"><i></i><span>H.E.L.I.X. · <span class="ld">LIVE DATA · </span><span class="d">DESCRIPTION ONLY</span></span><span class="clk" data-b="clk"></span></div>
 <div class="bc-count" data-b="count"><small>RECORDING STARTS</small><b></b></div>`;
   root.appendChild(el); root.classList.add('jv-bcast');
   const $ = k => el.querySelector(`[data-b="${k}"]`), card = c => el.querySelector(`.bc-${c}`);
-  let clockId = 0, l3h = 0;
+  let clockId = 0, l3h = 0, hxStop = null;
   const clock = () => { try { $('clk').textContent = `LDN ${dateWords(new Date()).hm}`; } catch (e) { /* label only */ } };
   const O = {
     el,
     on() { clock(); clockId = api.win.setInterval(clock, 15000); requestAnimationFrame(() => el.classList.add('on')); },
-    cards(which) { for (const c of ['open', 'lead', 'bump', 'close']) card(c).classList.toggle('on', c === which); },
+    cards(which) {
+      for (const c of ['open', 'lead', 'bump', 'close']) card(c).classList.toggle('on', c === which);
+      if (which === 'open' && !hxStop) { try { hxStop = helixLogo($('hx'), { calm: !!api.win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches }); } catch (e) { /* decoration */ } }
+      else if (which !== 'open' && hxStop) api.win.setTimeout(() => { if (!card('open').classList.contains('on')) { hxStop?.(); hxStop = null; } }, 700);      // after the card has faded
+    },
     veil(on) { el.querySelector('.bc-veil').classList.toggle('on', !!on); },
     wipe() { const w = el.querySelector('.bc-wipe'); w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); },
-    open(date) { $('odate').textContent = date.card; $('cdate').textContent = date.card; const part = partOfDay(date.hour).toUpperCase(); $('part').textContent = part; $('sig').textContent = `M.A.C.H. · THE ${part} BRIEFING`; },
+    open(date) { $('odate').textContent = date.card; $('cdate').textContent = date.card; const part = partOfDay(date.hour).toUpperCase(); $('part').textContent = part; $('sig').textContent = `H.E.L.I.X. · THE ${part} BRIEFING`; },
     lead(x, i, n) {
       $('lnum').textContent = `· ${i + 1} OF ${n}`; $('ghost').textContent = String(i + 1);
       const fig = $('fig'); fig.textContent = x.figure; fig.parentElement.style.setProperty('--tc', TONE[x.tone] ?? TONE.tx);
@@ -198,7 +204,7 @@ registerJarvisModule({
 <div class="jv-row"><button type="button" data-b="go" style="font-size:14px;letter-spacing:.2em;padding:10px 24px">▶ PLAY THIS ${part}</button><span class="jv-sub" data-b="status">Reading today's rundown...</span></div>
 <div data-b="rundown"></div>
 <div class="jv-row"><button type="button" data-b="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-b="len"><option value="quick">QUICK (about 2-3 min)</option><option value="short">SHORT (under 3 min, a YouTube Short)</option><option value="full">FULL (every view)</option></select></label><label class="jv-sub">speed <select data-b="rate"><option value="0.9">calm</option><option value="1">normal</option><option value="1.15">brisk</option><option value="1.3">fast</option></select></label><button type="button" data-b="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button></div>
-<details class="jv-sub"><summary>How recording works</summary><p class="jv-sub">The browser asks what to share. Choose <b>This tab</b>; Mach records its own voice and sound straight from the page, so there is no audio box to tick. The briefing plays and a video file downloads at the end (MP4 where the browser can, else WebM). On a phone it gets the briefing ready for the phone's own screen recorder. Keep the voice on so it is in the video.</p></details>
+<details class="jv-sub"><summary>How recording works</summary><p class="jv-sub">The browser asks what to share. Choose <b>This tab</b>; Helix records its own voice and sound straight from the page, so there is no audio box to tick. The briefing plays and a video file downloads at the end (MP4 where the browser can, else WebM). On a phone it gets the briefing ready for the phone's own screen recorder. Keep the voice on so it is in the video.</p></details>
 <p class="jv-sub">A title sequence, the lead, then each segment over its hologram view, with a ticker, lower-thirds and subtitles. The voice leads; the picture follows. Esc ends it. Description only: what has moved and where things sit, never a forecast or a trade.</p>`;
     const q = s => pane.querySelector(`[data-b="${s}"]`), status = (t, bad = false) => { const e = q('status'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--gold)' : ''; } };
     q('rate').value = String(prefs.rate ?? 1); q('len').value = prefs.len ?? 'quick';

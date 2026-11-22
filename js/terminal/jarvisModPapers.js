@@ -35,7 +35,7 @@ registerJarvisModule({
         <span style="color:var(--tx2);font-size:10px"> ${esc(t.source ?? '')}</span></div>`).join('') : '<div style="color:var(--tx2)">No Evidence Book entry overlaps this query.</div>';
       out.innerHTML = `<div style="color:var(--gold)">TOP PAPERS (${esc(r.indexed)} indexed)</div>${papers}
         <div style="color:var(--gold);margin-top:10px">WHAT OUR OWN TESTS SAY</div>${tests}
-        ${top.length ? '<button data-sum style="margin-top:10px;background:var(--bg1);color:var(--blue2);border:1px solid var(--line);padding:5px 10px;cursor:pointer">ASK MACH TO SUMMARISE THE TOP 3</button>' : ''}`;
+        ${top.length ? '<button data-sum style="margin-top:10px;background:var(--bg1);color:var(--blue2);border:1px solid var(--line);padding:5px 10px;cursor:pointer">ASK HELIX TO SUMMARISE THE TOP 3</button>' : ''}`;
       out.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', () => api.win.open(el.getAttribute('data-open'), '_blank', 'noopener')));
       out.querySelector('[data-sum]')?.addEventListener('click', () => api.ask('Summarise what these papers found, in plain words, and say what our own tests found on the same theme (description only, no forecast): ' + top.map(p => `"${p.title}" (${p.year ?? 'n.d.'})`).join('; ')));
     };

@@ -19,10 +19,10 @@ registerJarvisModule({
     const { esc, st } = api, prefs = lsGet();
     let token = 0;
     const ctl = { paused: false, rate: 1, jump: null };
-    pane.innerHTML = `<h3>THE SHOW</h3><p>A narrated tour of your morning: the world, today's candles with a fly-through, the bias lean, the chain and the day ahead. Mach speaks, and the picture follows it, never the other way round. Press Esc to end it.</p>
+    pane.innerHTML = `<h3>THE SHOW</h3><p>A narrated tour of your morning: the world, today's candles with a fly-through, the bias lean, the chain and the day ahead. Helix speaks, and the picture follows it, never the other way round. Press Esc to end it.</p>
 <div class="jv-row"><button type="button" data-s="go">▶ START THE SHOW</button><button type="button" data-s="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button><button type="button" data-s="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-s="len"><option value="quick" selected>morning brief (about 2 min)</option><option value="full">full tour (everything)</option></select></label><label class="jv-sub">pace <select data-s="rate"><option value="0.9">calm</option><option value="1" selected>normal</option><option value="1.15">brisk</option></select></label></div>
 <p class="jv-sub" data-s="status">Ready. With the voice off it plays as subtitles at reading speed.</p>
-<p class="jv-sub">RECORD AS VIDEO: the browser will ask what to share. Choose <b>This tab</b> (Mach records its own voice and sound straight from the page, so no audio box to tick), then the show plays and a video file downloads at the end (MP4 where your browser can, otherwise WebM). The voice only reaches the video if it plays through the browser: a Google voice usually does, a built-in Windows voice may not. Keep VOICE ON.</p>`;
+<p class="jv-sub">RECORD AS VIDEO: the browser will ask what to share. Choose <b>This tab</b> (Helix records its own voice and sound straight from the page, so no audio box to tick), then the show plays and a video file downloads at the end (MP4 where your browser can, otherwise WebM). The voice only reaches the video if it plays through the browser: a Google voice usually does, a built-in Windows voice may not. Keep VOICE ON.</p>`;
     const q = s => pane.querySelector(`[data-s="${s}"]`), status = (t, bad = false) => { const e = q('status'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--gold)' : ''; e.style.fontSize = bad ? '13px' : ''; } };
     q('rate').value = String(prefs.rate ?? 1); q('len').value = prefs.len ?? 'quick'; q('len').onchange = e => lsPut({ len: e.target.value });
     voiceButton(api, q('voice'));
@@ -134,7 +134,7 @@ export function makeRecorder(api, o) {
     const root = api.doc.getElementById(api.ID);
     if (!armed) {
       armed = true; o.btn.textContent = '▶ START NOW (I AM RECORDING)';
-      status('This phone browser cannot record the page itself. So: 1) START YOUR PHONE\'S SCREEN RECORDER first (swipe down from the top, tap Screen recorder; choose "Media sounds" so the voice is recorded). 2) Come back here and press the button again. Jarvis counts down, hides all the buttons and plays. Tap the screen to stop.', true);
+      status('This phone browser cannot record the page itself. So: 1) START YOUR PHONE\'S SCREEN RECORDER first (swipe down from the top, tap Screen recorder; choose "Media sounds" so the voice is recorded). 2) Come back here and press the button again. Helix counts down, hides all the buttons and plays. Tap the screen to stop.', true);
       return;
     }
     armed = false; o.btn.textContent = o.label; o.stop();

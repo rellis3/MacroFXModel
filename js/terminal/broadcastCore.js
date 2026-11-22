@@ -276,7 +276,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     const total = list.length + 1, items = [], said = new Set();          // + the sign-off
     for (const l of lines) for (const x of sentences(l)) said.add(norm(x));
     list.forEach((s, i) => { s.num = i + 1; s.total = total; });
-    items.push({ kind: 'open', title: `THE ${part.toUpperCase()} BRIEFING`, view: 'globe', cam: { region: 'world' }, hold: short ? 3 : 4.2, text: `${greeting(date.hour)}. This is Mach, with the ${part} briefing for ${date.spoken}.` });
+    items.push({ kind: 'open', title: `THE ${part.toUpperCase()} BRIEFING`, view: 'globe', cam: { region: 'world' }, hold: short ? 3 : 4.2, text: `${greeting(date.hour)}. This is Helix, with the ${part} briefing for ${date.spoken}.` });
     lead.forEach((x, i) => items.push({ kind: 'lead', idx: i, n: lead.length, lead: x, title: 'The Lead', view: 'globe', cam: x.key ? { focus: x.key } : { region: 'world' }, hold: 0.6, text: lines[i] }));
     for (const s of list) {
       const seg = { id: s.id, name: s.name, num: s.num, total }, def = SEGMENTS.find(x => x.id === s.id);
