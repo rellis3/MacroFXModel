@@ -1,0 +1,37 @@
+== PC-A: planted ORACLE arm (informed OH lines; other lines A0 x1.3), CFD
+  SL picks ORACLE for oh: {'NQ': 8, 'GOLD': 8, 'EURUSD': 8} of 8 years; S1 picks ORACLE: {'NQ': 5, 'GOLD': 8, 'EURUSD': 8}; delta -14.24% [-15.34, -12.97] -> ok
+
+== track C
+  NQ picks: S1 SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR; SL_hl SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR; SL_oh SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR; SL_ol SHAR,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ; SOC SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR
+  GOLD picks: S1 E_naive,R5,SHAR,R5,V3,V3,V3,V3; SL_hl V4,V3,SHAR,R5,V3,V3,V3,V3; SL_oh E_naive,R5,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR; SL_ol E_naive,B_har_iv,V3,V3,V3,V3,V3,V3; SOC E_naive,R5,SHAR,R5,R5,R5,R5,V3
+  EURUSD picks: S1 HARCJ,E_har_rv_log,HARCJ,HARCJ,HARCJ,SHAR,HARCJ,HARCJ; SL_hl HARCJ,E_har_rv_log,HARCJ,HARCJ,HARCJ,SHAR,HARCJ,HARCJ; SL_oh SHAR,H8,SHAR,SHAR,SHAR,SHAR,SHAR,HARCJ; SL_ol HARCJ,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ; SOC R15,HARCJ,HARCJ,R5,SHAR,SHAR,SHAR,HARCJ
+  A  per-line vs one model: -0.26% [-0.63, +0.03]  2019-22 -0.49% [-1.20, +0.08]  2023-26 -0.03% [-0.15, +0.05]
+     per line: hl -0.60% [-1.63, +0.21]  oh -0.00% [-0.19, +0.16]  ol -0.14% [-0.36, +0.04]
+     per instrument: NQ -0.01% [-0.09, +0.07]  GOLD -0.70% [-1.80, +0.13]  EURUSD -0.06% [-0.24, +0.09]
+     regime miss (30 cells) S1 2.13pp vs SL 2.01pp
+  B1 OC model vs one model's OC: -0.02% [-0.20, +0.13]  2019-22 -0.16% [-0.44, +0.00]  2023-26 +0.12% [-0.09, +0.35]; OC regime miss S1 1.81 vs SOC 1.76pp
+     context, median |OC p50 - OH/OL p50| in sigma: NQ 0.030/0.045  GOLD 0.025/0.043  EURUSD 0.014/0.022
+
+== track F
+  NQ picks: S1 SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR; SL_hl SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR; SL_oh G_gjr,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR; SL_ol SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR; SOC SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR
+  GOLD picks: S1 B_har_iv,V3,V3,V3,V3,V3,V3,V3; SL_hl B_har_iv,V3,V3,V3,V3,V3,V3,V3; SL_oh V4,SHAR,SHAR,SHAR,SHAR,SHAR,HARCJ,HARCJ; SL_ol E_har_rv_log,B_har_iv,V3,V3,V4,V3,V3,V3; SOC SHAR,SHAR,SHAR,R5,V3,V3,V3,V3
+  EURUSD picks: S1 HARCJ,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ; SL_hl HARCJ,SHAR,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ; SL_oh R5,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR,SHAR; SL_ol E_naive,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ,HARCJ; SOC E_naive,R15,R15,R15,SHAR,SHAR,SHAR,SHAR
+  A  per-line vs one model: +0.12% [+0.00, +0.22]  2019-22 +0.24% [+0.08, +0.45]  2023-26 -0.01% [-0.12, +0.04]
+     per line: hl +0.03% [-0.03, +0.12]  oh -0.00% [-0.24, +0.14]  ol +0.31% [+0.09, +0.60]
+     per instrument: NQ +0.04% [-0.02, +0.07]  GOLD +0.01% [-0.20, +0.16]  EURUSD +0.31% [+0.08, +0.60]
+     regime miss (30 cells) S1 1.75pp vs SL 1.72pp
+  B1 OC model vs one model's OC: +0.29% [+0.06, +0.56]  2019-22 +0.50% [+0.09, +1.07]  2023-26 +0.05% [-0.09, +0.18]; OC regime miss S1 1.54 vs SOC 1.53pp
+     context, median |OC p50 - OH/OL p50| in sigma: NQ 0.025/0.044  GOLD 0.021/0.038  EURUSD 0.014/0.022
+
+VERDICT A (per-line models): UNDERPOWERED (regime guard ok)
+VERDICT B1 (OC model): UNDERPOWERED (OC regime guard ok)
+
+== B2: fade first touch of OH/OL p75 (per-line lines), stop p90 + 0.05 sigma, TP = OC p50 (OC model), CFD bid/ask
+  B2 NQ: 1971 sessions with bid/ask
+  B2 GOLD: 1971 sessions with bid/ask
+  B2 EURUSD: 1981 sessions with bid/ask
+  PC-B2: mid TP-first share 55.3% vs driftless benchmark 57.4% over 6473 barrier exits -> ok
+  real trades 2990 (skipped 0 side-sessions: OC p50 not between open and entry); net -0.086R [-0.105, -0.065]; gross -0.048R; vs placebo TPs +0.005R [-0.002, +0.011]; TP-first 54.7% vs benchmark 56.3%
+  halves: 2019-22 -0.091R [-0.117, -0.056]  2023-26 -0.081R [-0.113, -0.062]
+  per instrument net R: NQ -0.061 (n 1033)  GOLD -0.130 (n 1016)  EURUSD -0.068 (n 941)
+VERDICT B2 (OC take-profit): NULL

@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-20.
+Generated 2026-11-22.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **568** |
+| claims tested (validated + null + underpowered) | **571** |
 | validated | 195 |
-| null | 214 |
-| underpowered | 159 |
+| null | 215 |
+| underpowered | 161 |
 | context (base rates, descriptions: not counted as tests) | 84 |
 | pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 568 claims were real, tests at the usual 5% size would still pass
-about **28.4** of them by luck. 195 passed, so most passes are unlikely to be luck alone, but
-**roughly 28 of the 195 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 571 claims were real, tests at the usual 5% size would still pass
+about **28.6** of them by luck. 195 passed, so most passes are unlikely to be luck alone, but
+**roughly 29 of the 195 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -679,6 +679,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-20 | tpo-ib-flow | price | null | forge/TPO_INITIAL_BALANCE_PREREG.md |
 | 2026-11-20 | tpo-ib-follow | price | null | forge/TPO_INITIAL_BALANCE_PREREG.md |
 | 2026-11-20 | tpo-ib-strategy | price | underpowered | forge/TPO_INITIAL_BALANCE_PREREG.md |
+| 2026-11-22 | ladder-per-line | volatility | underpowered | forge/LADDER_PER_LINE_PREREG.md |
+| 2026-11-22 | ladder-per-line-oc | volatility | underpowered | forge/LADDER_PER_LINE_PREREG.md |
+| 2026-11-22 | ladder-per-line-oc-tp | price | null | forge/LADDER_PER_LINE_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
