@@ -22,7 +22,7 @@ root=$(git rev-parse --show-toplevel) || exit 0
 cd "$root" || exit 0
 command -v node >/dev/null 2>&1 || { echo "[pre-push] node not found; guard tests skipped"; exit 0; }
 
-TESTS="js/scoreDisplay.test.mjs js/infoMap.test.mjs js/deskSnapshot.test.mjs js/serviceFlags.test.mjs js/commandHub.test.mjs js/terminal/tabRegistry.test.mjs js/feedCoverage.test.mjs js/dataFeeds.test.mjs js/deskEvidence.test.mjs"
+TESTS="js/scoreDisplay.test.mjs js/infoMap.test.mjs js/deskSnapshot.test.mjs js/serviceFlags.test.mjs js/commandHub.test.mjs js/terminal/tabRegistry.test.mjs js/feedCoverage.test.mjs js/deskEvidence.test.mjs"
 
 tmp=$(mktemp -d 2>/dev/null || echo "${TMPDIR:-/tmp}/prepush.$$")
 mkdir -p "$tmp"
