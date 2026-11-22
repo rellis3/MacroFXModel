@@ -4553,6 +4553,26 @@ export const DESK_EVIDENCE = [
     use: 'Do not say a rate-of-change reset inside an uptrend is a continuation entry or a "wants to go higher" read: on 30 markets over 13 years it was followed by returns about the same as any other uptrend session. The 200-day filter adds nothing to the banked stall. The educator\'s own stack (single stocks, fundamentals, catalysts, sentiment) is not tested here.',
     instruments: ['SPX', 'NDX', 'RUT', 'DJI', 'DAX', 'FTSE', 'N225', 'HSI', 'XLK', 'XLF', 'XLE', 'XLV', 'XLY', 'XLP', 'XLI', 'XLU', 'XLB', 'GOLD', 'SILVER', 'COPPER', 'WTI', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'TLT', 'BTC'],
   },
+  {
+    id: 'cb-meeting-drift-own', domain: 'events', verdict: 'null', date: '2026-10-26', doc: 'forge/CB_MEETING_DRIFT_PREREG.md', also: ['analysis/output/cb-meeting-drift/RESULTS.md'],
+    claim: 'The own currency drifts up over the five sessions after an ECB or BoE decision (EURUSD, GBPUSD, 16:00 London D to D+5), as the dollar does after the FOMC',
+    result: '170 decisions (103 ECB 2014-2026, 67 BoE 2018-2026): event minus control -6.5bp [-23.0, +12.0], Holm p 0.47, placebo 23rd pct, halves +1.3 / -12.4. The upper bound is under the registered +15bp null line, so an FOMC-sized drift is ruled out. ECB -2.6bp, BoE -12.7bp.',
+    use: 'The post-FOMC dollar drift is a Fed effect only. Never generalise it to "the currency rises after its central bank meets".',
+  },
+  {
+    id: 'cb-meeting-drift-continue', domain: 'events', verdict: 'underpowered', date: '2026-10-26', doc: 'forge/CB_MEETING_DRIFT_PREREG.md', also: ['analysis/output/cb-meeting-drift/RESULTS.md'],
+    claim: 'The decision-day move (12:00 to 16:00 London) after an ECB or BoE decision continues over the next five sessions',
+    result: '170 decisions: sign(D0 move) x D+1..D+5 return, event minus control +14.6bp [-1.1, +31.2], p 0.077 (Holm fail), placebo 95.1st pct, halves +16.3 / +13.1; continued 58% of the time vs ~50% on control days (ECB +16.9bp, BoE +11.1bp, neither significant alone).',
+    use: 'A lead, not a result: do not lean on it. Pooling more central banks (BoJ, RBA, BoC, SNB, RBNZ) under its own prereg is what would judge it.',
+    instruments: ['EURUSD', 'GBPUSD'],
+  },
+  {
+    id: 'pre-fomc-drift-nq', domain: 'events', verdict: 'underpowered', date: '2026-10-26', doc: 'forge/PRE_FOMC_DRIFT_PREREG.md', also: ['analysis/output/pre-fomc-drift/RESULTS.md'],
+    claim: 'Lucca and Moench (2015): US equity index futures rise in the 24 hours before a scheduled FOMC statement (NQ, 14:00 ET D-1 to 13:45 ET D)',
+    result: '99 scheduled meetings 2014-2026: +21.9bp vs +7.7bp on control days, difference +14.2bp [-4.1, +31.5], t 1.56, placebo 88th pct, halves -6.3 / +33.5. Win rate 56.6% vs 56.2%; without the 3 largest meetings +6.9bp; 2022 alone averaged +139bp. The paper\'s 49bp is outside the interval. SPX 2018+ (descriptive) +14.5bp [-2.9, +31.9].',
+    use: 'Do not cite the pre-FOMC drift as a live ~50bp effect: at that size it is gone here since 2014. A +10-15bp lean may remain, concentrated in 2018-2024 (mostly 2022). Reopen with 1994-2013 dates as a confirmation.',
+    instruments: ['NQ', 'SPX500'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -5134,6 +5154,9 @@ const POWER = {
   'mtf-structure-pullback': { n: '5,196 called rows on 1,765 dates (18.1% coverage)', note: 'MDE ~3.6pp (24h) / 4.9pp (3d) / 6.0pp (5d) vs 3pp bar; plant 100% / 0% / 0%; gold slice 352 rows' },
   'mtf-structure-conflict-ema': { n: '8,539 kept rows on 2,060 dates (29.4% kept); 1,000 random abstentions', note: 'MDE ~2.2pp (24h) / 3.3pp (3d) / 3.8pp (5d) vs 2pp bar; plant 57% / 0% / 0%' },
   'mtf-structure-conflict-hmm': { n: '13,401 kept rows on 2,237 dates (46.1% kept); 1,000 random abstentions', note: 'MDE ~1.7pp (24h) / 2.4pp (3d) / 3.1pp (5d) vs 2pp bar; plant 100% / 30% / 0%' },
+  'cb-meeting-drift-own':      { n: '170 decisions (103 ECB, 67 BoE) vs 4,281 control windows', note: 'MDE 26.5bp (Holm alpha 0.025); CI [-23.0, +12.0] below the +15bp null line -- a real null' },
+  'cb-meeting-drift-continue': { n: '170 decisions vs 4,281 control windows', note: 'MDE ~26.5bp; CI [-1.1, +31.2] still includes the +15bp line' },
+  'pre-fomc-drift-nq':         { n: '99 scheduled FOMC meetings vs 2,715 control days', note: 'MDE 34.9bp vs paper 49bp; CI [-4.1, +31.5] includes the +20bp null line' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };

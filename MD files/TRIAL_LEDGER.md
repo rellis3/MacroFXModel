@@ -10,15 +10,15 @@ Generated 2026-11-22.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **572** |
+| claims tested (validated + null + underpowered) | **575** |
 | validated | 196 |
-| null | 215 |
-| underpowered | 161 |
+| null | 216 |
+| underpowered | 163 |
 | context (base rates, descriptions: not counted as tests) | 85 |
-| pre-registrations with no banked verdict (below) | 86 |
+| pre-registrations with no banked verdict (below) | 89 |
 
-**What the count says (Lesson 02 §05).** If none of the 572 claims were real, tests at the usual 5% size would still pass
-about **28.6** of them by luck. 196 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 575 claims were real, tests at the usual 5% size would still pass
+about **28.8** of them by luck. 196 passed, so most passes are unlikely to be luck alone, but
 **roughly 29 of the 196 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -283,6 +283,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-25 | overnight-hold-nq | price | underpowered | forge/OVERNIGHT_HOLD_PREREG.md |
 | 2026-10-25 | overnight-hold-toolkit | price | context | forge/OVERNIGHT_HOLD_TOOLKIT_PREREG.md |
 | 2026-10-25 | portfolio-book-validate | price | context | forge/PORTFOLIO_BOOK_VALIDATE_PREREG.md |
+| 2026-10-26 | cb-meeting-drift-continue | events | underpowered | forge/CB_MEETING_DRIFT_PREREG.md |
+| 2026-10-26 | cb-meeting-drift-own | events | null | forge/CB_MEETING_DRIFT_PREREG.md |
+| 2026-10-26 | pre-fomc-drift-nq | events | underpowered | forge/PRE_FOMC_DRIFT_PREREG.md |
 | 2026-10-27 | forecast-miss-month-end-fx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
 | 2026-10-27 | forecast-miss-scan | volatility | context | forge/FORECAST_MISS_SCAN_PREREG.md |
 | 2026-10-27 | forecast-miss-shock-fx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
@@ -775,3 +778,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
+- `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
+- `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
+- `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot

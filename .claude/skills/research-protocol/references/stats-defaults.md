@@ -78,3 +78,8 @@ These are the defaults a prereg uses unless it says otherwise and why. Helpers: 
   ranged 1.25–2.29pp over six seeds against a floor p90 of 1.64; the banked 1.47 was one draw. Repeat the placebo
   (≥ 20 draws) and report the median and range. Also draw placebo outcomes from exactly the rows the model is fitted
   on, or the placebo carries its own miscalibration.
+- 2026-10-26 (`direction-baseline-audit`): a 1,200-cell grid (10 series × 4 horizons × 6 look-backs × 5 conditions,
+  daily, 2016–2026) gave 85 cells at t ≤ −2. Counted against "5% of 1,200" that reads as a reversal discovery. A
+  shuffled-returns placebo run through the same pipeline gave a mean of 57 and a range of 0 to 168, because overlapping
+  20–60-session windows bias past-versus-future sign toward reversal and the cells are heavily correlated. **Never
+  judge a grid by its count of significant cells; compare the count against a placebo run through the same pipeline.**
