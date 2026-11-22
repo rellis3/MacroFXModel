@@ -7,9 +7,10 @@
 // Words, lead, segment plan, ticker and subtitles: broadcastCore.js (templates over numbers, no model call). DESCRIPTION ONLY: nothing in it is a forecast, a signal or a trade.
 import { registerJarvisModule, viewsOf } from './jarvisModules.js';
 import { SHOW_HOOKS } from './showCore.js';
-import { planBroadcast, wantedSceneIds, subtitleChunks, chunkAt, itemSeconds, durText, tickerText, dateWords } from './broadcastCore.js';
+import { glWarm } from './jarvisGL.js';
+import { planBroadcast, wantedSceneIds, subtitleChunks, chunkAt, itemSeconds, durText, tickerText, dateWords, partOfDay } from './broadcastCore.js';
 import { boardSummary, topMovers } from './jarvisCandles.js';
-import { enterScene, sceneMotion, makeRecorder } from './jarvisModShow.js';
+import { enterScene, sceneMotion, makeRecorder, voiceButton, voiceWord } from './jarvisModShow.js';
 
 const LS = 'jarvisBroadcast:v1';
 const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { return {}; } };
@@ -20,8 +21,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // The broadcast graphics. Colours are the theme tokens; the accent (--jva) follows the view on screen, so the graphics take each segment's colour.
 const css = R => `
 #${R}.jv-bcast .jv-cap{display:none!important}
-#${R}.jv-bcast .jv-cine{top:20px;bottom:auto;left:auto;right:200px;transform:none}#${R}.jv-bcast.jv-compact .jv-cine{top:44px;bottom:auto;left:8px;right:8px;width:auto}
-#${R} .bc{position:absolute;inset:0;z-index:5;pointer-events:none;--bcs:"Inter","Segoe UI","Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;--bca:var(--jva,var(--blue2));--tc:var(--tx);--dur:60s;color:var(--tx);font-family:var(--bcs)}
+#${R}.jv-bcast .jv-cine{top:20px;bottom:auto;left:auto;right:200px;transform:none}
+/* phone: a strict stack, top to bottom: the bug (12px, left) and END (10px, right); the collapsed controls (pause + more) under END; the view's readout below both (--jvtop);
+   at the bottom the ticker, the lower-third over it, and the subtitles over the lower-third (its height is measured once into --l3h) */
+#${R}.jv-bcast.jv-compact{--jvtop:84px!important}
+#${R}.jv-bcast.jv-compact .jv-cine{top:46px;bottom:auto;left:auto;right:10px;width:auto;justify-content:flex-end}
+#${R}.jv-bcast.jv-compact .jv-cine.more{left:8px;right:8px;flex-wrap:wrap;justify-content:center;padding:6px;border-radius:12px;background:color-mix(in srgb,var(--bg) 82%,transparent)}
+#${R} .bc{position:absolute;inset:0;z-index:5;pointer-events:none;--bcs:"Inter","Segoe UI","Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;--bca:var(--jva,var(--blue2));--tc:var(--tx);--dur:60s;--l3h:64px;color:var(--tx);font-family:var(--bcs)}
 #${R} .bc *{box-sizing:border-box}
 #${R} .bc .mono{font-family:var(--mono,ui-monospace,monospace)}
 /* corner bug */
@@ -107,14 +113,14 @@ const css = R => `
 #${R} .bc-count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:color-mix(in srgb,var(--bg) 85%,transparent)}#${R} .bc-count.on{display:flex}
 #${R} .bc-count b{font-weight:200;font-size:min(30vw,180px);line-height:1;color:var(--bca);text-shadow:0 0 40px var(--bca)}#${R} .bc-count small{font:500 12px/1 var(--mono,monospace);letter-spacing:.4em;color:var(--tx2)}
 /* phone */
-#${R}.jv-compact .bc-bug{left:12px;top:82px;font-size:9px;letter-spacing:.14em;padding:5px 8px}#${R}.jv-compact .bc-bug .clk{display:none}
+#${R}.jv-compact .bc-bug{left:12px;top:12px;max-width:calc(100% - 140px);font-size:9px;letter-spacing:.14em;padding:5px 8px}#${R}.jv-compact .bc-bug .clk,#${R}.jv-compact .bc-bug .ld{display:none}
 #${R}.jv-compact .bc-l3{left:10px;right:10px;bottom:46px;max-width:none}#${R}.jv-compact .bc-l3 .m{flex:1;padding:8px 12px}#${R}.jv-compact .bc-l3 .s{font-size:16px;letter-spacing:.08em}#${R}.jv-compact .bc-l3 .t{font-size:10px;letter-spacing:.08em}
 #${R}.jv-compact .bc-l3 .n{padding:0 9px;font-size:12px}#${R}.jv-compact .bc-l3 .f{padding:6px 10px}#${R}.jv-compact .bc-l3 .f b{font-size:19px}#${R}.jv-compact .bc-l3 .f small{font-size:9px;letter-spacing:.08em}
-#${R}.jv-compact .bc-sub{bottom:124px;width:calc(100% - 24px)}#${R}.jv-compact .bc-sub span{font-size:16px;line-height:1.55;padding:2px 8px}#${R}.jv-compact .bc-sub.full{bottom:52px}
+#${R}.jv-compact .bc-sub{bottom:calc(56px + var(--l3h));width:calc(100% - 24px)}#${R}.jv-compact .bc-sub span{font-size:16px;line-height:1.55;padding:2px 8px}#${R}.jv-compact .bc-sub.full{bottom:52px}
 #${R}.jv-compact .bc-tick{height:32px}#${R}.jv-compact .bc-tick .lb{padding:0 9px;font-size:9px}#${R}.jv-compact .bc-tick .lb small{display:none}#${R}.jv-compact .bc-tick .it{font-size:12px;padding:0 14px}
 #${R}.jv-compact .bc-lw{left:20px;right:20px;width:auto;top:46%}#${R}.jv-compact .bc-ghost{font-size:62vw;right:-4vw;bottom:2vh}#${R}.jv-compact .bc-lead{background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 70%,transparent),color-mix(in srgb,var(--bg) 92%,transparent) 40%,color-mix(in srgb,var(--bg) 92%,transparent))}
 #${R}.jv-compact .bc-kick{font-size:11px;letter-spacing:.5em;padding-left:.5em}#${R}.jv-compact .bc-h1{letter-spacing:.06em;padding-left:.06em}#${R}.jv-compact .bc-date{font-size:11px;letter-spacing:.24em;gap:10px}
-#${R}.jv-compact .bc-sig{font-size:9px;letter-spacing:.24em}#${R}.jv-compact.jv-rec .bc-bug{top:12px}
+#${R}.jv-compact .bc-sig{font-size:9px;letter-spacing:.24em}
 #${R}.jv-compact .bc-bname{letter-spacing:.08em;padding-left:.08em}
 @media (prefers-reduced-motion:reduce){#${R} .bc *,#${R} .bc *::before,#${R} .bc *::after{animation:none!important;transition:none!important}#${R} .bc-tick .tr{position:static}}
 `;
@@ -129,19 +135,19 @@ function makeOverlay(api) {
   doc.getElementById(`${api.ID}-bc`)?.remove();
   const el = doc.createElement('div'); el.className = 'bc'; el.id = `${api.ID}-bc`; el.setAttribute('aria-live', 'polite');
   el.innerHTML = `<style>${css(api.ID)}</style><div class="bc-veil"></div>
-<div class="bc-card bc-open"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-line"></div><div class="bc-tc bc-reveal"><div class="bc-kick">J.A.R.V.I.S.</div><h1 class="bc-h1">THE <b>MORNING</b> BRIEFING</h1><div class="bc-date" data-b="odate"></div></div></div>
+<div class="bc-card bc-open"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-line"></div><div class="bc-tc bc-reveal"><div class="bc-kick">J.A.R.V.I.S.</div><h1 class="bc-h1">THE <b data-b="part">MORNING</b> BRIEFING</h1><div class="bc-date" data-b="odate"></div></div></div>
 <div class="bc-card bc-lead"><div class="bc-ghost" data-b="ghost"></div><div class="bc-lw"><div class="bc-tag">THE LEAD <span data-b="lnum"></span></div><div class="bc-fig" data-b="fig"></div><div class="bc-figl" data-b="figl"></div><div class="bc-hl" data-b="hl"></div><div class="bc-hs" data-b="hs"></div><div class="bc-pips" data-b="pips"></div></div></div>
 <div class="bc-card bc-bump"><div class="bc-scan"></div><div class="bc-tc"><div class="bc-bn" data-b="bn"></div><div class="bc-bname" data-b="bname"></div><div class="bc-bar"></div></div></div>
-<div class="bc-card bc-close"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-tc"><div class="bc-h1">That is the briefing.</div><div class="bc-not">Description, not advice.</div><div class="bc-date" data-b="cdate"></div><div class="bc-sig">J.A.R.V.I.S. · THE MORNING BRIEFING</div></div></div>
+<div class="bc-card bc-close"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-tc"><div class="bc-h1">That is the briefing.</div><div class="bc-not">Description, not advice.</div><div class="bc-date" data-b="cdate"></div><div class="bc-sig" data-b="sig">J.A.R.V.I.S. · THE MORNING BRIEFING</div></div></div>
 <div class="bc-scrim"></div><div class="bc-l3"><div class="n" data-b="l3n"></div><div class="m"><div class="s" data-b="l3s"></div><div class="t" data-b="l3t"></div></div><div class="f" data-b="l3f"><b data-b="l3v"></b><small data-b="l3l"></small></div></div>
 <div class="bc-sub off" data-b="sub"></div>
 <div class="bc-tick"><div class="lb">MARKETS <small>MOVE · ×USUAL</small></div><div class="cw"><div class="tr" data-b="tr"></div></div></div>
 <div class="bc-wipe"></div>
-<div class="bc-bug"><i></i><span>JARVIS · LIVE DATA · <span class="d">DESCRIPTION ONLY</span></span><span class="clk" data-b="clk"></span></div>
+<div class="bc-bug"><i></i><span>JARVIS · <span class="ld">LIVE DATA · </span><span class="d">DESCRIPTION ONLY</span></span><span class="clk" data-b="clk"></span></div>
 <div class="bc-count" data-b="count"><small>RECORDING STARTS</small><b></b></div>`;
   root.appendChild(el); root.classList.add('jv-bcast');
   const $ = k => el.querySelector(`[data-b="${k}"]`), card = c => el.querySelector(`.bc-${c}`);
-  let clockId = 0;
+  let clockId = 0, l3h = 0;
   const clock = () => { try { $('clk').textContent = `LDN ${dateWords(new Date()).hm}`; } catch (e) { /* label only */ } };
   const O = {
     el,
@@ -149,7 +155,7 @@ function makeOverlay(api) {
     cards(which) { for (const c of ['open', 'lead', 'bump', 'close']) card(c).classList.toggle('on', c === which); },
     veil(on) { el.querySelector('.bc-veil').classList.toggle('on', !!on); },
     wipe() { const w = el.querySelector('.bc-wipe'); w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); },
-    open(date) { $('odate').textContent = date.card; $('cdate').textContent = date.card; },
+    open(date) { $('odate').textContent = date.card; $('cdate').textContent = date.card; const part = partOfDay(date.hour).toUpperCase(); $('part').textContent = part; $('sig').textContent = `J.A.R.V.I.S. · THE ${part} BRIEFING`; },
     lead(x, i, n) {
       $('lnum').textContent = `· ${i + 1} OF ${n}`; $('ghost').textContent = String(i + 1);
       const fig = $('fig'); fig.textContent = x.figure; fig.parentElement.style.setProperty('--tc', TONE[x.tone] ?? TONE.tx);
@@ -163,6 +169,7 @@ function makeOverlay(api) {
       $('l3n').textContent = pad2(seg.num); $('l3s').textContent = seg.name; $('l3t').textContent = title ?? '';
       const f = $('l3f'); f.hidden = !fig?.value; if (fig?.value) { $('l3v').textContent = fig.value; $('l3l').textContent = fig.label || 'key number'; }
       el.classList.add('l3on'); el.querySelector('.bc-l3').classList.add('on'); el.querySelector('.bc-sub').classList.remove('full');
+      if (!l3h) { const h = el.querySelector('.bc-l3').offsetHeight; if (h > 20) { l3h = h; el.style.setProperty('--l3h', `${h}px`); } }      // measured once: the phone's subtitles sit just above it
     },
     sub(t) { const s = $('sub'); if (!t) { s.classList.add('off'); return; } if (s.dataset.t === t) return; s.dataset.t = t; s.innerHTML = `<span>${ESC(t)}</span>`; s.classList.remove('off'); },
     ticker(items) {
@@ -181,23 +188,23 @@ const sting = api => { try { api.blip(392, 0.5, 'sine', 0.025); api.blip(587, 0.
 const tick = api => { try { api.blip(1320, 0.05, 'square', 0.012); api.blip(990, 0.12, 'sine', 0.016, 0.06); } catch (e) { /* no audio */ } };
 
 registerJarvisModule({
-  id: 'broadcast', label: 'MORNING BROADCAST',
+  id: 'broadcast', label: 'MORNING SHOW',
   render(pane, api) {
     const { st } = api, prefs = lsGet();
     let token = 0, cache = null, ov = null, stopMotion = () => {};
     const ctl = { paused: false, rate: 1, jump: null };
-    pane.innerHTML = `<h3>THE MORNING BROADCAST</h3><p>Your morning review as a TV-news package, read by Jarvis: a title sequence, the three things that matter this morning, then Markets, The Chain, Rates, Currencies, Volatility, Positioning and The Day Ahead over the hologram views, with a ticker, lower-thirds and subtitles. The voice leads; the picture follows. Esc ends it.</p>
-<div class="jv-row"><button type="button" data-b="go">▶ PLAY TODAY'S BROADCAST</button><button type="button" data-b="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button><button type="button" data-b="voice" aria-pressed="${prefs.voice !== false}">VOICE ${prefs.voice !== false ? 'ON' : 'OFF'}</button></div>
-<div class="jv-row"><label class="jv-sub">length <select data-b="len"><option value="quick">QUICK (about 2 min)</option><option value="full">FULL (every view)</option></select></label><label class="jv-sub">speed <select data-b="rate"><option value="0.9">calm</option><option value="1">normal</option><option value="1.15">brisk</option><option value="1.3">fast</option></select></label></div>
-<p class="jv-sub" data-b="status">Ready. With the voice off it plays as subtitles at reading speed.</p>
+    const part = partOfDay(dateWords(new Date()).hour).toUpperCase();
+    pane.innerHTML = `<h3>THE ${part} BRIEFING</h3>
+<div class="jv-row"><button type="button" data-b="go" style="font-size:14px;letter-spacing:.2em;padding:10px 24px">▶ PLAY THIS ${part}</button><span class="jv-sub" data-b="status">Reading today's rundown...</span></div>
 <div data-b="rundown"></div>
-<p class="jv-sub">RECORD AS VIDEO: the browser asks what to share. Choose <b>This tab</b> and tick <b>Also share tab audio</b>; the broadcast plays and a video file downloads at the end (MP4 where the browser can, else WebM). On a phone it gets the broadcast ready for the phone's own screen recorder. Keep VOICE ON so the voice is in the video.</p>
-<p class="jv-sub">Description only: what has moved and where things sit. Nothing in it is a forecast or a trade.</p>`;
+<div class="jv-row"><button type="button" data-b="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-b="len"><option value="quick">QUICK (about 2 min)</option><option value="full">FULL (every view)</option></select></label><label class="jv-sub">speed <select data-b="rate"><option value="0.9">calm</option><option value="1">normal</option><option value="1.15">brisk</option><option value="1.3">fast</option></select></label><button type="button" data-b="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button></div>
+<details class="jv-sub"><summary>How recording works</summary><p class="jv-sub">The browser asks what to share. Choose <b>This tab</b> and tick <b>Also share tab audio</b>; the briefing plays and a video file downloads at the end (MP4 where the browser can, else WebM). On a phone it gets the briefing ready for the phone's own screen recorder. Keep the voice on so it is in the video.</p></details>
+<p class="jv-sub">A title sequence, the lead, then each segment over its hologram view, with a ticker, lower-thirds and subtitles. The voice leads; the picture follows. Esc ends it. Description only: what has moved and where things sit, never a forecast or a trade.</p>`;
     const q = s => pane.querySelector(`[data-b="${s}"]`), status = (t, bad = false) => { const e = q('status'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--gold)' : ''; } };
     q('rate').value = String(prefs.rate ?? 1); q('len').value = prefs.len ?? 'quick';
     q('len').onchange = e => { lsPut({ len: e.target.value }); rundown(); };
     q('rate').onchange = e => { lsPut({ rate: +e.target.value }); rundown(); };
-    q('voice').onclick = e => { const on = !(lsGet().voice !== false); lsPut({ voice: on }); e.currentTarget.setAttribute('aria-pressed', String(on)); e.currentTarget.textContent = `VOICE ${on ? 'ON' : 'OFF'}`; };
+    voiceButton(api, q('voice'));
 
     // the morning's data, gathered once (two minutes' cache): candles, the chain summary, the calendar, and the prepared data of every scene the programme may use
     async function gather(force = false) {
@@ -215,8 +222,9 @@ registerJarvisModule({
       const box = q('rundown'); if (!box) return;
       try {
         const c = await gather(), P = plan(c.inp, q('len').value), rate = +q('rate').value || 1, tot = P.items.reduce((a, x) => a + itemSeconds(x, rate), 0);
+        if (!ov) status(`Ready · about ${durText(tot)}.`);
         box.innerHTML = `<p class="jv-sub" style="margin-top:10px;letter-spacing:.12em">TODAY'S RUNDOWN · about ${durText(tot)}</p><table>${P.lead.length ? `<tr><td>THE LEAD</td><td>${P.lead.map(l => api.esc(l.headline)).join(' · ')}</td></tr>` : ''}${P.segments.map(s => `<tr><td>${pad2(s.num)} ${api.esc(s.name.toUpperCase())}</td><td>${api.esc(s.scenes.join(', '))}</td></tr>`).join('')}<tr><td>${pad2(P.items[P.items.length - 1].seg.num)} SIGN-OFF</td><td></td></tr></table>`;
-      } catch (e) { box.innerHTML = ''; }
+      } catch (e) { box.innerHTML = ''; status('Ready.'); }
     }
     rundown();
 
@@ -233,14 +241,14 @@ registerJarvisModule({
       const my = ++token; status('Gathering the morning...');
       const c = await gather(true); if (my !== token) return;
       const P = plan(c.inp, q('len').value), items = P.items; api.win.__jarvisBroadcastPlan = P;     // for the lab harness and the console
-      ctl.rate = +q('rate').value || 1; ctl.paused = false; ctl.jump = null; st.voice = lsGet().voice !== false; api.voiceBegin?.();
+      ctl.rate = +q('rate').value || 1; ctl.paused = false; ctl.jump = null; st.voice = api.voiceOn ? api.voiceOn() : true; api.voiceBegin?.();
       const sync = () => api.cineLabel(ctl.rate, ctl.paused), steps = [0.75, 1, 1.25, 1.5, 1.75, 2];
       api.cinema(true, () => { stop(); status('Ended.'); }, {
         next: () => { ctl.jump = 1; api.st.speakCtl?.stop(); },
         prev: () => { ctl.jump = -1; api.st.speakCtl?.stop(); },
         pause: () => { ctl.paused = !ctl.paused; api.st.speakCtl?.pause(ctl.paused); sync(); },
-        fast: () => { ctl.rate = steps.find(x => x > ctl.rate + 1e-6) ?? 2; sync(); },
-        slow: () => { ctl.rate = [...steps].reverse().find(x => x < ctl.rate - 1e-6) ?? 0.75; sync(); },
+        fast: () => { ctl.rate = steps.find(x => x > ctl.rate + 1e-6) ?? 2; api.st.speakCtl?.setRate?.(ctl.rate); sync(); },      // the line already playing changes speed too
+        slow: () => { ctl.rate = [...steps].reverse().find(x => x < ctl.rate - 1e-6) ?? 0.75; api.st.speakCtl?.setRate?.(ctl.rate); sync(); },
       }); sync(); api.caption(null);
       ov?.remove(); ov = makeOverlay(api); if (!ov) { status('The HUD is not open.', true); return; }
       ov.open(P.date); ov.ticker(P.ticker); ov.on(); api.sfx.ambient(true);
@@ -254,7 +262,7 @@ registerJarvisModule({
         if (prevKind) { api.sfx.whoosh(); ov.wipe(); }
         if (it.kind === 'bumper') tick(api);
         if (cut || it.kind === 'scene' || it.cam || prevView == null) {
-          if (cut) { ov.veil(true); await sleep(300); }
+          if (cut) { ov.veil(true); await Promise.race([Promise.all([sleep(300), glWarm(it.view, api)]), sleep(2500)]); }   // the cut lands on a finished hologram, never on loading text
           if (my !== token) break;
           enterScene(api, it.kind === 'scene' ? it.scene : { view: it.view, cam: it.cam });
           if (cut) api.win.setTimeout(() => ov?.veil(false), 120);
@@ -267,10 +275,11 @@ registerJarvisModule({
         if (it.kind === 'scene') ov.l3(it.seg, it.title, it.figure); else ov.l3(null);
         ov.sub(null);
         if (it.kind === 'open') { sting(api); await hold(1500, my); }
-        // the line: subtitles follow the voice's progress (estimated from reading time at this speed); the scene's own camera moves with it
+        // the line: subtitles and the scene's own camera follow the voice's REAL progress (the audio clock; the reading-speed estimate when there is none)
         api.voicePrefetch?.(items[i + 1]?.text);
+        for (const nx of items.slice(i + 1, i + 4)) if (nx.view && nx.view !== st.view) { glWarm(nx.view, api).catch(() => {}); break; }   // build the next hologram while this line plays
         if (it.text) {
-          const chunks = subtitleChunks(it.text, st.compact ? 10 : 14), dur = itemSeconds({ text: it.text }, ctl.rate);
+          const chunks = subtitleChunks(it.text, st.compact ? 8 : 14), dur = itemSeconds({ text: it.text }, ctl.rate);
           stopMotion(); stopMotion = sceneMotion(api, it.kind === 'scene' ? it.scene : { cam: null }, dur, () => my === token, ctl, p => ov?.sub(chunkAt(chunks, p)?.text));
           await api.speak(it.text, ctl.rate);       // the voice leads: nothing moves on until he has finished the line, or you skip it
           stopMotion(); stopMotion = () => {};

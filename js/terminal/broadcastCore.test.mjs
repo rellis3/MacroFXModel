@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { planBroadcast, pickLead, leadLines, keyFigure, tickerItems, tickerText, subtitleChunks, chunkAt, trimWords, timesWords, timesFig, pctWords, pctFig, dateWords, normEvent, clean,
-  itemSeconds, durText, SEGMENTS, wantedSceneIds, BUILTIN, SIGNOFF_TEXT, QUICK_WORDS } from './broadcastCore.js';
+  itemSeconds, durText, SEGMENTS, wantedSceneIds, BUILTIN, SIGNOFF_TEXT, QUICK_WORDS, partOfDay, speakFig, dedupeBody, LEAD_OPENERS } from './broadcastCore.js';
 import { candleRows, boardSummary, topMovers } from './jarvisCandles.js';
 
 const vol = {
@@ -66,13 +66,20 @@ test('the lead on a thin morning: fewer items, a quiet card, or nothing at all, 
   assert.deepEqual(bad.map(x => x.kind), ['event']); assert.equal(bad[0].figure, '1');
 });
 
-test('lead lines read like a presenter: "Three things matter this morning. First, ..." "Second, ..." "And third, ..."', () => {
+test('lead lines read like an anchor: a rotating opener, then "First, ..." "Second, ..." "And third, ...", and two movers never share a phrasing', () => {
   const l = leadLines(pickLead(inp));
-  assert.match(l[0], /^Three things matter this morning\. First, in the chain, two of seven textbook links are broken, led by real yields to dollar\./);
-  assert.match(l[1], /^Second, gold is up/); assert.match(l[2], /^And third, Dollar Yen is up 0\.92 percent\. That is twice its usual move\.$/);
-  const two = leadLines(pickLead(inp).slice(0, 2), 'today'); assert.match(two[0], /^Two things matter today\. First,/); assert.match(two[1], /^And second, /);
-  assert.match(leadLines([{ say: 'gold is up.' }])[0], /^One thing stands out this morning\. Gold is up\.$/);
-  assert.deepEqual(leadLines([]), []);
+  assert.equal(l[0], 'Three stories lead this morning. First, in the chain, two of seven textbook links are broken, led by real yields to dollar.', 'no "That is where the story is." cliché');
+  assert.match(l[1], /^Second, gold is up 2\.1 percent\. That is 2\.4 times its usual move\.$/); assert.equal(l[2], "And third, Dollar Yen, up 0.92 percent: twice a normal day's travel.");
+  const two = leadLines(pickLead(inp).slice(0, 2), 'today'); assert.match(two[0], /^Two stories lead today\. First,/); assert.match(two[1], /^And second, /);
+  assert.match(leadLines([{ say: 'gold is up.' }])[0], /^One story leads this morning\. Gold is up\.$/);
+  assert.match(leadLines(pickLead(inp), 'this morning', 1)[0], /^Here is what matters this morning\. First,/); assert.match(leadLines(pickLead(inp), 'this morning', 2)[0], /^Three things to know this morning\. First,/);
+  assert.equal(LEAD_OPENERS.length, 3); assert.deepEqual(leadLines([]), []);
+});
+
+test('the lead opener rotates by date, deterministically: three days, three openers; the same day always the same words', () => {
+  const op = d => planBroadcast({ ...inp, now: new Date(d) }, { hooks: [] }).items.find(x => x.kind === 'lead').text.split('. ')[0];
+  const days = ['2026-11-20T07:30:00Z', '2026-11-21T07:30:00Z', '2026-11-22T07:30:00Z'].map(op);
+  assert.equal(new Set(days).size, 3, days.join(' | ')); assert.equal(op('2026-11-20T07:31:00Z'), days[0]); assert.equal(op('2026-11-23T07:30:00Z'), days[0], 'the cycle is three days');
 });
 
 test('keyFigure: the earliest key number of a line, with its unit', () => {
@@ -95,11 +102,12 @@ test('trimWords: whole sentences; QUICK drops a picture-naming opener and always
 });
 
 test('the built-in scenes: candles, chain and the calendar, each failing soft without data', () => {
-  const c = BUILTIN.candles(inp); assert.equal(c.view, 'candles'); assert.match(c.text, /Across the desk's 5 markets, 2 are up, 2 are down and 1 is barely moving/); assert.equal(c.figure.value, '2.4×');
+  const c = BUILTIN.candles(inp); assert.equal(c.view, 'candles'); assert.match(c.text, /^The widest move is gold, up 2\.1 percent, 2\.4 times its usual size\. Behind it, Dollar Yen up 0\.92 percent and /); assert.equal(c.figure.value, '2.4×');
+  assert.match(BUILTIN.candles({ ...inp, leadKeys: ['GOLD', 'USDJPY'] }).text, /^Beyond the lead, W.*down 2\.6 percent and Euro Dollar down 0\.42 percent\.$/, 'the lead movers are not said twice');
   assert.equal(BUILTIN.candles({}), null); assert.equal(BUILTIN.chain({}), null); assert.equal(BUILTIN.ahead({ events: [] }), null);
-  const one = candleRows({ GOLD: vol.GOLD }, {}); assert.match(BUILTIN.candles({ board: boardSummary(one), movers: topMovers(one) }).text, /1 is up, 0 are down/);
+  const one = candleRows({ GOLD: vol.GOLD }, {}); assert.match(SEGMENTS[0].say({ inp: { board: boardSummary(one) } }), /^Starting with the markets\. Of 1 on the board, 1 is up, 0 down, 0 barely moving\.$/);
   assert.match(BUILTIN.chain(inp).text, /real yields to dollar/); assert.equal(BUILTIN.chain(inp).view, 'skyline');
-  const a = BUILTIN.ahead(inp); assert.match(a.text, /^On the calendar today: at 13:30, US CPI month on month, at 15:00, US Fed Chair Powell Speaks and at 09:30, UK Retail Sales month on month\. That is the schedule, not a call on the outcome\.$/);
+  const a = BUILTIN.ahead(inp); assert.equal(a.text, 'At 13:30, US CPI month on month, at 15:00, US Fed Chair Powell Speaks and at 09:30, UK Retail Sales month on month.', 'no second disclaimer');
 });
 
 // fake SHOW hooks, shaped like the view modules' registerShowScene entries
@@ -120,8 +128,11 @@ test('planBroadcast QUICK: cold open, the lead, one scene per segment (first ava
   assert.equal(P.items[0].text, 'Good morning. This is Jarvis, with the morning briefing for Friday the twentieth of November.');
   const close = P.items[P.items.length - 1]; assert.equal(close.text, SIGNOFF_TEXT); assert.deepEqual([close.seg.num, close.seg.total], [8, 8]); assert.equal(close.date.card, 'FRIDAY 20 NOVEMBER');
   const scenes = P.items.filter(x => x.kind === 'scene');
-  assert.match(scenes[0].text, /^First, the markets\. /); assert.match(scenes[1].text, /^Now, the chain\. /);
-  assert.equal(scenes[2].text, 'To rates. The Fed has about 65 basis points of cuts priced.', 'QUICK drops the picture-naming opener and keeps the number');
+  assert.match(scenes[0].text, /^Starting with the markets\. Of 5 on the board, 2 are up, 2 down, 1 barely moving\. Beyond the lead, /, 'the lead already named gold and the yen');
+  assert.equal(scenes[1].text, 'The chain: 5 links holding, 18 too quiet to judge. Two of 7 links are broken.', 'the lead said the broken count, so the segue carries another number; the disclaimer sentence is gone');
+  assert.equal(scenes[2].text, 'Rates. The headline number: 65 basis points. The Fed has about 65 basis points of cuts priced.', 'QUICK drops the picture-naming opener and keeps the number');
+  assert.match(scenes[3].text, /^Currencies\. All 2 pairs are on the move\. The franc/); assert.match(scenes[5].text, /^Positioning, and where the options sit: 5,813, the gamma flip\./);
+  assert.match(scenes[6].text, /^And the day ahead: three high-impact releases on the clock\./);
   assert.deepEqual(scenes[2].figure, { value: '65 bp', label: '' }); assert.deepEqual(scenes[5].figure, { value: '5,813', label: 'gamma flip' }, 'a scene may give its own key number');
   assert.equal(scenes[6].view, 'ahead');
   for (const s of scenes) assert.ok(s.text.split(/\s+/).length <= QUICK_WORDS + 12, s.text);
@@ -135,7 +146,7 @@ test('planBroadcast FULL plays every available scene of a tier; missing views fa
   const full = planBroadcast(inp, { hooks: HOOKS, have: new Set(['reactor', 'cbpaths', 'yields', 'gpillar', 'gterrain', 'ahead']), mode: 'full' });
   assert.deepEqual(full.segments.map(s => s.scenes.join()), ['candles', 'reactor', 'cbpaths,yields', 'gpillar,gterrain', 'dayahead']);
   assert.match(full.items.find(x => x.scene?.id === 'yields').text, /^The curve/, 'only the first scene of a segment carries the segue');
-  assert.match(full.items.find(x => x.scene?.id === 'cbpaths').text, /^To rates\. Rate paths: what futures price\./, 'FULL keeps the whole line');
+  assert.match(full.items.find(x => x.scene?.id === 'cbpaths').text, /^Rates\. The headline number: 65 basis points\. Rate paths: what futures price\./, 'FULL keeps the whole line');
   // nothing new is registered: the HUD's own views carry the programme
   const bare = planBroadcast(inp, { hooks: [], have: new Set(), mode: 'quick' });
   assert.deepEqual(bare.segments.map(s => `${s.num}/${s.total} ${s.name}:${s.scenes}`), ['1/4 Markets:candles', '2/4 The Chain:chain', '3/4 The Day Ahead:ahead']);
@@ -149,9 +160,45 @@ test('planBroadcast FULL plays every available scene of a tier; missing views fa
   assert.equal(empty.items[1].seg.num, 1);
 });
 
-test('planBroadcast in the afternoon does not call itself a morning briefing', () => {
+test('the programme follows the clock: morning, afternoon or evening briefing, in the voice and on the title card', () => {
   const P = planBroadcast({ ...inp, now: new Date('2026-11-20T15:00:00Z') }, { hooks: [] });
-  assert.match(P.items[0].text, /^Good afternoon\. This is Jarvis, with the briefing for/); assert.match(P.items[1].text, /things matter today\./);
+  assert.match(P.items[0].text, /^Good afternoon\. This is Jarvis, with the afternoon briefing for/); assert.match(P.items[1].text, / this afternoon\./); assert.equal(P.items[0].title, 'THE AFTERNOON BRIEFING');
+  const E = planBroadcast({ ...inp, now: new Date('2026-11-20T19:30:00Z') }, { hooks: [] });
+  assert.match(E.items[0].text, /^Good evening\. This is Jarvis, with the evening briefing for/); assert.equal(E.items[0].title, 'THE EVENING BRIEFING'); assert.match(E.items[1].text, / tonight\./);
+  assert.deepEqual([partOfDay(7), partOfDay(11), partOfDay(12), partOfDay(17), partOfDay(18), partOfDay(23)], ['morning', 'morning', 'afternoon', 'afternoon', 'evening', 'evening']);
+});
+
+test('the anchor script: one "First", every segue carries a number, no sentence said twice, ONE disclaimer for the whole programme', () => {
+  const have = new Set(['reactor', 'cbpaths', 'yields', 'ccy', 'vol', 'gpillar', 'gterrain', 'ahead']);
+  for (const mode of ['quick', 'full']) {
+    for (const now of ['2026-11-20T07:30:00Z', '2026-11-21T07:30:00Z', '2026-11-22T16:00:00Z']) {
+      const P = planBroadcast({ ...inp, now: new Date(now) }, { hooks: HOOKS, have, mode }), spoken = P.items.map(x => x.text).filter(Boolean).join(' ');
+      assert.equal((spoken.match(/\bFirst\b/g) ?? []).length, 1, `${mode} ${now}: ${spoken}`);
+      assert.equal((spoken.match(/not advice|not a forecast|not a call|description only/gi) ?? []).length, 1, `${mode}: one disclaimer, in the sign-off`);
+      assert.doesNotMatch(spoken, /That is where the story is/);
+      const sents = spoken.split(/(?<=[.!?])\s+/).map(x => x.toLowerCase()); assert.equal(new Set(sents).size, sents.length, `a sentence repeats: ${sents.filter((x, i) => sents.indexOf(x) !== i)}`);
+      for (const x of P.items.filter(y => y.kind === 'scene' && P.items.find(z => z.kind === 'scene' && z.seg.id === y.seg.id) === y)) {
+        const head = x.text.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ');
+        assert.match(head, /\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/i, `segue without a number: ${x.text}`);
+      }
+    }
+  }
+});
+
+test('a weak third lead item is dropped; a strong one stays', () => {
+  const weak = planBroadcast({ ...inp, chain: null, events: [], movers: topMovers(candleRows({ GOLD: vol.GOLD, WTI: vol.WTI, EURUSD: { oc: -0.4, oh: 0.1, ol: 0.5, forecast: { oc_median: 0.3 } } }, {})) }, { hooks: [] });
+  assert.equal(weak.lead.length, 2, weak.lead.map(x => `${x.key}:${x.score}`).join());
+  assert.equal(planBroadcast(inp, { hooks: [] }).lead.length, 3);
+});
+
+test('speakFig and dedupeBody: key numbers said aloud; disclaimers and repeats removed from a body', () => {
+  assert.equal(speakFig({ value: '65 bp', label: '' }), '65 basis points'); assert.equal(speakFig({ value: '2.4×', label: 'vs usual' }), '2.4 times usual');
+  assert.equal(speakFig({ value: '15%', label: '' }), '15 percent'); assert.equal(speakFig({ value: '5,813', label: 'gamma flip' }), '5,813, the gamma flip'); assert.equal(speakFig({ value: '−0.4%', label: '' }), 'minus 0.4 percent');
+  assert.equal(speakFig(null), null); assert.equal(speakFig({ value: '' }), null);
+  const said = new Set();
+  assert.equal(dedupeBody('Gold is up. A description, not a forecast. That is where the story is.', said), 'Gold is up.');
+  assert.equal(dedupeBody('Gold is up. Oil is down.', said), 'Oil is down.', 'a sentence already said is not said again');
+  assert.equal(dedupeBody('Description only: nothing here is a trade.', new Set()), '');
 });
 
 test('wantedSceneIds: every hook scene the programme may ask for, no built-ins', () => {

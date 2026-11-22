@@ -2,7 +2,9 @@
 // things that matter this morning, each on a full-screen card with its number), then numbered segments (Markets, The Chain, Rates, Currencies, Volatility, Positioning, The Day Ahead) and a sign-off.
 // This file writes the words (templates over numbers, no model call), picks the lead, plans which scene plays in each segment (the first view that exists; a segment with nothing is skipped),
 // numbers the segments, estimates durations, and formats the ticker crawl and the subtitles. The DOM overlay and the director are in jarvisModBroadcast.js.
-// Voice: a calm British news presenter. Short sentences, rounded numbers, "one point eight times its usual move". DESCRIPTION ONLY: nothing here is a forecast, a signal or a trade.
+// Voice: a sharp, slightly robotic news anchor. Short declarative sentences, the number first, rounded ("2.4 times its usual move"). Every segue carries a number from the data; the lead's opener
+// rotates by date (deterministic, so a recording is reproducible); no sentence is said twice in one programme; the description-only line is said ONCE, in the sign-off (the corner bug carries it on
+// screen). DESCRIPTION ONLY: nothing here is a forecast, a signal or a trade.
 import { spokenName, marketName } from './jarvisNames.js';
 import { readSeconds } from './showCore.js';
 
@@ -20,8 +22,12 @@ const parts = d => { const o = {}; for (const p of new Intl.DateTimeFormat('en-G
 /** The date three ways (London time): card "FRIDAY 20 NOVEMBER", spoken "Friday the twentieth of November", short "FRI 20 NOV", plus the London hour. */
 export function dateWords(now = new Date()) {
   const d = now instanceof Date && !Number.isNaN(+now) ? now : new Date(), p = parts(d), day = +p.day;
-  return { card: `${p.weekday} ${day} ${p.month}`.toUpperCase(), spoken: `${p.weekday} the ${ORD[day] ?? day} of ${p.month}`, short: `${p.weekday.slice(0, 3)} ${day} ${p.month.slice(0, 3)}`.toUpperCase(), hour: +p.hour % 24, hm: `${p.hour}:${p.minute}` };
+  const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d).split('-').map(Number);
+  const doy = Math.round((Date.UTC(ymd[0], ymd[1] - 1, ymd[2]) - Date.UTC(ymd[0], 0, 1)) / 86_400_000) + 1;
+  return { card: `${p.weekday} ${day} ${p.month}`.toUpperCase(), spoken: `${p.weekday} the ${ORD[day] ?? day} of ${p.month}`, short: `${p.weekday.slice(0, 3)} ${day} ${p.month.slice(0, 3)}`.toUpperCase(), hour: +p.hour % 24, hm: `${p.hour}:${p.minute}`, weekday: p.weekday, doy };
 }
+/** 'morning' before noon, 'afternoon' before six, else 'evening' (London hour): the programme's title and the cards follow the clock. */
+export const partOfDay = h => (h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening');
 const greeting = h => (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening');
 /** A percent move for the voice: "2.1 percent", "0.42 percent", "12 percent". */
 export const pctWords = v => { const a = Math.abs(v); return `${a >= 10 ? Math.round(a) : a >= 1 ? a.toFixed(1) : String(+a.toFixed(2))} percent`; };
@@ -74,20 +80,23 @@ const evName = e => (e.where && !e.event.toLowerCase().startsWith(e.where.toLowe
  */
 export function pickLead(inp = {}, n = 3) {
   const cand = [], mv = (inp.movers ?? []).filter(m => m && fin(m.ratio) && fin(m.oc) && m.tone !== 'quiet'), ch = inp.chain, ev = (inp.events ?? []).map(normEvent).filter(Boolean);
+  let nm = 0;
   for (const m of mv) {
-    const a = Math.abs(m.ratio); if (a < 1.2) continue; const up = m.ratio > 0, tw = timesWords(m.ratio);
-    cand.push({ kind: 'mover', key: m.key, score: Math.min(a, 6), figure: timesFig(m.ratio), figLabel: 'its usual move', headline: `${marketName(m.key)} ${up ? 'up' : 'down'} ${pctFig(m.oc).replace(/^[+−]/, '')}`, sub: `${up ? '▲ Up' : '▼ Down'} ${pctFig(m.oc).replace(/^[+−]/, '')} so far today, against its own usual move`, tone: up ? 'up' : 'dn',
-      say: `${spokenName(m.key)} is ${up ? 'up' : 'down'} ${pctWords(m.oc)}. That is ${tw === 'about' ? 'about its usual move' : `${tw} its usual move`}.` });
+    const a = Math.abs(m.ratio); if (a < 1.2) continue; const up = m.ratio > 0, tw = timesWords(m.ratio), k = nm++;
+    // two phrasings, so two movers in one lead never share a sentence
+    const say = k === 0 ? `${spokenName(m.key)} is ${up ? 'up' : 'down'} ${pctWords(m.oc)}. That is ${tw === 'about' ? 'about its usual move' : `${tw} its usual move`}.`
+      : `${spokenName(m.key)}, ${up ? 'up' : 'down'} ${pctWords(m.oc)}: ${tw === 'about' ? 'a normal-sized day' : `${tw} a normal day's travel`}.`;
+    cand.push({ kind: 'mover', key: m.key, score: Math.min(a, 6), figure: timesFig(m.ratio), figLabel: 'its usual move', headline: `${marketName(m.key)} ${up ? 'up' : 'down'} ${pctFig(m.oc).replace(/^[+−]/, '')}`, sub: `${up ? '▲ Up' : '▼ Down'} ${pctFig(m.oc).replace(/^[+−]/, '')} so far today, against its own usual move`, tone: up ? 'up' : 'dn', say });
   }
   if (ch && fin(ch.broken) && ch.broken > 0) {
     const judged = fin(ch.judged) && ch.judged >= ch.broken ? ch.judged : ch.broken + (fin(ch.holding) ? ch.holding : 0), names = (ch.brokenShort ?? []).map(clean).filter(Boolean);
     cand.push({ kind: 'chain', score: Math.min(4, 1.6 + 0.5 * ch.broken), figure: `${ch.broken} of ${judged}`, figLabel: 'textbook links broken', headline: ch.broken === 1 ? 'A textbook link has broken' : 'Textbook links are breaking', sub: names.slice(0, 2).join('  ·  ') || 'in the macro chain', tone: 'gold',
-      say: `in the chain, ${numWord(ch.broken)} of ${numWord(judged)} textbook links ${ch.broken === 1 ? 'is' : 'are'} broken${names.length ? `, ${ch.broken === 1 ? '' : 'led by '}${names[0]}` : ''}. That is where the story is.` });
+      say: `in the chain, ${numWord(ch.broken)} of ${numWord(judged)} textbook links ${ch.broken === 1 ? 'is' : 'are'} broken${names.length ? `, ${ch.broken === 1 ? '' : 'led by '}${names[0]}` : ''}.` });
   }
   const big = ev.filter(e => e.big), first = big[0] ?? ev[0];
   if (first) {
     cand.push({ kind: 'event', score: big.length ? 1.9 : 1.25, figure: first.time || `${ev.length}`, figLabel: first.time ? 'UK time' : 'releases today', headline: evName(first), sub: `${ev.length === 1 ? 'The one' : `One of ${ev.length}`} high-impact release${ev.length === 1 ? '' : 's'} today`, tone: 'tx',
-      say: `${first.time ? `at ${first.time} UK time, ` : 'today, '}${evName(first)}. ${ev.length > 1 ? `One of ${numWord(ev.length)} high-impact releases on the calendar.` : 'The main release on the calendar.'}` });
+      say: `${first.time ? `at ${first.time} UK time, ` : 'today, '}${evName(first)}. ${ev.length > 1 ? `It heads a list of ${numWord(ev.length)}.` : 'The one big release today.'}` });
   }
   cand.sort((a, b) => b.score - a.score);
   const out = [], cnt = { mover: 0, chain: 0, event: 0 }, lim = { mover: 2, chain: 1, event: 1 };
@@ -98,11 +107,17 @@ export function pickLead(inp = {}, n = 3) {
   for (const x of out) x.text = cap1(x.say);
   return out;
 }
-/** The lead's spoken lines: "Three things matter this morning. First, gold is up..." then "Second, ..." and "And third, ...". */
-export function leadLines(lead, when = 'this morning') {
-  const n = lead.length;
+/** The lead's openers, rotated by the day of the year (form = doy % 3): the same date always gets the same words. */
+export const LEAD_OPENERS = [
+  (n, when) => (n === 1 ? `One story leads ${when}.` : `${cap1(numWord(n))} stories lead ${when}.`),
+  (n, when) => `Here is what matters ${when}.`,
+  (n, when) => (n === 1 ? `One thing to know ${when}.` : `${cap1(numWord(n))} things to know ${when}.`),
+];
+/** The lead's spoken lines: "<opener> First, gold is up..." then "Second, ..." and "And third, ...". The only "First" in the programme (the segues never count). */
+export function leadLines(lead, when = 'this morning', form = 0) {
+  const n = lead.length, open = LEAD_OPENERS[((form % 3) + 3) % 3](n, when);
   return lead.map((x, i) => {
-    const intro = i === 0 ? (n === 1 ? `One thing stands out ${when}. ` : `${cap1(numWord(n))} things matter ${when}. `) : '';
+    const intro = i === 0 ? `${open} ` : '';
     if (n === 1) return intro + cap1(x.say);
     const ord = i === n - 1 ? (n === 2 ? 'And second' : n === 3 ? 'And third' : 'And finally') : ['First', 'Second', 'Third'][i];
     return `${intro}${ord}, ${x.say}`;
@@ -111,12 +126,16 @@ export function leadLines(lead, when = 'this morning') {
 
 // ── built-in scenes (the HUD's own views: candles, skyline, globe) ──
 export const BUILTIN = {
+  // the board's counts are in the Markets segue; the body names the movers, skipping any the lead has already covered (inp.leadKeys)
   candles(inp) {
     const bd = inp.board, mv = (inp.movers ?? []).filter(m => m && fin(m.ratio) && fin(m.oc)); if (!bd || !bd.n) return null;
-    const top = mv[0], two = mv.slice(1, 3).map(m => `${spokenName(m.key)} ${m.ratio > 0 ? 'up' : 'down'} ${pctWords(m.oc)}`);
-    const t = [`Across the desk's ${bd.n} markets, ${are(bd.up)} up, ${are(bd.dn)} down and ${are(bd.quiet)} barely moving, each measured against its own usual move.`];
-    if (top) t.push(`The biggest is ${spokenName(top.key)}, ${top.ratio > 0 ? 'up' : 'down'} ${pctWords(top.oc)}, ${timesWords(top.ratio) === 'about' ? 'about its usual move' : `${timesWords(top.ratio)} its usual move`}.`);
-    if (two.length) t.push(`Then ${list(two)}.`);
+    const said = new Set(inp.leadKeys ?? []), fresh = mv.filter(m => !said.has(m.key)), mvWord = m => `${spokenName(m.key)} ${m.ratio > 0 ? 'up' : 'down'} ${pctWords(m.oc)}`;
+    const top = mv[0], t = [];
+    if (top && !said.has(top.key)) {
+      t.push(`The widest move is ${spokenName(top.key)}, ${top.ratio > 0 ? 'up' : 'down'} ${pctWords(top.oc)}, ${timesWords(top.ratio) === 'about' ? 'about its usual size' : `${timesWords(top.ratio)} its usual size`}.`);
+      const two = fresh.filter(m => m !== top).slice(0, 2).map(mvWord); if (two.length) t.push(`Behind it, ${list(two)}.`);
+    } else if (fresh.length) t.push(`Beyond the lead, ${list(fresh.slice(0, 3).map(mvWord))}.`);
+    else t.push(`Every candle is scaled to its own market's usual day.`);
     return { title: 'Today as candles', view: 'candles', cam: { fly: true }, text: t.join(' '), figure: top ? { value: timesFig(top.ratio), label: `${marketName(top.key, { short: true })} vs usual` } : { value: `${bd.up} / ${bd.dn}`, label: 'up / down' } };
   },
   chain(inp) {
@@ -127,28 +146,69 @@ export const BUILTIN = {
   ahead(inp) {
     const ev = (inp.events ?? []).map(normEvent).filter(Boolean); if (!ev.length) return null;
     const lines = ev.slice(0, 4).map(e => (e.time ? `at ${e.time}, ${evName(e)}` : evName(e)));
-    return { title: 'The calendar', view: 'globe', cam: { region: 'world' }, text: `On the calendar today: ${list(lines)}. That is the schedule, not a call on the outcome.`, figure: { value: String(ev.length), label: `high-impact release${ev.length === 1 ? '' : 's'}` } };
+    return { title: 'The calendar', view: 'globe', cam: { region: 'world' }, text: `${cap1(list(lines))}.`, figure: { value: String(ev.length), label: `high-impact release${ev.length === 1 ? '' : 's'}` } };
   },
 };
-const are = n => `${n} ${n === 1 ? 'is' : 'are'}`;
+const isAre = n => (n === 1 ? 'is' : 'are');
 const CORE_VIEWS = new Set(['globe', 'candles', 'skyline', 'bubbles', 'orbit']);
 
-/** The programme. tiers: the first tier with anything available plays; in the FULL broadcast every available scene of that tier plays, in QUICK only the first. */
+/** A key number in words for the voice: "65 bp" -> "65 basis points", "2.4×" -> "2.4 times usual", "15%" -> "15 percent"; a label is added after a comma when it says what the number is. */
+export function speakFig(fig) {
+  if (!fig || fig.value == null || fig.value === '') return null;
+  let v = String(fig.value).trim().replace(/\s*bp$/i, ' basis points').replace(/%$/, ' percent').replace(/^[−-]\s*(?=\d)/, 'minus ');
+  const x = /×$/.test(v); if (x) v = `${v.replace(/×$/, '')} times usual`;
+  const lb = String(fig.label ?? '').trim(), skip = !lb || x || /^(key number|vs usual|uk time)$/i.test(lb);
+  return skip ? v : `${v}, ${/^the /i.test(lb) ? '' : 'the '}${lb.toLowerCase()}`;
+}
+const FX = new Set(['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF']);
+const isFx = k => /^[A-Z]{6}$/.test(k) && FX.has(k.slice(0, 3)) && FX.has(k.slice(3));
+/**
+ * The programme. tiers: the first tier with anything available plays; in the FULL broadcast every available scene of that tier plays, in QUICK only the first.
+ * say(c) writes the anchor's hand-off into the segment and carries a number from the data (c = { inp, scene, fig (the scene's key number, spoken), leadKeys, leadKinds }); null -> the static `segue`.
+ * Each has its own shape, so no two segues share a phrase; none of them counts ("First" belongs to the lead).
+ */
 export const SEGMENTS = [
-  { id: 'markets', name: 'Markets', segue: 'First, the markets.', tiers: [['candles', 'wx']] },
-  { id: 'chain', name: 'The Chain', segue: 'Now, the chain.', tiers: [['reactor'], ['chainfly'], ['chain']] },
-  { id: 'macro', name: 'The Macro', segue: 'The bigger picture.', tiers: [['surprise', 'cycle']] },
-  { id: 'rates', name: 'Rates', segue: 'To rates.', tiers: [['cbpaths', 'yields']] },
-  { id: 'ccy', name: 'Currencies', segue: 'Currencies.', tiers: [['fxgrid'], ['ccy']] },
-  { id: 'vol', name: 'Volatility', segue: 'Volatility.', tiers: [['ivsurf'], ['vol']] },
-  { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', tiers: [['gpillar', 'gterrain', 'cot'], ['gamma']] },
-  { id: 'ahead', name: 'The Day Ahead', segue: 'And the day ahead.', tiers: [['dayahead', 'shockwave'], ['ahead']] },
+  { id: 'markets', name: 'Markets', segue: 'Starting with the markets.', tiers: [['candles', 'wx']],
+    say: ({ inp }) => { const b = inp.board; return b?.n ? `Starting with the markets. Of ${b.n} on the board, ${b.up} ${isAre(b.up)} up, ${b.dn} down, ${b.quiet} barely moving.` : null; } },
+  { id: 'chain', name: 'The Chain', segue: 'The chain.', tiers: [['reactor'], ['chainfly'], ['chain']],
+    say: ({ inp, leadKinds }) => {
+      const c = inp.chain; if (!c || !fin(c.holding) || !fin(c.broken)) return null;
+      if (!c.broken) return `The chain is intact: all ${c.holding} judged links hold.`;
+      return leadKinds.includes('chain') && fin(c.quiet) ? `The chain: ${c.holding} links holding, ${c.quiet} too quiet to judge.` : `The chain: ${c.holding} links holding, ${c.broken} broken.`;     // the lead said the broken count already
+    } },
+  { id: 'macro', name: 'The Macro', segue: 'The bigger picture.', tiers: [['surprise', 'cycle']], say: ({ fig }) => (fig ? `The bigger picture: ${fig}.` : null) },
+  { id: 'rates', name: 'Rates', segue: 'Rates.', tiers: [['cbpaths', 'yields']], say: ({ fig }) => (fig ? `Rates. The headline number: ${fig}.` : null) },
+  { id: 'ccy', name: 'Currencies', segue: 'Currencies.', tiers: [['fxgrid'], ['ccy']],
+    say: ({ inp }) => {       // a count, not a name: the scene names the pairs itself
+      const fx = (inp.rows ?? []).filter(r => r && isFx(r.key) && fin(r.ratio)); if (!fx.length) return null;
+      const moving = fx.filter(r => r.tone !== 'quiet').length;
+      return !moving ? `Currencies. All ${fx.length} pairs are quiet.` : moving === fx.length ? `Currencies. All ${fx.length} pairs are on the move.` : `Currencies. ${cap1(numWord(moving))} of ${fx.length} pairs are on the move.`;
+    } },
+  { id: 'vol', name: 'Volatility', segue: 'Volatility.', tiers: [['ivsurf'], ['vol']],
+    say: ({ inp, fig }) => {
+      const rows = (inp.rows ?? []).filter(r => r && fin(r.ratio)), big = rows.filter(r => Math.abs(r.ratio) >= 2).length;
+      return big ? `Over to volatility. ${cap1(numWord(big))} of ${rows.length} markets are moving at least twice their usual size.` : fig ? `Over to volatility: ${fig}.` : null;
+    } },
+  { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', tiers: [['gpillar', 'gterrain', 'cot'], ['gamma']], say: ({ fig }) => (fig ? `Positioning, and where the options sit: ${fig}.` : null) },
+  { id: 'ahead', name: 'The Day Ahead', segue: 'And the day ahead.', tiers: [['dayahead', 'shockwave'], ['ahead']],
+    say: ({ inp }) => { const n = (inp.events ?? []).map(normEvent).filter(Boolean).length; return n ? `And the day ahead: ${numWord(n)} high-impact release${n === 1 ? '' : 's'} on the clock.` : null; } },
 ];
 /** Every hook scene id the programme may use (so the director only prepares those). */
 export const wantedSceneIds = () => [...new Set(SEGMENTS.flatMap(s => s.tiers.flat()))].filter(id => !BUILTIN[id]);
 /** In the QUICK broadcast a scene's line is cut to whole sentences of about this many words (eight segments, a little over two minutes). */
 export const QUICK_WORDS = 34;
+/** The one spoken disclaimer of the programme. */
 export const SIGNOFF_TEXT = 'That is the briefing. Description, not advice. Until tomorrow.';
+/** A sentence that is only a disclaimer or a cliché: dropped from scene bodies (the sign-off says it once for the whole programme). */
+const DISCLAIM = /\b(?:description(?: only)?\b[^.!?]*\bnot\b|not a (?:forecast|call|signal|trade|prediction)|not advice|nothing here is a|that is where the story is)/i;
+const sentences = t => String(t ?? '').trim().split(/(?<=[.!?])\s+(?=[A-Z0-9"'(])/).filter(Boolean);
+const norm = t => t.toLowerCase().replace(/[^a-z0-9.%]+/g, ' ').trim();
+/** A scene body with disclaimer sentences and any sentence already said in this programme (said: Set of normalised sentences, updated) removed. */
+export function dedupeBody(text, said) {
+  const out = [];
+  for (const x of sentences(text)) { const k = norm(x); if (DISCLAIM.test(x) || said.has(k)) continue; said.add(k); out.push(x); }
+  return out.join(' ');
+}
 
 /**
  * The key number of a spoken line, for the lower-third: { value, label } or null. Takes the EARLIEST of: "1.8 times" -> 1.8×, "3 of 9" -> 3 of 9, "2.1 percent" -> 2.1%,
@@ -193,16 +253,25 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
   }
   const total = segs.length + 1;                               // + the sign-off
   segs.forEach((s, i) => { s.num = i + 1; s.total = total; });
-  const am = date.hour < 12, lead = pickLead(inp, 3), lines = leadLines(lead, am ? 'this morning' : 'today'), items = [];
-  const g = greeting(date.hour);
-  items.push({ kind: 'open', title: 'THE MORNING BRIEFING', view: 'globe', cam: { region: 'world' }, hold: 4.2, text: `${g}. This is Jarvis, with the ${am ? 'morning ' : ''}briefing for ${date.spoken}.` });
+  const part = partOfDay(date.hour), when = part === 'morning' ? 'this morning' : part === 'afternoon' ? 'this afternoon' : 'tonight', items = [];
+  let lead = pickLead(inp, 3); if (lead.length === 3 && lead[2].score < 1.5) lead = lead.slice(0, 2);       // a weak third item is left out: two strong stories beat three
+  const lines = leadLines(lead, when, date.doy % 3), leadKeys = lead.map(x => x.key).filter(Boolean), said = new Set();
+  for (const l of lines) for (const x of sentences(l)) said.add(norm(x));
+  items.push({ kind: 'open', title: `THE ${part.toUpperCase()} BRIEFING`, view: 'globe', cam: { region: 'world' }, hold: 4.2, text: `${greeting(date.hour)}. This is Jarvis, with the ${part} briefing for ${date.spoken}.` });
   lead.forEach((x, i) => items.push({ kind: 'lead', idx: i, n: lead.length, lead: x, title: 'The Lead', view: 'globe', cam: x.key ? { focus: x.key } : { region: 'world' }, hold: 0.6, text: lines[i] }));
+  const ctxInp = { ...inp, leadKeys };
   for (const s of segs) {
-    const seg = { id: s.id, name: s.name, num: s.num, total };
+    const seg = { id: s.id, name: s.name, num: s.num, total }, def = SEGMENTS.find(x => x.id === s.id);
     items.push({ kind: 'bumper', seg, title: s.name, view: s.scenes[0].view, cam: null, hold: 1.9, text: '' });
     s.scenes.forEach((sc, j) => {
-      const body = quick ? trimWords(sc.text, QUICK_WORDS) : sc.text, text = j === 0 ? `${s.segue} ${body}` : body;
-      items.push({ kind: 'scene', seg, scene: sc, title: sc.title, view: sc.view, cam: sc.cam, hold: 0.65, text, figure: sc.figure && sc.figure.value ? sc.figure : keyFigure(body) });
+      const src = sc.id === 'candles' ? (BUILTIN.candles(ctxInp)?.text ?? sc.text) : sc.text;          // the board's body knows what the lead already said
+      let body = dedupeBody(quick ? trimWords(src, QUICK_WORDS + 8) : src, said); if (quick) body = trimWords(body, QUICK_WORDS);
+      const figure = sc.figure && sc.figure.value ? sc.figure : keyFigure(body);
+      let segue = '';
+      const unitFig = figure && (String(figure.label ?? '').trim() || /[×%:]|bp|\bof\b/.test(String(figure.value))) ? speakFig(figure) : null;      // a bare number ("60" sessions) is not a headline
+      if (j === 0) { try { segue = def?.say?.({ inp: ctxInp, scene: sc, fig: unitFig, leadKeys, leadKinds: lead.map(x => x.kind) }) || s.segue; } catch (e) { segue = s.segue; } }
+      const text = [segue, body].filter(Boolean).join(' ');
+      if (text) items.push({ kind: 'scene', seg, scene: sc, title: sc.title, view: sc.view, cam: sc.cam, hold: 0.65, text, figure });
     });
   }
   items.push({ kind: 'close', seg: { id: 'signoff', name: 'Sign-off', num: total, total }, title: 'Sign-off', view: 'globe', cam: { region: 'world' }, hold: 2.5, text: SIGNOFF_TEXT, date });

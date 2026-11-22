@@ -304,9 +304,9 @@ registerJarvisModule({
   views: [view],
 });
 
-await import('./jarvisViewGammaPillar.js').catch(() => null);   // so the 'gpillar' scene is registered before this one asks to follow it
+await import('./jarvisViewGammaTerrain.js').catch(() => null);   // so 'gpillar' then 'gterrain' are registered before this one asks to follow them (a fixed order, not import luck)
 registerShowScene({
-  id: ID, after: 'gpillar',
+  id: ID, after: 'gterrain',
   prepare: async api => {
     await loadIndex(api); const key = S.key && S.list.some(m => m.key === S.key) ? S.key : pickStart(api); if (!key) return null;
     const e = await loadMarket(api, key); return e?.status === 'ok' ? { key, facts: e.facts, label: e.label, src: e.src } : null;

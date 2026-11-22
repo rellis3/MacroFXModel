@@ -81,7 +81,7 @@ function kokoroEngine(win) {
   };
 }
 
-/** The voice for one Jarvis window: { prefetch(text), play(text, rate, onEnd) -> Promise<ctl|null>, slow(), warm(), info(), stopAll(), engine/setEngine, kvoice/setKvoice }. */
+/** The voice for one Jarvis window: { prefetch(text), play(text, rate, onEnd) -> Promise<ctl {stop, pause, setRate, progress}|null>, slow(), warm(), info(), stopAll(), engine/setEngine, kvoice/setKvoice }. */
 export function makeNeuralVoice(win, { audioCtx } = {}) {
   const server = serverEngine(win), kokoro = kokoroEngine(win);
   let audio = null;
@@ -123,7 +123,9 @@ export function makeNeuralVoice(win, { audioCtx } = {}) {
     let ended = false; const end = () => { if (!ended) { ended = true; unfx(); onEnd(); } };
     a.onended = end; a.onerror = end;
     try { await a.play(); } catch (e) { return null; }
-    return { by: c.by, stop() { try { a.pause(); } catch (e) { /* idle */ } end(); }, pause(on) { try { on ? a.pause() : a.play(); } catch (e) { /* idle */ } }, setRate(r) { a.playbackRate = Math.max(0.5, Math.min(2, r || 1)); } };
+    // progress(): how far through the clip the audio really is (0..1, from the element's own clock), or null while the duration is not known yet; subtitles and the scene camera follow it
+    return { by: c.by, stop() { try { a.pause(); } catch (e) { /* idle */ } end(); }, pause(on) { try { on ? a.pause() : a.play(); } catch (e) { /* idle */ } }, setRate(r) { a.playbackRate = Math.max(0.5, Math.min(2, r || 1)); },
+      progress() { const d = a.duration; return ended ? 1 : Number.isFinite(d) && d > 0 ? Math.max(0, Math.min(1, a.currentTime / d)) : null; } };
   }
   return {
     prefetch: t => { if (engine() === 'kokoro' && lock !== 'server' && kokoro.info().ready) kokoro.fetch(t); else server.fetch(t); },

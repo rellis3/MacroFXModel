@@ -65,7 +65,7 @@ function host(api) {
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance', preserveDrawingBuffer: false }); }
   catch (e) { canvas.remove(); return null; }
-  renderer.setClearColor(0x000000, 1); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+  renderer.setClearColor(0x000000, 1); renderer.localClippingEnabled = true; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   const H = { root, canvas, renderer, W: 0, H: 0, dpr: 1, calm: !!api.win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches, active: null, lastDraw: 0, kit: null };
   H.color = (css, fb) => new THREE.Color(cssColour(css, fb));
   const v = new THREE.Vector3();
@@ -76,7 +76,9 @@ function host(api) {
   };
   H.kit = makeKit(LIB, H);
   // a watchdog hides the layer when no hologram view drew for a moment (view switched, show moved on, Jarvis docked or closed)
-  const watch = () => { if (!HOST || HOST !== H) return; if (H.active && performance.now() - H.lastDraw > 180) { canvas.style.display = 'none'; H.active = null; } api.win.requestAnimationFrame(watch); };
+  // (three late ticks in a row, so one slow frame, e.g. a shader compile, never flickers the layer to black)
+  let late = 0;
+  const watch = () => { if (!HOST || HOST !== H) return; if (H.active && performance.now() - H.lastDraw > 180) { if (++late >= 3) { canvas.style.display = 'none'; H.active = null; late = 0; } } else late = 0; api.win.requestAnimationFrame(watch); };
   api.win.requestAnimationFrame(watch);
   HOST = H; return H;
 }
@@ -136,6 +138,14 @@ function makeKit(L, H) {
   /** Glow sprite (a soft billboard), for cores, flares, markers. */
   kit.flare = (color, scale = 1, opacity = 1) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: kit.dot(), color: new THREE.Color(color), transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending })); s.scale.setScalar(scale); return s; };
   kit._mats = new Set(); kit._holo = new Set();
+  /** Register a LineMaterial made by a view so it follows resizes. */
+  kit.track = m => { if (m?.resolution) { m.resolution.set(H.W || 1280, H.H || 720); kit._mats.add(m); } return m; };
+  /** Many FAT glowing segments in one draw call: segs = [[x0,y0,z0,x1,y1,z1], ...]; width in px. */
+  kit.lineSegs = (segs, color, width = 1.5, opacity = 1) => {
+    const g = new L.LineSegmentsGeometry(); g.setPositions(segs.flat());
+    const m = kit.track(new L.LineMaterial({ color: new THREE.Color(color), linewidth: width, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, worldUnits: false }));
+    return new L.LineSegments2(g, m);
+  };
   /** Let go of a material (or every material under an object) when a view rebuilds part of its scene, so the kit's resize/tick lists do not grow. Also disposes it. */
   kit.forget = x => { const drop = m => { if (!m) return; kit._mats.delete(m); kit._holo.delete(m); try { m.dispose(); } catch (e) { /* gone */ } }; if (x?.isMaterial) drop(x); else x?.traverse?.(o => { (Array.isArray(o.material) ? o.material : [o.material]).forEach(drop); try { o.geometry?.dispose(); } catch (e) { /* gone */ } }); };
   kit.tick = t => { for (const m of kit._holo) m.uniforms.t.value = t; };
@@ -144,32 +154,64 @@ function makeKit(L, H) {
 }
 
 const INST = new Map();       // view id -> { inst, composer, bloom, after } | { err } | { busy: Promise }
+const BUILD = new Map();      // view id -> its builder, so the SHOW can warm a view before it cuts to it
+function warm(id, build, api) { const e = { busy: build(api).then(x => INST.set(id, x)).catch(err => INST.set(id, { err: String(err?.message ?? err) })) }; INST.set(id, e); return e; }
+/** Build a hologram view ahead of time (the broadcast calls this during the bumper card so the cut lands on a finished picture). Safe to call repeatedly; resolves true when the view is ready. */
+export function glWarm(id, api) { const b = BUILD.get(id); if (!b) return Promise.resolve(false); const e = INST.get(id) ?? warm(id, b, api); return Promise.resolve(e.busy ?? true).then(() => !INST.get(id)?.err); }
+function makeComposer(e, H) {
+  const { THREE } = LIB, inst = e.inst, composer = new LIB.EffectComposer(H.renderer); composer.addPass(new LIB.RenderPass(inst.scene, inst.camera));
+  const b = inst.bloom ?? {}, bloom = new LIB.UnrealBloomPass(new THREE.Vector2(H.W || 1280, H.H || 720), b.strength ?? 1.15, b.radius ?? 0.55, b.threshold ?? 0.05); composer.addPass(bloom);
+  let after = null; if (inst.trail) { after = new LIB.AfterimagePass(inst.trail); composer.addPass(after); }
+  composer.addPass(new LIB.OutputPass());
+  Object.assign(e, { composer, bloom, after, w: 0, h: 0 });
+}
+function freeComposer(e) { try { e.composer.dispose(); e.bloom?.dispose?.(); e.after?.dispose?.(); } catch (er) { /* gone */ } Object.assign(e, { composer: null, bloom: null, after: null }); }
+/** The loading reticle while a hologram is being built: counter-turning arcs and a ticking label, not a bare line of text. */
+function loading(ctx, g) {
+  const x = g.W / 2, y = g.H / 2, t = g.t ?? performance.now() / 1000, R = Math.min(56, g.W * 0.1), f = g.fade ?? 1;
+  ctx.save(); ctx.strokeStyle = g.C.blue; ctx.lineCap = 'round';
+  for (let i = 0; i < 3; i++) { const r = R * (1 - i * 0.22), a = t * (i % 2 ? -1.6 : 2.1) + i; ctx.lineWidth = 2 - i * 0.5; ctx.globalAlpha = f * (0.9 - i * 0.25); ctx.beginPath(); ctx.arc(x, y, r, a, a + Math.PI * (0.6 + i * 0.3)); ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, r, a + Math.PI, a + Math.PI * (1.25 + i * 0.2)); ctx.stroke(); }
+  ctx.globalAlpha = f; ctx.fillStyle = g.C.tx2; ctx.font = '11px ui-monospace,monospace'; ctx.textAlign = 'center';
+  ctx.fillText('PROJECTING' + '.'.repeat(1 + Math.floor(t * 3) % 3), x, y + R + 22); ctx.restore();
+}
+/** The 'print' reveal on entering a view: a bright scan line rises from the floor and the picture appears beneath it (reduced motion: a plain quick fade). */
+function reveal(ctx, g, k, calm) {
+  ctx.save();
+  if (calm) { ctx.globalAlpha = 1 - k; ctx.fillStyle = 'black'; ctx.fillRect(0, 0, g.W, g.H); ctx.restore(); return; }
+  const e = 1 - (1 - k) ** 3, y = g.H * (1 - e);
+  ctx.fillStyle = 'black'; ctx.globalAlpha = 0.92; ctx.fillRect(0, 0, g.W, Math.max(0, y - 24));
+  const gr = ctx.createLinearGradient(0, y - 24, 0, y); gr.addColorStop(0, 'rgba(0,0,0,0.92)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = 1; ctx.fillStyle = gr; ctx.fillRect(0, y - 24, g.W, 24);
+  ctx.globalAlpha = 0.85 * (1 - k * 0.6); ctx.strokeStyle = g.C.blue; ctx.lineWidth = 2; ctx.shadowColor = g.C.blue; ctx.shadowBlur = 18; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(g.W, y); ctx.stroke();
+  ctx.restore();
+}
 /** Wrap a hologram view so it plugs into the HUD's view list. */
 export function glView(spec) {
   const { id, label, env, setup } = spec;
   function msg(ctx, g, text) { ctx.save(); ctx.globalAlpha = g.fade; ctx.fillStyle = g.C.tx2; ctx.font = '13px ui-monospace,monospace'; ctx.textAlign = 'center'; ctx.fillText(text, g.W / 2, g.H / 2); ctx.restore(); }
   async function build(api) {
     await loadThree(); const H = host(api); if (!H) throw new Error('This browser has no WebGL, so the hologram cannot be drawn.');
-    const inst = await setup(LIB, H, api); const { THREE } = LIB;
-    const composer = new LIB.EffectComposer(H.renderer); composer.addPass(new LIB.RenderPass(inst.scene, inst.camera));
-    const b = inst.bloom ?? {}, bloom = new LIB.UnrealBloomPass(new THREE.Vector2(H.W || 1280, H.H || 720), b.strength ?? 1.15, b.radius ?? 0.55, b.threshold ?? 0.05); composer.addPass(bloom);
-    let after = null; if (inst.trail) { after = new LIB.AfterimagePass(inst.trail); composer.addPass(after); }
-    composer.addPass(new LIB.OutputPass());
-    return { inst, composer, bloom, after, w: 0, h: 0 };
+    const inst = await setup(LIB, H, api);
+    return { inst, composer: null, bloom: null, after: null, w: 0, h: 0, enterT: 0 };
   }
+  BUILD.set(id, build);
   function draw(ctx, g, api) {
     let e = INST.get(id);
-    if (!e) { e = { busy: build(api).then(x => INST.set(id, x)).catch(err => INST.set(id, { err: String(err?.message ?? err) })) }; INST.set(id, e); }
-    if (e.busy) return msg(ctx, g, 'Projecting the hologram...');
+    if (!e) { e = warm(id, build, api); }
+    if (e.busy) return loading(ctx, g);
     if (e.err) return msg(ctx, g, e.err);
     const H = host(api); if (!H) return msg(ctx, g, 'The hologram layer is not available.');
     const dpr = Math.min(2, api.win.devicePixelRatio || 1);
     if (H.W !== g.W || H.H !== g.H || H.dpr !== dpr) { H.W = g.W; H.H = g.H; H.dpr = dpr; H.renderer.setPixelRatio(dpr); H.renderer.setSize(g.W, g.H, false); H.kit.resize(g.W * dpr, g.H * dpr); }
+    if (!e.composer) makeComposer(e, H);
     if (e.w !== g.W || e.h !== g.H) { e.w = g.W; e.h = g.H; e.composer.setPixelRatio(dpr); e.composer.setSize(g.W, g.H); if (e.inst.camera.isPerspectiveCamera) { e.inst.camera.aspect = g.W / Math.max(1, g.H); e.inst.camera.updateProjectionMatrix(); } }
+    if (H.active !== id) { e.enterT = performance.now(); for (const [k, o] of INST) if (k !== id && o.composer) freeComposer(o); }
     H.active = id; H.lastDraw = performance.now(); if (H.canvas.style.display !== 'block') H.canvas.style.display = 'block';
     H.canvas.style.opacity = String(g.fade);
+    const k = Math.min(1, (performance.now() - e.enterT) / (H.calm ? 350 : 900)), b0 = e.inst.bloom?.strength ?? 1.15;
+    e.bloom.strength = k < 1 && !H.calm ? b0 * (1 + 1.6 * (1 - k) * (1 - k)) : b0;          // the hologram 'prints' in with an over-bright flash that settles
     try { H.kit.tick(g.t); e.inst.update?.(g.t, Math.min(0.05, g.dt || 0.016), api, g); e.composer.render(); } catch (err) { INST.set(id, { err: `The hologram stopped: ${err?.message ?? err}` }); return; }
     try { e.inst.overlay?.(ctx, g, api, H); } catch (err) { /* labels must never stop the frame */ }
+    if (k < 1) reveal(ctx, g, k, H.calm);
   }
   return { id, label, env: { chrome: 'clean', scan: true, ...(env ?? {}) }, draw, onEnter: spec.onEnter, onLeave: spec.onLeave, gl: true };
 }
@@ -178,6 +220,6 @@ export function glView(spec) {
 export const glInstance = id => INST.get(id)?.inst ?? null;
 /** Close: free every GPU resource (called when Jarvis closes). */
 export function glDisposeAll() {
-  for (const e of INST.values()) { try { e.inst?.dispose?.(); e.composer?.dispose?.(); } catch (er) { /* gone */ } }
+  for (const e of INST.values()) { try { e.inst?.dispose?.(); if (e.composer) freeComposer(e); } catch (er) { /* gone */ } }
   INST.clear(); if (HOST) { try { HOST.renderer.dispose(); HOST.canvas.remove(); } catch (e) { /* gone */ } HOST = null; }
 }

@@ -3,8 +3,9 @@
 // natural companion list opens it beside it (Market board -> the ranked list; the chain pictures -> the chain read). Pure data and helpers; jarvisView.js draws it. Item ids are the HUD's own view ids
 // (data-v) and panel ids (data-m); the words here are the ones people see.
 export const SECTIONS = [
+  // ONE morning programme: the BROADCAST (it names itself morning / afternoon / evening by the clock). The old SHOW director is an engine only (ENGINE_TOOLS), kept for the NEWSLETTER's own scenes.
   { id: 'watch', label: 'WATCH', hint: 'Sit back and let Jarvis talk you through it', home: ['tool', 'broadcast'], items: [
-    ['tool', 'broadcast', 'MORNING BROADCAST'], ['tool', 'show', 'MORNING SHOW'], ['tool', 'news', 'NEWSLETTER'], ['tool', 'film', 'REPLAY'] ] },
+    ['tool', 'broadcast', 'MORNING SHOW'], ['tool', 'news', 'NEWSLETTER'], ['tool', 'film', 'REPLAY'] ] },
   { id: 'markets', label: 'MARKETS', hint: 'What every market is doing today', home: ['view', 'candles'], items: [
     ['view', 'candles', 'MARKET BOARD'], ['view', 'session', 'CHART'], ['view', 'wx', 'WEATHER'], ['view', 'globe', 'WORLD MAP'], ['view', 'ahead', 'DAY AHEAD'], ['view', 'net', 'LINKS'], ['view', 'bubbles', 'BUBBLES'],
     ['tool', 'radar', 'UNUSUAL MOVES'], ['tool', 'markets', 'RANKED LIST'] ] },
@@ -19,6 +20,9 @@ export const SECTIONS = [
     ['tool', 'alerts', 'ALERTS'], ['tool', 'system', 'SERVER'] ] },
 ];
 
+/** Panels that have no button of their own but are opened by code (a panel id -> the section that owns it): SHOW plays the NEWSLETTER's scenes. */
+export const ENGINE_TOOLS = { show: 'watch' };
+
 /** The panel that sits beside a picture by default (a view id -> a panel id). Only on a wide screen; a phone gets a button instead. */
 export const COMPANION = { candles: 'markets', globe: 'markets', session: null, chainfly: 'brief', reactor: 'brief', skyline: 'brief', orbit: 'brief', bubbles: 'brief' };
 
@@ -29,4 +33,4 @@ export const sectionOf = (kind, id) => SECTIONS.find(s => s.items.some(i => i[0]
 /** The section's items that exist right now (modules load late; a view that is not registered is left out). has(kind, id) -> boolean. */
 export const itemsFor = (section, has) => (section?.items ?? []).filter(([k, id]) => has(k, id)).map(([kind, id, label]) => ({ kind, id, label }));
 /** Which section is active for the HUD's state: the open panel's section, else the current picture's. */
-export const activeSection = (mod, view) => (mod && mod !== 'chain' ? sectionOf('tool', mod) : null) ?? sectionOf('view', view) ?? SECTIONS[1];
+export const activeSection = (mod, view) => (mod && mod !== 'chain' ? sectionOf('tool', mod) ?? SECTIONS.find(s => s.id === ENGINE_TOOLS[mod]) : null) ?? sectionOf('view', view) ?? SECTIONS[1];

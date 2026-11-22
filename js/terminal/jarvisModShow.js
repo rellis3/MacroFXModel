@@ -20,12 +20,12 @@ registerJarvisModule({
     let token = 0;
     const ctl = { paused: false, rate: 1, jump: null };
     pane.innerHTML = `<h3>THE SHOW</h3><p>A narrated tour of your morning: the world, today's candles with a fly-through, the bias lean, the chain and the day ahead. Jarvis speaks, and the picture follows him, never the other way round. Press Esc to end it.</p>
-<div class="jv-row"><button type="button" data-s="go">▶ START THE SHOW</button><button type="button" data-s="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button><button type="button" data-s="voice" aria-pressed="${prefs.voice !== false}">VOICE ${prefs.voice !== false ? 'ON' : 'OFF'}</button><label class="jv-sub">length <select data-s="len"><option value="quick" selected>morning brief (about 2 min)</option><option value="full">full tour (everything)</option></select></label><label class="jv-sub">pace <select data-s="rate"><option value="0.9">calm</option><option value="1" selected>normal</option><option value="1.15">brisk</option></select></label></div>
+<div class="jv-row"><button type="button" data-s="go">▶ START THE SHOW</button><button type="button" data-s="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button><button type="button" data-s="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-s="len"><option value="quick" selected>morning brief (about 2 min)</option><option value="full">full tour (everything)</option></select></label><label class="jv-sub">pace <select data-s="rate"><option value="0.9">calm</option><option value="1" selected>normal</option><option value="1.15">brisk</option></select></label></div>
 <p class="jv-sub" data-s="status">Ready. With the voice off it plays as subtitles at reading speed.</p>
 <p class="jv-sub">RECORD AS VIDEO: the browser will ask what to share. Choose <b>This tab</b> and tick <b>Also share tab audio</b>, then the show plays and a video file downloads at the end (MP4 where your browser can, otherwise WebM). The voice only reaches the video if it plays through the browser: a Google voice usually does, a built-in Windows voice may not. Keep VOICE ON.</p>`;
     const q = s => pane.querySelector(`[data-s="${s}"]`), status = (t, bad = false) => { const e = q('status'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--gold)' : ''; e.style.fontSize = bad ? '13px' : ''; } };
     q('rate').value = String(prefs.rate ?? 1); q('len').value = prefs.len ?? 'quick'; q('len').onchange = e => lsPut({ len: e.target.value });
-    q('voice').onclick = e => { const on = !(lsGet().voice !== false); lsPut({ voice: on }); e.currentTarget.setAttribute('aria-pressed', String(on)); e.currentTarget.textContent = `VOICE ${on ? 'ON' : 'OFF'}`; };
+    voiceButton(api, q('voice'));
     q('rate').onchange = e => lsPut({ rate: +e.target.value });
 
     const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -45,15 +45,15 @@ registerJarvisModule({
       const chain = st.sum ? { holding: st.sum.holding, broken: st.sum.broken, quiet: st.sum.quiet, headline: st.sum.headline } : null;
       const custom = api.win.__jarvisCustomScenes; api.win.__jarvisCustomScenes = null;      // the NEWSLETTER module hands over its own scenes
       const scenes = custom?.length ? custom : buildScenes({ now: new Date(), movers: topMovers(rows, 5), board: rows.length ? boardSummary(rows) : null, chain, events, extra, mode: q('len').value });
-      ctl.rate = +q('rate').value || 1; ctl.paused = false; ctl.jump = null; st.voice = lsGet().voice !== false; api.voiceBegin?.();
+      ctl.rate = +q('rate').value || 1; ctl.paused = false; ctl.jump = null; st.voice = api.voiceOn ? api.voiceOn() : true; api.voiceBegin?.();
       const sync = () => api.cineLabel(ctl.rate, ctl.paused);
       const steps = [0.75, 1, 1.25, 1.5, 1.75, 2];
       api.cinema(true, () => { stop(); status('Ended.'); }, {
         next: () => { ctl.jump = -1; api.st.speakCtl?.stop(); },
         prev: () => { ctl.jump = -2; api.st.speakCtl?.stop(); },
         pause: () => { ctl.paused = !ctl.paused; api.st.speakCtl?.pause(ctl.paused); sync(); },
-        fast: () => { ctl.rate = steps.find(x => x > ctl.rate + 1e-6) ?? 2; sync(); },
-        slow: () => { ctl.rate = [...steps].reverse().find(x => x < ctl.rate - 1e-6) ?? 0.75; sync(); },
+        fast: () => { ctl.rate = steps.find(x => x > ctl.rate + 1e-6) ?? 2; api.st.speakCtl?.setRate?.(ctl.rate); sync(); },      // the line already playing changes speed too
+        slow: () => { ctl.rate = [...steps].reverse().find(x => x < ctl.rate - 1e-6) ?? 0.75; api.st.speakCtl?.setRate?.(ctl.rate); sync(); },
       }); api.sfx.ambient(true); sync();
       api.voicePrefetch?.(scenes[0]?.text);
       let i = 0;
@@ -77,6 +77,14 @@ registerJarvisModule({
 });
 
 // ── the shared director parts (also used by the MORNING BROADCAST, jarvisModBroadcast.js) ──
+/** The voice on/off lives in ONE place, the HUD's prefs (api.voiceOn / api.setVoiceOn, also under VOICE ▾ in the top bar); a pane's button only shows and flips it. */
+export const voiceWord = api => `VOICE ${(api.voiceOn ? api.voiceOn() : true) ? 'ON' : 'OFF'}`;
+export function voiceButton(api, btn) {
+  if (!btn) return;
+  const sync = () => { if (!btn.isConnected) { api.doc.removeEventListener('jarvis-voice', sync); return; } const on = api.voiceOn ? api.voiceOn() : true; btn.textContent = `VOICE ${on ? 'ON' : 'OFF'}`; btn.setAttribute('aria-pressed', String(on)); };
+  btn.onclick = () => { api.setVoiceOn?.(!(api.voiceOn ? api.voiceOn() : true)); sync(); };
+  api.doc.addEventListener('jarvis-voice', sync); sync();
+}
 /** Puts a scene's view on screen and its camera at the start pose (globe region / focus market, candles at the front), then runs the scene's own enter(api). */
 export function enterScene(api, scene) {
   const st = api.st;
@@ -90,15 +98,20 @@ export function enterScene(api, scene) {
   try { scene.enter?.(api); } catch (e) { /* ignore */ }
 }
 /**
- * The camera moves WHILE he talks: how far it gets is tied to how long the line should take (dur seconds), and it holds its last pose if he runs on. alive() false stops it; ctl.paused freezes it.
+ * The camera moves WHILE he talks. Progress p (0..1) comes from the REAL audio clock when the voice gives one (st.speakCtl.progress(): the clip's currentTime / duration), so the camera lands on
+ * the last word and the subtitles keep pace; otherwise (voice off, a browser voice with no word events) it is the reading-speed estimate: dur seconds at the speed the line started with,
+ * rescaled when the speed changes mid-line. p never runs backwards within a line. alive() false stops it; ctl.paused freezes it.
  * onP(p) (optional) gets the same 0..1 progress every frame (the broadcast's subtitles follow it). Returns a stop function.
  */
 export function sceneMotion(api, scene, dur, alive, ctl, onP = null) {
   const st = api.st, raf = api.win?.requestAnimationFrame?.bind(api.win) ?? requestAnimationFrame, caf = api.win?.cancelAnimationFrame?.bind(api.win) ?? cancelAnimationFrame;
-  let el = 0, last = performance.now(), id = 0, live = true;
+  let el = 0, last = performance.now(), id = 0, live = true, pMax = 0;
+  const rate0 = ctl.rate > 0 ? ctl.rate : 1;
   const cd = st.cd, z0 = cd?.layout ? Object.values(cd.layout).map(p => p.z) : [], zs = z0.length ? z0 : [0], zMin = Math.min(...zs), zMax = Math.max(...zs);
   const tick = () => {
-    if (!live || !alive()) return; const nowT = performance.now(); if (!ctl.paused) el += nowT - last; last = nowT; const p = Math.min(1, el / (Math.max(0.5, dur) * 1000));
+    if (!live || !alive()) return; const nowT = performance.now(); if (!ctl.paused) el += (nowT - last) * ((ctl.rate > 0 ? ctl.rate : 1) / rate0); last = nowT;
+    let real = null; try { real = st.speakCtl?.progress?.() ?? null; } catch (e) { real = null; }
+    const p = pMax = Math.max(pMax, Math.min(1, Number.isFinite(real) ? real : el / (Math.max(0.5, dur) * 1000)));
     if (scene.cam?.fly) { const k = ease(p), z = scene.cam.lean ? lerp(zMax + 0.4, zMin - 0.4, k) : lerp(zMin - 0.4, zMax + 0.4, k); api.flyTo(Math.sin(k * 5) * 0.55, z); }
     if (scene.cam?.drift) st.zoom = 1 + 0.25 * ease(p);
     try { scene.motion?.(api, p); } catch (e) { /* a scene's camera must never stop the show */ }
