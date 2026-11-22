@@ -57,3 +57,10 @@ bar after the fill is moved 0.02σ toward the open; the net mean R must rise and
 - **Otherwise:** the result is decomposed per instrument, side and time bucket, and any part that beats its benchmark in both halves is listed as a candidate for a new prereg.
 
 ## Amendments
+
+### A1 — 2026-11-22, PRE-RESULTS (nothing scored): benchmark population and planted control size
+- **TP vs benchmark (§3):** s / (s + d) is the chance a driftless walk hits the TP before the stop with unlimited time, so
+  the comparison is made over trades that **end at a barrier** (TP or stop), as the PC and `ladder-per-line` A1. Mean R
+  still uses every trade.
+- **Planted edge (§4):** every bar after the fill is shifted a constant **0.25σ toward the open** (an unmistakable edge);
+  the p75 cell's net mean R must then have CI lower > 0.
