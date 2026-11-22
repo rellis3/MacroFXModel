@@ -106,6 +106,14 @@ def sessions(m1: pd.DataFrame) -> pd.DataFrame:
     c5 = x.groupby(["date", "b5"])["close"].last()
     r5 = np.log(c5).groupby(level=0).diff().dropna()
     s["rv5"] = (r5 ** 2).groupby(level=0).sum()
+    s["rsp5"] = (r5.clip(lower=0) ** 2).groupby(level=0).sum()       # upside semivariance
+    s["rsn5"] = (r5.clip(upper=0) ** 2).groupby(level=0).sum()       # downside semivariance
+    r1 = np.log(x["close"]).groupby(x["date"]).diff().dropna()
+    s["rv1"] = (r1 ** 2).groupby(x["date"]).sum()
+    x["b15"] = lt.tz_localize(None).floor("15min")
+    c15 = x.groupby(["date", "b15"])["close"].last()
+    r15 = np.log(c15).groupby(level=0).diff().dropna()
+    s["rv15"] = (r15 ** 2).groupby(level=0).sum()
     s = s[(s["n"] >= MIN_BARS) & (s.index <= LAST_DATE)]
     s["hl"] = (s["h"] - s["l"]) / s["o"]
     s["oh"] = (s["h"] - s["o"]) / s["o"]
@@ -367,9 +375,19 @@ class Result:
     payload: dict
 
 
+def cached_sessions(sym: str, track: str) -> pd.DataFrame:
+    p = OUT / f"sessions_{sym}_{track}.parquet"
+    if p.exists():
+        return pd.read_parquet(p)
+    s = sessions(load_m1(sym, track))
+    OUT.mkdir(parents=True, exist_ok=True)
+    s.to_parquet(p)
+    return s
+
+
 def run(sym: str, track: str, s: pd.DataFrame | None = None, F: dict | None = None) -> Result:
     if s is None:
-        s = sessions(load_m1(sym, track))
+        s = cached_sessions(sym, track)
     if F is None:
         F = all_forecasts(s)
     reg = regime(s)
@@ -464,11 +482,11 @@ def main():
             print(f"SKIP {e}")
             md.append(f"## {sym} · {track}\n\nNot run: {e}\n")
             continue
-        (OUT / f"{sym}_{track}.json").write_text(json.dumps(r.payload, indent=1, default=float))
+        (OUT / f"{sym}_{track}.json").write_text(json.dumps(r.payload, indent=1, default=float), encoding="utf-8")
         md.append(to_markdown(r))
         print(f"{sym} {track}: A={r.payload['approach_A']['model']} B={r.payload['approach_B']} "
               f"B-A={100*r.payload['B_minus_A_validation']['rel_change']:+.2f}%")
-    (OUT / "RESULTS.md").write_text("\n".join(md))
+    (OUT / "RESULTS.md").write_text("\n".join(md), encoding="utf-8")
 
 
 if __name__ == "__main__":
