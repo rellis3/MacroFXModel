@@ -1,0 +1,52 @@
+== positive control (ORACLE informed OH sigma) ==
+  NQ: QL picks ORACLE for oh in 7/7 years
+  GOLD: QL picks ORACLE for oh in 7/7 years
+  EURUSD: QL picks ORACLE for oh in 7/7 years
+  USDJPY: QL picks ORACLE for oh in 7/7 years
+  delta QL vs Q1 -3.58% [-4.492760189208881, -1.9516812249771143]
+NQ: 1681 scored sessions 2020-01-02 -> 2026-08-21, arms 20
+GOLD: 1659 scored sessions 2020-01-02 -> 2026-08-21, arms 20
+EURUSD: 1656 scored sessions 2020-01-02 -> 2026-08-21, arms 17
+USDJPY: 1641 scored sessions 2020-01-02 -> 2026-08-21, arms 17
+
+== QLIKE leaderboard (OOS 2020-2026.08; top 3 per line, plus live A0) ==
+  NQ hl: B_har_iv 0.3509, SHAR 0.3513, R5 0.3556 | A0 0.4167 (#15/20)
+  NQ oh: SHAR 1.2184, R5 1.2265, HARCJ 1.2277 | A0 1.3098 (#14/20)
+  NQ ol: B_har_iv 1.5708, V3 1.5743, V4 1.5750 | A0 1.6522 (#15/20)
+  GOLD hl: V3 0.3346, V4 0.3355, B_har_iv 0.3463 | A0 0.3950 (#11/20)
+  GOLD oh: HARCJ 1.2898, B_har_iv 1.2901, SHAR 1.2903 | A0 1.3304 (#11/20)
+  GOLD ol: V4 1.5581, V3 1.5595, B_har_iv 1.5895 | A0 1.6457 (#9/20)
+  EURUSD hl: HARCJ 0.2992, SHAR 0.3016, R15 0.3025 | A0 0.3238 (#8/17)
+  EURUSD oh: HARCJ 1.3701, SHAR 1.3703, R15 1.3712 | A0 1.3937 (#8/17)
+  EURUSD ol: HARCJ 1.2886, SHAR 1.2927, R15 1.2934 | A0 1.3096 (#8/17)
+  USDJPY hl: SHAR 0.5046, R5 0.5047, R15 0.5086 | A0 0.5451 (#12/17)
+  USDJPY oh: SHAR 1.4231, R15 1.4239, HARCJ 1.4240 | A0 1.4883 (#15/17)
+  USDJPY ol: R5 1.7190, SHAR 1.7205, R15 1.7241 | A0 1.7600 (#9/17)
+
+== per-year picks ==
+  NQ: 2020 QL hl/oh/ol=G_egarch/G_egarch/B_har_iv Q1=G_egarch P1=SHAR; 2021 QL hl/oh/ol=B_har_iv/G_gjr/B_har_iv Q1=B_har_iv P1=SHAR; 2022 QL hl/oh/ol=B_har_iv/SHAR/B_har_iv Q1=B_har_iv P1=SHAR; 2023 QL hl/oh/ol=B_har_iv/SHAR/B_har_iv Q1=B_har_iv P1=SHAR; 2024 QL hl/oh/ol=B_har_iv/SHAR/B_har_iv Q1=B_har_iv P1=SHAR; 2025 QL hl/oh/ol=B_har_iv/SHAR/B_har_iv Q1=B_har_iv P1=SHAR; 2026 QL hl/oh/ol=B_har_iv/SHAR/B_har_iv Q1=B_har_iv P1=SHAR
+  GOLD: 2020 QL hl/oh/ol=SHAR/SHAR/V3 Q1=SHAR P1=SHAR; 2021 QL hl/oh/ol=V3/SHAR/V3 Q1=V3 P1=V3; 2022 QL hl/oh/ol=V4/SHAR/V4 Q1=V3 P1=V3; 2023 QL hl/oh/ol=V3/SHAR/V4 Q1=V3 P1=V3; 2024 QL hl/oh/ol=V3/SHAR/V4 Q1=V3 P1=V3; 2025 QL hl/oh/ol=V3/SHAR/V4 Q1=V3 P1=V3; 2026 QL hl/oh/ol=V3/SHAR/V4 Q1=V3 P1=V3
+  EURUSD: 2020 QL hl/oh/ol=HARCJ/HARCJ/H8 Q1=HARCJ P1=E_yz_30; 2021 QL hl/oh/ol=HARCJ/HARCJ/HARCJ Q1=HARCJ P1=HARCJ; 2022 QL hl/oh/ol=HARCJ/HARCJ/SHAR Q1=HARCJ P1=HARCJ; 2023 QL hl/oh/ol=HARCJ/SHAR/HARCJ Q1=HARCJ P1=HARCJ; 2024 QL hl/oh/ol=HARCJ/SHAR/HARCJ Q1=HARCJ P1=HARCJ; 2025 QL hl/oh/ol=HARCJ/SHAR/HARCJ Q1=HARCJ P1=HARCJ; 2026 QL hl/oh/ol=HARCJ/SHAR/HARCJ Q1=HARCJ P1=HARCJ
+  USDJPY: 2020 QL hl/oh/ol=SHAR/HARCJ/SHAR Q1=HARCJ P1=E_har_rv_log; 2021 QL hl/oh/ol=HARCJ/HARCJ/HARCJ Q1=HARCJ P1=SHAR; 2022 QL hl/oh/ol=HARCJ/HARCJ/SHAR Q1=HARCJ P1=SHAR; 2023 QL hl/oh/ol=HARCJ/HARCJ/E_yz_10 Q1=HARCJ P1=HARCJ; 2024 QL hl/oh/ol=SHAR/SHAR/SHAR Q1=SHAR P1=HARCJ; 2025 QL hl/oh/ol=SHAR/SHAR/R5 Q1=SHAR P1=HARCJ; 2026 QL hl/oh/ol=SHAR/SHAR/R5 Q1=SHAR P1=HARCJ
+
+== Part A: per-line QLIKE pick (QL) vs one QLIKE model (Q1); summed hl+oh+ol QLIKE, % change (neg = better) ==
+  all: -0.45% [-1.09, +0.03]
+  2020-22: -0.80% [-2.17, -0.02]
+  2023-26: -0.14% [-0.67, +0.19]
+  per line: hl +0.15% [+0.00, +0.26], oh -0.60% [-1.26, -0.12], ol -0.44% [-1.59, +0.52]
+  regime miss Q1 2.33pp, QL 2.35pp -> UNDERPOWERED (weight: Faint)
+
+== Part B: QL vs the current pinball-chosen one model (P1) ==
+  all: -0.86% [-1.70, +0.16]
+  2020-22: -1.30% [-3.02, +0.53]
+  2023-26: -0.49% [-1.11, +0.26]
+  per line: hl -0.76% [-3.76, +3.48], oh -0.38% [-1.20, +0.41], ol -1.20% [-1.86, -0.28]
+  regime miss P1 1.89pp, QL 2.35pp -> UNDERPOWERED (weight: Faint)
+
+  QL vs live A0: -4.02% [-4.7637165827541486, -2.5184119381562375]; P1 vs A0: -3.17% [-4.186665523384014, -1.7090034339638318]; A0 regime miss 2.71pp
+
+== hit rates of the QL ladder (target 50 / 25 / 10) ==
+  NQ: hl 58.1/28.4/11.1; oh 51.3/28.3/12.4; ol 52.2/27.4/10.1
+  GOLD: hl 51.7/25.9/9.5; oh 55.6/27.4/10.3; ol 48.2/24.0/11.3
+  EURUSD: hl 49.8/24.2/10.2; oh 47.5/25.2/9.2; ol 51.1/25.6/9.8
+  USDJPY: hl 49.5/26.9/12.2; oh 49.8/24.0/10.5; ol 49.8/24.7/9.8
