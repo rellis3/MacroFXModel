@@ -235,7 +235,7 @@ function overlay(ctx, g, api, H, camera, recs, rowsW, post) {
 function loudest(ctx, g, movers, ty, w) {
   const { W, C, fade } = g, x = W - w - 16, y0 = ty; if (!movers.length) return;
   ctx.globalAlpha = fade * 0.7; ctx.fillStyle = 'rgba(0,0,0,0.78)'; ctx.fillRect(x - 8, y0 - 14, w + 16, 22 + movers.length * 17);
-  ctx.textAlign = 'left'; ctx.globalAlpha = fade; ctx.fillStyle = C.blue; ctx.font = '600 11px ui-monospace,monospace'; ctx.fillText(`${S.cd?.label ? 'LOUDEST, LAST SESSION' : 'LOUDEST TODAY'}  ·  click to fly there`, x, y0);
+  ctx.textAlign = 'left'; ctx.globalAlpha = fade; ctx.fillStyle = C.blue; ctx.font = '600 11px ui-monospace,monospace'; ctx.fillText(S.cd?.label ? 'LOUDEST, LAST SESSION · click' : 'LOUDEST TODAY  ·  click to fly there', x, y0);
   ctx.font = '11px ui-monospace,monospace';
   movers.forEach((r, i) => {
     const yy = y0 + 18 + i * 17, len = Math.min(1, Math.abs(r.ratio) / CAP) * 60, c = toneCol(C, r);
