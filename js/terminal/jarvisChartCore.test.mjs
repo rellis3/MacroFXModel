@@ -59,3 +59,19 @@ test('the CANDLES view keeps the id session, has its own environment, and the to
   const v = viewsOf().find(x => x.id === 'session'); assert.ok(v); assert.equal(v.label, 'CANDLES'); assert.equal(v.env.accent, 'blue2'); assert.equal(v.env.chrome, 'clean'); assert.equal(typeof v.draw, 'function');
   const api = { st: { sel: null } }; chartCommand('mk:GOLD', api); assert.equal(api.st.sel, 'GOLD'); chartCommand('mkn', api); assert.notEqual(api.st.sel, 'GOLD'); chartCommand('tf:1h', api); chartCommand('tf:zz', api); chartCommand('replay', api); chartCommand('replay', api); chartCommand('mk:NOPE', api);
 });
+test('spreadLabels: no two tags closer than the gap, order kept, clamped into the band', async () => {
+  const { spreadLabels } = await import('./jarvisChartCore.js');
+  const y = spreadLabels([100, 102, 101, 300], 16, 0, 400), s = [...y].sort((a, b) => a - b);
+  for (let i = 1; i < s.length; i++) assert.ok(s[i] - s[i - 1] >= 16 - 1e-9); assert.equal(y[3], 300); assert.ok(y[0] < y[2] && y[2] < y[1]);
+  const z = spreadLabels([395, 398], 16, 0, 400); assert.ok(z[1] <= 400 && z[1] - z[0] >= 16 - 1e-9); assert.deepEqual(spreadLabels([], 10), []);
+});
+test('showFlight: continuous between acts, starts high, rides low along the bars left to right, prints in step', async () => {
+  const { showFlight } = await import('./jarvisChartCore.js');
+  const geo = { x0: -3, x1: 3, hy: 3, depth: -8, yAt: q => 1 + q };
+  const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  for (const c of [0.2, 0.8]) { const a = showFlight(c - 1e-6, geo), b = showFlight(c + 1e-6, geo); assert.ok(d(a.pos, b.pos) < 1e-3 && d(a.tgt, b.tgt) < 1e-3, `jump at ${c}`); }
+  const s0 = showFlight(0, geo), m1 = showFlight(0.35, geo), m2 = showFlight(0.65, geo);
+  assert.ok(s0.pos[1] > m1.pos[1] * 2, 'starts high, flies down'); assert.ok(m1.pos[1] < 1.5, 'low along the candles'); assert.ok(m2.pos[0] > m1.pos[0], 'rides left to right');
+  assert.equal(s0.printed, 0); assert.ok(m2.printed > m1.printed); assert.equal(showFlight(1, geo).printed, 1); assert.equal(showFlight(0.5, geo).act, 'ride');
+  assert.ok([showFlight(NaN, geo), showFlight(-1, geo), showFlight(2, { x0: 0, x1: 0, hy: 1 })].every(f => f.pos.every(Number.isFinite)));
+});
