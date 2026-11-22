@@ -148,6 +148,9 @@ export const SEGMENTS = [
 export const wantedSceneIds = () => [...new Set(SEGMENTS.flatMap(s => s.tiers.flat()))].filter(id => !BUILTIN[id]);
 /** In the QUICK broadcast a scene's line is cut to whole sentences of about this many words (eight segments, a little over two minutes). */
 export const QUICK_WORDS = 34;
+/** The SHORT broadcast (mode 'short', for a YouTube Short, which must stay under 3 minutes): shorter lines, a two-item lead, and if the estimate still runs long the
+ *  least essential segments go first, in this order. Markets, The Chain and The Day Ahead always stay. The budget is an ESTIMATE: a real run took about 1.2x it (transitions, the voice's own pace), so 120 s lands near 2.5 minutes. */
+export const SHORT_WORDS = 24, SHORT_BUDGET_SEC = 120, SHORT_DROP = ['vol', 'pos', 'ccy', 'macro', 'rates'];
 export const SIGNOFF_TEXT = 'That is the briefing. Description, not advice. Until tomorrow.';
 
 /**
@@ -172,7 +175,7 @@ export function keyFigure(text) {
  * Never throws because of a hook. A segment with no available scene is skipped and the numbering closes up.
  */
 export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick' } = {}) {
-  const quick = mode !== 'full', date = dateWords(inp.now ?? new Date()), viewOk = v => !have || have.has(v) || CORE_VIEWS.has(v);
+  const quick = mode !== 'full', short = mode === 'short', words = short ? SHORT_WORDS : QUICK_WORDS, date = dateWords(inp.now ?? new Date()), viewOk = v => !have || have.has(v) || CORE_VIEWS.has(v);
   const built = {}, sceneFor = id => {
     if (id in built) return built[id];
     let x = null; const h = hooks.find(k => k.id === id);
@@ -191,23 +194,27 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     if (quick) scenes = scenes.slice(0, 1);
     segs.push({ id: s.id, name: s.name, segue: s.segue, scenes });
   }
-  const total = segs.length + 1;                               // + the sign-off
-  segs.forEach((s, i) => { s.num = i + 1; s.total = total; });
-  const am = date.hour < 12, lead = pickLead(inp, 3), lines = leadLines(lead, am ? 'this morning' : 'today'), items = [];
-  const g = greeting(date.hour);
-  items.push({ kind: 'open', title: 'THE MORNING BRIEFING', view: 'globe', cam: { region: 'world' }, hold: 4.2, text: `${g}. This is Jarvis, with the ${am ? 'morning ' : ''}briefing for ${date.spoken}.` });
-  lead.forEach((x, i) => items.push({ kind: 'lead', idx: i, n: lead.length, lead: x, title: 'The Lead', view: 'globe', cam: x.key ? { focus: x.key } : { region: 'world' }, hold: 0.6, text: lines[i] }));
-  for (const s of segs) {
-    const seg = { id: s.id, name: s.name, num: s.num, total };
-    items.push({ kind: 'bumper', seg, title: s.name, view: s.scenes[0].view, cam: null, hold: 1.9, text: '' });
-    s.scenes.forEach((sc, j) => {
-      const body = quick ? trimWords(sc.text, QUICK_WORDS) : sc.text, text = j === 0 ? `${s.segue} ${body}` : body;
-      items.push({ kind: 'scene', seg, scene: sc, title: sc.title, view: sc.view, cam: sc.cam, hold: 0.65, text, figure: sc.figure && sc.figure.value ? sc.figure : keyFigure(body) });
-    });
-  }
-  items.push({ kind: 'close', seg: { id: 'signoff', name: 'Sign-off', num: total, total }, title: 'Sign-off', view: 'globe', cam: { region: 'world' }, hold: 2.5, text: SIGNOFF_TEXT, date });
-  const totalSec = Math.round(items.reduce((a, x) => a + (x.text ? readSeconds(x.text) : 0) + (x.hold ?? 0), 0));
-  return { date, lead, segments: segs.map(s => ({ id: s.id, name: s.name, num: s.num, total, scenes: s.scenes.map(x => x.id) })), items, ticker: tickerItems(inp.rows ?? inp.movers ?? []), totalSec };
+  const am = date.hour < 12, lead = pickLead(inp, short ? 2 : 3), lines = leadLines(lead, am ? 'this morning' : 'today'), g = greeting(date.hour);
+  const build = list => {
+    const total = list.length + 1, items = [];                     // + the sign-off
+    list.forEach((s, i) => { s.num = i + 1; s.total = total; });
+    items.push({ kind: 'open', title: 'THE MORNING BRIEFING', view: 'globe', cam: { region: 'world' }, hold: short ? 3 : 4.2, text: `${g}. This is Jarvis, with the ${am ? 'morning ' : ''}briefing for ${date.spoken}.` });
+    lead.forEach((x, i) => items.push({ kind: 'lead', idx: i, n: lead.length, lead: x, title: 'The Lead', view: 'globe', cam: x.key ? { focus: x.key } : { region: 'world' }, hold: 0.6, text: lines[i] }));
+    for (const s of list) {
+      const seg = { id: s.id, name: s.name, num: s.num, total };
+      items.push({ kind: 'bumper', seg, title: s.name, view: s.scenes[0].view, cam: null, hold: short ? 1.2 : 1.9, text: '' });
+      s.scenes.forEach((sc, j) => {
+        const body = quick ? trimWords(sc.text, words) : sc.text, text = j === 0 ? `${s.segue} ${body}` : body;
+        items.push({ kind: 'scene', seg, scene: sc, title: sc.title, view: sc.view, cam: sc.cam, hold: 0.65, text, figure: sc.figure && sc.figure.value ? sc.figure : keyFigure(body) });
+      });
+    }
+    items.push({ kind: 'close', seg: { id: 'signoff', name: 'Sign-off', num: total, total }, title: 'Sign-off', view: 'globe', cam: { region: 'world' }, hold: 2.5, text: SIGNOFF_TEXT, date });
+    return { items, total, totalSec: Math.round(items.reduce((a, x) => a + (x.text ? readSeconds(x.text) : 0) + (x.hold ?? 0), 0)) };
+  };
+  let segsUsed = segs, P = build(segsUsed);
+  if (short) for (const id of SHORT_DROP) { if (P.totalSec <= SHORT_BUDGET_SEC) break; if (segsUsed.some(x => x.id === id)) { segsUsed = segsUsed.filter(x => x.id !== id); P = build(segsUsed); } }
+  const { items, total, totalSec } = P;
+  return { date, lead, segments: segsUsed.map(s => ({ id: s.id, name: s.name, num: s.num, total, scenes: s.scenes.map(x => x.id) })), items, ticker: tickerItems(inp.rows ?? inp.movers ?? []), totalSec };
 }
 
 /** How long an item holds on screen with the voice off, at a speed: reading time plus its card hold. */

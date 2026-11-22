@@ -74,7 +74,7 @@ function kokoroEngine(win) {
 }
 
 /** The voice for one Jarvis window: { prefetch(text), play(text, rate, onEnd) -> Promise<ctl|null>, slow(), warm(), info(), stopAll(), engine/setEngine, kvoice/setKvoice }. */
-export function makeNeuralVoice(win) {
+export function makeNeuralVoice(win, audioBus = null) {
   const server = serverEngine(win), kokoro = kokoroEngine(win);
   let audio = null;
   const engine = () => lsGet().engine || 'kokoro';
@@ -97,6 +97,8 @@ export function makeNeuralVoice(win) {
     const c = await clip(text); if (!c) return null;
     try { audio?.pause(); } catch (e) { /* idle */ }
     const a = new win.Audio(c.u); audio = a; a.playbackRate = Math.max(0.5, Math.min(2, rate || 1)); a.preservesPitch = true;
+    // through the HUD's audio bus (speakers + recorder tap) when its AudioContext is running; otherwise straight to the speakers, so a suspended context never silences him
+    try { const b = audioBus?.(); if (b?.ctx) { if (b.ctx.state !== 'running') await Promise.race([b.ctx.resume(), new Promise(r => win.setTimeout(r, 300))]); if (b.ctx.state === 'running') b.ctx.createMediaElementSource(a).connect(b.input); } } catch (e) { /* plays direct */ }
     let ended = false; const end = () => { if (!ended) { ended = true; onEnd(); } };
     a.onended = end; a.onerror = end;
     try { await a.play(); } catch (e) { return null; }

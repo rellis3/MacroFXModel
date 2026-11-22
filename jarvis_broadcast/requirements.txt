@@ -1,0 +1,5 @@
+playwright>=1.40
+imageio-ffmpeg>=0.4.9
+google-api-python-client>=2.100
+google-auth-oauthlib>=1.1
+google-auth>=2.23

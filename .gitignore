@@ -792,3 +792,9 @@ analysis/output/raw-line-touch-clock/touches.parquet
 /p.out
 /boe_ois.zip
 analysis/output/tpo-initial-balance/*.parquet
+
+# Jarvis broadcast job (laptop): saved browser login, recordings, Google credentials
+jarvis_broadcast/.profile/
+jarvis_broadcast/out/
+jarvis_broadcast/client_secret.json
+jarvis_broadcast/token.json
