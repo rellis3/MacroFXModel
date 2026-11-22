@@ -679,6 +679,7 @@ function svcEnabled(id) {
  * pass-through: a throw still throws and a rejected promise still rejects, so
  * each job's existing `.catch(...)` keeps behaving exactly as it did.
  */
+const _svcLive = new Map();   // job id -> how many runs are in flight right now (the memory trace names them, so a jump can be matched to a job)
 function svcRun(id, fn) {
   // Scheduled jobs that call a model can be paused from Bot Config > AI models (KV ai_jobs_off_v1), no redeploy.
   // The Railway SVC_<ID> variable still decides whether the job is scheduled at all; this only skips its runs.
@@ -689,7 +690,8 @@ function svcRun(id, fn) {
   const st = _svcStat(id);
   st.started = true;   // a one-shot svcRun (e.g. volForecastScheduler's boot call) counts as started
   const t0 = Date.now();
-  const done = () => { st.runs++; st.lastMs = Date.now() - t0; st.totalMs += st.lastMs; st.lastAt = new Date().toISOString(); };
+  _svcLive.set(id, (_svcLive.get(id) ?? 0) + 1);
+  const done = () => { st.runs++; st.lastMs = Date.now() - t0; st.totalMs += st.lastMs; st.lastAt = new Date().toISOString(); const c = (_svcLive.get(id) ?? 1) - 1; if (c > 0) _svcLive.set(id, c); else _svcLive.delete(id); };
   let out;
   try { out = fn(); }
   catch (e) { st.errors++; done(); throw e; }
@@ -7333,7 +7335,7 @@ const _libRoute = (method, p, fn) => app[method](`/api/library/${p}`, async (req
 });
 // warm the library's list and search index ONCE after boot so the first screen after a login is not a cold build (errors are ignored). It used to repeat every 4 minutes, but a tick older than the
 // catalog's 30 s freshness window forced a full rebuild each time (650 papers, uploads, notes) for nothing: writes already drop the catalog, and any page visit refreshes it behind the scenes.
-svcTimeout('libraryWarm', () => _libApi.warm?.(), 20_000);
+svcTimeout('libraryWarm', () => _libApi.warm?.(), 10 * 60_000);   // 2026-11-22 memory test: was 20 s. The 3 GB boot jump landed mid-way through this job's 36 s first run; at 10 min it is out of the boot burst, so the trace shows whether the jump follows it
 _libRoute('get', 'concepts', _libApi.conceptsCards);   // the concept cards for the Concepts tab (library login)
 _libRoute('post', 'concepts/review', _libApi.conceptsReview);   // the owner's mark on a card; free, no model call
 _libRoute('get', 'papers', _libApi.papers);
@@ -47570,14 +47572,15 @@ svcInterval('memSample', () => {
 const _memTrace = [];
 function _memTracePush(m = process.memoryUsage()) {
   const mb = n => Math.round(n / 1048576);
-  _memTrace.push({ t: new Date().toISOString().slice(11, 19), rss: mb(m.rss), heap: mb(m.heapUsed), ext: mb(m.external + m.arrayBuffers), other: mb(m.rss - m.heapTotal - m.external), w: [..._liveWorkers.values()].map(x => x.label).join(',') || null });
-  if (_memTrace.length > 360) _memTrace.shift();
+  _memTrace.push({ t: new Date().toISOString().slice(11, 19), rss: mb(m.rss), heap: mb(m.heapUsed), ext: mb(m.external + m.arrayBuffers), other: mb(m.rss - m.heapTotal - m.external), w: [..._liveWorkers.values()].map(x => x.label).join(',') || null, run: [..._svcLive.keys()].join(',') || null });
+  if (_memTrace.length > 520) _memTrace.shift();
   // a jump of more than 400 MB between two samples (or the two fixed checkpoints) takes a look inside the process: which kind of memory grew. At most 6 per boot.
   const prev = _memTrace.at(-2), jump = prev && m.rss - prev.rss * 1048576 > 400 * 1048576, up = Date.now() - _serverBootedAt, cp = (up > 90_000 && !_memShots.cp1) || (up > 600_000 && !_memShots.cp2);
   if ((jump || cp) && _memShots.list.length < 6) { if (cp) { if (up > 600_000) _memShots.cp2 = true; else _memShots.cp1 = true; } try { _memShots.list.push({ t: _memTrace.at(-1).t, rssMB: mb(m.rss), why: jump ? `+${mb(m.rss - prev.rss * 1048576)} MB since the last sample` : 'checkpoint', top: _topMappings(8) }); } catch (e) { /* diagnostic only */ } }
 }
 const _memShots = { list: [], cp1: false, cp2: false };
-{ const fast = setInterval(() => { if (Date.now() - _serverBootedAt > 600_000) { clearInterval(fast); return; } _memTracePush(); }, 5000); fast.unref?.(); }
+// every second for the first 90 s (where the boot jump happens, so it can be matched to the jobs running at that second), every 5 s after, until 10 min
+{ let n = 0; const fast = setInterval(() => { const up = Date.now() - _serverBootedAt; if (up > 600_000) { clearInterval(fast); return; } if (up < 90_000 || ++n % 5 === 0) _memTracePush(); }, 1000); fast.unref?.(); }
 
 svcInterval('monitor', monitorTick, MONITOR_MS);
 if (svcEnabled('monitor')) svcRun('monitor', monitorTick).catch(console.error);
