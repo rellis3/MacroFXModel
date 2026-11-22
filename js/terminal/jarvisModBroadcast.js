@@ -27,7 +27,7 @@ const css = R => `
 #${R}.jv-bcast.jv-compact{--jvtop:84px!important}
 #${R}.jv-bcast.jv-compact .jv-cine{top:46px;bottom:auto;left:auto;right:10px;width:auto;justify-content:flex-end}
 #${R}.jv-bcast.jv-compact .jv-cine.more{left:8px;right:8px;flex-wrap:wrap;justify-content:center;padding:6px;border-radius:12px;background:color-mix(in srgb,var(--bg) 82%,transparent)}
-#${R} .bc{position:absolute;inset:0;z-index:5;pointer-events:none;--bcs:"Inter","Segoe UI","Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;--bca:var(--jva,var(--blue2));--tc:var(--tx);--dur:60s;--l3h:64px;color:var(--tx);font-family:var(--bcs)}
+#${R} .bc{position:absolute;inset:0;animation:none;transform:none;z-index:5;pointer-events:none;--bcs:"Inter","Segoe UI","Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;--bca:var(--jva,var(--blue2));--tc:var(--tx);--dur:60s;--l3h:64px;color:var(--tx);font-family:var(--bcs)}
 #${R} .bc *{box-sizing:border-box}
 #${R} .bc .mono{font-family:var(--mono,ui-monospace,monospace)}
 /* corner bug */
@@ -102,7 +102,7 @@ const css = R => `
 #${R} .bc-sub.full{bottom:64px}#${R} .bc-sub:empty,#${R} .bc-sub.off{opacity:0}
 /* ticker */
 #${R} .bc-tick{position:absolute;left:0;right:0;bottom:0;height:36px;display:flex;align-items:stretch;background:color-mix(in srgb,var(--bg) 90%,transparent);border-top:1px solid color-mix(in srgb,var(--bca) 55%,transparent);box-shadow:0 -6px 26px color-mix(in srgb,var(--bca) 14%,transparent);transform:translateY(100%);transition:transform .7s cubic-bezier(.2,.7,.2,1)}
-#${R} .bc.tk .bc-tick{transform:none}
+#${R} .bc.bc-tkon .bc-tick{transform:none}
 #${R} .bc-tick .lb{flex:none;display:flex;align-items:center;gap:8px;padding:0 14px;font:700 11px/1 var(--mono,monospace);letter-spacing:.2em;color:var(--bg);background:var(--bca)}#${R} .bc-tick .lb small{font-weight:500;letter-spacing:.12em;opacity:.8}
 #${R} .bc-tick .cw{position:relative;flex:1;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,black 3%,black 97%,transparent);mask-image:linear-gradient(90deg,transparent,black 3%,black 97%,transparent)}
 #${R} .bc-tick .tr{position:absolute;top:0;bottom:0;left:0;display:flex;align-items:center;white-space:nowrap;animation:bc-crawl var(--dur,60s) linear infinite;will-change:transform}
@@ -173,10 +173,10 @@ function makeOverlay(api) {
     },
     sub(t) { const s = $('sub'); if (!t) { s.classList.add('off'); return; } if (s.dataset.t === t) return; s.dataset.t = t; s.innerHTML = `<span>${ESC(t)}</span>`; s.classList.remove('off'); },
     ticker(items) {
-      if (!items.length) { el.classList.remove('tk'); return; }
+      if (!items.length) { el.classList.remove('bc-tkon'); return; }
       const one = items.map(i => `<span class="it"><span>${ESC(i.label)}</span><span class="a ${i.tone}">${i.arrow}</span><span class="${i.tone}">${ESC(i.pct)}</span><span class="x">${ESC(i.x)}</span></span>`).join('');
       const tr = $('tr'); tr.innerHTML = one + one; tr.style.setProperty('--dur', `${Math.max(30, items.length * 4.2)}s`); tr.setAttribute('aria-label', tickerText(items));
-      el.classList.add('tk');
+      el.classList.add('bc-tkon');
     },
     count(n) { const c = $('count'); c.classList.toggle('on', n > 0); c.querySelector('b').textContent = n > 0 ? String(n) : ''; },
     remove() { api.win.clearInterval(clockId); el.remove(); root.classList.remove('jv-bcast'); },
