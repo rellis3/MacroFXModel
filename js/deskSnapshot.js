@@ -183,12 +183,13 @@ export const FULL_FEEDS = [
   'policy-rates', 'cb-expectations', 'desk-dayfc', 'pair-select',
   'risk-flags', 'em-gauges', 'world-rates', 'fed-path', 'funding-read?spark=0', 'nowcast', 'bank-credit', 'wider-market', 'chain-extra', 'hedging-summary', 'cot-extremes', 'global-yields',
   'credit-board', 'liquidity-board', 'term-premium', 'xccy-basis', 'world-stress',
-  'fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises', 'earnings-reported',
+  'fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises',
   'cb-board', 'macro-engines-board', 'rates-board', 'credit-liquidity', 'curve-board', 'regime-board', 'releases-board', 'vol-board', 'vol-clock', 'ccy-strength', 'desk-watch',
   'cb-path/boe',   // the Bank of England priced Bank Rate path (about 3 KB): the Bank publishes it daily and the card is built from today's curve, so a past view needs the day's copy
 ];
 /** Long histories or whole books that are already stored somewhere durable, or can be rebuilt from stored prices. Each is left out of FULL, with the reason. */
 export const FULL_EXCLUDED = [
+  { path: 'earnings-reported', why: 'a 10-minute in-memory cache of reported big-company EPS/revenue (Finnhub, rebuilt on request); every reported item already enters the news wire' },
   { path: 'rates', why: 'about 230 KB of FRED history, rebuilt from FRED and already archived in R2 (archive/series/fred)' },
   { path: 'fx-fair-value', why: 'about 85 KB; the model re-runs from stored prices and keeps its own forward record (fx_fair_value_log_v1)' },
   { path: 'release-reactions', why: 'about 200 KB; every live reaction is already in release_reaction_log_v1' },

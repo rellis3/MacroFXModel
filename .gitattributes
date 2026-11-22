@@ -1,0 +1,2 @@
+# git hooks run under sh: keep LF on every checkout (Windows autocrlf would break them)
+.githooks/* text eol=lf

@@ -146,6 +146,10 @@ export const FAMILIES = [
 // Root html pages that are not in a family and not a backtest/bot/system page (pages.csv category c, d, e, f or g is excluded
 // automatically). Each needs a reason; js/infoMap.test.mjs fails when a page is in neither place.
 export const EXCLUDED_PAGES = {
+  'futures-research.html': 'research view: NQ/6E/GC line touches and races on futures (futures-line research)',
+  'noise-area-fx-book.html': 'research view: the noise-area momentum FX book (study result, not an information feed)',
+  'paper-synthesis.html': 'research view: paper cross-analysis of the library (Library/Research, not a feed)',
+  'tpo-research.html': 'research view: TPO / initial-balance study (tpo-initial-balance)',
   'desk-admin.html': 'owner admin: which Desk Terminal surfaces the desk login sees (js/terminal/tabRegistry.js)',
   'daily-open-fib.html': 'tool: fib tracker',
   'bias-evidence.html': 'research view: the evidence behind the bias card (built from analysis/output/bias-evidence/manifest.json)',
@@ -181,10 +185,6 @@ export const EXCLUDED_PAGES = {
   'system-backtest.html': 'backtest',
   'trade-plan.html': 'shadow',
   'vol-layer-system.html': 'research',
-  'tpo-research.html': 'research view: the TPO initial-balance study (tpo-initial-balance), read from analysis/output/tpo-initial-balance; not an information feed',
-  'futures-research.html': 'research view: everything tested on CME futures at the daily forecast lines (MAE/MFE, stacked lines, exhaustion toward VWAP), read from analysis/output; not an information feed',
-  'noise-area-fx-book.html': 'research view: the noise-area strategy on FX and gold and the 21-system book, read from its results and streams files; not an information feed',
-  'paper-synthesis.html': 'research view: the library papers read against each other (papers.json, synthesis.json); not an information feed',
 };
 // pages.csv (analysis/output/repo-review-2026-10-31/pages.csv) category: a macro/market-state view, b analysis-layer view,
 // c backtest/result/research, d live trading tool/bot, e education, f unification attempt, g dead/superseded

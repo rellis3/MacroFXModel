@@ -45,7 +45,7 @@ export function ccyScore(bias) {
 /** The bias itself, or null when absent (never 0 for "missing"). */
 export const biasOf = v => num(v?.bias);
 
-/** "strong short", "long", "neutral" for a card; a flat card the desk has not reviewed reads "not reviewed" (the terminal's review state, when it is loaded). */
+/** "strong short", "long", "neutral" for a card ("not reviewed" on the terminal when its review hook says the card is unreviewed). */
 export function assetWord(c) {
   if (!c || !Object.prototype.hasOwnProperty.call(DIR, c.rating)) return 'no data';
   const d = DIR[c.rating];
