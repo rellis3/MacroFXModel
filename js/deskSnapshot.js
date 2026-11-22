@@ -183,7 +183,7 @@ export const FULL_FEEDS = [
   'policy-rates', 'cb-expectations', 'desk-dayfc', 'pair-select',
   'risk-flags', 'em-gauges', 'world-rates', 'fed-path', 'funding-read?spark=0', 'nowcast', 'bank-credit', 'wider-market', 'chain-extra', 'hedging-summary', 'cot-extremes', 'global-yields',
   'credit-board', 'liquidity-board', 'term-premium', 'xccy-basis', 'world-stress',
-  'fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises',
+  'fair-value', 'leading-indicators', 'commodity-fx', 'carry-vol', 'copper-gold', 'session-heat', 'options-skew', 'speech-drift', 'desk-alerts', 'release-surprises', 'earnings-reported',
   'cb-board', 'macro-engines-board', 'rates-board', 'credit-liquidity', 'curve-board', 'regime-board', 'releases-board', 'vol-board', 'vol-clock', 'ccy-strength', 'desk-watch',
   'cb-path/boe',   // the Bank of England priced Bank Rate path (about 3 KB): the Bank publishes it daily and the card is built from today's curve, so a past view needs the day's copy
 ];

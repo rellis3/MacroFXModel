@@ -181,6 +181,10 @@ export const EXCLUDED_PAGES = {
   'system-backtest.html': 'backtest',
   'trade-plan.html': 'shadow',
   'vol-layer-system.html': 'research',
+  'tpo-research.html': 'research view: the TPO initial-balance study (tpo-initial-balance), read from analysis/output/tpo-initial-balance; not an information feed',
+  'futures-research.html': 'research view: everything tested on CME futures at the daily forecast lines (MAE/MFE, stacked lines, exhaustion toward VWAP), read from analysis/output; not an information feed',
+  'noise-area-fx-book.html': 'research view: the noise-area strategy on FX and gold and the 21-system book, read from its results and streams files; not an information feed',
+  'paper-synthesis.html': 'research view: the library papers read against each other (papers.json, synthesis.json); not an information feed',
 };
 // pages.csv (analysis/output/repo-review-2026-10-31/pages.csv) category: a macro/market-state view, b analysis-layer view,
 // c backtest/result/research, d live trading tool/bot, e education, f unification attempt, g dead/superseded
