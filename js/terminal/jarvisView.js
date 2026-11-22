@@ -630,7 +630,7 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
     for (const k of Object.keys(st.disp)) { const tgt = st.graph?.nodes.find(n => n.key === k)?.style.size; if (tgt != null) st.disp[k] += (tgt - st.disp[k]) * Math.min(1, dt * 5); }
     ctx.clearRect(0, 0, st.w, st.h); st.proj = [];
     if (BOOT && bootT < BOOT + 0.3) drawBoot(bootT);
-    if (st.graph && fade > 0) { if (st.view === 'globe') drawGlobe(t, fade, dt); else if (st.view === 'candles') drawCandles(t, fade); else if (extraViews[st.view]) drawExtra(extraViews[st.view], t, fade, dt); else if (st.view === 'bubbles') drawBubbles(t, fade); else if (st.view === 'skyline') drawSkyline(t, fade); else drawOrbit(t, fade); }
+    if (st.graph && fade > 0) { if (extraViews[st.view] && (st.view === 'globe' || st.view === 'candles') && extraViews[st.view].gl && !st.legacy2d) drawExtra(extraViews[st.view], t, fade, dt); else if (st.view === 'globe') drawGlobe(t, fade, dt); else if (st.view === 'candles') drawCandles(t, fade); else if (extraViews[st.view]) drawExtra(extraViews[st.view], t, fade, dt); else if (st.view === 'bubbles') drawBubbles(t, fade); else if (st.view === 'skyline') drawSkyline(t, fade); else drawOrbit(t, fade); }
     ctx.globalAlpha = 1; hudT += dt; if (hudT > 20) { hudT = 0; renderHud(); }
   }
 
