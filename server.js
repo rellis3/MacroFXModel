@@ -532,7 +532,7 @@ class _NodeWorker extends _RawNodeWorker {
     this.once('exit', () => _liveWorkers.delete(id));
   }
 }   // fx-factor-v2 / ou-pairs research runs, the corr-history build (off the main loop)
-import { containerProcesses as _containerProcesses } from './js/processMemory.js';   // /api/services -> processes: every OS process in the container, grouped by bot, with its memory
+import { containerProcesses as _containerProcesses, topMappings as _topMappings } from './js/processMemory.js';   // /api/services -> processes: every OS process in the container, grouped by bot, with its memory
 import { pearson as corrPearson } from './js/corrHistoryCompute.js';   // the corr-history maths (built in js/corrHistoryWorker.js)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { createSnapshotService as _createSnapshotService } from './js/deskSnapshotStore.js';   // the Desk Terminal time machine: CORE + FULL snapshots, KV window, R2 record (plans/TIME_MACHINE.md)
@@ -45884,6 +45884,7 @@ app.get('/api/services', (req, res) => {
       m1Loads: { active: _m1LoadStats.active(), waiting: _m1LoadStats.waiting(), peakWaiting: _m1LoadStats.peakWaiting, total: _m1LoadStats.total },
       workers: [..._liveWorkers.values()].map(x => ({ file: x.label, ageSec: Math.round((Date.now() - x.since) / 1000), maxOldMb: x.maxOldMb })),
       trace: _memTrace,
+      mappings: _memShots.list,
       sampledAt: new Date().toISOString(),
       note: 'This process only, not the container total (start.sh bots run as separate OS processes with their own RSS Railway meters separately). '
           + 'peakRssMB is the highest 60s sample since boot, not the true peak, and resets on every redeploy — there is no R2 persistence for '
@@ -47571,7 +47572,11 @@ function _memTracePush(m = process.memoryUsage()) {
   const mb = n => Math.round(n / 1048576);
   _memTrace.push({ t: new Date().toISOString().slice(11, 19), rss: mb(m.rss), heap: mb(m.heapUsed), ext: mb(m.external + m.arrayBuffers), other: mb(m.rss - m.heapTotal - m.external), w: [..._liveWorkers.values()].map(x => x.label).join(',') || null });
   if (_memTrace.length > 360) _memTrace.shift();
+  // a jump of more than 400 MB between two samples (or the two fixed checkpoints) takes a look inside the process: which kind of memory grew. At most 6 per boot.
+  const prev = _memTrace.at(-2), jump = prev && m.rss - prev.rss * 1048576 > 400 * 1048576, up = Date.now() - _serverBootedAt, cp = (up > 90_000 && !_memShots.cp1) || (up > 600_000 && !_memShots.cp2);
+  if ((jump || cp) && _memShots.list.length < 6) { if (cp) { if (up > 600_000) _memShots.cp2 = true; else _memShots.cp1 = true; } try { _memShots.list.push({ t: _memTrace.at(-1).t, rssMB: mb(m.rss), why: jump ? `+${mb(m.rss - prev.rss * 1048576)} MB since the last sample` : 'checkpoint', top: _topMappings(8) }); } catch (e) { /* diagnostic only */ } }
 }
+const _memShots = { list: [], cp1: false, cp2: false };
 { const fast = setInterval(() => { if (Date.now() - _serverBootedAt > 600_000) { clearInterval(fast); return; } _memTracePush(); }, 5000); fast.unref?.(); }
 
 svcInterval('monitor', monitorTick, MONITOR_MS);

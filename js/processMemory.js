@@ -69,3 +69,18 @@ export function withPeaks(sum) {
 }
 /** The live container, or null off Linux. */
 export const containerProcesses = () => withPeaks(summarise(readProcs()));
+
+/**
+ * Where this process's resident memory sits, from its own /proc/self/smaps (Linux only, read-only): mappings grouped by what they are (the heap, anonymous memory, a thread stack, a file), biggest first.
+ * It answers what the node counters cannot: when RSS is 4 GB and the JS heap is 0.5 GB, which kind of memory holds the rest. The read costs about 100 ms on a 4 GB process, so the server only takes it at a few moments.
+ */
+export function topMappings(n = 8, fsApi = fs, file = '/proc/self/smaps') {
+  let txt; try { txt = String(fsApi.readFileSync(file)); } catch (e) { return null; }
+  const groups = new Map(); let cur = null;
+  for (const line of txt.split(/\r?\n/)) {
+    const h = /^[0-9a-f]+-[0-9a-f]+\s+(\S+)\s+\S+\s+\S+\s+\d+\s*(.*)$/.exec(line);
+    if (h) { const path = h[2].trim(); cur = path.startsWith('[') ? path.replace(/:\d+\]$/, ']') : path ? path.split('/').pop() : `anonymous ${h[1]}`; if (!groups.has(cur)) groups.set(cur, { name: cur, mappings: 0, rssKB: 0 }); groups.get(cur).mappings++; continue; }
+    const r = /^Rss:\s+(\d+) kB/.exec(line); if (r && cur) groups.get(cur).rssKB += +r[1];
+  }
+  return [...groups.values()].sort((a, b) => b.rssKB - a.rssKB).slice(0, n).map(g => ({ name: g.name, mappings: g.mappings, rssMB: Math.round(g.rssKB / 1024) }));
+}

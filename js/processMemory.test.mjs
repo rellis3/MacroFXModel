@@ -28,3 +28,13 @@ test('readProcs parses /proc and returns null where there is none; kernel thread
   assert.deepEqual(readProcs('/p', fsApi), [{ pid: 12, ppid: 1, rssKB: 2048, cmd: 'node server.js' }]);
   assert.equal(readProcs('/nonexistent-dir-for-test'), null); assert.equal(summarise(null), null);
 });
+
+import { topMappings } from './processMemory.js';
+test('topMappings groups /proc smaps by what each mapping is and sorts by resident size; null where there is no smaps', () => {
+  const smaps = ['55d0-55d9 r-xp 00000000 08:01 123 /usr/bin/node', 'Size: 100 kB', 'Rss: 2048 kB', '7f00-7f40 rw-p 00000000 00:00 0', 'Size: 9999 kB', 'Rss: 4194304 kB',
+    '7f50-7f60 rw-p 00000000 00:00 0 [heap]', 'Rss: 1024 kB', '7ff0-7ff1 rw-p 00000000 00:00 0 [stack:1234]', 'Rss: 512 kB', '7ff2-7ff3 rw-p 00000000 00:00 0 [stack:1235]', 'Rss: 256 kB'].join('\n');
+  const top = topMappings(8, { readFileSync: () => smaps });
+  assert.equal(top[0].name, 'anonymous rw-p'); assert.equal(top[0].rssMB, 4096);
+  assert.equal(top.find(x => x.name === 'node').rssMB, 2); assert.equal(top.find(x => x.name === '[stack]').mappings, 2); assert.equal(top.find(x => x.name === '[stack]').rssMB, 1);
+  assert.equal(topMappings(8, { readFileSync: () => { throw new Error('none'); } }), null);
+});
