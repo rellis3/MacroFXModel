@@ -55,3 +55,14 @@ You can open a lot of doors. And research a lot into jump intensity and jump dif
 Brownian formula built into jump diffusion @C.OG
 
 **C.OG (17:30):** That's part of it. Then it's a jump added on top. To put it as simply as possible
+
+---
+
+**Addendum 2026-11-19** (the owner re-sent 5 screenshots of this thread; nothing else in them was new). A line the
+first transcription missed:
+
+**Jordan (17:07):** @Ewelina has set me up with an amazing forecasting tool. Kudos to her for that for sure
+
+Our inference: this is probably the same person as "Ewe", whose TradingView levels we compared against ours on
+2026-11-18/19 (memory `project-rival-levels-screenshots`). If so, Jordan's lines come from her tool, not from C.OG's
+forecaster.
