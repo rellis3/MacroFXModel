@@ -1,0 +1,1080 @@
+{
+ "built": "2026-11-22T11:32:10.618Z",
+ "commit": "e884cb9954fbf2e7cccf39fd4ddd82c7ae22ac70",
+ "repo": "rellis3/MacroFXModel",
+ "meta": {
+  "title": "Vol, Exhaustion & Trade-Management Research Inventory",
+  "date": "2026-11-22",
+  "scope": "Gold, NQ, EURUSD (plus the 63-track ladder-v2 rollout where relevant); CFD (OANDA M1) and futures (CME via NT8)",
+  "method": [
+   "Read-only. No code was changed and no backtest was re-run to build this inventory.",
+   "Four parallel reads of the research register (plans/RESEARCH_REGISTER.md) and every results file it points to, grouped as: forecasting models; level behaviour & exhaustion; VWAP & futures vs CFD; trade management & sessions.",
+   "A study counts as evidence only if a results file exists. Code alone is classed \"implemented but not evaluated\".",
+   "Every number on this page is quoted verbatim from its source file (the \"Proof\" line). The build script fails if a quote cannot be found, so a number here cannot drift from the file it cites."
+  ]
+ },
+ "statuses": [
+  "Complete",
+  "Partially complete",
+  "Needs validation",
+  "Not investigated",
+  "Inconclusive"
+ ],
+ "keyFacts": [
+  {
+   "k": "In-flight elsewhere",
+   "v": "ladder-per-line",
+   "d": "Jordan's best HL/OH/OL/OC forecast, CFD + futures. Registered, not scored"
+  },
+  {
+   "k": "One σ beats live",
+   "v": "52 / 63",
+   "d": "ladder-v2 tracks VALIDATED, 0 NULL"
+  },
+  {
+   "k": "MFE median before MAE median",
+   "v": "≈ 49%",
+   "d": "at forecast-line touches, NQ / 6E / GC"
+  },
+  {
+   "k": "80% consumption rule",
+   "v": "refuted",
+   "d": "reversal odds 0.516 → 0.518, flat"
+  }
+ ],
+ "inFlight": {
+  "slug": "ladder-per-line",
+  "text": "This is almost certainly the \"two new volatility calcs on CFD and futures\" the other session is running. It answers Q1–Q5 below (a separate σ model per line type, chosen on that line's own score, vs one model for all lines; a best OC model; OC p50 as a take-profit after fading OH/OL p75). Pre-registered 2026-11-20, amendment A1 and scorer on main 2026-11-22, nothing scored yet. The register still names branch jvphone; the work is on main. Do not duplicate it.",
+  "proof": [
+   {
+    "file": "forge/LADDER_PER_LINE_PREREG.md",
+    "line": 3,
+    "text": "**Pre-registered 2026-11-20, before any per-line or OC-chosen ladder was scored.**",
+    "ok": true
+   },
+   {
+    "file": "forge/LADDER_PER_LINE_PREREG.md",
+    "line": 10,
+    "text": "| Instruments | NQ, GOLD, EURUSD. Parts A and B1 on CFD (OANDA mid M1) and futures (NT8). Part B2 on CFD only (bid/ask M1 exists for the CFDs only) |",
+    "ok": true
+   },
+   {
+    "file": "plans/RESEARCH_REGISTER.md",
+    "line": 25,
+    "text": "| ladder-per-line | Jordan (C.OG group member) via owner 2026-11-20: a separate sigma model per line type (HL/OH/OL) chosen on each line's own whole-distribution score beats one model for all lines? Plus the best OC model on OC's own score, and the OC p50 as a take-profit after fading OH/OL p75 | REGISTERED | jvphone | 2026-11-20 | `forge/LADDER_PER_LINE_PREREG.md` | | | next: rebuild pilot rows, positive controls…",
+    "ok": true
+   }
+  ]
+ },
+ "clarification": {
+  "title": "\"Exhaustion VALIDATED\" does not mean \"reversal\"",
+  "text": "In ladder-v2, exhaustion is the calibrated probability that price travels on to the next rung, given the time of day. It is validated (59/63 tracks). Every test of the lines as reversal points, fades or follows is NULL. Both statements are true at once: the forecast tells you how far price is likely to go, not which way.",
+  "proof": [
+   {
+    "file": "forge/EXHAUSTION_V2_NQ_PREREG.md",
+    "line": 24,
+    "text": "separately. This is a probability of further travel (\"is the move used up?\"), not a reversal or a trade.",
+    "ok": true
+   },
+   {
+    "file": "analysis/output/ladder-v2-rollout/RESULTS.md",
+    "line": 9,
+    "text": "- **Exhaustion:** 59 VALIDATED, 3 UNDERPOWERED, 0 NULL.",
+    "ok": true
+   },
+   {
+    "file": "analysis/output/reversal-zones/RESULTS.md",
+    "line": 20,
+    "text": "| H1 EXT, pullback 0.25σ before the next rung | 81.6% | 81.7% | −0.12pp [−0.50, +0.30] | NULL |",
+    "ok": true
+   }
+  ]
+ },
+ "sections": [
+  {
+   "id": "forecasting",
+   "title": "Forecasting",
+   "rows": [
+    {
+     "q": "Q1",
+     "area": "Best HL forecast",
+     "status": "Partially complete",
+     "cls": "Completed and validated",
+     "work": "ladder-v2 pilots (NQ, gold, EURUSD), 63-track rollout, lockbox holdout",
+     "result": "One σ model per instrument, picked walk-forward on a 30-cell regime-calibration score, beats the live yz_10 on 52 of 63 tracks (11 underpowered, 0 null). NQ: daily-range HAR, miss 1.49pp vs 2.40pp. Gold: HAR-CJ 1.55 vs 3.53. EURUSD: HAR-CJ 1.38 vs 2.81. Holdout HL hits 53/25/11% against targets 50/25/10.",
+     "remaining": "How much of the gain is the estimator and how much is refitting widths on NY-close bars (EURCHF and GBPCHF \"won\" with yz_10 itself). The 63-session holdout is too short to separate v2 from live.",
+     "proof": [
+      {
+       "file": "analysis/output/ladder-v2-nq/RESULTS.md",
+       "line": 17,
+       "text": "| 30-cell regime miss, chosen E6 | **1.49pp** | **1.82pp** |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-gold/RESULTS.md",
+       "line": 14,
+       "text": "| Chosen | **HAR-CJ** (5-min RV, jumps split out): **1.55pp** | **HAR-RV 5-min**: **1.44pp** |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-eurusd/RESULTS.md",
+       "line": 22,
+       "text": "| Chosen | **HAR-CJ 1.38pp** (tied with HAR-RV 5-min 1.33, sharper) | **SHAR 1.12pp** (tied with HAR-RV 5-min 1.06, sharper) |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-rollout/RESULTS.md",
+       "line": 8,
+       "text": "- **Sigma race:** 52 VALIDATED, 11 UNDERPOWERED, 0 NULL.",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-lockbox/RESULTS.md",
+       "line": 36,
+       "text": "| HL | 53 / 25 / 11 | 54 / 25 / 11 |",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q2, Q3",
+     "area": "Best OH and OL forecast",
+     "status": "Not investigated",
+     "cls": "Partially completed",
+     "work": "Scored only inside the shared 30-cell score; no model chosen per line",
+     "result": "Holdout OH 42/20/5%, OL 59/33/16% (targets 50/25/10). The lopsidedness is the holdout's downward drift and affects every calc equally.",
+     "remaining": "Does a model chosen per line type beat the shared one? That is ladder-per-line Part A (in flight).",
+     "proof": [
+      {
+       "file": "analysis/output/ladder-v2-lockbox/RESULTS.md",
+       "line": 37,
+       "text": "| OH | 42 / 20 / 5 | 40 / 20 / 6 |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-lockbox/RESULTS.md",
+       "line": 41,
+       "text": "- **The OH/OL imbalance is the holdout's direction.** These weeks fell more than they rose. It affects both calcs",
+       "ok": true
+      },
+      {
+       "file": "forge/LADDER_PER_LINE_PREREG.md",
+       "line": 17,
+       "text": "**Part A.** Each line type (HL, OH, OL) gets the σ model that forecasts it best, judged on that line's whole distribution and chosen on earlier years only. Does that ladder beat the one-model ladder, where one σ is chosen for all lines? Our mixing study (`ladder-mix-2020s`) chose per percentile, per regime and per 30-cell map, all on the tail-hit score. Three choices, one per line type, each on that line's own who…",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q4",
+     "area": "Best OC forecast, and its KPI",
+     "status": "Not investigated",
+     "cls": "Not yet investigated",
+     "work": "OC was never part of model selection, only of the 12-rung guard",
+     "result": "No OC-specific model exists. ladder-per-line Part B1 will choose OC on mean pinball loss, the same accuracy score as the other lines. That rewards predicting the close well, which is exactly what Jordan warned against for an exhaustion use. Part B2 (OC p50 as a take-profit) is the only purpose-based measure planned.",
+     "remaining": "What KPI fits OC's job? It can still be amended before ladder-per-line scores.",
+     "proof": [
+      {
+       "file": "forge/LADDER_PER_LINE_PREREG.md",
+       "line": 19,
+       "text": "**Part B1.** Does an OC model chosen on OC's own score beat the one-model ladder's OC lines? The race score never included OC. As context, how far is the OC p50 line from the OH/OL p50 line? Under a random walk the running maximum and |close − open| share one distribution, so they should be close.",
+       "ok": true
+      },
+      {
+       "file": "forge/LADDER_PER_LINE_PREREG.md",
+       "line": 34,
+       "text": "- **PRIMARY, per quantity q:** mean pinball loss over the five τ, in % of the open. It is a proper score for the whole distribution, rewarding calibration and sharpness together.",
+       "ok": true
+      },
+      {
+       "file": "forge/LADDER_PER_LINE_PREREG.md",
+       "line": 21,
+       "text": "**Part B2.** As Jordan suggests, use the chosen OC line as a take-profit. Fade the first touch of the per-line OH/OL p75 line and take profit at the same-side OC p50 line. Does that make money after costs, and does the OC level beat take-profits placed at other distances?",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q5",
+     "area": "Separate models per objective vs one shared model",
+     "status": "Partially complete",
+     "cls": "Completed and validated",
+     "work": "ladder-mix-2020s",
+     "result": "Choosing a σ per percentile: NULL (+0.02pp). Per regime and per cell: within noise. The picks were unstable year to year. Verdict: keep one σ. Widths are already fitted separately per line and percentile on that one σ, so a \"per-percentile ladder\" already exists in that sense.",
+     "remaining": "Per line type on pinball is untested (ladder-per-line). Expect the same instability problem.",
+     "proof": [
+      {
+       "file": "analysis/output/ladder-mix-2020s/RESULTS.md",
+       "line": 18,
+       "text": "| S2 σ per percentile (p75 / p90) | 1.95 | +0.02 [−0.14, +0.23] | **NULL** |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-mix-2020s/RESULTS.md",
+       "line": 16,
+       "text": "| S0 live yz_10 | 3.10 | +1.18 [+0.30, +1.43] | — (one σ beats live) |",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q6",
+     "area": "P50 / P75 / P90 calibration",
+     "status": "Needs validation",
+     "cls": "Completed and validated (with gaps)",
+     "work": "ladder-v2 σ-quintile tables, day-reconstruction M6, nq-line-calibration-audit",
+     "result": "v2 removes the live σ's regime blindness (NQ p75 hits, quiet → loud fifth: live 35.7% → 21.3%; v2 25.3% → 25.8%). p90 is a 10% boundary (8.6–10.7%). Event days miss badly: on CPI/NFP/FOMC days the p75 was exceeded 34–48% of the time instead of 25%.",
+     "remaining": "Event multipliers are still unfitted (runbook 1.5). No forward record yet.",
+     "proof": [
+      {
+       "file": "analysis/output/ladder-v2-nq/RESULTS.md",
+       "line": 31,
+       "text": "| C live yz_10 | 35.7 / 12.6 | 26.9 / 10.1 | 27.4 / 8.8 | 26.2 / 10.1 | 21.3 / 7.4 |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-nq/RESULTS.md",
+       "line": 32,
+       "text": "| C har_rv_log | 25.3 / 8.7 | 24.4 / 9.4 | 24.0 / 8.1 | 26.9 / 11.0 | 25.8 / 10.5 |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/day-reconstruction/m6/REPORT.md",
+       "line": 24,
+       "text": "| Q5 Is p90 a 10% boundary? (B1) | **Consistent with 10% ±3pp in 9 of 9** referenced events. Robust to untagged days | Each p90 event happens about 8.6–10.7% of days, as promised | Rates outside about 7.2–12.1% | — |",
+       "ok": true
+      },
+      {
+       "file": "plans/RESEARCH_REGISTER.md",
+       "line": 94,
+       "text": "| nq-line-calibration-audit | Exploratory, owner-asked: how accurate are the NQ forecast lines (PROD pit_* vs walk-forward v3 SI), by year, vol tercile, event tag, weekday; rank correlation vs ATR20. Descriptive | EXPLORATORY | main | 2026-11-02 | | `analysis/output/nq-v3-lines-explore/calnq.py` | | done: overall calibrated; PROD too narrow on calm days (H->L p50 exceeded 63.8%) and too wide on busy (46.4%), v3 fi…",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q7",
+     "area": "Does the best model differ by asset?",
+     "status": "Complete",
+     "cls": "Completed and validated",
+     "work": "ladder-v2 rollout, 63 instrument-tracks",
+     "result": "Yes. Intraday 5-min RV HAR variants win on FX and gold, daily-range HAR on NQ, and a mix elsewhere (GARCH-t on SPX500 CFD, HAR+GARCH-t on USDCAD and CADCHF).",
+     "remaining": "—",
+     "proof": [
+      {
+       "file": "analysis/output/ladder-v2-rollout/RESULTS.md",
+       "line": 18,
+       "text": "| SPX500 | C | VALIDATED | GARCH-t | 1.69 | 2.50 | [-1.55, -0.36] | — | kept |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-rollout/RESULTS.md",
+       "line": 32,
+       "text": "| USDCAD | C | VALIDATED | HAR + GARCH-t | 1.49 | 3.21 | [-2.17, -0.94] | — | kept |",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "§4–5",
+     "area": "QLIKE, MAE loss, blends, implied vol",
+     "status": "Inconclusive",
+     "cls": "Completed but conflicting",
+     "work": "ladder-v2 pilots and IV races, vol-layer confirms, older IV-ladder pinball studies",
+     "result": "50/50 blends lose on the pilots (gold HAR+GARCH-t 2.24pp vs HAR-CJ 1.55) but win 6 rollout tracks. IV over-corrects on regime calibration (EURUSD best IV arm 1.85 vs 1.28; slopes 1.13–1.16) while older pinball studies favoured it. No MAE-loss comparison exists. QLIKE is reported, never used to decide.",
+     "remaining": "No head-to-head of the ladder-v2 σ against the vol-layer \"chosen σ\" with its frozen feedback rule.",
+     "proof": [
+      {
+       "file": "analysis/output/ladder-v2-gold/RESULTS.md",
+       "line": 48,
+       "text": "| HAR + GARCH-t 50/50 | 2.24 | 2.03 |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-eurusd/RESULTS.md",
+       "line": 46,
+       "text": "- **The IV arms do not win.** Best IV arm V3 (IV-adjusted) 1.85pp; best non-IV arm (HAR-RV 5-min) 1.28pp; the",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-eurusd/RESULTS.md",
+       "line": 47,
+       "text": "difference is +0.57pp [−0.18, +0.97]. Pure IV (2.65) and HAR + IV (2.08) over-correct (slopes 1.13–1.16), as on NQ.",
+       "ok": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "levels",
+   "title": "Forecast-level behaviour & exhaustion",
+   "rows": [
+    {
+     "q": "Q8",
+     "area": "How often levels are reached",
+     "status": "Complete",
+     "cls": "Completed and validated",
+     "work": "ladder-v2 lockbox, exhaustion-v2 (NQ, gold, EURUSD + rollout), day-reconstruction M3/M6",
+     "result": "Touch rates are calibrated. After a touch, the next rung is reached 67.4% of the time before 07:00 London but only 26.4% after 16:00. The plain ladder odds say a flat ~44%. The clock-aware exhaustion model is validated on 59 of 63 tracks.",
+     "remaining": "The late day is still slightly over-called.",
+     "proof": [
+      {
+       "file": "analysis/output/exhaustion-v2-nq/RESULTS.md",
+       "line": 33,
+       "text": "| 00–07 (n 626) | 67.4% | 49.8% | 59.5% | 66.2% |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/exhaustion-v2-nq/RESULTS.md",
+       "line": 36,
+       "text": "| 16–22 (n 2,648) | 26.4% | 43.8% | 23.7% | 32.4% |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-rollout/RESULTS.md",
+       "line": 9,
+       "text": "- **Exhaustion:** 59 VALIDATED, 3 UNDERPOWERED, 0 NULL.",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q9",
+     "area": "What happens after the first touch",
+     "status": "Complete",
+     "cls": "Completed and validated",
+     "work": "reversal-zones (21,567 touches vs placebo), day-reconstruction M7, trade-at-lines",
+     "result": "Lines are not reversal points. The chance of a 0.25σ pullback before the next rung is 81.6% at real lines vs 81.7% at shifted copies. The median overshoot is 0.174σ, the same as a random walk. Fade and follow trades at the lines are net negative after the spread.",
+     "remaining": "—",
+     "proof": [
+      {
+       "file": "analysis/output/reversal-zones/RESULTS.md",
+       "line": 20,
+       "text": "| H1 EXT, pullback 0.25σ before the next rung | 81.6% | 81.7% | −0.12pp [−0.50, +0.30] | NULL |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/reversal-zones/RESULTS.md",
+       "line": 24,
+       "text": "| H2 EXT, median overshoot before a 0.25σ pullback | 0.174σ | 0.177σ | −0.003σ [−0.007, +0.002] | NULL |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/trade-at-lines/RESULTS.md",
+       "line": 43,
+       "text": "- **After the spread, everything is negative.** That is what a random walk at the lines predicts. It agrees with the",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/day-reconstruction/m7/REPORT.md",
+       "line": 26,
+       "text": "| **R7 hard stop** | **Applies.** \"No tested effect met the pre-registered evidence standard.\" The direction programme on the existing production ladder closes and goes to synthesis. This is not a claim that no effect can exist (§5) |",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q10",
+     "area": "Does the number of retests matter?",
+     "status": "Needs validation",
+     "cls": "Completed but only exploratory",
+     "work": "line-touch-mae-futures (CME NQ / 6E / GC, 2016–2026)",
+     "result": "No. Back vs through is a coin flip at touch 1, 2, 3 and 4+ (about 48–52%). NQ p90 leans \"through\", which is drift.",
+     "remaining": "No pre-registration and no costed retest trade at forecast lines.",
+     "proof": [
+      {
+       "file": "analysis/output/line-touch-mae-futures/RESULTS.md",
+       "line": 29,
+       "text": "**1. Back vs through is a coin flip at every touch number.** Share of touches where the move back toward the open beat",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/line-touch-mae-futures/RESULTS.md",
+       "line": 34,
+       "text": "| NQ p50 | 48.6% | 50.4% | 50.9% | 50.8% |",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q11",
+     "area": "Range consumption and the 80% rule",
+     "status": "Complete",
+     "cls": "Completed and validated",
+     "work": "volatilityExhaustion market-state study, day-reconstruction M3/M6/M7, remaining-travel",
+     "result": "The 80% rule is refuted. Reversal odds at a fresh extreme are flat across budget used: 0.516 at 0–50% and 0.518 at 90–110%. High consumption by noon predicts a larger afternoon range, not a smaller one.",
+     "remaining": "—",
+     "proof": [
+      {
+       "file": "volatilityExhaustion/MARKET_STATE_FINDINGS.md",
+       "line": 104,
+       "text": "| 0–50% | 0.516 | 13,243 |",
+       "ok": true
+      },
+      {
+       "file": "volatilityExhaustion/MARKET_STATE_FINDINGS.md",
+       "line": 107,
+       "text": "| **90–110%** | **0.518** | 24,400 |",
+       "ok": true
+      },
+      {
+       "file": "volatilityExhaustion/MARKET_STATE_FINDINGS.md",
+       "line": 110,
+       "text": "**FLAT.** P(reversal) is ~0.50–0.52 at *every* budget level; the 90%+ bucket (0.518) is",
+       "ok": true
+      },
+      {
+       "file": "volatilityExhaustion/MARKET_STATE_FINDINGS.md",
+       "line": 60,
+       "text": "noon predicts *higher* afternoon range (e.g. EURUSD 1.36σ vs 1.26σ), **0/6** the other",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q12",
+     "area": "Approach speed",
+     "status": "Inconclusive",
+     "cls": "Completed (forecast-specific null)",
+     "work": "day-reconstruction M5, the two VWAP atlases",
+     "result": "No forecast-specific effect: none of the 12 forecast-minus-placebo differences is significant. Slow arrivals resolve less in both directions, at real and placebo lines alike. The two VWAP atlases disagree on which way speed points.",
+     "remaining": "Resolve the atlas conflict (different units and outcomes).",
+     "proof": [
+      {
+       "file": "analysis/output/day-reconstruction/m5/REPORT.md",
+       "line": 12,
+       "text": "- None of the 12 forecast-minus-placebo differences (Δ) is significant.",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/day-reconstruction/m5/REPORT.md",
+       "line": 18,
+       "text": "- The same effect appears at the placebo lines, so it describes how price moves, not information in the forecast's",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q13",
+     "area": "Rejection wicks and failed closes",
+     "status": "Partially complete",
+     "cls": "Partially completed",
+     "work": "LINE-REACTION (34 instruments)",
+     "result": "Candle shape adds nothing (log-loss ratio 1.000). The chance of rejection at the line equals its neighbours (line minus neighbours −0.001).",
+     "remaining": "A post-touch \"rotation\" event (the first H1 close back inside) against placebo has never been tested on the production ladder.",
+     "proof": [
+      {
+       "file": "analysis/output/line_reaction/RESULTS_chosen.md",
+       "line": 54,
+       "text": "- candle shape adds information: False (GBM full ÷ without 1.000 [0.999, 1.000])",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/line_reaction/RESULTS_chosen.md",
+       "line": 9,
+       "text": "| p50 | 0.486 [0.480, 0.492] | 0.488 [0.482, 0.494] | 0.487 [0.481, 0.493] | 0.484 [0.478, 0.490] | 0.482 [0.475, 0.489] | 0.482 [0.474, 0.490] | 0.484 [0.475, 0.492] | -0.001 [-0.008, 0.004] | no |",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q14",
+     "area": "Exhausted vs continuing moves",
+     "status": "Complete",
+     "cls": "Completed and validated",
+     "work": "exhaustion-v2, M3–M7, vol-line-touch-layers (984 layer-state cells)",
+     "result": "They can be told apart for how far price travels (the clock does it) but not for which way. No layer state in 984 cells separates them for direction.",
+     "remaining": "—",
+     "proof": [
+      {
+       "file": "plans/RESEARCH_REGISTER.md",
+       "line": 62,
+       "text": "| vol-line-touch-layers | Owner 2026-11-17: at first touches of the production PIT vol lines (O->H/O->L p50/p75/p90, 34 instruments, M1 bid/ask, net of spread and gaps), do the stage-4-confirmed layer inputs (over-reaction pull, sigma range error, bursts, vol-clock share left, vol-clock ratio, range used, spread) pick fades or follows that pay: (A) layer-state x block x rung x side x shape cells selected on 2016-2…",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/exhaustion-v2-nq/RESULTS.md",
+       "line": 57,
+       "text": "time, not ~44%. One touched before 07:00 does so about 67% of the time. A driftless random walk on the intraday vol",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "§2",
+     "area": "Dynamic re-anchoring",
+     "status": "Inconclusive",
+     "cls": "Implemented but not properly evaluated",
+     "work": "Projected H/L levels in M3–M7; DynAnchorBot",
+     "result": "Projected levels behave like placebo levels. The chart's Projected H/L uses the current bar's extreme, which is lookahead. DynAnchorBot's \"Calmar 9.97 validated config\" has no pre-registration or register row.",
+     "remaining": "Only worth reopening with a lookahead-free build and a pre-registration.",
+     "proof": [
+      {
+       "file": "analysis/output/day-reconstruction/SYNTHESIS.md",
+       "line": 90,
+       "text": "| **D. A different level construction** | Colleagues may use C.OG's constant × σ lines, the TradingView export, or the chart's Projected H/L (which uses the current bar's extreme, a lookahead the research version removes; VALIDATION). NQ production σ differs from research by ~2%. Level P2: identity adds no reach information across 13 families | **Unlikely to explain an edge**: no construction tested shows forecast…",
+       "ok": true
+      },
+      {
+       "file": "DynAnchorBot/dyn_anchor_mt5_bot.py",
+       "line": 3,
+       "text": "BULL+BEAR + Counter-regime filter (Calmar 9.97 validated config)",
+       "ok": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "vwap",
+   "title": "VWAP",
+   "rows": [
+    {
+     "q": "Q15",
+     "area": "Futures VWAP vs CFD VWAP",
+     "status": "Not investigated",
+     "cls": "Partially completed",
+     "work": "nq-futures-line-race; noise-area prereg data check",
+     "result": "CFD tick volume correlates only 0.43 (ES) and 0.66 (NQ) with CME contract volume. Yet line-touch outcomes are the same on both sources. Every study reset VWAP at the UTC day or London midnight. Jordan's per-instrument open-to-close session reset has never been used.",
+     "remaining": "Measure the actual gap between the two VWAPs, using a trading-session reset.",
+     "proof": [
+      {
+       "file": "forge/NOISE_AREA_MOMENTUM_PREREG.md",
+       "line": 180,
+       "text": "differs by ~2.5 bp; tick volume correlates only 0.43 / 0.66 with contract volume, so VWAP on filled days is a proxy.",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/day-reconstruction/futures_check/RESULTS.md",
+       "line": 23,
+       "text": "| Fixed p75 | futures | 746 | 34.0 / 39.9 / 26.0% | -0.059 [-0.118, -0.001] | +0.039 [-0.033, +0.112] | +0.038 [-0.001, +0.074] |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/day-reconstruction/futures_check/RESULTS.md",
+       "line": 24,
+       "text": "| Fixed p75 | CFD | 752 | 34.2 / 39.8 / 26.1% | -0.061 [-0.118, -0.006] | +0.028 [-0.036, +0.099] | +0.045 [+0.007, +0.082] |",
+       "ok": true
+      },
+      {
+       "file": "MD files/VWAP_REVERSION_FINDINGS.md",
+       "line": 34,
+       "text": "Setup: session anchor = UTC day; entry band = 2.0σ; stop = 1.5σ; cost = 0.012%",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q16",
+     "area": "Return to VWAP after an extension",
+     "status": "Needs validation",
+     "cls": "Completed but only exploratory",
+     "work": "VWAP extension atlas, gold fixed-sigma atlas",
+     "result": "After a ≥1 ATR stretch, price touches VWAP again the same day only 11.5–29.5% of the time (NAS100). Against a random-walk control, gold's deep-band returns are real: at ±3σ, 27–30% vs 4.8%. Cells hold only ~100–200 events.",
+     "remaining": "Not yet conditioned on forecast-rung extensions using futures VWAP.",
+     "proof": [
+      {
+       "file": "education/vwap_extension_atlas/RESULTS.md",
+       "line": 83,
+       "text": "| NAS100 | up | 104 | **11.5%** | 87.5% | 88.5% | 1.26×ATR |",
+       "ok": true
+      },
+      {
+       "file": "education/vwap_extension_atlas/RESULTS.md",
+       "line": 84,
+       "text": "| NAS100 | down | 200 | **29.5%** | 84.0% | 70.5% | 1.33×ATR |",
+       "ok": true
+      },
+      {
+       "file": "MD files/GOLD_VWAP_FIXED_SIGMA_FINDINGS.md",
+       "line": 317,
+       "text": "| ±3σ | 29–30% / 27% | 4.8% |",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q17",
+     "area": "VWAP deviation bands",
+     "status": "Complete",
+     "cls": "Completed and validated (negative)",
+     "work": "VWAP reversion (26 pairs, 2016–2026, costed), fixed-sigma atlas",
+     "result": "Band fades: 0 of 26 pairs positive out of sample (t −46.6). The VWAP bounce and band-follow modes also lose on every pair. Your original ~14-day VWAP extension indicator was not found in the repo; the closest is a frozen 20-session RMS σ band.",
+     "remaining": "Locate the original Pine if it should be tested.",
+     "proof": [
+      {
+       "file": "MD files/VWAP_REVERSION_FINDINGS.md",
+       "line": 42,
+       "text": "| `band_fade` (A) | 32,715 | **−0.0135%** | **−46.6** | 38.8% | **0 / 26** | −0.28 |",
+       "ok": true
+      },
+      {
+       "file": "MD files/VWAP_REVERSION_FINDINGS.md",
+       "line": 43,
+       "text": "| `vwap_bounce` (B) | 32,156 | **−0.0127%** | **−21.7** | 41.2% | **0 / 26** | −0.15 |",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q18, Q24",
+     "area": "VWAP as a target vs an MFE target",
+     "status": "Partially complete",
+     "cls": "Completed (strict rule) + exploratory",
+     "work": "futures-exhaustion-vwap (CME NQ / 6E / GC); line-touch-mae-futures v3",
+     "result": "VWAP target: 0 of 117 cells survive, 115 of 117 negative. Median-MFE target: reached first 48–50% of the time. Neither beats a coin flip, but both were tested on line-touch entries, which have no edge.",
+     "remaining": "Untested on a directional entry that has an edge.",
+     "proof": [
+      {
+       "file": "analysis/output/futures-exhaustion-vwap/RESULTS.md",
+       "line": 10,
+       "text": "No cell passed. Under BH q = 0.10 across 117 cells, **0 survived discovery**: 115 of 117 discovery means are negative",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/line-touch-mae-futures/RESULTS.md",
+       "line": 123,
+       "text": "| NQ (stop 103 t, target 94 t) | 37.4 / 37.6 / 0.2 / 24.7 → 49.7% | 37.5 / 37.8 / 0.2 / 24.5 → 49.7% |",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q19",
+     "area": "Does VWAP add information beyond the forecast?",
+     "status": "Complete",
+     "cls": "Completed and validated (negative)",
+     "work": "exhaustion-v2 X8 (VWAP distance + touch volume), vwap-stretch-line-touch",
+     "result": "No. Adding VWAP distance and volume does not improve the exhaustion model (NQ 3.51pp vs 3.24pp for the best). Price is ≥1.5 VWAP SDs away at 95–98% of p75/p90 touches anyway, so \"stretched\" isn't a usable condition.",
+     "remaining": "—",
+     "proof": [
+      {
+       "file": "analysis/output/exhaustion-v2-nq/RESULTS.md",
+       "line": 52,
+       "text": "| X8 (F only) | logistic on X2 + VWAP distance + touch volume | 3.51 (F) | 0.942 (F) |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/vwap-stretch-line-touch/RESULTS.md",
+       "line": 10,
+       "text": "- **The literal rule is not a condition.** At the first touch of a v3 p75/p90 line, price is ≥ 1.5 session-VWAP SDs away on **95–98% of days**:",
+       "ok": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "source",
+   "title": "Futures vs CFD data",
+   "rows": [
+    {
+     "q": "§7",
+     "area": "Ranges, models and data source",
+     "status": "Partially complete",
+     "cls": "Completed and validated (ranges); not investigated (source choice)",
+     "work": "ladder-v2 CFD-vs-futures comparison, rollout, futures-cost-rescore",
+     "result": "NQ futures and the NAS100 CFD have the same range distribution (ratios 0.994–1.007). Gold futures ranges are 2–6% larger, so gold keeps its own widths. Both tracks validate, but the winning model can differ by source (gold futures HAR-RV 5-min 1.44pp vs CFD HAR-CJ 1.55pp).",
+     "remaining": "Which source should generate forecasts and which should execute is undecided. Futures inputs feeding the CFD forecast are untested (runbook 2.2).",
+     "proof": [
+      {
+       "file": "analysis/output/ladder-v2-nq/RESULTS.md",
+       "line": 71,
+       "text": "and 1.007, with every 90% CI inside [0.988, 1.017]. NQ futures and the NAS100 CFD have **the same** daily range",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-gold/RESULTS.md",
+       "line": 77,
+       "text": "On 2,660 common London dates the futures ranges are 2–6% larger in % terms than the OANDA CFD's (HL p50 ratio 1.040",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/ladder-v2-gold/RESULTS.md",
+       "line": 14,
+       "text": "| Chosen | **HAR-CJ** (5-min RV, jumps split out): **1.55pp** | **HAR-RV 5-min**: **1.44pp** |",
+       "ok": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "trade",
+   "title": "Trade management",
+   "rows": [
+    {
+     "q": "Q20",
+     "area": "MFE median reached before MAE median (Jordan)",
+     "status": "Needs validation",
+     "cls": "Completed but only exploratory",
+     "work": "line-touch-mae-futures v3 race (CME, 2016–2026); raw-level-mfe-mae (12 CFDs)",
+     "result": "Already answered for line touches: a coin flip. With the stop at median MAE and the target at median MFE, the target comes first 49.7% (NQ), 49.0% (6E) and 48.2% (GC) of the time. Real lines equal placebo lines (MFE > MAE 50.0%). No costs applied.",
+     "remaining": "The same question on a strategy's own entries (Application A) has never been asked.",
+     "proof": [
+      {
+       "file": "analysis/output/line-touch-mae-futures/RESULTS.md",
+       "line": 123,
+       "text": "| NQ (stop 103 t, target 94 t) | 37.4 / 37.6 / 0.2 / 24.7 → 49.7% | 37.5 / 37.8 / 0.2 / 24.5 → 49.7% |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/line-touch-mae-futures/RESULTS.md",
+       "line": 124,
+       "text": "| 6E (stop 18 t, target 17 t) | 40.3 / 41.8 / 0.2 / 17.7 → 49.0% | 40.3 / 41.8 / 0.1 / 17.7 → 49.0% |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/line-touch-mae-futures/RESULTS.md",
+       "line": 125,
+       "text": "| GC (stop 28 t, target 27 t) | 36.9 / 39.2 / 0.4 / 23.5 → 48.2% | 36.7 / 39.3 / 0.4 / 23.6 → 48.0% |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/raw-level-mfe-mae/RESULTS.md",
+       "line": 36,
+       "text": "| All lines, real touches | 0.29 / 0.65 / 1.17 U | 0.30 / 0.67 / 1.21 U | **50.0%** |",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q21",
+     "area": "MFE / MAE percentiles",
+     "status": "Complete",
+     "cls": "Completed but only exploratory",
+     "work": "line-touch-mae-futures tables, raw-level-mfe-mae",
+     "result": "Full p25–p90 tables exist by touch, hour and weekday. Lines widen both tails equally (p90 1.17U vs 0.78U at placebo), so they change the spread of outcomes, not the direction.",
+     "remaining": "—",
+     "proof": [
+      {
+       "file": "analysis/output/raw-level-mfe-mae/RESULTS.md",
+       "line": 36,
+       "text": "| All lines, real touches | 0.29 / 0.65 / 1.17 U | 0.30 / 0.67 / 1.21 U | **50.0%** |",
+       "ok": true
+      },
+      {
+       "file": "plans/RESEARCH_REGISTER.md",
+       "line": 41,
+       "text": "| raw-level-mfe-mae | For every first touch of every raw line (EXT/HL/OC p50/p75/p90 from raw-level-revert-continue, plus prior-session high/low), how far does price go for and against a fade/follow before the close (MFE/MAE, in trailing-median-range units), does a line change that versus a same-time placebo, and which stop x target grid cells, if any, have positive net expectancy? 12 instruments 2019-2026-08-21 (…",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q22",
+     "area": "Stop distances",
+     "status": "Partially complete",
+     "cls": "Completed and validated (σ stops)",
+     "work": "vol-layer-stops-confirm (34 instruments, unseen 2023–2026 bid/ask), raw-level-mfe-mae grid",
+     "result": "Stops in σ units are validated: their hit rate is steadier month to month than fixed-width stops (+3.86pp), and the stop-odds model beats σ alone (Brier skill +4.73%). There is no market-wide noise threshold. 0 of 1,008 stop × target cells is profitable.",
+     "remaining": "A best stop distance must come from a system's own MAE/MFE, and needs an entry that has an edge.",
+     "proof": [
+      {
+       "file": "analysis/output/vol-layer-stops-confirm/RESULTS.md",
+       "line": 10,
+       "text": "- **`-steady` VALIDATED.** A σ stop's hit rate is steadier month to month than a fixed-width stop's: Δ SD +3.86pp [+1.85, +5.78]. Every check holds. The prereg expected this cell to be underpowered. It passed anyway.",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/vol-layer-stops-confirm/RESULTS.md",
+       "line": 9,
+       "text": "- **`-skill` VALIDATED.** The frozen stop-odds model beats σ alone on unseen 2023-26 bid/ask data: Brier skill +4.73% [+4.46, +4.98]. Every check holds.",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/vol-layer-stops-confirm/RESULTS.md",
+       "line": 12,
+       "text": "- **`-noise` CONTEXT.** The pooled test passes: at 0.25σ and 0.5σ the excess is within ±0.016σ (−0.0027σ and −0.0032σ, Holm p 0.017). But the 2026 year check fails: −0.019σ at 0.5σ, just past the margin.",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/raw-level-mfe-mae/RESULTS.md",
+       "line": 57,
+       "text": "- **0 of 1,008 cells is profitable under both.** The \"kind\" fill makes tight-stop, wide-target trades look positive",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q23",
+     "area": "Targets: the forecast as a destination",
+     "status": "Complete",
+     "cls": "Completed and validated (negative)",
+     "work": "nq-forecast-target-ev (1,550 sessions), trade-at-lines, exit studies",
+     "result": "A forecast-line target adds nothing over plain holding: long at the London open with an O→C p75 limit made +0.027% per trade, but 0.026% less than just holding, and it sat at only the 81.5th percentile of shuffled forecasts.",
+     "remaining": "Only tested on NQ open-long and line-touch entries, not on a directional strategy with an edge.",
+     "proof": [
+      {
+       "file": "analysis/output/nq-forecast-target-ev/RESULTS.md",
+       "line": 14,
+       "text": "- P1 (long at the London open, limit exit at open + O→C p75, else out at 22:00) netted **+0.027% per trade (+4.3 pts, +$86 per NQ contract), 95% CI [−0.029, +0.086], t 0.9**. That is not significant.",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/nq-forecast-target-ev/RESULTS.md",
+       "line": 16,
+       "text": "- **P1 − B1 = −0.026% [−0.050, −0.003].** The forecast target cuts off the right tail of a drifting index. It lost to \"just hold\" in 63% of months.",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/nq-forecast-target-ev/RESULTS.md",
+       "line": 20,
+       "text": "- Same-quarter shuffled forecast (B4): P1 sits at the 81.5th percentile, below the 95th needed.",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q25",
+     "area": "Directional vs exhaustion target logic",
+     "status": "Inconclusive",
+     "cls": "Partially completed",
+     "work": "trade-at-lines, futures-exhaustion-vwap, Rule A",
+     "result": "Both are net negative wherever tested. The only positive line-based system is Rule A (rich-day break), which is null before 2020. Its forward record is running.",
+     "remaining": "Rule A forward record (judged no earlier than 2027-10-29).",
+     "proof": [
+      {
+       "file": "plans/RESEARCH_REGISTER.md",
+       "line": 133,
+       "text": "| rule-a-pre2020 | Does rule A on the chosen v3 lines (backcast: betas/widths fitted on 2020-26 only) pay net of 2x spread in 2016-05 -> 2020-08? Prior exposure: the rich-break family was found on these years with v4 lines | BANKED | main | 2026-10-28 | `forge/RULE_A_PRE2020_PREREG.md` | `analysis/output/rule-a-pre2020/RESULTS.md` | rule-a-pre2020 | NULL: -0.040R [-0.161, +0.094] on 1,386 trades; lines calibrated;…",
+       "ok": true
+      },
+      {
+       "file": "plans/RESEARCH_REGISTER.md",
+       "line": 134,
+       "text": "| rule-a-book-forward | Forward record: rule A on the CHOSEN v3 lines (new paper-record arm, 2x spread) beside the CFD portfolio book rebuilt on days after 2026-08-21; (F1) corr upper bound < 0.20, (F2) rule A net R > 0; combined equal-risk book and clusters-only sizing descriptive | RUNNING | main | 2026-10-27 | `forge/RULE_A_BOOK_FORWARD_PREREG.md` | — | — | records daily from deploy; judge at the later of 2027-…",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q26",
+     "area": "Position size vs forecast volatility",
+     "status": "Complete",
+     "cls": "Completed and validated",
+     "work": "vol-layer-sizing-confirm (34 instruments, unseen 2023–2026)",
+     "result": "σ sizing steadies monthly risk compared with unscaled sizing (−0.075 [−0.106, −0.053]), on 34 of 34 instruments.",
+     "remaining": "—",
+     "proof": [
+      {
+       "file": "analysis/output/vol-layer-sizing-confirm/RESULTS.md",
+       "line": 10,
+       "text": "- σ sizing steadies monthly risk against unscaled: −0.075 [−0.106, −0.053].",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/vol-layer-sizing-confirm/RESULTS.md",
+       "line": 28,
+       "text": "| a: dev_F − dev_U | 44 months | −0.0753 | [−0.1055, −0.0529] | 0.045 | 0.05 | < 0.001 | **VALIDATED** |",
+       "ok": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "interaction",
+   "title": "Level interaction",
+   "rows": [
+    {
+     "q": "Q27, Q28",
+     "area": "Nearby levels: one level or a zone?",
+     "status": "Needs validation",
+     "cls": "Completed but only exploratory",
+     "work": "line-touch-mae-futures v2, reversal-zones",
+     "result": "Another line sits within 5 ticks on 17% (NQ), 67% (GC) and 81% (6E) of touches. Stacked touches travel about half as far both ways: stacks mean a quiet day, not a different direction. reversal-zones recommends drawing each line as a zone (the line to +0.17σ, outer edge +0.35σ).",
+     "remaining": "The stack split hasn't been re-read in σ units, and there is no pre-registration.",
+     "proof": [
+      {
+       "file": "analysis/output/line-touch-mae-futures/RESULTS.md",
+       "line": 89,
+       "text": "**Stacks are common.** \"Stacked\" = another line within 5 ticks at the touch minute: NQ 17%, GC 67%, 6E 81% of touches",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/line-touch-mae-futures/RESULTS.md",
+       "line": 104,
+       "text": "σ on stacked vs lone touches: NQ 76 vs 152 pts, GC $13.1 vs $20.7, 6E 47 vs 49 pips. Stacked = quiet day, so the",
+       "ok": true
+      },
+      {
+       "file": "plans/RESEARCH_REGISTER.md",
+       "line": 30,
+       "text": "| reversal-zones | Owner 2026-11-19: after a v2 ladder line is touched, how far past it does price run before the first real reversal (pullback 0.25/0.50 sigma), and does a reversal come before extension more often than at offset copies; NQ/GOLD/EURUSD CFD 2018-2026.08 | BANKED | claude/signal-bot-bias-analysis-bwr1qv | 2026-11-19 | `forge/REVERSAL_ZONES_PREREG.md` | `analysis/output/reversal-zones/RESULTS.md` | r…",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q29",
+     "area": "Is the further level better? (Jordan)",
+     "status": "Complete",
+     "cls": "Completed but only exploratory",
+     "work": "line-touch-mae-futures v3, futures-line-lab preset 03",
+     "result": "Tested; NULL. Keeping only the level further from price leaves the target-first share unchanged: NQ 49.7% → 49.7%, 6E 49.0% → 49.0%, GC 48.2% → 48.0%.",
+     "remaining": "—",
+     "proof": [
+      {
+       "file": "analysis/output/line-touch-mae-futures/RESULTS.md",
+       "line": 114,
+       "text": "**Better level** (Jordan: \"when several are close, take the one further from price\"): keep a touch only if no other line",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/line-touch-mae-futures/RESULTS.md",
+       "line": 123,
+       "text": "| NQ (stop 103 t, target 94 t) | 37.4 / 37.6 / 0.2 / 24.7 → 49.7% | 37.5 / 37.8 / 0.2 / 24.5 → 49.7% |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/line-touch-mae-futures/RESULTS.md",
+       "line": 125,
+       "text": "| GC (stop 28 t, target 27 t) | 36.9 / 39.2 / 0.4 / 23.5 → 48.2% | 36.7 / 39.3 / 0.4 / 23.6 → 48.0% |",
+       "ok": true
+      }
+     ]
+    },
+    {
+     "q": "Q30",
+     "area": "Confluence with VWAP, GEX and other levels",
+     "status": "Complete",
+     "cls": "Completed (null / underpowered)",
+     "work": "gex-ladder-confluence, futures-exhaustion-vwap, vwap-stretch-line-touch",
+     "result": "No confluence helps. At GEX-ladder confluence the bounce is 43.2% vs 47.2% without it (underpowered, wrong way). VWAP confluence: see Q18 and Q19.",
+     "remaining": "—",
+     "proof": [
+      {
+       "file": "oi_research_book/GEX_LADDER_CONFLUENCE_RESULTS.md",
+       "line": 9,
+       "text": "| P(bounce within 120 min of touch) | 43.2% (n = 308) | 47.2% |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/futures-exhaustion-vwap/RESULTS.md",
+       "line": 10,
+       "text": "No cell passed. Under BH q = 0.10 across 117 cells, **0 survived discovery**: 115 of 117 discovery means are negative",
+       "ok": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sessions",
+   "title": "Range & session research",
+   "rows": [
+    {
+     "q": "§8",
+     "area": "Asia range, session opens, range extensions",
+     "status": "Complete",
+     "cls": "Completed and validated (mostly negative)",
+     "work": "range-edge-limit-fade (24,006 trades), range-ladder-placebo-confirm, DailyOpenResearch, SessionResearch",
+     "result": "Fading the Asia range edges loses (−0.109R, on 32 of 34 instruments). The edges do revert slightly more than a shifted ladder on 15 of 15 instruments, which is context, not a tradeable edge. Range persists across session handoffs; direction does not.",
+     "remaining": "—",
+     "proof": [
+      {
+       "file": "analysis/output/range-edge-limit-fade/RESULTS.md",
+       "line": 13,
+       "text": "| T1 sell A_1 / buy A_0, target range mid (1:1) | 24,006 | **−0.109** | −0.124 … −0.093 | −13.6 |",
+       "ok": true
+      },
+      {
+       "file": "analysis/output/range-edge-limit-fade/RESULTS.md",
+       "line": 21,
+       "text": "the unseen 15 (−0.097), under the stress fill, in every year 2016–2026, and on 32 of 34 instruments (the two positives",
+       "ok": true
+      },
+      {
+       "file": "plans/RESEARCH_REGISTER.md",
+       "line": 240,
+       "text": "| range-ladder-placebo-confirm | On 15 instruments the first test never loaded, do the Asia/Monday range EDGES revert more than a shifted ladder? | BANKED | main | 2026-10-20 | `forge/RANGE_LADDER_PLACEBO_CONFIRM_PREREG.md` | `analysis/output/range-ladder-placebo-confirm/RESULTS.md` | range-ladder-placebo-confirm | validated: +2.92 pp, 15/15 instruments; relative only (Asia edges ~51.7% vs 48.3%), context not a tr…",
+       "ok": true
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "top5": [
+  {
+   "t": "What KPI should the OC forecast be judged on?",
+   "d": "ladder-per-line Part B1 will pick OC on pinball, which rewards predicting the close, the criterion Jordan warned against. B2 (OC as a take-profit) is the only purpose-based measure."
+  },
+  {
+   "t": "Jordan's MFE / MAE race on entries that have an edge",
+   "d": "Every MFE/MAE, stop and target result so far uses line-touch entries, which have no edge, so about 50/50 was guaranteed. Application A (a directional strategy's own trades) has never been tested. Rule A is the only candidate."
+  },
+  {
+   "t": "Session-reset futures VWAP vs CFD VWAP",
+   "d": "The gap between them has never been measured, and Jordan's per-instrument open-to-close reset has never been used."
+  },
+  {
+   "t": "The post-touch rotation event",
+   "d": "The first H1 close back inside, against placebo. It is the one exhaustion mechanism never tested on the production ladder."
+  },
+  {
+   "t": "Event-day calibration and a forward record",
+   "d": "The p75 was exceeded 34–48% of the time on CPI/NFP/FOMC days. Also unresolved: whether to trust the ladder-v2 σ or the vol-layer \"chosen σ\"."
+  }
+ ],
+ "dontRepeat": [
+  "50/50 blends and per-percentile model mixing (ladder-v2 pilots, ladder-mix-2020s)",
+  "Fading or following at forecast lines, including C.OG's own line and Setups A/B (trade-at-lines, reversal-zones, M7, cog_setups)",
+  "The 80% range-consumption fade (MARKET_STATE_FINDINGS, M3/M6/M7)",
+  "VWAP band fades, and VWAP as a target at line touches (VWAP_REVERSION_FINDINGS, futures-exhaustion-vwap)",
+  "Jordan's \"further level\" rule and retest counts (line-touch-mae-futures v2/v3)",
+  "Wick and volume shape at the line (LINE-REACTION)",
+  "Confluence with VWAP, GEX or Fib (gex-ladder-confluence, vol-asia-fib, live-range-confluence-book)",
+  "σ position sizing (vol-layer-sizing-confirm, already validated)",
+  "Forecast-as-target from the NQ open (nq-forecast-target-ev)",
+  "Futures-vs-CFD range ratios for NQ, 6E and gold (ladder-v2)"
+ ],
+ "conflicts": [
+  {
+   "t": "The brief vs the evidence",
+   "d": "\"Blends did not beat the best model\" holds for the pilots, but blends win 6 rollout tracks. The 80% rule is refuted, not just untested. \"Exhaustion validated\" means calibration, not reversal."
+  },
+  {
+   "t": "Implied vol",
+   "d": "Older pinball and QLIKE studies favour it; ladder-v2's regime calibration says it over-corrects (slopes 1.13–1.4)."
+  },
+  {
+   "t": "Approach speed",
+   "d": "The extension atlas says a grinding approach makes a return to VWAP less likely; the fixed-sigma atlas says a grind reverts and a spike continues. They use different units and outcomes."
+  },
+  {
+   "t": "Asia range",
+   "d": "A wide Asia lowers the odds of reaching the median band later (asia-range-london), while range compounds overall (remaining-travel). They measure different things; quote neither without the other."
+  },
+  {
+   "t": "Unaudited positives",
+   "d": "DynAnchorBot's \"Calmar 9.97\", the G1 \"+15.4pp reversal\" (CONDITIONAL_FADE_DESIGN.md) and volatilityExhaustion Phase 6's follow result. All predate the placebo-matched nulls and none has been re-tested with costs."
+  },
+  {
+   "t": "Housekeeping",
+   "d": "The register lists ladder-per-line on branch jvphone, but the work is on main. FORECASTER_SYSTEM_BLUEPRINT.md still prefers HAR-800, which is out of date against ladder-v2. The raw M1 and NT8 data are not in cloud containers, so new tests run on the owner's machine or need a data pull."
+  }
+ ],
+ "conflictProof": [
+  {
+   "file": "MD files/CONDITIONAL_FADE_DESIGN.md",
+   "line": 10,
+   "text": "**+15.4pp** reversal, robust across 5 types. The level placement carries real",
+   "ok": true
+  },
+  {
+   "file": "volatilityExhaustion/README.md",
+   "line": 281,
+   "text": "| OOS | 85.8% | −0.177σ | **+0.117σ** |",
+   "ok": true
+  }
+ ],
+ "next": {
+  "q": "What is the right KPI for the OC forecast, given that its job is to mark a reversal or take-profit point rather than to predict the close?",
+  "why": "It is the cheapest open question and sits squarely in the brief. It is also time-sensitive: ladder-per-line has not scored yet, so the OC KPI can still be amended now. Otherwise Part B1 will choose an OC model on the very criterion Jordan said not to use."
+ },
+ "proofCount": 95,
+ "sourceCount": 35
+}

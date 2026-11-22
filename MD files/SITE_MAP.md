@@ -130,6 +130,7 @@ Pages with a later date have genuinely been worked on since.
 | `reversion-proof.html`       | Per-day transparent check of median line vs actual reversion            | 🔬 Research  | ≤2026-08-09   | Verification tool                                              |
 | `vol-forecast-research.html` | Walk-forward evaluation of the daily forecast itself                    | 🔬 Research  | ≤2026-08-09   | Evaluates the forecast, not a strategy                         |
 | `vol-research-book.html`     | Chaptered answers to forecast-quality questions                         | 🔬 Research  | ≤2026-08-09   | Walk-forward, no lookahead                                     |
+| `vol-research-inventory.html` | Research inventory: what is known / tested / open on vol forecasting, exhaustion, VWAP, MFE/MAE, with verified proofs | 🔬 Research | 2026-11-22 | Read-only; quotes verified by scripts/vol-research-inventory/build.mjs |
 | `vumanchu-chart.html`        | Render the VuManChu WaveTrend pane as an image                          | 📚 Reference | ≤2026-08-09   | Render brick — no edge claim                                   |
 | `vumanchu-state.html`        | Live MTF VuManChu state + forward-validation scoring                    | 🟢 Live      | ≤2026-08-09   | Frozen 10-year table; fade/follow edge itself null             |
 
