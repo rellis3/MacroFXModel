@@ -193,14 +193,50 @@ export function buildNet(resp, { w = WINDOW, seed = 7 } = {}) {
 
 const f2 = v => (v >= 0 ? '' : 'minus ') + Math.abs(v).toFixed(2);
 const pairName = (net, a, b) => `${spokenName(a)} and ${spokenName(b)}`;
-/** The spoken script for the SHOW scene, from the real numbers. Short: the director waits for the narration. */
-export function netScript(net) {
+/** The spoken script for the SHOW scene in parts, each tagged with what it talks about (intro, hi, lo, group, change, outro): [{ act, text }] or null. */
+export function netScriptParts(net) {
   if (!net?.hi || !net?.lo) return null;
-  const s = [`This is the correlation network. Each market is a node, and markets that have moved together over the last ${net.window} trading days are pulled close, those that moved opposite are pushed apart.`];
-  s.push(`The tightest pair is ${pairName(net, net.hi.a, net.hi.b)}, at ${f2(net.hi.r)}${net.hi.shared ? ', though they share a currency, so part of that is arithmetic' : ''}.`);
-  s.push(`The most opposed pair is ${pairName(net, net.lo.a, net.lo.b)}, at ${f2(net.lo.r)}${net.lo.shared ? ', again partly arithmetic' : ''}.`);
-  const t = net.tight[0]; if (t) s.push(`The most tightly bound group is ${t.name.toLowerCase()}, averaging ${f2(t.mean)} inside the group.`);
-  const mv = net.change; if (mv && Math.abs(mv.delta) >= 0.15) s.push(`Over the last three months the biggest change is ${pairName(net, mv.a, mv.b)}, from ${f2(mv.then)} to ${f2(mv.now)}${Math.sign(mv.then) !== Math.sign(mv.now) && Math.abs(mv.then) >= 0.2 && Math.abs(mv.now) >= 0.2 ? ', a change of sign' : ''}.`);
-  s.push('This describes how these markets moved together in the past. It is not a relationship that persists, and it is not a forecast.');
-  return s.join(' ');
+  const s = [{ act: 'intro', text: `This is the correlation network. Each market is a node, and markets that have moved together over the last ${net.window} trading days are pulled close, those that moved opposite are pushed apart.` }];
+  s.push({ act: 'hi', text: `The tightest pair is ${pairName(net, net.hi.a, net.hi.b)}, at ${f2(net.hi.r)}${net.hi.shared ? ', though they share a currency, so part of that is arithmetic' : ''}.` });
+  s.push({ act: 'lo', text: `The most opposed pair is ${pairName(net, net.lo.a, net.lo.b)}, at ${f2(net.lo.r)}${net.lo.shared ? ', again partly arithmetic' : ''}.` });
+  const t = net.tight?.[0]; if (t) s.push({ act: 'group', text: `The most tightly bound group is ${t.name.toLowerCase()}, averaging ${f2(t.mean)} inside the group.` });
+  const mv = net.change; if (mv && Math.abs(mv.delta) >= 0.15) s.push({ act: 'change', text: `Over the last three months the biggest change is ${pairName(net, mv.a, mv.b)}, from ${f2(mv.then)} to ${f2(mv.now)}${Math.sign(mv.then) !== Math.sign(mv.now) && Math.abs(mv.then) >= 0.2 && Math.abs(mv.now) >= 0.2 ? ', a change of sign' : ''}.` });
+  s.push({ act: 'outro', text: 'This describes how these markets moved together in the past. It is not a relationship that persists, and it is not a forecast.' });
+  return s;
 }
+/** The spoken script for the SHOW scene, from the real numbers. Short: the director waits for the narration. */
+export function netScript(net) { const p = netScriptParts(net); return p ? p.map(x => x.text).join(' ') : null; }
+
+/**
+ * Where each act of the SHOW sits in the narration, by its share of the characters (the narrator reads at a steady pace): [{ act, a, b }] covering 0..1.
+ * The closing sentence is folded into the act before it (the camera stays on the headline while the caveat is read); the headline is the 3-month change when it is spoken, else the tightest pair.
+ */
+export function showActs(net) {
+  const parts = netScriptParts(net); if (!parts) return [];
+  const tot = parts.reduce((s, x) => s + x.text.length + 1, 0); let at = 0; const out = [];
+  for (const x of parts) { const a = at / tot; at += x.text.length + 1; if (x.act === 'outro' && out.length > 1) out[out.length - 1].b = 1; else out.push({ act: x.act, a, b: at / tot }); }
+  out[out.length - 1].b = 1; return out;
+}
+/** The act at progress p with a focus that eases in at its start and out at its end (not at the very end of the scene): { act, focus 0..1, k (0..1 through the act) }. */
+export function showAct(acts, p, edge = 0.04) {
+  const x = Math.max(0, Math.min(1, Number(p) || 0)), a = acts.find(s => x >= s.a && x < s.b) ?? acts[acts.length - 1];
+  if (!a) return { act: 'intro', focus: 0, k: 0 };
+  const inF = Math.min(1, (x - a.a) / edge), outF = a.b >= 1 ? 1 : Math.min(1, (a.b - x) / edge);
+  return { act: a.act, focus: a.act === 'intro' || a.act === 'outro' ? 0 : Math.max(0, Math.min(inF, outF)), k: (x - a.a) / Math.max(1e-9, a.b - a.a) };
+}
+/**
+ * The nodes an act frames (indices into ids): hi / lo = the pair; change = the pair plus each end's k strongest partners in m (the cluster around the headline pair);
+ * group = the tightest cluster's members. { nodes, pair: [i, j] | null }; empty when the act names nothing.
+ */
+export function actNodes(net, m, act, k = 2) {
+  const ix = id => net.ids.indexOf(id), none = { nodes: [], pair: null };
+  if (act === 'group') { const t = net.tight?.[0], c = t && CLUSTERS.find(x => x.id === t.id); return c ? { nodes: c.ids.map(ix).filter(i => i >= 0), pair: null } : none; }
+  const pr = act === 'hi' ? net.hi : act === 'lo' ? net.lo : act === 'change' ? net.change : null; if (!pr) return none;
+  const i = ix(pr.a), j = ix(pr.b); if (i < 0 || j < 0) return none;
+  const set = new Set([i, j]);
+  if (act === 'change' && m) for (const e of [i, j]) m[e].map((r, q) => ({ q, r: Number.isFinite(r) ? Math.abs(r) : NaN })).filter(x => x.q !== i && x.q !== j && Number.isFinite(x.r)).sort((x, y) => y.r - x.r).slice(0, k).forEach(x => set.add(x.q));
+  return { nodes: [...set], pair: [Math.min(i, j), Math.max(i, j)] };
+}
+
+/** Node radius (world units) for a move size 0..1: AREA proportional to the size above a small floor, so a reading never jumps. */
+export const nodeRadius = (size, rMax = 0.16, floor = 0.06) => rMax * Math.sqrt(floor + (1 - floor) * Math.max(0, Math.min(1, Number(size) || 0)));

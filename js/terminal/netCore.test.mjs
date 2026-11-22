@@ -135,3 +135,22 @@ test('the 3-month change is found and spoken, with the sign flip named', () => {
   assert.ok(['GOLD', 'SILVER'].some(k => [net.change.a, net.change.b].includes(k)));
   const t = netScript(net); assert.match(t, /last three months the biggest change/); assert.match(t, /change of sign/); assert.match(t, /not a forecast/);
 });
+
+test('SHOW acts: the script parts join to the script, acts cover 0..1 in narration order, the caveat stays on the headline, focus eases in', async () => {
+  const { netScriptParts, showActs, showAct, actNodes, nodeRadius } = await import('./netCore.js');
+  const net = buildNet({ ok: true, panel: flipPanel() }), parts = netScriptParts(net);
+  assert.equal(parts.map(x => x.text).join(' '), netScript(net));
+  const acts = showActs(net); assert.equal(acts[0].a, 0); assert.equal(acts.at(-1).b, 1);
+  for (let i = 1; i < acts.length; i++) assert.ok(Math.abs(acts[i].a - acts[i - 1].b) < 1e-12);
+  assert.deepEqual(acts.map(a => a.act), parts.map(x => x.act).filter(a => a !== 'outro'));
+  assert.equal(showAct(acts, 0).focus, 0); assert.equal(showAct(acts, 1).act, acts.at(-1).act); assert.equal(showAct(acts, 1).focus, 1);
+  const hi = acts.find(a => a.act === 'hi'), mid = showAct(acts, (hi.a + hi.b) / 2); assert.equal(mid.act, 'hi'); assert.equal(mid.focus, 1);
+  assert.ok(showAct(acts, hi.a + 0.01).focus < 1);
+  const ch = actNodes(net, net.m, 'change'); assert.ok(ch.nodes.length >= 2 && ch.nodes.length <= 6 && ch.pair[0] < ch.pair[1]);
+  assert.ok(ch.nodes.includes(net.ids.indexOf(net.change.a)) && ch.nodes.includes(net.ids.indexOf(net.change.b)));
+  assert.deepEqual(actNodes(net, net.m, 'hi').nodes.sort(), [net.ids.indexOf(net.hi.a), net.ids.indexOf(net.hi.b)].sort());
+  assert.deepEqual(actNodes(net, net.m, 'intro').nodes, []); assert.deepEqual(showActs(null), []);
+  // area proportional above a floor: monotone, smooth, capped
+  assert.ok(nodeRadius(0) > 0 && nodeRadius(0.5) > nodeRadius(0.25) && nodeRadius(2) === nodeRadius(1));
+  assert.ok(Math.abs(nodeRadius(1) ** 2 - nodeRadius(0.5) ** 2 - (nodeRadius(0.5) ** 2 - nodeRadius(0) ** 2)) < 1e-12);
+});
