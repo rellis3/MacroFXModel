@@ -436,6 +436,7 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
   };
   const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), voicePrefetch: t => voicePrefetch(t), voiceInfo: () => neural.info(), voiceBegin: () => neural.begin(), audioBus: () => audioBus(), voiceLabel: () => (st.voice ? (st.neural ? neural.label() : 'built-in voice') : 'voice off'), voiceOn: () => speakPref(lsGet()), setVoiceOn: on => setSpeak(on), voicePanel: () => { if (vpop.hidden) $('vbtn').click(); }, caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
     globeTo: (lat, lon, zoom = 1) => { Object.assign(st.gl, { tlat: lat, tlon: lon, tzoom: zoom }); st.spin = false; }, flyTo: (x, z) => { st.cdTarget = { x, z }; }, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
+  const pageOverflow = doc.documentElement.style.overflow; doc.documentElement.style.overflow = 'hidden';   // no page scrollbar beside the HUD (it showed down the edge of recorded broadcasts)
   win.__jarvisApi = xapi;          // the laptop's daily broadcast job (jarvis_broadcast/record_broadcast.py) drives Jarvis through this; the page is owner-only
   loadModules().then(list => {
     win.setTimeout(fitTop, 0);
@@ -863,11 +864,11 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
   }
 
   const api = {
-    dock() { if (st.docked) return; st.docked = true; root.hidden = true; dock.hidden = false; dockRender(); win.cancelAnimationFrame(raf); win.speechSynthesis?.cancel(); blip(500, 0.06); },
-    undock() { if (!st.docked) return; st.docked = false; root.hidden = false; dock.hidden = true; last = performance.now(); resize(); raf = win.requestAnimationFrame(frame); blip(760, 0.06); },
+    dock() { if (st.docked) return; st.docked = true; doc.documentElement.style.overflow = pageOverflow; root.hidden = true; dock.hidden = false; dockRender(); win.cancelAnimationFrame(raf); win.speechSynthesis?.cancel(); blip(500, 0.06); },
+    undock() { if (!st.docked) return; st.docked = false; doc.documentElement.style.overflow = 'hidden'; root.hidden = false; dock.hidden = true; last = performance.now(); resize(); raf = win.requestAnimationFrame(frame); blip(760, 0.06); },
     off() {
       if (!open) return; open = null; stopPlay(); win.cancelAnimationFrame(raf); win.clearInterval(wTimer); win.clearInterval(mTimer); bootTimers.forEach(t => win.clearTimeout(t)); setWake(false);
-      win.removeEventListener('resize', onResize); try { topObs?.disconnect(); } catch (e) { /* gone */ } doc.removeEventListener('pointerdown', onDocPointer, true); doc.removeEventListener('keydown', onKey, true); stopAttract(); for (const ev of IDLE_EVENTS) doc.removeEventListener(ev, onInput, true); win.speechSynthesis?.cancel(); st.speakStop?.(); neural.stopAll(); if (win.__jarvisApi === xapi) win.__jarvisApi = null; try { glDisposeAll(); } catch (e) { /* gone */ } root.remove(); dock.remove();
+      win.removeEventListener('resize', onResize); try { topObs?.disconnect(); } catch (e) { /* gone */ } doc.removeEventListener('pointerdown', onDocPointer, true); doc.removeEventListener('keydown', onKey, true); stopAttract(); for (const ev of IDLE_EVENTS) doc.removeEventListener(ev, onInput, true); win.speechSynthesis?.cancel(); st.speakStop?.(); neural.stopAll(); if (win.__jarvisApi === xapi) win.__jarvisApi = null; doc.documentElement.style.overflow = pageOverflow; try { glDisposeAll(); } catch (e) { /* gone */ } root.remove(); dock.remove();
     },
   };
   const CINE_KEYS = { ' ': 'pause', ArrowRight: 'next', ArrowLeft: 'prev', '+': 'fast', '=': 'fast', '-': 'slow', n: 'next', p: 'prev' };
