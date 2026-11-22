@@ -287,10 +287,15 @@ function setup(L, H, api) {
     }
     // every bar is clickable at its tip; a capped bar always says so, labelled or not
     ctx.globalAlpha = fade; ctx.font = '600 11px ui-monospace,monospace'; ctx.textAlign = 'center';
+    // the notched crown already marks a capped bar; the '>3×' tag is extra, so on a phone it is left off, and on a wide screen it is drawn only where it collides with nothing
+    // (a busy day can have twenty-odd capped bars, and a tag on each turned into a pile-up of overlapping text)
+    const used = placed.map(r => ({ x: r.x, y: r.y, w: r.w, h: r.h })), hitsAny = q => used.some(r => q.x < r.x + r.w && q.x + q.w > r.x && q.y < r.y + r.h && q.y + q.h > r.y);
     for (const [k, b] of Object.entries(S.bars)) {
       const sl = S.lay.slots[k]; if (!sl) continue; const p = H.toScreen([Math.cos(sl.angle) * R, b.h, Math.sin(sl.angle) * R], camera); if (!p.vis) continue;
       g.hit(k, p.x, p.y);
-      if (b.capped && !placed.some(r => r.id === k) && !(S.selKey || stop)) { ctx.fillStyle = toneColour(C, b); ctx.globalAlpha = fade * 0.9; ctx.fillText('>3×', p.x, p.y - 26); }
+      if (cp || !b.capped || placed.some(r => r.id === k) || S.selKey || stop) continue;
+      const box = { x: p.x - 13, y: p.y - 37, w: 26, h: 14 }; if (hitsAny(box)) continue;
+      used.push(box); ctx.fillStyle = toneColour(C, b); ctx.globalAlpha = fade * 0.9; ctx.fillText('>3×', p.x, p.y - 26);
     }
     ctx.globalAlpha = fade;
     keyBlock(ctx, g, keyY);
@@ -342,10 +347,10 @@ function setup(L, H, api) {
   function keyBlock(ctx, g, y) {
     const { W, C, fade } = g, cp = g.compact; ctx.font = '11px ui-monospace,monospace'; ctx.textAlign = 'left';
     card(ctx, 0, y - 16, W, cp ? 76 : 40, null, 0.55);
-    const items = [[C.up, '▲ up'], [C.dn, '▼ down'], [C.gold, '◆ wrong-way end'], [C.tx2, '▮ inside its noise'], [C.blue, '— link holding'], [C.gold, '━ link broken']];
+    const items = [[C.up, '▲ up'], [C.dn, '▼ down'], [C.gold, '◆ wrong-way end'], [C.tx2, '▮ inside its noise'], [C.blue, '— link holding'], [C.gold, '━ link broken'], [C.tx2, '♛ capped >3×']];
     const ws = items.map(([, s]) => ctx.measureText(s).width + 16);
     if (cp) {
-      const rows = [items.slice(0, 3), items.slice(3)]; rows.forEach((row, ri) => { const rw = row.reduce((a, [, s]) => a + ctx.measureText(s).width + 14, 0); let x = (W - rw) / 2; row.forEach(([c, s]) => { ctx.globalAlpha = fade * 0.9; ctx.fillStyle = c; ctx.fillText(s, x, y + ri * 14); x += ctx.measureText(s).width + 14; }); });
+      const rows = [items.slice(0, 4), items.slice(4)]; rows.forEach((row, ri) => { const rw = row.reduce((a, [, s]) => a + ctx.measureText(s).width + 14, 0); let x = (W - rw) / 2; row.forEach(([c, s]) => { ctx.globalAlpha = fade * 0.9; ctx.fillStyle = c; ctx.fillText(s, x, y + ri * 14); x += ctx.measureText(s).width + 14; }); });
       ctx.globalAlpha = fade * 0.85; ctx.fillStyle = C.tx2; ctx.textAlign = 'center';
       wrap(ctx, KEY_LINE, W - 24, 3).forEach((l, i) => ctx.fillText(l, W / 2, y + 32 + i * 13));
       return;

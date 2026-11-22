@@ -23,6 +23,7 @@
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView, orbitPos } from './jarvisGL.js';
+import { holoGlobeParts } from './jarvisGlobeHolo.js';
 import { EURO_PLACES, REGIONS, REGION_LABEL, REGION_SHORT, RATE_CAP, GAP_CAP, RING_MAX, POOL_Y, POOL_R, ratesModel, creditModel, gapsModel, rateLabels, placeLabels, cardFor, moneyScript, moneyFigure,
   showStops, stopAt, llVec, poolArc, bez, gapArc, facing, angDiff, pct, pp, sbn, bn, sg } from './moneyGlobeCore.js';
 
@@ -108,22 +109,9 @@ async function setup(L, H, api) {
   function buildGlobe(C) {
     if (globe) { scene.remove(globe); dispose(globe); }
     globe = new THREE.Group(); scene.add(globe);
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.992, 64, 48), new THREE.MeshBasicMaterial({ color: H.color(S.bg, 'black') })); core.renderOrder = -2; globe.add(core);
-    globe.add(new THREE.Mesh(new THREE.SphereGeometry(1, 72, 54), kit.holo(C.blue, { rim: 2.6, base: 0.025, scan: 0.35, opacity: 0.55 })));
-    const atmo = new THREE.Mesh(new THREE.SphereGeometry(1.1, 64, 48), kit.holo(C.blue, { rim: 4.5, base: 0, scan: 0, opacity: 0.32 })); globe.add(atmo);
-    const segs = [];
-    for (const ring of S.land ?? []) for (let i = 0; i + 3 < ring.length; i += 2) segs.push([...llVec(ring[i + 1], ring[i], 1.002), ...llVec(ring[i + 3], ring[i + 2], 1.002)]);
-    if (segs.length) {
-      const front = kit.segments(segs, C.blue, 0.85); globe.add(front);
-      const ghost = kit.segments(segs, C.blue, 0.07); ghost.material.depthTest = false; ghost.renderOrder = -1; globe.add(ghost);
-    }
-    const grat = [];
-    for (let la = -60; la <= 60; la += 30) for (let i = 0; i < 72; i++) grat.push([...llVec(la, i * 5 - 180, 1.001), ...llVec(la, i * 5 - 175, 1.001)]);
-    for (let lo = -180; lo < 180; lo += 30) for (let i = 0; i < 34; i++) grat.push([...llVec(i * 5 - 85, lo, 1.001), ...llVec(i * 5 - 80, lo, 1.001)]);
-    globe.add(kit.segments(grat, C.blue, 0.07));
-    const orbit = kit.line(circle(1.42, 160), C.blue, 1, 0.22); orbit.rotation.x = 0.42; orbit.rotation.z = -0.18; globe.add(orbit);
-    const glint = kit.flare(C.blue, 0.09, 0.9); orbit.add(glint); globe.userData = { orbit, glint };
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(1.9, 96), kit.glowDisc(C.blue, 0.12)); floor.rotation.x = -Math.PI / 2; floor.position.y = -1.35; globe.add(floor);
+    const parts = holoGlobeParts(L, H, C, S.land, { bg: S.bg });          // the shared Earth (jarvisGlobeHolo.js): the WORLD MAP globe is built from the same parts
+    globe.add(parts.sphere); globe.add(parts.orbit); globe.add(parts.floor);
+    const orbit = parts.orbit, glint = parts.glint; orbit.rotation.x = 0.42; orbit.rotation.z = -0.18; globe.userData = { orbit, glint };
   }
   const place = (grp, lat, lon, r = 1.0) => { const v = llVec(lat, lon, r); grp.position.set(v[0], v[1], v[2]); tv.set(v[0], v[1], v[2]).normalize(); grp.quaternion.setFromUnitVectors(UP, tv); };
   const toneCol = (C, t) => (t === 'up' ? C.up : t === 'dn' ? C.dn : C.tx2);
