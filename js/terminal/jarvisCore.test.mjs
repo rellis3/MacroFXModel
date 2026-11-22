@@ -56,6 +56,8 @@ test('the JARVIS command is an easter egg: typing the exact word finds it, nothi
   assert.equal(hit[0]?.cmd.id, 'jarvis');
   assert.deepEqual(hit[0].action ?? hit[0].cmd.action, { kind: 'jarvis' });
   assert.ok(!search(all, 'jarv').some(r => r.cmd.id === 'jarvis'), 'a partial word must not reveal it');
+  assert.equal(search(all, 'mach')[0]?.cmd.id, 'jarvis', 'MACH (its new name) opens it too');
+  assert.ok(!search(all, 'mac').some(r => r.cmd.id === 'jarvis'));
   assert.ok(!grouped(all).flatMap(g => g.items).some(c => c.id === 'jarvis'));
   assert.ok(!buildCommands({ isOn: id => id !== 'widget.jarvis' }).some(c => c.id === 'jarvis'), 'a login without the surface never gets the command');
 });
@@ -93,6 +95,8 @@ test('pickVoice: a British male beats a female or a non-English voice; no voices
 });
 test('wakeParse: finds the wake word anywhere and returns what follows', () => {
   assert.deepEqual(wakeParse('hey Jarvis, what is oil doing?'), { woke: true, query: 'what is oil doing?' });
+  assert.deepEqual(wakeParse('Mach, what is oil doing?'), { woke: true, query: 'what is oil doing?' });
+  assert.equal(wakeParse('the macro picture').woke, false);
   assert.deepEqual(wakeParse('Jarvis'), { woke: true, query: '' });
   assert.equal(wakeParse('what is oil doing').woke, false);
 });

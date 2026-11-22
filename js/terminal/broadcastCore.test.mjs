@@ -125,7 +125,7 @@ test('planBroadcast QUICK: cold open, the lead, one scene per segment (first ava
   const kinds = P.items.map(x => x.kind);
   assert.equal(kinds[0], 'open'); assert.deepEqual(kinds.slice(1, 4), ['lead', 'lead', 'lead']); assert.equal(kinds[kinds.length - 1], 'close');
   assert.equal(kinds.filter(k => k === 'bumper').length, 7); assert.equal(kinds.filter(k => k === 'scene').length, 7);
-  assert.equal(P.items[0].text, 'Good morning. This is Jarvis, with the morning briefing for Friday the twentieth of November.');
+  assert.equal(P.items[0].text, 'Good morning. This is Mach, with the morning briefing for Friday the twentieth of November.');
   const close = P.items[P.items.length - 1]; assert.equal(close.text, SIGNOFF_TEXT); assert.deepEqual([close.seg.num, close.seg.total], [8, 8]); assert.equal(close.date.card, 'FRIDAY 20 NOVEMBER');
   const scenes = P.items.filter(x => x.kind === 'scene');
   assert.match(scenes[0].text, /^Starting with the markets\. Of 5 on the board, 2 are up, 2 down, 1 barely moving\. Beyond the lead, /, 'the lead already named gold and the yen');
@@ -162,9 +162,9 @@ test('planBroadcast FULL plays every available scene of a tier; missing views fa
 
 test('the programme follows the clock: morning, afternoon or evening briefing, in the voice and on the title card', () => {
   const P = planBroadcast({ ...inp, now: new Date('2026-11-20T15:00:00Z') }, { hooks: [] });
-  assert.match(P.items[0].text, /^Good afternoon\. This is Jarvis, with the afternoon briefing for/); assert.match(P.items[1].text, / this afternoon\./); assert.equal(P.items[0].title, 'THE AFTERNOON BRIEFING');
+  assert.match(P.items[0].text, /^Good afternoon\. This is Mach, with the afternoon briefing for/); assert.match(P.items[1].text, / this afternoon\./); assert.equal(P.items[0].title, 'THE AFTERNOON BRIEFING');
   const E = planBroadcast({ ...inp, now: new Date('2026-11-20T19:30:00Z') }, { hooks: [] });
-  assert.match(E.items[0].text, /^Good evening\. This is Jarvis, with the evening briefing for/); assert.equal(E.items[0].title, 'THE EVENING BRIEFING'); assert.match(E.items[1].text, / tonight\./);
+  assert.match(E.items[0].text, /^Good evening\. This is Mach, with the evening briefing for/); assert.equal(E.items[0].title, 'THE EVENING BRIEFING'); assert.match(E.items[1].text, / tonight\./);
   assert.deepEqual([partOfDay(7), partOfDay(11), partOfDay(12), partOfDay(17), partOfDay(18), partOfDay(23)], ['morning', 'morning', 'afternoon', 'afternoon', 'evening', 'evening']);
 });
 

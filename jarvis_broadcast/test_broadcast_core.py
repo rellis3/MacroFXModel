@@ -48,7 +48,7 @@ def test_max_volume_and_silence():
 def test_titles_and_text_say_description_only():
     d = date(2026, 11, 23)
     t = title_for(d)
-    assert t == 'Jarvis Morning Briefing · Mon 23 Nov 2026 #Shorts' and len(t) <= 100
+    assert t == 'M.A.C.H. Morning Briefing · Mon 23 Nov 2026 #Shorts' and len(t) <= 100
     desc = description_for(d, voice='server voice', seconds=131.4)
     assert 'Not a forecast' in desc and '131 s' in desc and '#Shorts' in desc
     assert 'will' not in desc.lower().split('narrated')[0]

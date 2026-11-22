@@ -112,9 +112,9 @@ export async function openJarvis(win = window) {
   if (open) { open.undock(); return true; }
   if (doc.getElementById(ID)) return true;
   const prefs = lsGet();
-  const root = doc.createElement('div'); root.id = ID; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', 'Jarvis: the macro chain');
-  root.innerHTML = `<style>${CSS}</style><canvas id="${ID}-cv"></canvas><div class="jv-bs" id="${ID}-bs"><div class="jv-bs-t"><h1 id="${ID}-bst">J.A.R.V.I.S.</h1><div class="jv-bs-sub blink" id="${ID}-bss">&nbsp;</div></div><div class="jv-bs-b"><div class="jv-bs-log" id="${ID}-bslog"></div><div class="jv-bar"><i id="${ID}-bsbar"></i></div></div></div><div class="jv-scan"></div><div class="jv-vig"></div><i class="jv-br tl"></i><i class="jv-br tr"></i><i class="jv-br bl"></i><i class="jv-br brr"></i>
-<div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">desk intelligence · description only</span><span class="jv-sp"></span><span class="jv-cur" id="${ID}-cur"></span><button type="button" class="jv-menubtn" id="${ID}-menubtn" aria-expanded="false">☰ MENU</button>
+  const root = doc.createElement('div'); root.id = ID; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', 'M.A.C.H.: the macro chain');
+  root.innerHTML = `<style>${CSS}</style><canvas id="${ID}-cv"></canvas><div class="jv-bs" id="${ID}-bs"><div class="jv-bs-t"><h1 id="${ID}-bst">M.A.C.H.</h1><div class="jv-bs-sub blink" id="${ID}-bss">&nbsp;</div></div><div class="jv-bs-b"><div class="jv-bs-log" id="${ID}-bslog"></div><div class="jv-bar"><i id="${ID}-bsbar"></i></div></div></div><div class="jv-scan"></div><div class="jv-vig"></div><i class="jv-br tl"></i><i class="jv-br tr"></i><i class="jv-br bl"></i><i class="jv-br brr"></i>
+<div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">M.A.C.H.</span><span class="jv-sub">macro analytics &amp; cognitive hub · description only</span><span class="jv-sp"></span><span class="jv-cur" id="${ID}-cur"></span><button type="button" class="jv-menubtn" id="${ID}-menubtn" aria-expanded="false">☰ MENU</button>
 <div class="jv-menu" id="${ID}-menu"><span class="jv-mh">SECTIONS</span><div class="jv-nav" id="${ID}-nav"></div><span class="jv-mh">TIME WINDOW</span><span id="${ID}-win"></span><span class="jv-mh">OPTIONS</span><span id="${ID}-opts">
 <button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-vbtn" aria-expanded="false" title="Voice settings">VOICE ▾</button><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></span><span id="${ID}-mods" hidden></span><span id="${ID}-view" hidden></span></div></div>
 <div class="jv-vpop" id="${ID}-vpop" hidden><div class="jv-vh">VOICE</div><label><span>SPEAK THE PROGRAMMES</span><button type="button" id="${ID}-vsp" aria-pressed="${speakPref(prefs)}" title="On: the briefing and the show are read aloud. Off: subtitles at reading speed">${speakPref(prefs) ? 'ON' : 'OFF'}</button></label><label><span>NATURAL VOICE</span><button type="button" id="${ID}-nv" aria-pressed="${prefs.neural !== false}" title="Off = the browser's built-in voice">${prefs.neural !== false ? 'ON' : 'OFF'}</button></label><label><span>ENGINE</span><select id="${ID}-veng">${ENGINES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label><label id="${ID}-vkvl"><span>KOKORO VOICE</span><select id="${ID}-vkv">${KOKORO_VOICES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label><label><span>FINISH</span><select id="${ID}-vfx">${FX_LEVELS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label><div class="jv-vnote" id="${ID}-vnote"></div><button type="button" id="${ID}-vtest">▶ TEST</button></div><div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-cine" id="${ID}-cine"><button type="button" data-c="prev" title="Back one scene (left arrow)">⏮ BACK</button><button type="button" data-c="pause" id="${ID}-cpause" title="Pause or resume (space)">⏸ PAUSE</button><button type="button" data-c="next" title="Skip this scene (right arrow)">SKIP ⏭</button><button type="button" data-c="slow" title="Slower (minus)">−</button><span id="${ID}-crate">1.0×</span><button type="button" data-c="fast" title="Faster (plus)">+</button><button type="button" data-c="more" class="jv-cmore" title="More controls" aria-expanded="false">⋯</button></div><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
@@ -345,7 +345,7 @@ export async function openJarvis(win = window) {
   const R = {
     ask(pre = '', auto = false) {
       const p = $('pane'), qd = pre || (st.sel && CHAIN_NODES[st.sel] ? `What is going on with ${CHAIN_NODES[st.sel].label} and the links around it today?` : '');
-      p.innerHTML = `<h3>ASK JARVIS</h3><p>One answer from today's book, the analysts' reports, the desk's memory and the Evidence Book. It cites what it used and says when the data does not answer. Each question is one model call, owner only, 60 a day.</p>
+      p.innerHTML = `<h3>ASK MACH</h3><p>One answer from today's book, the analysts' reports, the desk's memory and the Evidence Book. It cites what it used and says when the data does not answer. Each question is one model call, owner only, 60 a day.</p>
 <textarea id="${ID}-q" placeholder="Why is the desk short USD/JPY when the Fed is hawkish?">${esc(qd)}</textarea>
 <div class="jv-row"><button type="button" id="${ID}-go">ASK</button><button type="button" id="${ID}-mic" title="Speak your question">SPEAK</button><button type="button" id="${ID}-voice" aria-pressed="${st.voice}">VOICE REPLY</button><span id="${ID}-st" class="jv-sub"></span></div><div id="${ID}-ans"></div>`;
       const q = p.querySelector(`#${ID}-q`), stt = p.querySelector(`#${ID}-st`), ans = p.querySelector(`#${ID}-ans`);
@@ -382,7 +382,7 @@ export async function openJarvis(win = window) {
     },
     alerts() {
       const p = $('pane');
-      p.innerHTML = `<h3>ALERTS</h3><p>Jarvis checks the live chain every two minutes while this tab is open, and the server's memory every ten. He tells you when a textbook link breaks or heals, when a market goes well beyond its normal noise, and when memory crosses your limit. It is awareness, never a trade.</p>
+      p.innerHTML = `<h3>ALERTS</h3><p>Mach checks the live chain every two minutes while this tab is open, and the server's memory every ten. It tells you when a textbook link breaks or heals, when a market goes well beyond its normal noise, and when memory crosses your limit. It is awareness, never a trade.</p>
 <div class="jv-row"><button type="button" id="${ID}-wt" aria-pressed="${st.watch}">WATCHING ${st.watch ? 'ON' : 'OFF'}</button><button type="button" id="${ID}-nt">DESKTOP NOTIFICATIONS</button></div>`
         + (st.alerts.length ? st.alerts.map(a => `<p><span class="jv-k ${a.level === 'warn' ? 'jv-broke' : 'jv-hold'}">${esc(a.time)}</span>${esc(a.text)}</p>`).join('') : '<p>Nothing yet this session.</p>');
       jf('/api/jarvis/watch').then(w => {   // the server watcher (Telegram, tab closed); fails soft if the route is missing
@@ -753,7 +753,7 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
     for (const e of ev) { st.alerts.unshift({ ...e, time: stamp() }); }
     st.alerts = st.alerts.slice(0, 40); if (!ev.length) return;
     alertChime(); say(ev.map(e => e.text).join(' '));
-    try { if (win.Notification?.permission === 'granted') new win.Notification('Jarvis', { body: ev[0].text }); } catch (e) { /* no notifications */ }
+    try { if (win.Notification?.permission === 'granted') new win.Notification('M.A.C.H.', { body: ev[0].text }); } catch (e) { /* no notifications */ }
     dockRender(true); if (st.mod === 'alerts') R.alerts();
   }
   let wTimer = 0, mTimer = 0;
@@ -776,7 +776,7 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
   // ── the dock: Jarvis drops to a strip over the normal dashboard and keeps watching ──
   function dockRender(flash = false) {
     const s = st.liveSum ?? st.sum, a = st.alerts[0];
-    dock.innerHTML = `<span class="dot"></span><span class="t">J.A.R.V.I.S.</span><span>${st.watch ? 'WATCHING' : 'PAUSED'}${st.lastCheck ? ` · ${esc(st.lastCheck)}` : ''}</span>${s ? `<span>${s.holding} holding · <span class="${s.broken ? 'am' : ''}">${s.broken} broken</span></span>` : ''}${st.mem != null ? `<span>mem ${st.mem} MB</span>` : ''}<span class="sp">${a ? `<span class="am">${esc(a.time)}</span> ${esc(a.text)}` : 'no alerts'}</span><button type="button" data-d="alerts">ALERTS ${st.alerts.length}</button><button type="button" data-d="open">EXPAND</button><button type="button" data-d="mic" aria-pressed="${st.wake}">${st.wake ? 'LISTENING' : 'HEY JARVIS'}</button><button type="button" data-d="off">OFF</button>`;
+    dock.innerHTML = `<span class="dot"></span><span class="t">M.A.C.H.</span><span>${st.watch ? 'WATCHING' : 'PAUSED'}${st.lastCheck ? ` · ${esc(st.lastCheck)}` : ''}</span>${s ? `<span>${s.holding} holding · <span class="${s.broken ? 'am' : ''}">${s.broken} broken</span></span>` : ''}${st.mem != null ? `<span>mem ${st.mem} MB</span>` : ''}<span class="sp">${a ? `<span class="am">${esc(a.time)}</span> ${esc(a.text)}` : 'no alerts'}</span><button type="button" data-d="alerts">ALERTS ${st.alerts.length}</button><button type="button" data-d="open">EXPAND</button><button type="button" data-d="mic" aria-pressed="${st.wake}">${st.wake ? 'LISTENING' : 'HEY JARVIS'}</button><button type="button" data-d="off">OFF</button>`;
     if (flash) { dock.classList.remove('al'); void dock.offsetWidth; dock.classList.add('al'); }
   }
   dock.onclick = e => { const b = e.target.closest('button[data-d]'); if (!b) return; const d = b.dataset.d; if (d === 'open') api.undock(); else if (d === 'alerts') { api.undock(); setMod('alerts'); } else if (d === 'mic') setWake(!st.wake); else if (d === 'off') api.off(); };
@@ -806,7 +806,7 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
       rec.onerror = () => {};
       try { rec.start(); } catch (e) { /* already listening */ }
     };
-    start(); say('Listening. Say Jarvis, then your question.', true);
+    start(); say('Listening. Say Mach, then your question.', true);
   }
   $('wake').onclick = () => setWake(!st.wake);
 

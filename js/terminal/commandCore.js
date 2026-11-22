@@ -271,7 +271,7 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
       surface: 'panel.macro.engines', needs: ['tab.macro'], run: args => indicatorRun(word, args) });
   }
   // look and feel, links
-  add({ id: 'jarvis', group: 'Look and feel', name: 'JARVIS', secret: true, help: 'An easter egg: the macro chain as a rotating 3D HUD. Description only, never a trade.', example: 'jarvis', opens: 'A full-screen 3D view of the chain', surface: 'widget.jarvis', action: { kind: 'jarvis' } });
+  add({ id: 'jarvis', group: 'Look and feel', name: 'MACH', aliases: ['JARVIS'], secret: true, help: 'M.A.C.H. (Macro Analytics & Cognitive Hub): the macro chain as a rotating 3D HUD, the morning broadcast and the hologram views. Description only, never a trade. JARVIS still opens it.', example: 'mach', opens: 'A full-screen 3D view of the chain', surface: 'widget.jarvis', action: { kind: 'jarvis' } });
   add({ id: 'theme', group: 'Look and feel', name: 'THEME', args: '<name>', help: `Change the colour theme (${THEMES.map(t => t.id).join(', ')}). It is remembered in this browser.`, example: 'theme amber', opens: 'The whole terminal, in that theme', surface: 'widget.themepicker', run: themeRun });
   add({ id: 'tf', group: 'Look and feel', name: 'TF', aliases: ['TIMEFRAME'], args: `<${TF_KEYS.join('|')}>`, help: 'Set the candle size on every chart that offers one (Pair page and asset cards).', example: 'tf 15m', opens: 'The candle-size pills on the charts', surface: 'widget.linked', run: tfRun });
   add({ id: 'link', group: 'Look and feel', name: 'LINK', args: '<on|off>', help: "Switch linked selection on or off. On: picking a market in one place (an asset card, a vol-clock tile or row, the Pair page or the Replay) moves the Pair page, Replay, strength board, candle-size buttons and vol clock with it, and that market's cards glow. Off: every panel keeps its own market again. The chip in the top bar shows which, and the ? beside it explains it. Kept in this browser only.", example: 'link off', opens: 'The linked chip in the top bar', surface: 'widget.linked', run: linkRun });
@@ -580,7 +580,7 @@ export function search(commands, line, { limit = 10 } = {}) {
   const seen = new Set(res.map(r => r.cmd.id));
   for (const c of commands) {
     if (seen.has(c.id)) continue;
-    if (c.secret && nameScore(q, c.name) < 1000) continue;      // an easter egg answers only to its exact name and is never offered
+    if (c.secret && ![c.name, ...(c.aliases ?? [])].some(n => nameScore(q, n) >= 1000)) continue;      // an easter egg answers only to its exact name and is never offered
     let s = Math.max(nameScore(q, c.name), ...c.aliases.map(a => nameScore(q, a) - 10));
     if (s <= 0 && q.length >= 3 && norm(c.help).includes(q)) s = 60;
     if (s <= 0 && q.length >= 3 && norm(c.opens).includes(q)) s = 50;

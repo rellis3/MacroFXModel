@@ -54,13 +54,13 @@ def is_silent(db: float | None) -> bool:
 
 
 def title_for(d: date) -> str:
-    """'Jarvis Morning Briefing · Mon 23 Nov 2026 #Shorts' (YouTube titles are capped at 100 characters)."""
-    return f"Jarvis Morning Briefing · {d.strftime('%a')} {d.day} {d.strftime('%b %Y')} #Shorts"[:100]
+    """'M.A.C.H. Morning Briefing · Mon 23 Nov 2026 #Shorts' (YouTube titles are capped at 100 characters)."""
+    return f"M.A.C.H. Morning Briefing · {d.strftime('%a')} {d.day} {d.strftime('%b %Y')} #Shorts"[:100]
 
 
 def description_for(d: date, voice: str | None = None, seconds: float | None = None) -> str:
     parts = [
-        f"The desk's morning briefing for {d.strftime('%A')} {d.day} {d.strftime('%B %Y')}, narrated by Jarvis over the desk's own hologram views.",
+        f"The desk's morning briefing for {d.strftime('%A')} {d.day} {d.strftime('%B %Y')}, narrated by M.A.C.H. (Macro Analytics & Cognitive Hub) over the desk's own hologram views.",
         '',
         'Description only: what markets did and how things stand. Not a forecast, not advice, not a trade.',
     ]

@@ -4,7 +4,7 @@
 // (data-v) and panel ids (data-m); the words here are the ones people see.
 export const SECTIONS = [
   // ONE morning programme: the BROADCAST (it names itself morning / afternoon / evening by the clock). The old SHOW director is an engine only (ENGINE_TOOLS), kept for the NEWSLETTER's own scenes.
-  { id: 'watch', label: 'WATCH', hint: 'Sit back and let Jarvis talk you through it', home: ['tool', 'broadcast'], items: [
+  { id: 'watch', label: 'WATCH', hint: 'Sit back and let Mach talk you through it', home: ['tool', 'broadcast'], items: [
     ['tool', 'broadcast', 'MORNING SHOW'], ['tool', 'news', 'NEWSLETTER'], ['tool', 'film', 'REPLAY'] ] },
   { id: 'markets', label: 'MARKETS', hint: 'What every market is doing today', home: ['view', 'candles'], items: [
     ['view', 'candles', 'MARKET BOARD'], ['view', 'session', 'CHART'], ['view', 'wx', 'WEATHER'], ['view', 'globe', 'WORLD MAP'], ['view', 'ahead', 'DAY AHEAD'], ['view', 'net', 'LINKS'], ['view', 'bubbles', 'BUBBLES'],
@@ -15,7 +15,7 @@ export const SECTIONS = [
   { id: 'pos', label: 'POSITIONING', hint: 'Who holds what, and what the desk thinks', home: ['view', 'gpillar'], items: [
     ['view', 'gpillar', 'GAMMA PILLAR'], ['view', 'gterrain', 'GAMMA TERRAIN'], ['view', 'cot', 'POSITIONING TERRAIN'], ['view', 'gamma', 'GAMMA FLY'], ['view', 'book', 'DESK CALLS'], ['tool', 'precedent', 'PAST RELEASES'] ] },
   { id: 'ask', label: 'ASK', hint: 'Questions and research', home: ['tool', 'ask'], items: [
-    ['tool', 'ask', 'ASK JARVIS'], ['tool', 'explain', 'EXPLAIN A DAY'], ['tool', 'papers', 'PAPERS'] ] },
+    ['tool', 'ask', 'ASK MACH'], ['tool', 'explain', 'EXPLAIN A DAY'], ['tool', 'papers', 'PAPERS'] ] },
   { id: 'sys', label: 'SYSTEM', hint: 'Alerts and the server', home: ['tool', 'alerts'], items: [
     ['tool', 'alerts', 'ALERTS'], ['tool', 'system', 'SERVER'] ] },
 ];
