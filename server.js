@@ -10,6 +10,9 @@
 // Required env vars: OANDA_KEY  (+ same vars as _worker.js)
 // Optional:         MONITOR_MS  (default 3000), DATA_DIR, PORT
 
+// FIRST import on purpose: replaces Intl.DateTimeFormat/NumberFormat and Date/Number toLocale*String with cached versions before any other module runs (native-memory fix, 2026-11-22).
+import './js/intlCache.js';
+import { intlCacheStats } from './js/intlCache.js';
 import express              from 'express';
 import zlib from 'node:zlib';
 import path                from 'path';
@@ -7335,7 +7338,7 @@ const _libRoute = (method, p, fn) => app[method](`/api/library/${p}`, async (req
 });
 // warm the library's list and search index ONCE after boot so the first screen after a login is not a cold build (errors are ignored). It used to repeat every 4 minutes, but a tick older than the
 // catalog's 30 s freshness window forced a full rebuild each time (650 papers, uploads, notes) for nothing: writes already drop the catalog, and any page visit refreshes it behind the scenes.
-svcTimeout('libraryWarm', () => _libApi.warm?.(), 10 * 60_000);   // 2026-11-22 memory test: was 20 s. The 3 GB boot jump landed mid-way through this job's 36 s first run; at 10 min it is out of the boot burst, so the trace shows whether the jump follows it
+svcTimeout('libraryWarm', () => _libApi.warm?.(), 60_000);   // once, a minute after boot (the 3 GB boot jump was the Intl formatter leak, not this job)
 _libRoute('get', 'concepts', _libApi.conceptsCards);   // the concept cards for the Concepts tab (library login)
 _libRoute('post', 'concepts/review', _libApi.conceptsReview);   // the owner's mark on a card; free, no model call
 _libRoute('get', 'papers', _libApi.papers);
@@ -45893,6 +45896,7 @@ app.get('/api/services', (req, res) => {
       trace: _memTrace,
       kvBig: kv.kvBigReads(),
       bootProfile: _bootProfile,
+      intlCache: intlCacheStats,
       mappings: _memShots.list,
       sampledAt: new Date().toISOString(),
       note: 'This process only, not the container total (start.sh bots run as separate OS processes with their own RSS Railway meters separately). '
