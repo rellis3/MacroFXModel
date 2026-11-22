@@ -36,6 +36,7 @@ export function summarise(procs, { nodePid = process.pid, lookup = getService, e
   if (!Array.isArray(procs)) return null;
   const by = new Map(procs.map(p => [p.pid, p])), groups = new Map();
   const ownerOf = p => {
+    if (/^(\/bin\/)?(ba)?sh\s+(\.\/)?start\.sh/.test(p.cmd) || /^sleep/.test(p.cmd)) return { key: 'system', kind: 'system' };     // the supervisor shells and their sleeps
     for (let q = p, hops = 0; q && hops < 12; q = by.get(q.ppid), hops++) {
       const bot = botOf(q.cmd); if (bot) return { key: bot, kind: 'bot' };
       if (q.pid === nodePid) return { key: 'server', kind: q === p ? 'server' : 'server-child' };
@@ -44,7 +45,7 @@ export function summarise(procs, { nodePid = process.pid, lookup = getService, e
   };
   for (const p of procs) {
     const o = ownerOf(p); let key = o.key, kind = o.kind;
-    if (kind === 'server-child') { key = `child:${short(p.cmd).split(' ').slice(0, 2).join(' ')}`; }      // a helper the server started: one row per command
+    if (kind === 'server-child') { key = `child:${short(p.cmd).split(' ').slice(0, 4).join(' ')}`; }      // a helper the server started: one row per command
     const g = groups.get(key) ?? { id: key, kind, rssKB: 0, n: 0, cmd: p.cmd }; g.rssKB += p.rssKB; g.n++; groups.set(key, g);
   }
   const rows = [...groups.values()].map(g => {
