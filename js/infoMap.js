@@ -152,6 +152,7 @@ export const EXCLUDED_PAGES = {
   'drift.html': 'research view',
   'noise-area-build.html': 'research tool: the noise-area strategy builder (study noise-area-build); not an information feed',
   'forecast-analysis.html': 'research view: what price does at each vol-forecast line',
+  'vol-research-inventory.html': 'research view: static inventory of banked vol/exhaustion/VWAP/trade-management results, each quoted from its results file (built by scripts/vol-research-inventory/build.mjs); not an information feed',
   'gold-zones.html': 'bot verifier',
   'gold.html': 'system: gold macro model',
   'har-shadow.html': 'shadow forward test',
