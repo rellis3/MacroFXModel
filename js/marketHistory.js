@@ -45,9 +45,11 @@ export function parseCboeCsv(text) {
 }
 
 /** London date of an epoch second (DST-safe). */
+// ONE formatter for the whole process. It used to be built inside the function, once per price bar: tens of thousands per seed, each allocating native ICU memory that V8 does not count, so the garbage
+// collector never felt it and about 2.3 GB piled up in the first minute after every boot (found with the boot CPU profile, 2026-11-22).
+const _LONDON_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' });
 function londonDate(sec) {
-  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(sec * 1000));
-  return p;
+  return _LONDON_DAY.format(new Date(sec * 1000));
 }
 
 /**
