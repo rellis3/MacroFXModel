@@ -45886,6 +45886,7 @@ app.get('/api/services', (req, res) => {
       m1Loads: { active: _m1LoadStats.active(), waiting: _m1LoadStats.waiting(), peakWaiting: _m1LoadStats.peakWaiting, total: _m1LoadStats.total },
       workers: [..._liveWorkers.values()].map(x => ({ file: x.label, ageSec: Math.round((Date.now() - x.since) / 1000), maxOldMb: x.maxOldMb })),
       trace: _memTrace,
+      kvBig: kv.kvBigReads(),
       mappings: _memShots.list,
       sampledAt: new Date().toISOString(),
       note: 'This process only, not the container total (start.sh bots run as separate OS processes with their own RSS Railway meters separately). '
