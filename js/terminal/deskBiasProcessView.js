@@ -169,7 +169,7 @@ export function headHtml(rec) {
 }
 
 // ── head to head ─────────────────────────────────────────────────────────────────────────────────────────────────
-export const COMPETITORS = [['process-ai', 'Process (AI)'], ['process-system', 'Process (rules)'], ['process-ai+rc', 'Process (AI) + rechecks'], ['process-system+rc', 'Process (rules) + rechecks'], ['max-signals', 'Max'], ['fundabias', 'FundaBias'], ['desk-rating', 'Desk'], ['bias-engine', 'Engine'], ['h4-trend', 'H4 trend']];
+export const COMPETITORS = [['process-ai', 'Process (AI)'], ['process-system', 'Process (rules)'], ['process-ai+rc', 'Process (AI) + rechecks'], ['process-system+rc', 'Process (rules) + rechecks'], ['max-signals', 'Max'], ['fundabias', 'FundaBias'], ['desk-rating', 'Desk'], ['bias-engine', 'Engine V1'], ['bias-engine-v2', 'Engine V2'], ['h4-trend', 'H4 trend']];
 export const JUDGE_AT = [60, 120];
 /** The next London weekday the process issues on (today when it is a weekday before 07:00 London). nowMs is passed in. */
 export function nextIssueDate(nowMs) {

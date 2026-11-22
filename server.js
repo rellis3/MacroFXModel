@@ -454,7 +454,7 @@ import { biasEngine as _bsBiasEngine, biasEngineV2 as _bsBiasEngineV2, h4Trend a
 import { PROCESS_MARKETS as _DBP_MARKETS, OANDA as _DBP_OANDA, buildLayers as _dbpLayers, buildPack as _dbpPack, historyFor as _dbpHistory, runProcessAi as _dbpAi, finishCard as _dbpFinish, dayRecord as _dbpDay, PROCESS_VERSION as _DBP_VERSION, AI_PROMPT_VERSION as _DBP_PROMPT } from './js/deskBiasProcess.js';   // Desk Bias Process (plans/DESK_BIAS_PROCESS_SPEC.md)
 import { buildV2Record as _bev2Build, CONFIG as _BEV2_CONFIG, CONFIG_HASH as _BEV2_CONFIG_HASH, V2_VERSION as _BEV2_VERSION, SPEC_VERSION as _BEV2_SPEC, VARIANTS as _BEV2_VARIANTS, canonicalJson as _bev2Canon, sha256 as _bev2Sha } from './js/biasEngineV2.js';   // Bias Engine V2, shadow only (plans/BIAS_ENGINE_V2_SPEC.md); no production consumer reads it
 import { slotsFor as _rcSlots, dueSlot as _rcDue, stateFor as _rcState, invalidationHit as _rcInvalid, reactionOf as _rcReaction, systemUpdate as _rcUpdate, needsAi as _rcNeedsAi, buildRecheckPack as _rcPack, RECHECK_SYSTEM_PROMPT as _RC_SYSTEM, recheckPromptOf as _rcPrompt, slotRow as _rcRow, slotRecord as _rcRecord, recheckCalls as _rcCalls, timeline as _rcTimeline, RECHECK_VERSION as _RC_VERSION, RECHECK_PROMPT_VERSION as _RC_PROMPT, SLOT_WINDOW_MS as _RC_WINDOW } from './js/deskBiasRecheck.js';   // Desk Bias Process intraday rechecks
-import { headToHead as _h2hRun, processCalls as _h2hProcessCalls, ledgerCalls as _h2hLedgerCalls, callOutcome as _h2hOutcome, H2H_VERSION as _H2H_VERSION } from './js/deskBiasH2H.js';   // the Desk Bias Process head to head (GET /api/desk-bias-process/h2h)
+import { headToHead as _h2hRun, processCalls as _h2hProcessCalls, ledgerCalls as _h2hLedgerCalls, engineV2Calls as _h2hEngineV2Calls, callOutcome as _h2hOutcome, H2H_VERSION as _H2H_VERSION } from './js/deskBiasH2H.js';   // the Desk Bias Process head to head (GET /api/desk-bias-process/h2h)
 import { weeklyReview as _dbpWeeklyReview } from './js/terminal/deskBiasProcessView.js';   // its weekly review of wrong calls (pure)
 import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
@@ -31042,7 +31042,12 @@ async function _dbpH2HCompute() {
   const rcRecs = [];
   for (const r of records) { const rc = await _dbpRcLoad(r.date); if (rc) rcRecs.push({ ...rc, date: r.date }); }
   status.rechecks = `${rcRecs.length} day(s) with rechecks`;
-  const calls = [..._h2hProcessCalls(records), ..._rcCalls(records, rcRecs), ..._h2hLedgerCalls(ledger, _BS_DESK_NAME)].filter(c => c.date >= first);
+  // Bias Engine V2 sits on the list next to V1 (owner, 2026-11-22): every stored daily V2 record, made live before its outcomes
+  const v2Recs = [];
+  for (const r of records) { try { const raw = await kv.get(_BEV2_KEY(r.date)); if (raw) v2Recs.push(JSON.parse(raw)); } catch { /* a missing day is a gap */ } }
+  status.engineV2 = `${v2Recs.length} day(s)`;
+  const sigOf = (d, m) => records.find(r => r.date === d)?.markets?.[m]?.layers?.range?.sigmaDay ?? null;
+  const calls = [..._h2hProcessCalls(records), ..._rcCalls(records, rcRecs), ..._h2hLedgerCalls(ledger, _BS_DESK_NAME), ..._h2hEngineV2Calls(v2Recs, sigOf).filter(c => _DBP_OANDA[c.market])].filter(c => c.date >= first);
   const bars = {}, errs = [];
   if (process.env.OANDA_KEY) {
     const from = Date.parse(`${first}T00:00:00Z`) - 864e5, to = Math.min(Date.now(), Date.parse(`${last}T00:00:00Z`) + 4 * 864e5);

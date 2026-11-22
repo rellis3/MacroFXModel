@@ -1,0 +1,14 @@
+{
+  "frozenAt": "2026-11-22",
+  "forwardStart": "2026-11-23",
+  "specVersion": "1.1",
+  "specSha256": "1fe1636f1f6a0f4db6494e558c56e02d19164221722750c8851ca78ffa342b22",
+  "engineSha256": "437ddf6d5003774c6fd38c4e24e071576a225aaef3e29fa5aff6ccb3617172ae",
+  "configHash": "2a9a89046f9b0f60021ed3f7189aa26e88a2b77399131142ca9b756ce4e9a5ad",
+  "riskGate": {
+    "pass": false,
+    "F4": "off (gate G-F4 failed: discovery share F>0 0.617)"
+  },
+  "d20Baselines": "b0-sameday-d20-20260821",
+  "note": "Owner 2026-11-22: trial ended early; V2 scored exactly like V1 from the forward start. Trial checks O1-O5 waived; no A7 power simulation."
+}

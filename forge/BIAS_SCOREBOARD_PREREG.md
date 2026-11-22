@@ -413,3 +413,13 @@ back-issue.**
 - **Prior:** no gain expected from direction rechecks. The 2026-11-14 h4-trend-hold test found a 21:00 "same trend"
   hold worse than a day exit (−0.11R vs −0.04R a trade). Any benefit is expected from post-release activation and
   invalidation exits.
+
+### A7 — 2026-11-22 — Bias Engine V2 on the record (owner decision)
+Owner, 2026-11-22: "I would like v2 on the list like v1 ... V1 didn't have this trial." The V2 technical trial ends early.
+- V2 is frozen (`forge/BIAS_ENGINE_V2_FREEZE.json`, test A21) with `FORWARD_START` 2026-11-23. From that date
+  `<D>_engine_v2.json` is written like V1's `<D>_engine.json` (targets d21, n07, d5, d20).
+- The Desk Bias Process head to head lists `bias-engine-v2` (variant v2) next to `bias-engine` (V1). It reads the stored
+  daily V2 records (made live at 05:30-06:00 London, before any outcome), so 2026-11-19 and 2026-11-20 are included there.
+  Descriptive only, like every head-to-head competitor (A6).
+- Waived: trial checks O1-O5 and the planted-signal power simulation. No change to V1 or to any production consumer;
+  promotion still needs the owner's explicit approval.
