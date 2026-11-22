@@ -341,7 +341,7 @@ import { macroContext as _macroContext, macroContextByDate as _macroContextByDat
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
-import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
+import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, m1LoadStats as _m1LoadStats, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
 import { auditVoteAtlasDrift as _auditVoteAtlasDrift, normalizeTradeHistoryForVoteAtlasAudit as _normalizeTradeHistoryForVoteAtlasAudit, countVoteAtlasCandidates as _countVoteAtlasCandidates, explainGapsFromDecisionLog as _explainGapsFromDecisionLog } from './js/voteAtlasDriftAudit.js';
 import { reconcileSignalCopierDay as _reconcileSignalCopierDay, joinTradesToSignals as _scJoinTradesToSignals } from './js/signalCopierRecon.js';
 import { auditFibAtlasDrift as _auditFibAtlasDrift, normalizeTradeHistoryForFibAtlasAudit as _normalizeTradeHistoryForFibAtlasAudit, countFibAtlasCandidates as _countFibAtlasCandidates } from './js/fibAtlasDriftAudit.js';
@@ -45881,6 +45881,7 @@ app.get('/api/services', (req, res) => {
       peakRssMB: mb(_memPeak.rssBytes),
       peakAt: _memPeak.at,
       processes: (() => { try { return _containerProcesses(); } catch (e) { return null; } })(),
+      m1Loads: { active: _m1LoadStats.active(), waiting: _m1LoadStats.waiting(), peakWaiting: _m1LoadStats.peakWaiting, total: _m1LoadStats.total },
       workers: [..._liveWorkers.values()].map(x => ({ file: x.label, ageSec: Math.round((Date.now() - x.since) / 1000), maxOldMb: x.maxOldMb })),
       trace: _memTrace,
       sampledAt: new Date().toISOString(),

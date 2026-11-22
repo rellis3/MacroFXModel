@@ -1538,7 +1538,21 @@ export async function runFullM1Backtest(opts = {}, instruments = INSTRUMENTS, m1
  * Returns: { n, times: Int32Array (epoch seconds), opens/highs/lows/closes: Float32Array }
  * or null if no data source available.
  */
-export async function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
+// ── Startup memory test (2026-11-22): at most M1_LOAD_CONCURRENCY (default 2) full-history M1 loads at once. The atlases, session routes and research jobs each call loadM1ForPair per pair, and at boot
+// they all start together: each load briefly holds the whole parquet file plus its decoded chunk, so a dozen at once peaked the server near 6 GB and left about 3.4 GB of freed memory that the allocator
+// never returned. Queueing them keeps the peak low; each caller just waits its turn (a cold start takes longer, the result is identical). Set M1_LOAD_CONCURRENCY=99 to switch the limit off. ──
+const M1_LOAD_LIMIT = Math.max(1, parseInt(process.env.M1_LOAD_CONCURRENCY ?? '2', 10) || 2);
+let _m1Active = 0; const _m1Queue = [];
+export const m1LoadStats = { active: () => _m1Active, waiting: () => _m1Queue.length, peakWaiting: 0, total: 0 };
+async function _m1Gate(fn) {
+  if (_m1Active >= M1_LOAD_LIMIT) await new Promise(res => { _m1Queue.push(res); m1LoadStats.peakWaiting = Math.max(m1LoadStats.peakWaiting, _m1Queue.length); });   // the releaser hands its slot over
+  else _m1Active++;
+  m1LoadStats.total++;
+  try { return await fn(); }
+  finally { const next = _m1Queue.shift(); if (next) next(); else _m1Active--; }
+}
+export function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) { return _m1Gate(() => _loadM1ForPair(pairKey, m1Dir)); }
+async function _loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
   // Real incident, 2026-09-16: this only ever handled a Date instance or a
   // date/datetime STRING -- assumed every parquet's timestamp column is one
   // of those. EURUSD's and GBPUSD's R2 files store it as a raw epoch
