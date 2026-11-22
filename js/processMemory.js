@@ -59,5 +59,13 @@ export function summarise(procs, { nodePid = process.pid, lookup = getService, e
   return { containerMB: rows.reduce((s, r) => s + r.rssMB, 0), rows };
 }
 
+const PEAKS = new Map(), SINCE = { at: new Date().toISOString() };
+/** Highest memory each group has held since boot, updated on every sample (the server samples once a minute), so a bot that spikes during its hourly scan shows its spike, not just its idle size. */
+export function withPeaks(sum) {
+  if (!sum) return sum;
+  let all = 0; for (const r of sum.rows) { const p = Math.max(PEAKS.get(r.id) ?? 0, r.rssMB); PEAKS.set(r.id, p); r.peakMB = p; all += r.rssMB; }
+  const pc = Math.max(PEAKS.get('_container') ?? 0, sum.containerMB); PEAKS.set('_container', pc);
+  return { ...sum, peakContainerMB: pc, since: SINCE.at };
+}
 /** The live container, or null off Linux. */
-export const containerProcesses = () => summarise(readProcs());
+export const containerProcesses = () => withPeaks(summarise(readProcs()));

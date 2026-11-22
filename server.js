@@ -47560,6 +47560,7 @@ svcInterval('memSample', () => {
   const m = process.memoryUsage();
   if (m.rss > _memPeak.rssBytes) _memPeak = { rssBytes: m.rss, at: new Date().toISOString() };
   _memTracePush(m);
+  try { _containerProcesses(); } catch (e) { /* peaks only */ }
 }, 60_000);
 // A rolling trace (every 5 s for the first 10 minutes after boot, then every minute): rss, JS heap, buffers, and which worker threads were alive. Read it at /api/services -> memory.trace.
 const _memTrace = [];
