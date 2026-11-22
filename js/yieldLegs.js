@@ -10,10 +10,12 @@
 //     exact at each anchor.
 // Pure: no fetch, no DOM. Tested by js/yieldLegs.test.mjs.
 
+const _ZONED_FMT = new Map();   // one formatter per time zone (building one per call leaks native ICU memory V8 does not count)
 /** UTC epoch seconds of a wall-clock time in a time zone on a calendar date ('YYYY-MM-DD'). */
 export function zonedEpoch(date, hh, mm, timeZone) {
   const guess = Date.UTC(+date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8, 10), hh, mm) / 1000;
-  const f = new Intl.DateTimeFormat('en-GB', { timeZone, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  let f = _ZONED_FMT.get(timeZone);
+  if (!f) { f = new Intl.DateTimeFormat('en-GB', { timeZone, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); _ZONED_FMT.set(timeZone, f); }
   const p = Object.fromEntries(f.formatToParts(new Date(guess * 1000)).map(x => [x.type, x.value]));
   const shown = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute) / 1000;
   return guess - (shown - guess);
