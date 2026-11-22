@@ -6,7 +6,7 @@ import { buildScenes, SHOW_HOOKS } from './showCore.js';
 import { buildGraph } from './jarvisCore.js';
 import { buildFly } from './chainFlyCore.js';
 import { CHAIN_NODES, evaluateChain } from '../macroChain.js';
-await import('./jarvisViewChain.js');
+const { chainHud } = await import('./jarvisViewChain.js');
 
 const names = Object.fromEntries(Object.entries(CHAIN_NODES).map(([k, n]) => [k, n.label]));
 const vals = {}; let i = 0;
@@ -31,13 +31,16 @@ test('the SHOW scene: null without a graph, otherwise a spoken script on the cha
   assert.equal(buildScenes({ now: new Date(), extra: {} }).some(s => s.id === 'chainfly'), false);
 });
 
-test('the view draws without throwing: a message with no graph, a frame with one (stub canvas)', () => {
+test('the view: a message with no graph (no hologram is started); with one it is a hologram whose 2D layer draws names, the card, the route strip and the key (stub canvas, stub projector)', () => {
   const calls = []; const ctx = new Proxy({}, { get: (_, k) => (k === 'measureText' ? () => ({ width: 50 }) : k === 'createRadialGradient' || k === 'createLinearGradient' ? () => ({ addColorStop() {} }) : (...a) => calls.push(k)), set: () => true });
   const C = { up: 'g', dn: 'r', gold: 'o', blue: 'b', tx: 'w', tx2: 'x', cy: 'c' }, v = viewsOf().find(x => x.id === 'chainfly');
   const g = { t: 1, dt: 0.016, fade: 1, W: 1000, H: 700, cx: 500, cy: 350, C, hit() {} };
-  const doc = { getElementById: () => ({ style: { getPropertyValue: () => '70px' } }) };
   const st = { graph: null, yaw: 0, pitch: 0, zoom: 1 };
-  v.draw(ctx, g, { st, names, ID: 'jarvis', doc }); assert.ok(calls.includes('fillText'));
-  st.graph = graph; calls.length = 0; v.draw(ctx, g, { st, names, ID: 'jarvis', doc }); assert.ok(calls.filter(c => c === 'stroke').length > 20);
-  assert.ok(buildFly(graph, names).route.stops.length > 0);
+  v.draw(ctx, g, { st, names, ID: 'jarvis', doc: {} }); assert.ok(calls.includes('fillText'));
+  assert.equal(v.gl, true);
+  st.graph = graph; calls.length = 0; const fly = buildFly(graph, names), hits = [];
+  assert.ok(fly.route.stops.length > 0);
+  const proj = q => ({ x: 500 + q[0] * 60, y: 350 - q[1] * 60, vis: true, d: 3 });
+  chainHud(ctx, { ...g, hit: k => hits.push(k) }, { st, names }, { fly, p: fly.route.times[1], times: fly.route.times, wrap: 1, proj });
+  assert.ok(calls.filter(c => c === 'fillText').length > 8); assert.ok(calls.filter(c => c === 'stroke').length >= 5); assert.ok(hits.includes(fly.route.stops[0].key));
 });
