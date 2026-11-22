@@ -89,7 +89,7 @@ export function systemSummary(j) {
   const m = j?.memory ?? {}, rows = Array.isArray(j?.services) ? j.services : [];
   const top = rows.filter(r => (r.today?.totalMs ?? 0) > 0).sort((a, b) => b.today.totalMs - a.today.totalMs).slice(0, 8)
     .map(r => ({ id: r.id, minutes: +(r.today.totalMs / 60000).toFixed(1), runs: r.today.runs ?? 0, errors: r.today.errors ?? 0 }));
-  return { ok: !!j?.ok, rssMB: m.rssMB ?? null, peakRssMB: m.peakRssMB ?? null, heapUsedMB: m.heapUsedMB ?? null, uptimeH: j?.uptimeSec != null ? +(j.uptimeSec / 3600).toFixed(1) : null, enabled: j?.counts?.enabled ?? null, total: j?.counts?.total ?? null, top };
+  return { ok: !!j?.ok, rssMB: m.rssMB ?? null, peakRssMB: m.peakRssMB ?? null, heapUsedMB: m.heapUsedMB ?? null, containerMB: m.processes?.containerMB ?? null, procs: Array.isArray(m.processes?.rows) ? m.processes.rows : [], uptimeH: j?.uptimeSec != null ? +(j.uptimeSec / 3600).toFixed(1) : null, enabled: j?.counts?.enabled ?? null, total: j?.counts?.total ?? null, top };
 }
 
 // ───────────────────────── Skyline: the chain as a trading city ─────────────────────────

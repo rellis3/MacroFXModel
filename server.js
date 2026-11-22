@@ -532,6 +532,7 @@ class _NodeWorker extends _RawNodeWorker {
     this.once('exit', () => _liveWorkers.delete(id));
   }
 }   // fx-factor-v2 / ou-pairs research runs, the corr-history build (off the main loop)
+import { containerProcesses as _containerProcesses } from './js/processMemory.js';   // /api/services -> processes: every OS process in the container, grouped by bot, with its memory
 import { pearson as corrPearson } from './js/corrHistoryCompute.js';   // the corr-history maths (built in js/corrHistoryWorker.js)
 import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataArchive.js';
 import { createSnapshotService as _createSnapshotService } from './js/deskSnapshotStore.js';   // the Desk Terminal time machine: CORE + FULL snapshots, KV window, R2 record (plans/TIME_MACHINE.md)
@@ -45877,6 +45878,7 @@ app.get('/api/services', (req, res) => {
       arrayBuffersMB: mb(mem.arrayBuffers),
       peakRssMB: mb(_memPeak.rssBytes),
       peakAt: _memPeak.at,
+      processes: (() => { try { return _containerProcesses(); } catch (e) { return null; } })(),
       workers: [..._liveWorkers.values()].map(x => ({ file: x.label, ageSec: Math.round((Date.now() - x.since) / 1000), maxOldMb: x.maxOldMb })),
       trace: _memTrace,
       sampledAt: new Date().toISOString(),

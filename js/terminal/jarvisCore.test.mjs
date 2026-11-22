@@ -133,3 +133,9 @@ test('bubbleLayout: every bubble placed, none overlapping, bigger moves are bigg
   assert.ok(worst < 0.004, `bubbles overlap by ${worst}`);
   assert.ok(L[keys[0]].r > L[keys[1]].r);
 });
+
+test('systemSummary carries the container total and the per-process rows (empty list when the server did not send them)', () => {
+  const s = systemSummary({ ok: true, memory: { rssMB: 4100, processes: { containerMB: 6100, rows: [{ id: 'server', rssMB: 4100 }, { id: 'botGold', rssMB: 900 }] } } });
+  assert.equal(s.containerMB, 6100); assert.equal(s.procs.length, 2);
+  const e = systemSummary({ ok: true, memory: { rssMB: 1 } }); assert.deepEqual(e.procs, []); assert.equal(e.containerMB, null);
+});
