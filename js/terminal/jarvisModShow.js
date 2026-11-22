@@ -45,7 +45,7 @@ registerJarvisModule({
       const chain = st.sum ? { holding: st.sum.holding, broken: st.sum.broken, quiet: st.sum.quiet, headline: st.sum.headline } : null;
       const custom = api.win.__jarvisCustomScenes; api.win.__jarvisCustomScenes = null;      // the NEWSLETTER module hands over its own scenes
       const scenes = custom?.length ? custom : buildScenes({ now: new Date(), movers: topMovers(rows, 5), board: rows.length ? boardSummary(rows) : null, chain, events, extra, mode: q('len').value });
-      ctl.rate = +q('rate').value || 1; ctl.paused = false; ctl.jump = null; st.voice = lsGet().voice !== false;
+      ctl.rate = +q('rate').value || 1; ctl.paused = false; ctl.jump = null; st.voice = lsGet().voice !== false; api.voiceBegin?.();
       const sync = () => api.cineLabel(ctl.rate, ctl.paused);
       const steps = [0.75, 1, 1.25, 1.5, 1.75, 2];
       api.cinema(true, () => { stop(); status('Ended.'); }, {

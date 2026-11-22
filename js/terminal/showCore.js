@@ -43,7 +43,7 @@ export function buildScenes(inp = {}) {
   for (const h of SHOW_HOOKS) {
     try {
       const x = h.build(inp, inp.extra?.[h.id] ?? null); if (!x || !x.text) continue;
-      let at = sc.findIndex(y => y.id === h.after); at = at < 0 ? sc.length : at + 1; sc.splice(at, 0, { id: h.id, title: x.title ?? h.id, view: x.view ?? 'globe', cam: x.cam ?? null, text: x.text, enter: x.enter, motion: x.motion });
+      let at = sc.findIndex(y => y.id === h.after); at = at < 0 ? sc.length : at + 1; sc.splice(at, 0, { id: h.id, title: x.title ?? h.id, view: x.view ?? 'globe', cam: x.cam ?? null, text: x.text, enter: x.enter, motion: x.motion, figure: x.figure ?? null });
     } catch (e) { /* a scene must never stop the show */ }
   }
   sc.push({ id: 'close', title: 'Standing by', view: 'globe', cam: { region: 'world' }, text: 'That is the picture. Description, not advice. I am watching.' });

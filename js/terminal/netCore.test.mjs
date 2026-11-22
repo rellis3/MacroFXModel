@@ -1,7 +1,8 @@
 // js/terminal/netCore.test.mjs: the NETWORK maths (layout, links, clusters, script) and that the view registers its module, view and SHOW scene.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { forceLayout, layoutFit, pickLinks, clusterTightness, partners, buildNet, netScript, sharesCurrency, rng } from './netCore.js';
+import { forceLayout, layoutFit, pickLinks, clusterTightness, partners, buildNet, netScript, sharesCurrency, rng, returnsOf, scrubSteps, triIx, triAt, toMatrix, makeScan, scanSome, triOf, pairPath, swingPair, biggestChange, dayMoves, relayout, meanShift, stepState, WINDOWS } from './netCore.js';
+import { series, matrix } from './corrMath.js';
 import { EXTRA, viewsOf } from './jarvisModules.js';
 import { SHOW_HOOKS, buildScenes } from './showCore.js';
 await import('./jarvisViewNet.js');
@@ -55,4 +56,82 @@ test('registers the NETWORK panel, the net view (accent up, clean chrome) and a 
   const h = SHOW_HOOKS.find(x => x.id === 'net'); assert.ok(h && h.after === 'lean');
   assert.equal(h.build({}, null), null);
   assert.ok(buildScenes({ now: new Date() }).length >= 2);
+});
+
+// a panel whose stock-gold correlation flips sign half way (a regime change), so the scrub has something to find
+function flipPanel(n = 400) {
+  const r = rng(5), f1 = Array.from({ length: n }, () => r() - 0.5), f2 = Array.from({ length: n }, () => r() - 0.5), noise = () => (r() - 0.5) * 0.25;
+  const mk = fn => { let p = 100; return [p, ...Array.from({ length: n - 1 }, (_, i) => (p *= Math.exp(fn(i + 1) * 0.01)))]; };
+  const gold = i => (i < n / 2 ? f1[i] : -f1[i]) * 0.8 + f2[i] * 0.3 + noise();
+  const spec = { NAS100_USD: i => f1[i] + noise(), SPX500_USD: i => f1[i] + noise(), US30_USD: i => f1[i] + noise(), XAUUSD: gold, XAGUSD: i => gold(i) + noise(), WTICO_USD: i => f2[i] + noise(), EURUSD: i => f2[i] * 0.5 + noise(), GBPUSD: i => f2[i] * 0.5 + noise() };
+  const syms = Object.keys(spec), closes = {}; for (const k of syms) closes[k] = mk(spec[k]);
+  return { syms, dates: Array.from({ length: n }, (_, i) => `2024-${String(1 + (i / 28 | 0)).padStart(2, '0')}-${String(1 + i % 28).padStart(2, '0')}`), closes };
+}
+
+test('scrub steps: weekly, anchored on the last day, never before a full window', () => {
+  const s = scrubSteps(100, 60, 5); assert.equal(s.at(-1), 99); assert.ok(s[0] >= 60); assert.ok(s.every((e, i) => !i || e - s[i - 1] === 5));
+  assert.deepEqual(scrubSteps(50, 60), []); assert.deepEqual(scrubSteps(61, 60), [60]);
+  assert.deepEqual(WINDOWS, [20, 60, 120]);
+});
+
+test('a window matrix equals corrMath.matrix at that end, and the packed index is consistent', () => {
+  const S = series(flipPanel()), ids = S.ids, R = returnsOf(S, ids);
+  for (const [end, w] of [[399, 60], [150, 20], [250, 120]]) {
+    const m = toMatrix(triAt(R, end, w), ids.length), ref = matrix(S, ids, w, end).m;
+    for (let i = 0; i < ids.length; i++) for (let j = 0; j < ids.length; j++) if (i !== j) assert.ok(Math.abs(m[i][j] - ref[i][j]) < 1e-6, `${i},${j}`);
+  }
+  let k = 0; for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) { assert.equal(triIx(5, i, j), k); assert.equal(triIx(5, j, i), k); k++; }
+});
+
+test('point-in-time: nothing after the shown date changes the matrix, the moves or the 3-month change (no lookahead)', () => {
+  const S = series(flipPanel()), R = returnsOf(S, S.ids), end = 220;
+  const a = triAt(R, end, 60), mv = dayMoves(R, S.ids, end), ch = biggestChange(R, S.ids, { w: 60, end });
+  const R2 = R.map(x => { const y = Float64Array.from(x); for (let i = end + 1; i < y.length; i++) y[i] = (i % 2 ? 1 : -1) * 0.5; return y; });
+  assert.deepEqual(Array.from(triAt(R2, end, 60)), Array.from(a));
+  assert.deepEqual(dayMoves(R2, S.ids, end), mv); assert.deepEqual(biggestChange(R2, S.ids, { w: 60, end }), ch);
+  // and the day itself does count: changing it changes the matrix
+  const R3 = R.map(x => { const y = Float64Array.from(x); y[end] = 0.3; return y; }); assert.notDeepEqual(Array.from(triAt(R3, end, 60)), Array.from(a));
+});
+
+test('window edges and missing data: a too-thin window is unknown, gaps are pairwise-complete, a dead market is all unknown', () => {
+  const S = series(flipPanel()), R = returnsOf(S, S.ids);
+  assert.ok(triAt(R, 10, 60).every(v => Number.isNaN(v)), 'only 10 days of returns in a 60-day window');
+  const Rg = R.map((x, i) => { const y = Float64Array.from(x); if (i === 1) for (let d = 300; d < 315; d++) y[d] = NaN; if (i === 7) y.fill(NaN); return y; });
+  const t = triAt(Rg, 340, 60), n = R.length;
+  assert.ok(Number.isFinite(t[triIx(n, 0, 1)]) && t[triIx(n, 0, 1)] > 0.8, 'a 15-day gap inside 60 days still leaves enough');
+  for (let i = 0; i < n - 1; i++) assert.ok(Number.isNaN(t[triIx(n, i, 7)]));
+  const m = toMatrix(t, n); assert.equal(m[7][0], null); assert.equal(m[0][0], 1);
+  const L = forceLayout(m); assert.ok(Array.from(L).every(Number.isFinite), 'the layout survives a dead market');
+  assert.deepEqual(dayMoves(Rg, S.ids, 340).GBPUSD, undefined);
+  assert.equal(biggestChange(R, S.ids, { w: 60, end: 100 }), null, 'no window three months before day 100');
+});
+
+test('the scan fills in chunks (latest first, the shown step on demand), and the strip and swing pair find the flip', () => {
+  const net = buildNet({ ok: true, panel: flipPanel() }), steps = scrubSteps(net.dates.length, 60), scan = makeScan(net.R, steps, 60);
+  assert.equal(scanSome(scan, 3), false); assert.ok(scan.tri.at(-1) && scan.tri.at(-3) && !scan.tri[0]);
+  scanSome(scan, 1, 0); assert.ok(scan.tri[0], 'the shown step jumps the queue');
+  let guard = 0; while (!scanSome(scan, 5) && guard++ < 1000); assert.ok(scan.done && scan.tri.every(Boolean));
+  const ix = k => net.ids.indexOf(k), path = pairPath(scan, ix('SPX500'), ix('GOLD'));
+  assert.ok(path[2] > 0.4 && path.at(-1) < -0.4, `stock-gold flips: ${path[2]} -> ${path.at(-1)}`);
+  const sw = swingPair(scan, net.ids); assert.ok(sw.range > 1, `swing ${sw.range}`); assert.ok([sw.a, sw.b].includes('GOLD') || [sw.a, sw.b].includes('SILVER'));
+  assert.ok(!sharesCurrency(sw.a, sw.b));
+  assert.equal(swingPair(makeScan(net.R, steps, 60), net.ids), null, 'nothing scanned yet: no headline pair');
+});
+
+test('warm start: same matrix barely moves the nodes; a new matrix moves them and still fits; a bad init falls back to a fresh layout', () => {
+  const net = buildNet({ ok: true, panel: flipPanel() }), steps = scrubSteps(net.dates.length, 60), scan = makeScan(net.R, steps, 60);
+  const a = stepState(net, scan, steps.length - 1), same = relayout(a.m, a.P);
+  assert.ok(meanShift(a.P, same) < 0.08, `same matrix shift ${meanShift(a.P, same)}`);
+  const b = stepState(net, scan, 5, a.P); assert.ok(b.fit > 0.7, `fit ${b.fit}`); assert.ok(meanShift(a.P, b.P) > 0.05);
+  assert.equal(b.date, net.dates[steps[5]]); assert.ok(b.hi && b.lo && b.tight.length);
+  assert.deepEqual(Array.from(forceLayout(a.m, { init: new Float32Array(3) })), Array.from(forceLayout(a.m)));
+  const bad = Float32Array.from(a.P); bad[0] = NaN; assert.deepEqual(Array.from(forceLayout(a.m, { init: bad })), Array.from(forceLayout(a.m)));
+});
+
+test('the 3-month change is found and spoken, with the sign flip named', () => {
+  const p = flipPanel(), n = p.dates.length;   // the flip sits at n/2 = 200; read it from a date 40 days after
+  for (const k of p.syms) p.closes[k] = p.closes[k].slice(0, 240); p.dates = p.dates.slice(0, 240);
+  const net = buildNet({ ok: true, panel: p }); assert.ok(net.change && Math.abs(net.change.delta) > 0.5, JSON.stringify(net.change)); assert.ok(n > 240);
+  assert.ok(['GOLD', 'SILVER'].some(k => [net.change.a, net.change.b].includes(k)));
+  const t = netScript(net); assert.match(t, /last three months the biggest change/); assert.match(t, /change of sign/); assert.match(t, /not a forecast/);
 });

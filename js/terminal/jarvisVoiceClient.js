@@ -27,7 +27,8 @@ function serverEngine(win) {
       if (clips.has(t)) return clips.get(t);
       const p = (async () => {
         try {
-          const r = await win.fetch('/api/jarvis/voice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, rate: 1 }) });
+          const ac = new win.AbortController(), to = win.setTimeout(() => ac.abort(), 15000);      // never let one slow clip hold up the programme
+          const r = await win.fetch('/api/jarvis/voice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, rate: 1 }), signal: ac.signal }).finally(() => win.clearTimeout(to));
           if (!r.ok) throw new Error(String(r.status)); provider = r.headers.get('X-Jarvis-Voice') || provider;
           const blob = await r.blob(); if (!blob.size) throw new Error('empty'); failures = 0; return win.URL.createObjectURL(blob);
         } catch (e) { clips.del(t); if (++failures >= 2) disabledUntil = Date.now() + 5 * 60_000; return null; }
@@ -78,7 +79,20 @@ export function makeNeuralVoice(win) {
   let audio = null;
   const engine = () => lsGet().engine || 'kokoro';
   const order = () => (engine() === 'kokoro' ? [kokoro, server] : [server]);
-  async function clip(text) { for (const e of order()) { const u = await e.fetch(text); if (u) return { u, by: e.name }; } return null; }
+  // The narration must never wait for Kokoro to download or warm up. Within one programme (a SHOW or BROADCAST run) ONE voice is used throughout:
+  // Kokoro if it is warm when the programme starts and keeps up, otherwise the server voice; Kokoro keeps loading in the background for next time.
+  let lock = null;                                   // null (undecided) | 'kokoro' | 'server'
+  const withTimeout = (p, ms) => new Promise(res => { const t = win.setTimeout(() => res(null), ms); p.then(v => { win.clearTimeout(t); res(v); }, () => { win.clearTimeout(t); res(null); }); });
+  async function clip(text) {
+    if (engine() === 'kokoro' && lock !== 'server') {
+      if (kokoro.info().ready && !kokoro.info().broken) {
+        const u = await withTimeout(kokoro.fetch(text), lock === 'kokoro' ? 20000 : 8000);     // warm: give a line time to render; it was rendered ahead while the last one played
+        if (u) { lock = 'kokoro'; return { u, by: 'kokoro' }; }
+      } else kokoro.warm();
+      lock = 'server';                               // not warm, or could not keep up: the server voice for the rest of this programme
+    }
+    const u = await server.fetch(text); return u ? { u, by: 'server' } : null;
+  }
   async function play(text, rate = 1, onEnd = () => {}) {
     const c = await clip(text); if (!c) return null;
     try { audio?.pause(); } catch (e) { /* idle */ }
@@ -89,11 +103,15 @@ export function makeNeuralVoice(win) {
     return { by: c.by, stop() { try { a.pause(); } catch (e) { /* idle */ } end(); }, pause(on) { try { on ? a.pause() : a.play(); } catch (e) { /* idle */ } }, setRate(r) { a.playbackRate = Math.max(0.5, Math.min(2, r || 1)); } };
   }
   return {
-    prefetch: t => { order()[0].fetch(t); },
+    prefetch: t => { if (engine() === 'kokoro' && lock !== 'server' && kokoro.info().ready) kokoro.fetch(t); else server.fetch(t); },
+    /** A new programme starts: decide its voice afresh, and start warming Kokoro if it is the chosen engine. */
+    begin: () => { lock = null; if (engine() === 'kokoro') kokoro.warm(); },
     play,
-    slow: () => engine() === 'kokoro',              // the in-browser engine can take longer than the line itself on a slow machine: the director waits for it
+    slow: () => false,                              // play() never waits long: at most ~8-20 s for a Kokoro line, 15 s for the server, then the built-in voice
     warm: () => { if (engine() === 'kokoro') kokoro.warm(); },
-    info: () => ({ engine: engine(), kokoro: kokoro.info(), server: server.info() }),
+    info: () => ({ engine: engine(), lock, kokoro: kokoro.info(), server: server.info() }),
+    /** One line for a status bar: which voice is speaking, and Kokoro's download progress while it warms up. */
+    label() { const k = kokoro.info(); if (engine() !== 'kokoro') return 'server voice'; if (k.broken) return 'server voice (Kokoro could not start here)'; if (!k.ready) return `server voice while Kokoro downloads${k.loading ? ` (${Math.round(k.loading * 100)}%)` : ''}`; return lock === 'server' ? 'server voice this time (Kokoro is ready for the next run)' : 'Kokoro'; },
     stopAll() { try { audio?.pause(); } catch (e) { /* idle */ } },
     engine, setEngine: e => lsPut({ engine: e }), kvoice: () => lsGet().kvoice || 'bm_george', setKvoice: v => lsPut({ kvoice: v }),
   };
