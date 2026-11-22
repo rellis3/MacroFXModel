@@ -100,3 +100,17 @@ Reported: the hit rate of the take-profit against the driftless benchmark s / (s
 - **B1 VALIDATED:** the OC lines get their own model.
 - **B2 VALIDATED:** the OC take-profit goes to the exhaustion export as a target, and the trade gets its own forward record.
 - **NULL or UNDERPOWERED:** nothing changes, and the result is decomposed per quantity and per instrument.
+
+## Amendments
+
+### A1 — 2026-11-22, PRE-RESULTS (rows rebuilt, nothing scored): pooling and the planted control made exact
+
+- **Pooling (§5, §6):** the instruments have different % scales: NQ's and gold's pinball losses are several times
+  EURUSD's. So the pooled Δ is the **equal-weight mean of the three per-instrument relative Δs**, not a sum of raw
+  losses. Each bootstrap draw resamples 63-session blocks within each instrument and recomputes each relative Δ, then
+  averages them.
+- **PC-A ORACLE (§8):** OH σ_O = √(A0 × OH_realised / m), where m is the median of OH_realised / A0 over all
+  sessions. This is a control, so full-sample information is allowed. Its hl, ol and oc lines are A0's lines widened
+  ×1.3. That way the one-model pick (S1) can't take it, and only the per-line pick can use the informed OH lines, which
+  is the property under test.
+- **PC-B2 (§8):** the benchmark is compared over trades that end at a barrier (take-profit or stop), not at 22:00.
