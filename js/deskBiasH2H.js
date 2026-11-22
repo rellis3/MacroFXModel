@@ -195,6 +195,22 @@ export function processCalls(records) {
   return out;
 }
 /**
+ * Bias Engine V2 daily records (KV bias_engine_v2_<D>, computed live at 05:30-06:00 London) -> calls for the primary
+ * variant, one per market and day, knowable at the record's issue time. Same speaking rule as V1 on the ledger: a side
+ * and strength > 0. sigmaOf(date, market) supplies sigma_day (the process record's range layer).
+ */
+export function engineV2Calls(records, sigmaOf = () => null, variant = 'v2') {
+  const out = [], SIDE = { BULLISH: 1, BEARISH: -1 };
+  for (const r of records ?? []) {
+    const ms = Date.parse(r.issuedAt ?? r.asOf ?? '');
+    for (const [market, m] of Object.entries(r.variants?.[variant]?.markets ?? {})) {
+      const side = SIDE[m?.dir] ?? 0, speaks = !!side && m.strength > 0;
+      out.push({ competitor: 'bias-engine-v2', market, date: r.date, ms, side: speaks ? side : 0, conviction: Number.isFinite(m?.strength) ? m.strength : null, invalidation: null, sigmaDay: sigmaOf(r.date, market) });
+    }
+  }
+  return out;
+}
+/**
  * Same-day ledger records (forward/direction_ledger/sameday/<D>_<source>.json) -> calls for the listed models, d21 rows
  * only (one per instrument and day), side and knowable time as recorded, no invalidation. `nameOf` maps a ledger
  * instrument (eurusd) to the market name (EURUSD). σ_day from the row.

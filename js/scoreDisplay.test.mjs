@@ -17,7 +17,15 @@ test('a strong short at high conviction is −5 with a down arrow and "strong sh
   assert.equal(SD.assetText(c), '▼ −5.0 · strong short');
   assert.equal(SD.gradeLabel(c), 'A+ conviction');
   assert.equal(SD.assetText({ rating: 'LONG', conviction: 'medium' }), '▲ +2.0 · long');
-  assert.equal(SD.assetText({ rating: 'FLAT', conviction: 'low' }), '● 0.0 · no view');
+  assert.equal(SD.assetText({ rating: 'FLAT', conviction: 'low' }), '● 0.0 · neutral');
+});
+
+test('a flat card reads "neutral" (reviewed) or "not reviewed" when the terminal review state says so', () => {
+  const flat = { rating: 'FLAT', conviction: 'low' };
+  assert.equal(SD.assetWord(flat), 'neutral');
+  globalThis.ttReviewState = () => ({ state: 'unreviewed' });
+  try { assert.equal(SD.assetWord(flat), 'not reviewed'); assert.equal(SD.assetWord({ rating: 'LONG', conviction: 'low' }), 'long'); }
+  finally { delete globalThis.ttReviewState; }
 });
 
 test('missing inputs are "no data", never a neutral number', () => {

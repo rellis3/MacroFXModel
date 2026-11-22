@@ -10,16 +10,16 @@ Generated 2026-11-22.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **571** |
-| validated | 195 |
-| null | 215 |
-| underpowered | 161 |
-| context (base rates, descriptions: not counted as tests) | 84 |
-| pre-registrations with no banked verdict (below) | 89 |
+| claims tested (validated + null + underpowered) | **577** |
+| validated | 196 |
+| null | 216 |
+| underpowered | 165 |
+| context (base rates, descriptions: not counted as tests) | 85 |
+| pre-registrations with no banked verdict (below) | 90 |
 
-**What the count says (Lesson 02 §05).** If none of the 571 claims were real, tests at the usual 5% size would still pass
-about **28.6** of them by luck. 195 passed, so most passes are unlikely to be luck alone, but
-**roughly 29 of the 195 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 577 claims were real, tests at the usual 5% size would still pass
+about **28.9** of them by luck. 196 passed, so most passes are unlikely to be luck alone, but
+**roughly 29 of the 196 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -283,6 +283,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-25 | overnight-hold-nq | price | underpowered | forge/OVERNIGHT_HOLD_PREREG.md |
 | 2026-10-25 | overnight-hold-toolkit | price | context | forge/OVERNIGHT_HOLD_TOOLKIT_PREREG.md |
 | 2026-10-25 | portfolio-book-validate | price | context | forge/PORTFOLIO_BOOK_VALIDATE_PREREG.md |
+| 2026-10-26 | cb-meeting-drift-continue | events | underpowered | forge/CB_MEETING_DRIFT_PREREG.md |
+| 2026-10-26 | cb-meeting-drift-own | events | null | forge/CB_MEETING_DRIFT_PREREG.md |
+| 2026-10-26 | pre-fomc-drift-nq | events | underpowered | forge/PRE_FOMC_DRIFT_PREREG.md |
 | 2026-10-27 | forecast-miss-month-end-fx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
 | 2026-10-27 | forecast-miss-scan | volatility | context | forge/FORECAST_MISS_SCAN_PREREG.md |
 | 2026-10-27 | forecast-miss-shock-fx | volatility | validated | forge/FORECAST_MISS_SCAN_PREREG.md |
@@ -592,6 +595,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-20 | exhaustion-v2-zf-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-zn-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | exhaustion-v2-zt-fut | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
+| 2026-11-20 | hedge-downside-beta | execution | context | forge/HEDGE_METHOD_COMPARISON_PREREG.md |
+| 2026-11-20 | hedge-method-comparison | execution | validated | forge/HEDGE_METHOD_COMPARISON_PREREG.md |
 | 2026-11-20 | ladder-v2-audcad | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-audchf | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
 | 2026-11-20 | ladder-v2-audjpy | volatility | validated | forge/LADDER_V2_ROLLOUT_PREREG.md |
@@ -682,6 +687,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-22 | ladder-per-line | volatility | underpowered | forge/LADDER_PER_LINE_PREREG.md |
 | 2026-11-22 | ladder-per-line-oc | volatility | underpowered | forge/LADDER_PER_LINE_PREREG.md |
 | 2026-11-22 | ladder-per-line-oc-tp | price | null | forge/LADDER_PER_LINE_PREREG.md |
+| 2026-11-22 | ladder-qlike-per-line | volatility | underpowered | forge/LADDER_QLIKE_PER_LINE_PREREG.md |
+| 2026-11-22 | ladder-qlike-vs-pinball | volatility | underpowered | forge/LADDER_QLIKE_PER_LINE_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -775,4 +782,5 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
 - `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
 - `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
+- `oi_research_book/OI_TOUCH_ORDER_PREREG.md`: oi-touch-order — Does the reaction at an OI level depend on how many times it has already been tested today, b
 - `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot

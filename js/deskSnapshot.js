@@ -189,6 +189,7 @@ export const FULL_FEEDS = [
 ];
 /** Long histories or whole books that are already stored somewhere durable, or can be rebuilt from stored prices. Each is left out of FULL, with the reason. */
 export const FULL_EXCLUDED = [
+  { path: 'earnings-reported', why: 'a 10-minute in-memory cache of reported big-company EPS/revenue (Finnhub, rebuilt on request); every reported item already enters the news wire' },
   { path: 'rates', why: 'about 230 KB of FRED history, rebuilt from FRED and already archived in R2 (archive/series/fred)' },
   { path: 'fx-fair-value', why: 'about 85 KB; the model re-runs from stored prices and keeps its own forward record (fx_fair_value_log_v1)' },
   { path: 'release-reactions', why: 'about 200 KB; every live reaction is already in release_reaction_log_v1' },

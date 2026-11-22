@@ -1,0 +1,82 @@
+[
+  {
+    "pair": "GOLD <- DXY",
+    "windows": 117,
+    "all": -1.021160606738545,
+    "whenHedgeWorst": -0.8903656359401686,
+    "whenHedgeBest": -1.0310686490805787,
+    "whenHedgeBigMove": -1.0394018800909355
+  },
+  {
+    "pair": "NQ <- GOLD",
+    "windows": 117,
+    "all": 0.06666426135566453,
+    "whenHedgeWorst": 0.11509855834577443,
+    "whenHedgeBest": 0.20437170761161746,
+    "whenHedgeBigMove": 0.08263713335192216
+  },
+  {
+    "pair": "NQ <- US2000",
+    "windows": 117,
+    "all": 0.7194521211020961,
+    "whenHedgeWorst": 0.9146684663936042,
+    "whenHedgeBest": 0.7859632393362195,
+    "whenHedgeBigMove": 0.7457467713599183
+  },
+  {
+    "pair": "US2000 <- GOLD",
+    "windows": 117,
+    "all": 0.0946016645574144,
+    "whenHedgeWorst": -0.040486681550506415,
+    "whenHedgeBest": 0.16710352956023045,
+    "whenHedgeBigMove": 0.078709732510287
+  },
+  {
+    "pair": "US30 <- GOLD",
+    "windows": 117,
+    "all": 0.05295399244826237,
+    "whenHedgeWorst": 0.03019773239091333,
+    "whenHedgeBest": 0.0404317594071753,
+    "whenHedgeBigMove": 0.0390429810693695
+  },
+  {
+    "pair": "EURUSD <- USDCHF",
+    "windows": 117,
+    "all": -0.7467311558434765,
+    "whenHedgeWorst": -0.6868395607293368,
+    "whenHedgeBest": -0.6994286444452633,
+    "whenHedgeBigMove": -0.7260599661080398
+  },
+  {
+    "pair": "GBPUSD <- EURUSD",
+    "windows": 117,
+    "all": 0.7913400196557264,
+    "whenHedgeWorst": 0.8118991660767991,
+    "whenHedgeBest": 0.7572382619229763,
+    "whenHedgeBigMove": 0.7884094711450322
+  },
+  {
+    "pair": "AUDUSD <- NQ",
+    "windows": 117,
+    "all": 0.18027617818165836,
+    "whenHedgeWorst": 0.18572365656658424,
+    "whenHedgeBest": 0.17207326325530475,
+    "whenHedgeBigMove": 0.18362626418372796
+  },
+  {
+    "pair": "USDJPY <- NQ",
+    "windows": 117,
+    "all": 0.07806972031693768,
+    "whenHedgeWorst": 0.10882748798184375,
+    "whenHedgeBest": 0.033181550070697764,
+    "whenHedgeBigMove": 0.07793081830390428
+  },
+  {
+    "pair": "DE30 <- NQ",
+    "windows": 117,
+    "all": 0.5347262025177878,
+    "whenHedgeWorst": 0.50259603592259,
+    "whenHedgeBest": 0.49768388371181344,
+    "whenHedgeBigMove": 0.5246158607536683
+  }
+]

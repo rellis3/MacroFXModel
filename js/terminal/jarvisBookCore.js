@@ -61,3 +61,39 @@ export function bookScript(book) {
   parts.push("That is the desk's own call, written this morning, not a forecast.");
   return parts.join(' ');
 }
+
+// ───────────── the hologram's honest shapes (jarvisViewBook.js) ─────────────
+// A review flagged that a conviction HEIGHT standing next to a MEASURED move invites a false comparison (two heights, no shared scale). So in the hologram HEIGHT means one thing
+// only: the cyan bar, today's measured move in multiples of the market's usual move. A call's tower has ONE fixed height for every call (it only says long = rises, short = hangs);
+// the conviction word is carried by the tower's WIDTH (three steps), its brightness and a count of rings at its foot (1 / 2 / 3), and is written on its label.
+export const CALL_H = 0.5, FLAT_H = 0.03, MOVE_K = 0.32, MOVE_CAP = 3;
+const CONV_STEP = { low: 1, medium: 2, high: 3 };
+/** The conviction step 1..3 of a row (0 when the feed does not carry it, e.g. the ratings-only summary). */
+export const convStep = r => CONV_STEP[r?.conv] ?? 0;
+/**
+ * A call's shape (world units, before the view's grid scale): { y0, y1 } the vertical extent (fixed height: +CALL_H long, -CALL_H short, a FLAT_H plinth when flat),
+ * half-width w by conviction step (unknown = the middle width, drawn hollow), glow 0..1 by step, rings = step count, dashed for "Not reviewed" / unknown flat.
+ */
+export function callShape(r) {
+  const step = convStep(r), call = r?.call ?? 0;
+  const y1 = call > 0 ? CALL_H : call < 0 ? -CALL_H : FLAT_H, w = call === 0 ? 0.045 : [0.042, 0.028, 0.042, 0.058][step];
+  return { y0: 0, y1, w, step, rings: call === 0 ? 0 : step, glow: call === 0 ? 0.35 : [0.55, 0.45, 0.72, 1][step], dashed: call === 0 && r?.state !== 'neutral', hollow: call !== 0 && step === 0 };
+}
+/** Today's measured move as a height: v = ratio clipped at ±MOVE_CAP usual moves, y = v * MOVE_K, capped flag, and the whole-number ticks (1x, 2x, 3x usual) the bar passes. null without a move. */
+export function moveHeight(r) {
+  if (r?.move == null || !Number.isFinite(r.move)) return null;
+  const v = Math.max(-MOVE_CAP, Math.min(MOVE_CAP, r.move)), ticks = [];
+  for (let k = 1; k <= Math.floor(Math.abs(v) + 1e-9); k++) ticks.push(Math.sign(v) * k * MOVE_K);
+  return { v, y: v * MOVE_K, capped: Math.abs(r.move) > MOVE_CAP, ticks };
+}
+/**
+ * The SHOW camera for the book, a pure function of progress p (0..1): an overview high over the street grid, a dive down to fly low past the tallest-conviction calls
+ * (focus = their mean grid position, or null), then a rise to a three-quarter view. Returns { yaw, elev, dist, target: [x, y, z] } for an orbit (dist in grid units).
+ */
+export function bookShowCam(p, focus) {
+  const e = x => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
+  const f = focus ?? { x: 0, z: 0 }, a = e(p / 0.3), b = e((p - 0.3) / 0.4), c = e((p - 0.72) / 0.28);
+  const yaw = -0.55 + 0.35 * a + 0.75 * b + 0.25 * c, elev = 1.05 - 0.75 * a + 0.05 * b + 0.45 * c, dist = 2.9 - 1.6 * a + 0.1 * b + 1.1 * c;
+  const k = a * (1 - c);
+  return { yaw, elev, dist, target: [f.x * k, 0.06 + 0.05 * a, f.z * k] };
+}

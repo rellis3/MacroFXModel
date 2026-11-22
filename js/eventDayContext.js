@@ -38,8 +38,10 @@ export const FAMILIES = {
 const fmt = (v, unit, dp) => `${v > 0 ? '+' : v < 0 ? MINUS : ''}${Math.abs(v).toFixed(dp ?? (unit === 'bp' ? 1 : 2))}${unit === 'pt' ? ' pt' : unit}`;
 const size = (v, unit) => `${Math.abs(v).toFixed(unit === 'bp' ? 1 : 2)}${unit === 'pt' ? ' pt' : unit}`;
 const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-export const londonDate = ms => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date(ms));
-const londonClock = ms => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(ms));
+// One formatter each, built once. They used to be built inside the arrow functions, once per event row: native ICU memory V8 does not count (about 1 GB at boot; see js/marketHistory.js londonDate).
+const _LON_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }), _LON_CLOCK = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false });
+export const londonDate = ms => _LON_DATE.format(new Date(ms));
+const londonClock = ms => _LON_CLOCK.format(new Date(ms));
 
 /** Past events of one family before `beforeMs`: per asset, the median 30-minute size, the median 4-hour size and how often the 4-hour move kept the 30-minute sign. */
 export function familyHistory(rows, family, beforeMs) {

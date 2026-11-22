@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SECTIONS, COMPANION, labelOf, sectionOf, itemsFor, activeSection } from './jarvisNav.js';
+import { SECTIONS, COMPANION, ENGINE_TOOLS, labelOf, sectionOf, itemsFor, activeSection } from './jarvisNav.js';
 
 test('sections: six, unique ids, every item belongs to exactly one section, every section has a home that is one of its items', () => {
   assert.equal(SECTIONS.length, 6); assert.equal(new Set(SECTIONS.map(s => s.id)).size, 6);
@@ -13,9 +13,16 @@ test('sections: six, unique ids, every item belongs to exactly one section, ever
 });
 test('every picture and panel the HUD ships is reachable from some section', () => {
   const views = ['globe', 'candles', 'bubbles', 'skyline', 'orbit', 'session', 'wx', 'net', 'chainfly', 'yields', 'ccy', 'vol', 'gamma', 'book'];
-  const tools = ['show', 'news', 'film', 'markets', 'radar', 'brief', 'precedent', 'ask', 'explain', 'papers', 'alerts', 'system'];
+  const tools = ['broadcast', 'news', 'film', 'markets', 'radar', 'brief', 'precedent', 'ask', 'explain', 'papers', 'alerts', 'system'];
   for (const v of views) assert.ok(sectionOf('view', v), `view ${v} has no section`);
   for (const t of tools) assert.ok(sectionOf('tool', t), `tool ${t} has no section`);
+});
+test('WATCH holds ONE morning programme: the broadcast; SHOW is an engine with no button that still lands in WATCH', () => {
+  const w = SECTIONS.find(s => s.id === 'watch');
+  assert.deepEqual(w.home, ['tool', 'broadcast']); assert.equal(labelOf('tool', 'broadcast'), 'MORNING SHOW');
+  assert.equal(sectionOf('tool', 'show'), null, 'no second morning-show button');
+  assert.equal(w.items.filter(i => /MORNING/.test(i[2])).length, 1);
+  assert.equal(ENGINE_TOOLS.show, 'watch'); assert.equal(activeSection('show', 'candles').id, 'watch', 'the NEWSLETTER playing through SHOW keeps WATCH lit');
 });
 test('companions point at real panels; labelOf and sectionOf agree; itemsFor leaves out what is not registered', () => {
   for (const [v, t] of Object.entries(COMPANION)) { assert.ok(sectionOf('view', v), v); if (t) assert.ok(sectionOf('tool', t), `${v} companion ${t}`); }

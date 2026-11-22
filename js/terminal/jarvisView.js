@@ -12,14 +12,22 @@ import { candleRows, candleLayout, candleBox, boardSummary, ROWS as CD_ROWS } fr
 import { EXTRA, loadModules, viewsOf } from './jarvisModules.js';
 import { SECTIONS, COMPANION, labelOf, itemsFor, activeSection } from './jarvisNav.js';
 import { shortLabel } from './chainBoard.js';
+import { glDisposeAll, glInstance } from './jarvisGL.js';
+import { GLOBE_HOLO, drawGlobeOverlay } from './jarvisGlobeHolo.js';
+import { globeFrame } from './jarvisGlobeHoloCore.js';
+import { makeNeuralVoice, KOKORO_VOICES, ENGINES, FX_LEVELS } from './jarvisVoiceClient.js';
+import { SHOW_HOOKS } from './showCore.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ID = 'jarvis', LS = 'jarvisPrefs:v1';
 const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { return {}; } };
 const lsPut = o => { try { localStorage.setItem(LS, JSON.stringify({ ...lsGet(), ...o })); } catch (e) { /* private window */ } };
+// The ONE voice on/off for the programmes (BROADCAST, SHOW): prefs.speak. Before it existed each programme kept its own; the old setting is read once as the default.
+const speakPref = p => { if (typeof p.speak === 'boolean') return p.speak; try { for (const k of ['jarvisBroadcast:v1', 'jarvisShow:v1']) { const o = JSON.parse(localStorage.getItem(k) || '{}'); if (o && typeof o.voice === 'boolean') return o.voice; } } catch (e) { /* private window */ } return true; };
 
 const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-index:300;color:var(--tx);font-family:var(--mono,monospace);background:radial-gradient(ellipse at 50% 55%,color-mix(in srgb,var(--jva) 20%,var(--bg)) 0%,var(--bg) 72%);overflow:hidden;animation:jv-in .7s ease-out}
 @keyframes jv-in{from{opacity:0;filter:blur(8px) brightness(2)}to{opacity:1;filter:none}}
+#${ID} .jv-vpop{position:absolute;top:calc(var(--jvtop) + 4px);right:24px;z-index:6;width:290px;display:flex;flex-direction:column;gap:9px;padding:14px 16px;border:1px solid var(--jva);border-radius:12px;background:color-mix(in srgb,var(--bg1) 92%,transparent);box-shadow:0 0 28px color-mix(in srgb,var(--jva) 30%,transparent);backdrop-filter:blur(6px);font-size:11px;letter-spacing:.12em}#${ID} .jv-vpop[hidden]{display:none}#${ID} .jv-vpop .jv-vh{font-size:10px;letter-spacing:.3em;color:var(--jva)}#${ID} .jv-vpop label{display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--tx2)}#${ID} .jv-vpop label[hidden]{display:none}#${ID} .jv-vpop select{background:transparent;color:var(--tx);border:1px solid color-mix(in srgb,var(--jva) 55%,transparent);border-radius:7px;padding:4px 6px;font:inherit;letter-spacing:.06em;max-width:170px}#${ID} .jv-vpop select option{background:var(--bg1);color:var(--tx)}#${ID} .jv-vnote{color:var(--tx2);font-size:10px;letter-spacing:.04em;line-height:1.4}#${ID}.jv-compact .jv-vpop{left:12px;right:12px;width:auto}
 #${ID}[hidden]{display:none}
 #${ID} canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}#${ID} canvas:active{cursor:grabbing}
 #${ID} .jv-scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 2px,color-mix(in srgb,var(--jva) 7%,transparent) 2px 3px);mix-blend-mode:screen;animation:jv-scan 9s linear infinite}
@@ -72,7 +80,7 @@ const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-ind
 @media (max-width:640px){#${ID} .jv-boot,#${ID} .jv-hud{display:none}#${ID} .jv-title{font-size:14px}#${ID} .jv-scrub{bottom:34px}}
 @media (prefers-reduced-motion:reduce){#${ID},#${ID} .jv-scan,#${ID} .jv-title{animation:none}}
 #${ID} .jv-menubtn,#${ID} .jv-cur{display:none}#${ID} .jv-menu{display:contents}#${ID} .jv-menu>span{display:contents}#${ID} .jv-menu>span.jv-mh{display:none}
-#${ID}.jv-compact .jv-top{padding:10px 12px;gap:6px 8px;pointer-events:none}#${ID}.jv-compact .jv-title{font-size:13px;letter-spacing:.28em}#${ID}.jv-compact .jv-sub{display:none}
+#${ID}.jv-compact .jv-top{padding:10px 12px;gap:6px 8px;pointer-events:none}#${ID}.jv-compact .jv-title{font-size:13px;letter-spacing:.28em}#${ID}.jv-compact .jv-top .jv-sub{display:none}
 #${ID}.jv-compact .jv-menubtn,#${ID}.jv-compact .jv-cur{display:inline-flex}#${ID}.jv-compact .jv-cur{font-size:10px;letter-spacing:.14em;color:var(--jva);padding:5px 4px}
 #${ID}.jv-compact .jv-menu{display:none;width:100%;flex-wrap:wrap;gap:6px;max-height:62vh;overflow:auto;padding:10px;border:1px solid var(--jva);border-radius:12px;background:color-mix(in srgb,var(--bg1) 94%,transparent);pointer-events:auto}
 #${ID}.jv-compact.jv-menu-open .jv-menu{display:flex}
@@ -80,9 +88,9 @@ const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-ind
 #${ID}.jv-compact button{font-size:10px;padding:4px 9px}
 #${ID}.jv-compact .jv-reg{left:0;transform:none;width:100%;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding:0 12px;box-sizing:border-box}
 #${ID}.jv-compact .jv-pane,#${ID}.jv-compact .jv-card{left:10px;right:10px;width:auto;bottom:74px;max-height:50vh}#${ID}.jv-compact .jv-pane{top:calc(var(--jvtop,62px) + 6px);max-height:none}
-#${ID}.jv-compact .jv-scrub{left:10px;right:10px;bottom:10px;padding:5px 8px;gap:6px}#${ID}.jv-compact .jv-scrub #${ID}-sd,#${ID}.jv-compact .jv-foot{display:none}
+#${ID}.jv-compact .jv-scrub{left:10px;right:10px;bottom:10px;padding:5px 8px;gap:6px}#${ID}.jv-noscrub .jv-scrub{display:none}#${ID} .jv-scrubt{display:none}#${ID}.jv-compact .jv-scrubt{display:inline-block}#${ID}.jv-compact .jv-scrub:not(.open){left:auto;right:10px;padding:3px}#${ID}.jv-compact .jv-scrub:not(.open)>:not(.jv-scrubt){display:none}#${ID}.jv-compact .jv-scrub #${ID}-sd,#${ID}.jv-compact .jv-foot{display:none}
 #${ID}.jv-compact .jv-cap{padding:50px 14px 88px}#${ID}.jv-compact .jv-cap .x{font-size:15px;line-height:1.45}#${ID}.jv-compact .jv-cap .t{font-size:10px;letter-spacing:.3em;margin-bottom:6px}
-#${ID}.jv-compact .jv-cine{bottom:8px;width:calc(100vw - 16px);flex-wrap:wrap;justify-content:center;gap:5px}#${ID}.jv-compact .jv-cinexit{right:10px;top:10px;font-size:10px}
+#${ID}.jv-compact .jv-cine{bottom:8px;width:calc(100vw - 16px);flex-wrap:wrap;justify-content:center;gap:5px}#${ID} .jv-cine .jv-cmore{display:none}#${ID}.jv-compact .jv-cine .jv-cmore{display:inline-block}#${ID}.jv-compact .jv-cine:not(.more)>:not([data-c="pause"]):not(.jv-cmore){display:none}#${ID}.jv-compact .jv-cinexit{right:10px;top:10px;font-size:10px}
 #${ID}.jv-compact .jv-br{width:20px;height:20px}
 #${ID} .jv-nav{display:flex;flex-direction:column;gap:6px;width:100%;order:2;pointer-events:auto}#${ID} .jv-nav-row{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
 #${ID} .jv-sec{font-size:12px;letter-spacing:.16em;padding:6px 18px}#${ID} .jv-sec[aria-pressed="true"]{background:color-mix(in srgb,var(--jva) 22%,transparent)}
@@ -91,6 +99,9 @@ const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-ind
 #${ID}.jv-compact .jv-menu>span.jv-mh:first-child{order:-2}#${ID}.jv-compact .jv-nav{order:-1}#${ID}.jv-compact .jv-sec{font-size:10px;padding:5px 10px}
 #${ID}.jv-clean .jv-hud,#${ID}.jv-clean .jv-reg,#${ID}.jv-clean .jv-boot{opacity:0;pointer-events:none}
 #${ID}.jv-noscan .jv-scan{display:none}
+#${ID}.jv-nochain:not(.jv-cinema) .jv-boot{opacity:1;display:block}#${ID}.jv-compact.jv-nochain .jv-boot{left:12px;right:12px;bottom:56px;max-width:none;font-size:11px}
+#${ID} .jv-attract{position:absolute;right:24px;bottom:84px;z-index:6;font-size:10px;letter-spacing:.3em;color:var(--jva);padding:5px 12px;border:1px solid var(--jva);border-radius:999px;background:color-mix(in srgb,var(--bg1) 70%,transparent);pointer-events:none;animation:jv-blink 2.4s steps(2) infinite}#${ID}.jv-compact .jv-attract{right:12px;bottom:56px}
+@media (prefers-reduced-motion:reduce){#${ID} .jv-attract{animation:none}}
 #${ID} canvas.jv-sw{animation:jv-sw .55s ease-out}@keyframes jv-sw{0%{filter:brightness(2.4) blur(5px) saturate(1.6)}100%{filter:none}}
 @media (prefers-reduced-motion:reduce){#${ID} canvas.jv-sw{animation:none}}`;
 
@@ -105,9 +116,9 @@ export async function openJarvis(win = window) {
   root.innerHTML = `<style>${CSS}</style><canvas id="${ID}-cv"></canvas><div class="jv-bs" id="${ID}-bs"><div class="jv-bs-t"><h1 id="${ID}-bst">J.A.R.V.I.S.</h1><div class="jv-bs-sub blink" id="${ID}-bss">&nbsp;</div></div><div class="jv-bs-b"><div class="jv-bs-log" id="${ID}-bslog"></div><div class="jv-bar"><i id="${ID}-bsbar"></i></div></div></div><div class="jv-scan"></div><div class="jv-vig"></div><i class="jv-br tl"></i><i class="jv-br tr"></i><i class="jv-br bl"></i><i class="jv-br brr"></i>
 <div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">J.A.R.V.I.S.</span><span class="jv-sub">desk intelligence · description only</span><span class="jv-sp"></span><span class="jv-cur" id="${ID}-cur"></span><button type="button" class="jv-menubtn" id="${ID}-menubtn" aria-expanded="false">☰ MENU</button>
 <div class="jv-menu" id="${ID}-menu"><span class="jv-mh">SECTIONS</span><div class="jv-nav" id="${ID}-nav"></div><span class="jv-mh">TIME WINDOW</span><span id="${ID}-win"></span><span class="jv-mh">OPTIONS</span><span id="${ID}-opts">
-<button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></span><span id="${ID}-mods" hidden></span><span id="${ID}-view" hidden></span></div></div>
-<div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-cine" id="${ID}-cine"><button type="button" data-c="prev" title="Back one scene (left arrow)">⏮ BACK</button><button type="button" data-c="pause" id="${ID}-cpause" title="Pause or resume (space)">⏸ PAUSE</button><button type="button" data-c="next" title="Skip this scene (right arrow)">SKIP ⏭</button><button type="button" data-c="slow" title="Slower (minus)">−</button><span id="${ID}-crate">1.0×</span><button type="button" data-c="fast" title="Faster (plus)">+</button></div><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
-<div class="jv-scrub" id="${ID}-scrub"><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button><button type="button" id="${ID}-expl" title="Describe what was going on around this day (one model call)">EXPLAIN THIS DAY</button></div>
+<button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-vbtn" aria-expanded="false" title="Voice settings">VOICE ▾</button><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></span><span id="${ID}-mods" hidden></span><span id="${ID}-view" hidden></span></div></div>
+<div class="jv-vpop" id="${ID}-vpop" hidden><div class="jv-vh">VOICE</div><label><span>SPEAK THE PROGRAMMES</span><button type="button" id="${ID}-vsp" aria-pressed="${speakPref(prefs)}" title="On: the briefing and the show are read aloud. Off: subtitles at reading speed">${speakPref(prefs) ? 'ON' : 'OFF'}</button></label><label><span>NATURAL VOICE</span><button type="button" id="${ID}-nv" aria-pressed="${prefs.neural !== false}" title="Off = the browser's built-in voice">${prefs.neural !== false ? 'ON' : 'OFF'}</button></label><label><span>ENGINE</span><select id="${ID}-veng">${ENGINES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label><label id="${ID}-vkvl"><span>KOKORO VOICE</span><select id="${ID}-vkv">${KOKORO_VOICES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label><label><span>FINISH</span><select id="${ID}-vfx">${FX_LEVELS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label><div class="jv-vnote" id="${ID}-vnote"></div><button type="button" id="${ID}-vtest">▶ TEST</button></div><div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-cine" id="${ID}-cine"><button type="button" data-c="prev" title="Back one scene (left arrow)">⏮ BACK</button><button type="button" data-c="pause" id="${ID}-cpause" title="Pause or resume (space)">⏸ PAUSE</button><button type="button" data-c="next" title="Skip this scene (right arrow)">SKIP ⏭</button><button type="button" data-c="slow" title="Slower (minus)">−</button><span id="${ID}-crate">1.0×</span><button type="button" data-c="fast" title="Faster (plus)">+</button><button type="button" data-c="more" class="jv-cmore" title="More controls" aria-expanded="false">⋯</button></div><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
+<div class="jv-scrub" id="${ID}-scrub"><button type="button" class="jv-scrubt" id="${ID}-scrubt" aria-expanded="false" title="Replay the chain through past sessions">⏱ TIME</button><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button><button type="button" id="${ID}-expl" title="Describe what was going on around this day (one model call)">EXPLAIN THIS DAY</button></div>
 <div class="jv-foot">drag to turn · wheel to zoom · click a market · Esc docks · none of this is a forecast</div>`;
   doc.body.appendChild(root);
   const dock = doc.createElement('div'); dock.id = `${ID}-dock`; dock.hidden = true; doc.body.appendChild(dock);
@@ -121,23 +132,25 @@ export async function openJarvis(win = window) {
   const fitTop = () => { try { const tp = root.querySelector('.jv-top'); if (tp) root.style.setProperty('--jvtop', `${tp.offsetHeight}px`); } catch (e) { /* layout only */ } };
   const noBoot = !!win.__jarvisNoBoot, calm = !!win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches, BOOT = noBoot ? 0 : calm ? 0.8 : 4.2;
   if (BOOT) root.classList.add('jv-booting'); else $('bs').remove();
-  const st = { compact: false, cd: null, cdBusy: null, cdCam: { x: 0, z: 0 }, cdTarget: { x: 0, z: 0 }, cinemaStop: null, speakStop: null, mod: 'chain', view: prefs.view ?? 'globe', gl: { lat: 20, lon: 15, zoom: 1, tlat: 20, tlon: 15, tzoom: 1 }, land: null, bl: null, region: 'world', voice: false, sound: prefs.sound !== false, wake: false, watch: prefs.watch !== false, win: 5, graph: null, sum: null, sel: null, yaw: 0.55, pitch: -0.7, zoom: 1, spin: true, t0: performance.now() - (win.__jarvisNoBoot ? 5000 : 0), drag: null, w: 0, h: 0, proj: [], disp: {}, dates: [], idx: -1, play: 0, docked: false, alerts: [], snap: null, lastCheck: null, memLimit: prefs.memLimit ?? 0, mem: null };
+  const st = { compact: false, cd: null, cdBusy: null, cdCam: { x: 0, z: 0 }, cdTarget: { x: 0, z: 0 }, recent: [], lastInput: performance.now(), chainFail: false, cinemaStop: null, speakStop: null, mod: 'chain', view: prefs.view ?? 'globe', gl: { lat: 20, lon: 15, zoom: 1, tlat: 20, tlon: 15, tzoom: 1 }, land: null, bl: null, region: 'world', voice: false, sound: prefs.sound !== false, wake: false, watch: prefs.watch !== false, win: 5, graph: null, sum: null, sel: null, yaw: 0.55, pitch: -0.7, zoom: 1, spin: true, t0: performance.now() - (win.__jarvisNoBoot ? 5000 : 0), drag: null, w: 0, h: 0, proj: [], disp: {}, dates: [], idx: -1, play: 0, docked: false, alerts: [], snap: null, lastCheck: null, memLimit: prefs.memLimit ?? 0, mem: null };
   const setCam = () => { if (st.view === 'globe') { st.gl.zoom = st.gl.tzoom = 1; $('reg').hidden = false; } else $('reg').hidden = true; if (st.view === 'bubbles') st.bl = null; if (st.view === 'skyline') Object.assign(st, { yaw: 0.55, pitch: -0.7, zoom: 1 }); else Object.assign(st, { yaw: 0.6, pitch: 0.28, zoom: 1 }); };
   const extraViews = {};
   // every view has its own world: an accent that re-themes the glow, borders, buttons and canvas colours, and a chrome style
   const CORE_ENV = { globe: { accent: 'blue2' }, candles: { accent: 'up' }, bubbles: { accent: 'pur' }, skyline: { accent: 'blue2' }, orbit: { accent: 'pur' } };
   function applyEnv() {
     const e = { ...(CORE_ENV[st.view] ?? {}), ...(extraViews[st.view]?.env ?? {}) }, acc = e.accent ?? 'blue2';
-    root.style.setProperty('--jva', 'var' + '(--' + acc + ')');   // built in two pieces so the theme-token guard sees only real tokens C.blue = tok(acc, C.blue);
+    root.style.setProperty('--jva', 'var' + '(--' + acc + ')');   // built in two pieces so the theme-token guard sees only real tokens
+    readTheme(); C.blue = tok(acc, C.blue);   // canvas labels follow the view's accent too
     root.classList.toggle('jv-clean', e.chrome === 'clean'); root.classList.toggle('jv-noscan', e.scan === false);
     cv.classList.remove('jv-sw'); void cv.offsetWidth; cv.classList.add('jv-sw');
   }
-  const setCamAll = () => { applyEnv(); try { const b = $('view').querySelector(`[data-v="${st.view}"]`); $('cur').textContent = (b?.textContent ?? st.view).toUpperCase(); } catch (e) { /* label only */ } setCam(); $('reg').hidden = st.view !== 'globe'; if (extraViews[st.view]) { Object.assign(st, { yaw: 0.35, pitch: -0.45, zoom: 1 }); try { extraViews[st.view].onEnter?.(xapi); } catch (e) { /* a view must never break the HUD */ } } if (st.view === 'candles') { Object.assign(st, { yaw: 0.3, pitch: -0.5, zoom: 1 }); st.cdTarget = { x: 0, z: 0 }; st.cdCam = { x: 0, z: 0 }; ensureCandles(); } };
+  const SCRUB_VIEWS = new Set(['globe', 'skyline', 'orbit', 'bubbles', 'reactor', 'chainfly']);
+  const setCamAll = () => { root.classList.toggle('jv-noscrub', !SCRUB_VIEWS.has(st.view)); applyEnv(); try { const b = $('view').querySelector(`[data-v="${st.view}"]`); $('cur').textContent = (b?.textContent ?? st.view).toUpperCase(); } catch (e) { /* label only */ } setCam(); $('reg').hidden = st.view !== 'globe'; if (extraViews[st.view]) { Object.assign(st, { yaw: 0.35, pitch: -0.45, zoom: 1 }); try { extraViews[st.view].onEnter?.(xapi); } catch (e) { /* a view must never break the HUD */ } } if (st.view === 'candles') { Object.assign(st, { yaw: 0.3, pitch: -0.5, zoom: 1 }); st.cdTarget = { x: 0, z: 0 }; st.cdCam = { x: 0, z: 0 }; ensureCandles(); } };
   async function ensureCandles(force = false) {
     if (!force && st.cd && Date.now() - st.cd.at < 60_000) return st.cd;
     if (st.cdBusy) return st.cdBusy;
     st.cdBusy = (async () => {
-      try { const [v, b] = await Promise.all([jf('/api/vol-forecast/live'), jf('/api/bias-engine').catch(() => null)]); const rows = candleRows(v?.instruments ?? {}, b?.markets ?? {}); st.cd = { at: Date.now(), rows, layout: candleLayout(rows.map(r => r.key)), board: boardSummary(rows), ok: rows.length > 0 }; }
+      try { const [v, b] = await Promise.all([jf('/api/vol-forecast/live'), jf('/api/bias-engine').catch(() => null)]); const rows = candleRows(v?.instruments ?? {}, b?.markets ?? {}); st.cd = { at: Date.now(), rows, layout: candleLayout(rows.map(r => r.key)), board: boardSummary(rows), ok: rows.length > 0, label: v?.fallback ? v.session_label : null }; }
       catch (e) { st.cd = { at: Date.now(), rows: [], layout: {}, board: null, ok: false }; }
       finally { st.cdBusy = null; }
       return st.cd;
@@ -146,7 +159,8 @@ export async function openJarvis(win = window) {
   }
   const resize = () => {
     const cmp = root.clientWidth < 700; st.compact = cmp; root.classList.toggle('jv-compact', cmp); if (!cmp) root.classList.remove('jv-menu-open'); const d = Math.min(2, win.devicePixelRatio || 1); st.w = root.clientWidth; st.h = root.clientHeight; cv.width = st.w * d; cv.height = st.h * d; ctx.setTransform(d, 0, 0, d, 0, 0); };
-  resize(); win.addEventListener('resize', () => { resize(); fitTop(); }); fitTop(); try { if (win.ResizeObserver) new win.ResizeObserver(fitTop).observe(root.querySelector('.jv-top')); } catch (e) { /* layout only */ }
+  const onResize = () => { resize(); fitTop(); }; let topObs = null;
+  resize(); win.addEventListener('resize', onResize); fitTop(); try { if (win.ResizeObserver) { topObs = new win.ResizeObserver(fitTop); topObs.observe(root.querySelector('.jv-top')); } } catch (e) { /* layout only */ }
 
   // ── the awakening: a heartbeat in the dark, the core ignites, status lines tick through, a greeting, then the HUD fades in ──
   const bootTimers = [];
@@ -170,9 +184,13 @@ export async function openJarvis(win = window) {
   }
 
   // ── sound: tiny WebAudio blips (free, no files) ──
-  let ac = null;
+  let ac = null, bus = null, tap = null;
+  // ONE audio bus for everything Jarvis plays (sound effects, the natural voice): it goes to the speakers AND to a tap a recorder can read, so a recording
+  // (RECORD AS VIDEO, the laptop's daily broadcast job) gets the sound straight from the page: no "share tab audio" tick, no sound device needed.
+  const audioCtx = () => { ac ??= new (win.AudioContext || win.webkitAudioContext)(); if (!bus) { bus = ac.createGain(); bus.connect(ac.destination); tap = ac.createMediaStreamDestination(); bus.connect(tap); } return ac; };
+  const busIn = () => { audioCtx(); return bus; };
   const blip = (f = 660, d = 0.08, type = 'sine', g = 0.03, at = 0) => {
-    if (!st.sound) return; try { ac ??= new (win.AudioContext || win.webkitAudioContext)(); const o = ac.createOscillator(), v = ac.createGain(), t = ac.currentTime + at; o.type = type; o.frequency.setValueAtTime(f, t); v.gain.setValueAtTime(g, t); v.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(v); v.connect(ac.destination); o.start(t); o.stop(t + d + 0.02); } catch (e) { /* no audio */ }
+    if (!st.sound) return; try { audioCtx(); const o = ac.createOscillator(), v = ac.createGain(), t = ac.currentTime + at; o.type = type; o.frequency.setValueAtTime(f, t); v.gain.setValueAtTime(g, t); v.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(v); v.connect(busIn()); o.start(t); o.stop(t + d + 0.02); } catch (e) { /* no audio */ }
   };
   // ambience and whooshes for the SHOW: a low drone with a slow swell and a breath of filtered noise, and a swept-noise whoosh on a scene change (all WebAudio, no files)
   let amb = null;
@@ -181,19 +199,19 @@ export async function openJarvis(win = window) {
     ambient(on) {
       try {
         if (!on) { if (amb) { const a = amb; amb = null; a.g.gain.cancelScheduledValues(ac.currentTime); a.g.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 1.2); win.setTimeout(() => { try { a.nodes.forEach(n => n.stop?.()); } catch (e) { /* done */ } }, 1400); } return; }
-        if (!st.sound || amb) return; ac ??= new (win.AudioContext || win.webkitAudioContext)();
+        if (!st.sound || amb) return; audioCtx();
         const g = ac.createGain(), lp = ac.createBiquadFilter(), o1 = ac.createOscillator(), o2 = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), nz = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();
         o1.type = 'sine'; o1.frequency.value = 55; o2.type = 'triangle'; o2.frequency.value = 82.6; lp.type = 'lowpass'; lp.frequency.value = 420; lfo.frequency.value = 0.12; lg.gain.value = 0.012; lfo.connect(lg); lg.connect(g.gain);
         nz.buffer = noiseBuf(); nz.loop = true; nf.type = 'bandpass'; nf.frequency.value = 260; ng.gain.value = 0.008; nz.connect(nf); nf.connect(ng); ng.connect(g);
-        o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.0001, ac.currentTime); g.gain.linearRampToValueAtTime(0.045, ac.currentTime + 3);
+        o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(busIn()); g.gain.setValueAtTime(0.0001, ac.currentTime); g.gain.linearRampToValueAtTime(0.045, ac.currentTime + 3);
         [o1, o2, lfo, nz].forEach(n => n.start()); amb = { g, nodes: [o1, o2, lfo, nz] };
       } catch (e) { /* no audio */ }
     },
     whoosh() {
       if (!st.sound) return; try {
-        ac ??= new (win.AudioContext || win.webkitAudioContext)(); const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        audioCtx(); const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
         s.buffer = noiseBuf(); f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(220, t); f.frequency.exponentialRampToValueAtTime(2600, t + 0.45); f.frequency.exponentialRampToValueAtTime(300, t + 1.0);
-        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07, t + 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.05); s.connect(f); f.connect(g); g.connect(ac.destination); s.start(t); s.stop(t + 1.1);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07, t + 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.05); s.connect(f); f.connect(g); g.connect(busIn()); s.start(t); s.stop(t + 1.1);
       } catch (e) { /* no audio */ }
     },
   };
@@ -202,43 +220,80 @@ export async function openJarvis(win = window) {
 
   // ── voice out (the browser's own synthesis; the best British male on offer) ──
   let voice = null; const loadVoice = () => { voice = pickVoice(win.speechSynthesis?.getVoices?.() ?? []); }; loadVoice(); win.speechSynthesis?.addEventListener?.('voiceschanged', loadVoice);
-  const say = (t, force = false) => { try { if ((!st.voice && !force) || !win.speechSynthesis) return; win.speechSynthesis.cancel(); const u = new win.SpeechSynthesisUtterance(String(t).slice(0, 1200)); if (voice) u.voice = voice; u.lang = voice?.lang ?? 'en-GB'; u.rate = 1.02; u.pitch = 0.82; win.speechSynthesis.speak(u); } catch (e) { /* no voice */ } };
+  // the NATURAL voice (server MP3: ElevenLabs with a key, else Microsoft's free British neural voice) leads; the browser's own synthesis is the fallback
+  const audioBus = () => { try { audioCtx(); return { ctx: ac, input: bus, stream: tap.stream }; } catch (e) { return null; } };
+  const neural = makeNeuralVoice(win, audioBus); st.neural = prefs.neural !== false;
+  const builtIn = (t, rate, onEnd, onWord) => { const u = new win.SpeechSynthesisUtterance(String(t).slice(0, 1200)); if (voice) u.voice = voice; u.lang = voice?.lang ?? 'en-GB'; u.rate = 1.02 * rate; u.pitch = 0.82; if (onEnd) { u.onend = onEnd; u.onerror = onEnd; } if (onWord) u.onboundary = e => { try { onWord(e.charIndex); } catch (er) { /* progress only */ } }; win.speechSynthesis.speak(u); };
+  let sayCtl = null;
+  const say = (t, force = false) => {
+    try {
+      if (!st.voice && !force) return; win.speechSynthesis?.cancel(); sayCtl?.stop(); sayCtl = null;
+      if (st.neural) { const my = {}; sayCtl = my; neural.play(t, 1).then(c => { if (c) { if (sayCtl === my) sayCtl = c; else c.stop(); } else if (sayCtl === my && win.speechSynthesis) builtIn(t, 1); }); return; }
+      if (win.speechSynthesis) builtIn(t, 1);
+    } catch (e) { /* no voice */ }
+  };
 
-  // the voice LEADS: speakAsync resolves when the narration has finished (or, with the voice off, after a reading-speed pause), so a director moves the picture on only then
+  // the voice LEADS: speakAsync resolves when the narration has finished (or, with the voice off, after a reading-speed pause), so a director moves the picture on only then.
+  // st.speakCtl = { stop, pause(on), setRate(r) (applies to the line already playing), progress() -> 0..1 from the REAL audio clock (the natural voice's <audio>, or the browser voice's word
+  // boundaries), 0 while a clip is still being fetched, null when there is no clock (voice off, or a browser voice that sends no boundaries: the caller then uses its reading-speed estimate) }.
   function speakAsync(text, rate = 1) {
     return new Promise(res => {
-      const t = String(text ?? ''), est = Math.max(2, t.split(/\s+/).filter(Boolean).length / 2.6) * 1000 / rate; let done = false, tid = 0, left = est, since = 0, paused = false;
-      const fin = () => { if (!done) { done = true; win.clearTimeout(tid); st.speakStop = null; st.speakCtl = null; res(); } };
-      const aloud = st.voice && win.speechSynthesis;
+      const t = String(text ?? ''), est1 = Math.max(2, t.split(/\s+/).filter(Boolean).length / 2.6) * 1000; let r = rate > 0 ? rate : 1, est = est1 / r;
+      let done = false, tid = 0, left = est, since = 0, paused = false, nctl = null, waiting = false, bChar = -1;
+      const fin = () => { if (!done) { done = true; win.clearTimeout(tid); if (st.speakCtl === ctl) { st.speakStop = null; st.speakCtl = null; } res(); } };
+      const aloud = st.voice && (st.neural || win.speechSynthesis);
       const arm = ms => { win.clearTimeout(tid); since = performance.now(); left = ms; tid = win.setTimeout(fin, ms); };
-      st.speakStop = () => { try { if (aloud) win.speechSynthesis.cancel(); } catch (e) { /* idle */ } fin(); };
-      st.speakCtl = { stop: st.speakStop, pause: on => { if (done || paused === on) return; paused = on;
-        if (aloud) { try { on ? win.speechSynthesis.pause() : win.speechSynthesis.resume(); } catch (e) { /* idle */ } if (on) win.clearTimeout(tid); else arm(est * 2.5 + 4000); }
-        else if (on) { win.clearTimeout(tid); left -= performance.now() - since; } else arm(Math.max(200, left)); } };
+      const stop = () => { try { nctl?.stop(); if (win.speechSynthesis) win.speechSynthesis.cancel(); } catch (e) { /* idle */ } fin(); };
+      const ctl = { stop, pause: on => { if (done || paused === on) return; paused = on;
+        if (aloud) { try { if (nctl) nctl.pause(on); else on ? win.speechSynthesis.pause() : win.speechSynthesis.resume(); } catch (e) { /* idle */ } if (on) win.clearTimeout(tid); else arm(est * 2.5 + 8000); }
+        else if (on) { win.clearTimeout(tid); left -= performance.now() - since; } else arm(Math.max(200, left)); },
+        setRate: nr => {
+          if (done || !(nr > 0) || nr === r) return;
+          if (nctl) { try { nctl.setRate?.(nr); } catch (e) { /* idle */ } }
+          else if (!aloud) { if (paused) left = left * r / nr; else arm(Math.max(200, (left - (performance.now() - since)) * r / nr)); }      // subtitles only: the remaining time scales with the new speed
+          est = est1 / nr; r = nr;                                                                                                            // (a browser voice keeps its speed until the next line)
+        },
+        progress: () => { if (done) return 1; if (!aloud) return null; if (nctl) { try { return nctl.progress?.() ?? null; } catch (e) { return null; } } if (waiting) return 0; return bChar >= 0 && t.length ? Math.min(1, bChar / t.length) : null; } };
+      st.speakStop = stop; st.speakCtl = ctl;
       if (!aloud) { arm(est); return; }
-      try { win.speechSynthesis.cancel(); const u = new win.SpeechSynthesisUtterance(t.slice(0, 1200)); if (voice) u.voice = voice; u.lang = voice?.lang ?? 'en-GB'; u.rate = 1.02 * rate; u.pitch = 0.82; u.onend = fin; u.onerror = fin; win.speechSynthesis.speak(u); arm(est * 2.5 + 4000); }
-      catch (e) { arm(est); }
+      arm(est * (st.neural && neural.slow() ? 8 : 2.5) + (st.neural && neural.slow() ? 60000 : 12000));       // a safety net: the show never hangs on a voice that never ends (longer while Kokoro renders in the browser)
+      const fallback = () => { waiting = false; if (done) return; try { if (!win.speechSynthesis) { arm(est); return; } win.speechSynthesis.cancel(); builtIn(t, r, fin, ch => { bChar = ch; }); } catch (e) { arm(est); } };
+      if (st.neural) { waiting = true; win.speechSynthesis?.cancel(); neural.play(t, r, fin).then(c => { waiting = false; if (done) { c?.stop(); return; } if (c) { nctl = c; if (c.setRate && r !== rate) c.setRate(r); arm(est * 2.5 + 8000); if (paused) c.pause(true); } else fallback(); }); }
+      else fallback();
     });
   }
+  const voicePrefetch = t => { if (st.voice && st.neural) neural.prefetch(t); };
   const setCaption = (text, title = '') => { const c = $('cap'); if (!text) { c.hidden = true; return; } $('capt').textContent = title; $('capx').textContent = text; c.hidden = false; };
-  const setCinema = (on, stop = null, ctl = null) => { root.classList.toggle('jv-cinema', !!on); st.cinemaStop = on ? stop : null; st.cinemaCtl = on ? ctl : null; if (!on) { setCaption(null); $('cpause').textContent = '⏸ PAUSE'; } };
+  const setCinema = (on, stop = null, ctl = null) => { root.classList.toggle('jv-cinema', !!on); st.cinemaStop = on ? stop : null; st.cinemaCtl = on ? ctl : null; if (!on) { setCaption(null); $('cpause').textContent = '⏸ PAUSE'; $('cine').classList.remove('more'); } else stopAttract(); };
   const cineAct = a => { const c = st.cinemaCtl; if (!c) return; try { c[a]?.(); } catch (e) { /* the director must never break the HUD */ } };
 
   // ── data ──
-  const jf = (u, o) => win.fetch(u, o).then(r => r.json());
+  const jf0 = (u, o) => win.fetch(u, o).then(r => r.json());
+  // WEEKEND / PRE-OPEN FALLBACK: the live move feed is empty until the new session prints ("No bars since midnight"), which left the currency, weather, board and book pictures blank all
+  // weekend. When fewer than 3 markets have a move, every view is handed the LAST COMPLETE session snapshot instead, clearly labelled with when it was taken (never passed off as today).
+  const usable = j => Object.values(j?.instruments ?? {}).filter(x => x && !x.error && x.oc != null).length;
+  let lastSess = null;
+  const lastSession = () => (lastSess && Date.now() - lastSess.at < 10 * 60_000) ? lastSess.p : (lastSess = { at: Date.now(), p: (async () => {
+    for (let k = 1; k <= 6; k++) {
+      const d = new Date(Date.now() - k * 86_400_000).toISOString().slice(0, 10);
+      try { const j = await jf0(`/api/vol-forecast/session?date=${d}`); if (usable(j) >= 10) { const at = new Date(j.fetched_at ?? d); return { ...j, fallback: true, session_label: `LAST SESSION · AS OF ${at.toUTCString().slice(0, 22).toUpperCase()} UTC` }; } } catch (e) { /* try the day before */ }
+    }
+    return null;
+  })() }).p;
+  const jf = (u, o) => jf0(u, o).then(async j => (String(u).split('?')[0] === '/api/vol-forecast/live' && usable(j) < 3) ? ((await lastSession().catch(() => null)) ?? j) : j);
   async function loadAt(w, date = null) {
     let r = null; try { r = await win.deskChainData?.(w, date); } catch (e) { r = null; }
     if (!r?.links?.length) return null;
     return { graph: buildGraph(r.links), sum: win.deskChainSummary?.(r.links, w) ?? null };
   }
-  function setGraph(g, sum) { st.graph = g; st.sum = sum; for (const n of g.nodes) if (st.disp[n.key] == null) st.disp[n.key] = n.style.size; st.bl = null; renderHud(); }
+  function setGraph(g, sum) { st.graph = g; st.sum = sum; st.chainFail = false; root.classList.remove('jv-nochain'); for (const n of g.nodes) if (st.disp[n.key] == null) st.disp[n.key] = n.style.size; st.bl = null; renderHud(); }
   async function load(w, date = null) {
     st.win = w; st.sel = null; $('card').hidden = true;
     for (const b of $('win').querySelectorAll('button')) b.setAttribute('aria-pressed', String(+b.dataset.w === w));
     const first = !st.graph;
     if (first) $('boot').innerHTML = '<b>Reading the chain…</b>';
     const r = await loadAt(w, date);
-    if (!r) { st.graph = null; $('boot').innerHTML = '<b>The chain feeds are not available right now.</b> Open the Chain tab once and try again.'; return; }
+    if (!r) { st.graph = null; st.chainFail = true; root.classList.add('jv-nochain'); $('boot').innerHTML = '<b>The chain feeds are not available right now.</b> The chain pictures stay empty until they load: open the Chain tab once and try again. Every other view works without them.'; return; }
     setGraph(r.graph, r.sum);
     if (first || date == null) { const wait = Math.max(0, BOOT * 1000 - (performance.now() - st.t0)); if (wait > 50) later2(() => typeBoot(bootLines(r.sum, w)), wait); else typeBoot(bootLines(r.sum, w)); }
     if (st.mod !== 'chain' && st.mod !== 'ask' && st.mod !== 'alerts') R[st.mod]?.();
@@ -259,9 +314,26 @@ export async function openJarvis(win = window) {
   $('win').innerHTML = [1, 5, 20].map(w => `<button type="button" data-w="${w}" aria-pressed="${w === st.win}">${w}D</button>`).join(' ');
   $('view').innerHTML = [['globe', 'GLOBE'], ['candles', 'BOARD'], ['bubbles', 'BUBBLES'], ['skyline', 'SKYLINE'], ['orbit', 'ORBIT']].map(([id, l]) => `<button type="button" data-v="${id}" aria-pressed="${id === st.view}">${l}</button>`).join(' ');
   $('win').onclick = e => { const b = e.target.closest('button[data-w]'); if (b) { blip(520, 0.05); load(+b.dataset.w, st.idx >= 0 ? st.dates[st.idx] : null); } };
-  const switchView = v => { st.view = v; lsPut({ view: v }); setCamAll(); renderNav(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); blip(720, 0.06); };
+  const switchView = (v, auto = false) => {
+    if (st.view !== v) { try { extraViews[st.view]?.onLeave?.(xapi); } catch (e) { /* a view must never break the HUD */ } }
+    st.view = v; if (!auto) { lsPut({ view: v }); if (extraViews[v]?.gl) st.recent = [v, ...st.recent.filter(x => x !== v)].slice(0, 5); }      // the GL views the owner visited, newest first (ATTRACT cycles them)
+    setCamAll(); renderNav(); for (const x of $('view').querySelectorAll('button')) x.setAttribute('aria-pressed', String(x.dataset.v === v)); if (!auto) blip(720, 0.06); };
   $('view').onclick = e => { const b = e.target.closest('button[data-v]'); if (b) switchView(b.dataset.v); };
   $('nms').onclick = e => { const n = getNameStyle() === 'names' ? 'codes' : 'names'; setNameStyle(n); e.currentTarget.setAttribute('aria-pressed', String(n === 'names')); e.currentTarget.textContent = n === 'names' ? 'NAMES' : 'CODES'; blip(600); };
+  // the VOICE panel: one button in the top bar opens it; nothing of it sits on the page otherwise
+  const vpop = $('vpop'), vnote = () => { $('vnote').textContent = `Speaking with: ${st.neural ? neural.label() : 'the built-in browser voice'}.`; };
+  const vsync = () => { $('veng').value = neural.engine(); $('vkv').value = neural.kvoice(); $('vfx').value = neural.fx(); $('vkvl').hidden = neural.engine() !== 'kokoro'; $('nv').textContent = st.neural ? 'ON' : 'OFF'; $('nv').setAttribute('aria-pressed', String(st.neural)); const sp = speakPref(lsGet()); $('vsp').textContent = sp ? 'ON' : 'OFF'; $('vsp').setAttribute('aria-pressed', String(sp)); vnote(); };
+  const vclose = () => { vpop.hidden = true; $('vbtn').setAttribute('aria-expanded', 'false'); };
+  $('vbtn').onclick = e => { e.stopPropagation(); const open = vpop.hidden; vpop.hidden = !open; $('vbtn').setAttribute('aria-expanded', String(open)); if (open) { vsync(); if (st.compact) closeMenu?.(); } blip(640, 0.04); };
+  const onDocPointer = e => { if (!vpop.hidden && !vpop.contains(e.target) && e.target !== $('vbtn')) vclose(); };
+  doc.addEventListener('pointerdown', onDocPointer, true);
+  const setSpeak = on => { lsPut({ speak: !!on }); try { doc.dispatchEvent(new win.CustomEvent('jarvis-voice', { detail: { on: !!on } })); } catch (e) { /* label only */ } if (!vpop.hidden) vsync(); };
+  $('vsp').onclick = () => setSpeak(!speakPref(lsGet()));
+  $('veng').onchange = e => { neural.setEngine(e.target.value); neural.warm(); vsync(); };
+  $('vkv').onchange = e => { neural.setKvoice(e.target.value); vsync(); };
+  $('vfx').onchange = e => { neural.setFx(e.target.value); vsync(); };
+  $('nv').onclick = () => { st.neural = !st.neural; lsPut({ neural: st.neural }); vsync(); };
+  $('vtest').onclick = () => { neural.begin(); say('Good morning. All systems nominal. Here is where things stand.', true); win.setTimeout(vnote, 1500); };
   $('snd').onclick = e => { st.sound = !st.sound; lsPut({ sound: st.sound }); e.currentTarget.setAttribute('aria-pressed', String(st.sound)); blip(600); };
 
   const REGLAB = { world: 'WORLD', americas: 'AMERICAS', europe: 'EUROPE', asia: 'ASIA-PACIFIC', 'mideast-africa': 'MIDDLE EAST & AFRICA' };
@@ -327,9 +399,10 @@ export async function openJarvis(win = window) {
       const sm = systemSummary(await jf('/api/services').catch(() => null));
       if (!sm.ok) { p.innerHTML = '<h3>SYSTEM</h3><p>The server did not answer the health route.</p>'; return; }
       st.mem = sm.rssMB; const n = v => (v == null ? 'n/a' : v), ms = memoryState(sm.rssMB, st.memLimit);
-      p.innerHTML = `<h3>SYSTEM</h3><p>This is the web server only, not the whole Railway project. Memory is the biggest part of the Railway bill; the peak is the highest minute sample since the last deploy.</p>
+      p.innerHTML = `<h3>SYSTEM</h3><p>The first figures are the web server only; the list below adds the bots that run beside it. Memory is the biggest part of the Railway bill; the peak is the highest minute sample since the last deploy.</p>
 <table><tr><td>Memory now</td><td class="${ms === 'ok' ? '' : 'jv-am'}">${n(sm.rssMB)} MB${ms === 'ok' ? '' : ` · ${ms}`}</td></tr><tr><td>Memory peak since deploy</td><td>${n(sm.peakRssMB)} MB</td></tr><tr><td>JS heap in use</td><td>${n(sm.heapUsedMB)} MB</td></tr><tr><td>Up for</td><td>${n(sm.uptimeH)} h</td></tr><tr><td>Services switched on</td><td>${n(sm.enabled)} of ${n(sm.total)}</td></tr></table>
 <div class="jv-row"><label class="jv-sub">Alert me above <input type="number" id="${ID}-lim" min="0" step="50" value="${st.memLimit || ''}" placeholder="MB" style="width:90px"> MB (your plan's memory; blank = no alert)</label></div>
+${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.containerMB)} MB IN ALL</h3><p class="jv-sub">Railway bills the whole container. Each row is a process group, what it is for, and the memory it holds. A bot can be switched off by setting its flag to 0 in the Railway variables; the ones marked LIVE are the trading bots.</p><table>${sm.procs.map(r => `<tr><td><b>${esc(r.label)}</b>${r.live ? ' <span class="jv-am">LIVE</span>' : ''}<br><span class="jv-sub">${esc(r.feeds)}${r.cost ? ` · cost ${esc(r.cost)}` : ''}${r.turnOff ? ` · off: ${esc(r.turnOff)}` : ''}</span></td><td>${r.rssMB} MB${r.peakMB > r.rssMB ? `<br><span class="jv-sub">peak ${r.peakMB}</span>` : ''}</td></tr>`).join('')}</table>` : ''}
 <h3 style="margin-top:12px">BUSIEST TODAY</h3><table>${sm.top.map(t => `<tr><td>${esc(t.id)}</td><td>${t.minutes} min · ${t.runs} runs${t.errors ? ` · <span class="jv-am">${t.errors} errors</span>` : ''}</td></tr>`).join('') || '<tr><td>nothing measured yet</td><td></td></tr>'}</table>`;
       p.querySelector(`#${ID}-lim`).onchange = e => { st.memLimit = Math.max(0, +e.target.value || 0); lsPut({ memLimit: st.memLimit }); };
     },
@@ -361,8 +434,9 @@ export async function openJarvis(win = window) {
     const it = e.target.closest('button[data-i]'); if (it) { goNav(it.dataset.k, it.dataset.i); return; }
     if (e.target.closest('button[data-side]')) { const comp = COMPANION[st.view]; if (comp) { const open = st.mod === comp; lsPut({ side: !open }); setMod(open ? 'chain' : comp); } }
   };
-  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
+  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), voicePrefetch: t => voicePrefetch(t), voiceInfo: () => neural.info(), voiceBegin: () => neural.begin(), audioBus: () => audioBus(), voiceLabel: () => (st.voice ? (st.neural ? neural.label() : 'built-in voice') : 'voice off'), voiceOn: () => speakPref(lsGet()), setVoiceOn: on => setSpeak(on), voicePanel: () => { if (vpop.hidden) $('vbtn').click(); }, caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
     globeTo: (lat, lon, zoom = 1) => { Object.assign(st.gl, { tlat: lat, tlon: lon, tzoom: zoom }); st.spin = false; }, flyTo: (x, z) => { st.cdTarget = { x, z }; }, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
+  win.__jarvisApi = xapi;          // the laptop's daily broadcast job (jarvis_broadcast/record_broadcast.py) drives Jarvis through this; the page is owner-only
   loadModules().then(list => {
     win.setTimeout(fitTop, 0);
     for (const v of viewsOf()) { if (!$('view').querySelector(`[data-v="${v.id}"]`)) $('view').insertAdjacentHTML('beforeend', ` <button type="button" data-v="${esc(v.id)}" aria-pressed="${v.id === st.view}">${esc(v.label)}</button>`); extraViews[v.id] = v; }
@@ -404,6 +478,8 @@ export async function openJarvis(win = window) {
     if (busy) return; busy = true;
     try { const r = await loadAt(st.win, date); if (r) { setGraph(r.graph, r.sum); if (st.mod === 'radar') R.radar(); if (st.sel) showCard(); } } finally { busy = false; }
   }
+  // the time scrub replays the CHAIN, so it shows only on the chain pictures; on a phone it folds into a small TIME pill (it used to cover the bottom of every view)
+  $('scrubt').onclick = e => { const sc = $('scrub'), open = !sc.classList.contains('open'); sc.classList.toggle('open', open); e.currentTarget.setAttribute('aria-expanded', String(open)); blip(640, 0.05); };
   $('sl').oninput = e => { stopPlay(); scrubTo(+e.target.value); };
   $('now').onclick = () => { stopPlay(); scrubTo(st.dates.length - 1); };
   $('expl').onclick = () => { stopPlay(); setMod('explain'); };
@@ -489,9 +565,38 @@ export async function openJarvis(win = window) {
     }
   }
 
+  // the WORLD MAP globe: a WebGL hologram (jarvisGlobeHolo.js) under crisp 2D labels; the old 2D drawing (drawGlobe2D) stays as the fallback when WebGL is missing or still loading
+  const NULLCTX = { save() {}, restore() {}, fillText() {}, measureText: () => ({ width: 0 }) };
+  const bars = { at: -9, top: 110, bottom: 80, bg: 'black', legend: 300, hud: [] };
+  function measureBars(t) {      // the free band between the top bar (and region buttons) and the bottom scrub bar, read once a second
+    if (t - bars.at < 1) return; bars.at = t;
+    try {
+      const rr = root.getBoundingClientRect(), reg = $('reg'), sc = $('scrub'), tp = root.querySelector('.jv-top');
+      let top = (tp?.getBoundingClientRect().bottom ?? rr.top + 62) - rr.top; if (reg && !reg.hidden) top = Math.max(top, reg.getBoundingClientRect().bottom - rr.top);
+      const sb = sc && sc.style.display !== 'none' ? rr.bottom - sc.getBoundingClientRect().top : 24;
+      bars.top = top + 8; bars.bottom = sb + (st.compact ? 24 : 10);      // phone: the key line sits above the scrub bar
+      const hud = $('hud'), hb = hud && hud.offsetHeight && !root.classList.contains('jv-clean') ? hud.getBoundingClientRect() : null; bars.legend = hb ? hb.bottom - rr.top + 22 : top + 30; bars.hud = hb ? [{ x: hb.left - rr.left, y: hb.top - rr.top, w: hb.width, h: hb.height }] : [];
+      bars.bg = win.getComputedStyle(doc.documentElement).getPropertyValue('--bg1').trim() || 'black';
+    } catch (e) { /* layout only */ }
+  }
+  const cardBox = () => { const c = $('card'); if (c.hidden) return []; try { const rr = root.getBoundingClientRect(), b = c.getBoundingClientRect(); return [{ x: b.left - rr.left, y: b.top - rr.top, w: b.width, h: b.height }]; } catch (e) { return []; } };
   function drawGlobe(t, fade, dt) {
     const g = st.gl; g.tzoom = Math.max(0.8, Math.min(5, g.tzoom)); if (st.spin && !st.drag) { g.tlon += dt * 4; g.lon += dt * 4; }
     let dl = ((g.tlon - g.lon + 540) % 360) - 180; g.lon += dl * Math.min(1, dt * 3); g.lat += (g.tlat - g.lat) * Math.min(1, dt * 3); g.zoom += (g.tzoom - g.zoom) * Math.min(1, dt * 3);
+    const gg = { t, dt, fade, W: st.w, H: st.h, compact: st.compact, C };
+    if (!glInstance('globe-holo')) { try { GLOBE_HOLO.draw(NULLCTX, gg, xapi); } catch (e) { /* the 2D globe carries on */ } return drawGlobe2D(t, fade); }
+    measureBars(t);
+    const { X, Y, Rg } = globeFrame({ w: st.w, h: st.h, top: bars.top, bottom: bars.bottom, compact: st.compact, panel: st.mod !== 'chain', zoom: g.zoom }), ctr = { lat: g.lat, lon: g.lon };
+    const P = (vec, h = 0) => { const p = globeProject(vec, ctr, h); return { x: X + p.x * Rg, y: Y - p.y * Rg, z: p.z }; };
+    gg.globe = { X, Y, Rg, lat: g.lat, lon: g.lon, zoom: g.zoom, graph: st.graph, disp: st.disp, sel: st.sel };
+    GLOBE_HOLO.draw(ctx, gg, xapi);
+    if (!glInstance('globe-holo')) return drawGlobe2D(t, fade);       // the hologram stopped this frame: fall back at once
+    drawGlobeOverlay(ctx, { P, X, Y, Rg, zoom: g.zoom, graph: st.graph, disp: st.disp, sel: st.sel, compact: st.compact, fade, t, C, W: st.w, H: st.h, top: bars.top, bottom: bars.bottom, bg: bars.bg,
+      hit: (key, x, y) => st.proj.push({ key, sx: x, sy: y }), key: !root.classList.contains('jv-cinema') && !root.classList.contains('jv-booting'), legendY: bars.legend, obstacles: [...bars.hud, ...cardBox()] });
+    for (const m of EXTRA) { try { m.drawGlobe?.(ctx, { P, X, Y, Rg, ctr, t, fade, zoom: g.zoom, compact: st.compact }, xapi); } catch (e) { /* a layer must never stop the frame */ } }
+  }
+  function drawGlobe2D(t, fade) {
+    const g = st.gl;
     const Rg = Math.min(st.w * 0.5, st.h) * 0.4 * g.zoom, X = st.w / 2 - (st.mod === 'chain' ? 0 : st.w * 0.1), Y = st.h / 2 + 8, ctr = { lat: g.lat, lon: g.lon };
     const P = (vec, h = 0) => { const p = globeProject(vec, ctr, h); return { x: X + p.x * Rg, y: Y - p.y * Rg, z: p.z }; };
     // the sea, a rim of light and a faint atmosphere
@@ -531,8 +636,30 @@ export async function openJarvis(win = window) {
     for (const m of EXTRA) { try { m.drawGlobe?.(ctx, { P, X, Y, Rg, ctr, t, fade, zoom: g.zoom, compact: st.compact }, xapi); } catch (e) { /* a layer must never stop the frame */ } }
   }
 
+  // the SAFE AREA a hologram draws in: below the top bar and menus, above the time bar, so a view's readout and key never sit under the HUD's own chrome (re-measured a few times a second)
+  let safe = { top: 0, bot: 0, at: -1 };
+  const safeArea = () => {
+    const now = performance.now(); if (now - safe.at < 400) return safe;
+    let top = 0, bot = st.h;
+    try {
+      const r0 = root.getBoundingClientRect(), vis = el => el && el.offsetParent !== null && el.getClientRects().length;
+      for (const sel of ['.jv-top', '.jv-nav']) { const el = root.querySelector(sel); if (vis(el)) top = Math.max(top, el.getBoundingClientRect().bottom - r0.top + 6); }
+      const sc = root.querySelector('.jv-scrub'); if (vis(sc)) bot = Math.min(bot, sc.getBoundingClientRect().top - r0.top - 6);
+    } catch (e) { /* layout only */ }
+    if (bot - top < st.h * 0.5) { top = 0; bot = st.h; }          // never squeeze a picture below half the screen (a very tall menu on a phone): draw full screen instead
+    top = Math.max(0, top - 84);                                    // views already leave ~84px for the top bar: shift them only by how far the menus reach past that
+    safe = { top: Math.round(top), bot: Math.round(bot), at: now }; st.safeTop = safe.top; return safe;
+  };
   function drawExtra(v, t, fade, dt) {
-    const SC = Math.min(st.w * 0.5, st.h * 0.95) * 0.3, g = { t, fade, dt, W: st.w, H: st.h, compact: st.compact, cx: cx(), cy: cy(), SC, C, poly, hit: (key, x, y) => st.proj.push({ key, sx: x, sy: y }),
+    if (v.gl) {
+      const s = safeArea(), top = s.top, H = s.bot - s.top, SC = Math.min(st.w * 0.5, H * 0.95) * 0.3;
+      const g = { t, fade, dt, W: st.w, H, top, compact: st.compact, cinema: !!st.cinemaCtl, attract: !!attract, cx: st.w / 2, cy: H / 2, SC, C, poly, hit: (key, x, y) => st.proj.push({ key, sx: x, sy: y + top }),
+        proj: (p, c) => { const q = project(p, c ?? cam()); return { x: st.w / 2 + q.x * SC, y: H / 2 + q.y * SC, s: q.s, z: q.z }; } };
+      ctx.save(); ctx.translate(0, top);
+      try { v.draw(ctx, g, xapi); } catch (e) { /* a view must never stop the frame */ }
+      ctx.restore(); return;
+    }
+    const SC = Math.min(st.w * 0.5, st.h * 0.95) * 0.3, g = { t, fade, dt, W: st.w, H: st.h, compact: st.compact, cinema: !!st.cinemaCtl, attract: !!attract, cx: cx(), cy: cy(), SC, C, poly, hit: (key, x, y) => st.proj.push({ key, sx: x, sy: y }),
       proj: (p, c) => { const q = project(p, c ?? cam()); return { x: cx() + q.x * SC, y: cy() + q.y * SC, s: q.s, z: q.z }; } };
     try { v.draw(ctx, g, xapi); } catch (e) { /* a view must never stop the frame */ }
   }
@@ -592,6 +719,13 @@ export async function openJarvis(win = window) {
       st.proj.push({ key: k, sx: p.x, sy: p.y });
     }
   }
+  function drawNoChain(fade) {          // a chain picture with no chain: one centred sentence, never a blank screen
+    ctx.globalAlpha = 0.85 * fade; ctx.fillStyle = C.tx2; ctx.font = `${st.compact ? 12 : 13}px ui-monospace,monospace`; ctx.textAlign = 'center';
+    const y = st.view === 'globe' ? st.h * 0.86 : st.h / 2;
+    if (st.chainFail) { ctx.fillText('The chain feed has not loaded, so this picture has nothing to show.', st.w / 2, y); ctx.fillText(st.compact ? 'Open the Chain tab once, or pick another view.' : 'Open the Chain tab once, or pick another view: the others work without it.', st.w / 2, y + 20); }
+    else ctx.fillText('Reading the chain...', st.w / 2, y);
+    ctx.globalAlpha = 1;
+  }
   let raf = 0, last = performance.now(), hudT = 0;
   function frame(now) {
     if (!open || st.docked) return; raf = win.requestAnimationFrame(frame);
@@ -602,8 +736,14 @@ export async function openJarvis(win = window) {
     for (const k of Object.keys(st.disp)) { const tgt = st.graph?.nodes.find(n => n.key === k)?.style.size; if (tgt != null) st.disp[k] += (tgt - st.disp[k]) * Math.min(1, dt * 5); }
     ctx.clearRect(0, 0, st.w, st.h); st.proj = [];
     if (BOOT && bootT < BOOT + 0.3) drawBoot(bootT);
-    if (st.graph && fade > 0) { if (st.view === 'globe') drawGlobe(t, fade, dt); else if (st.view === 'candles') drawCandles(t, fade); else if (extraViews[st.view]) drawExtra(extraViews[st.view], t, fade, dt); else if (st.view === 'bubbles') drawBubbles(t, fade); else if (st.view === 'skyline') drawSkyline(t, fade); else drawOrbit(t, fade); }
+    // every view draws whether or not the chain graph has loaded: the GL/extra views and the board never needed it, and each fails soft on its own; only the chain pictures say why they are empty
+    if (fade > 0) {
+      const ev = extraViews[st.view];
+      if (ev && (st.view === 'globe' || st.view === 'candles') && ev.gl && !st.legacy2d) drawExtra(ev, t, fade, dt); else if (st.view === 'globe') drawGlobe(t, fade, dt); else if (st.view === 'candles') drawCandles(t, fade); else if (ev) drawExtra(ev, t, fade, dt); else if (st.view === 'bubbles') drawBubbles(t, fade); else if (st.view === 'skyline') drawSkyline(t, fade); else drawOrbit(t, fade);
+      if (!st.graph && !ev && st.view !== 'candles') drawNoChain(fade);
+    }
     ctx.globalAlpha = 1; hudT += dt; if (hudT > 20) { hudT = 0; renderHud(); }
+    tickAttract(now);
   }
 
   // ── watching: the live chain every 2 minutes, server memory every 10; Jarvis speaks only when something CHANGES ──
@@ -643,7 +783,8 @@ export async function openJarvis(win = window) {
   $('menubtn').onclick = () => { const o = root.classList.toggle('jv-menu-open'); $('menubtn').setAttribute('aria-expanded', String(o)); win.setTimeout(fitTop, 0); };
   $('menu').addEventListener('click', e => { if (st.compact && e.target.closest('button') && !e.target.closest('#' + ID + '-snd,#' + ID + '-nms,#' + ID + '-wake')) closeMenu(); });
   $('dockb').onclick = () => api.dock(); $('stop').onclick = () => st.cinemaStop?.();
-  $('cine').onclick = e => { const b = e.target.closest('button[data-c]'); if (b) cineAct(b.dataset.c); };
+  const cineMore = on => { const c = $('cine'); c.classList.toggle('more', !!on); c.querySelector('.jv-cmore')?.setAttribute('aria-expanded', String(!!on)); };     // the phone keeps only pause + this toggle until asked
+  $('cine').onclick = e => { const b = e.target.closest('button[data-c]'); if (!b) return; if (b.dataset.c === 'more') cineMore(!$('cine').classList.contains('more')); else cineAct(b.dataset.c); };
   $('off').onclick = () => api.off();
 
   // ── voice in: "Jarvis, ..." hands-free (Chrome's recognition; this tab only; stops when you switch it off) ──
@@ -668,12 +809,65 @@ export async function openJarvis(win = window) {
   }
   $('wake').onclick = () => setWake(!st.wake);
 
+  // ── ATTRACT: an untouched HUD becomes a wall display. After 90 s with no input (and no programme, replay or panel open), it cycles the GL views the owner visited last (padded with other
+  // GL views), 25 s each, running each view's own SHOW camera (its scene's motion(api, p), p 0 -> 1 over 20 s, then it holds). No captions, no voice; a small bug says how to stop it.
+  // Any pointer, key, wheel or touch stops it at once and leaves you on that view. Reduced motion: the views still change, but each sits at its settled pose (p = 1), no camera flight.
+  const IDLE_MS = 90_000, ATTRACT_DWELL = 25_000, ATTRACT_MOVE = 20_000, IDLE_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart'];
+  const ATTRACT_ALIAS = { ahead: 'dayahead' };            // a view whose SHOW scene has another id
+  let attract = null; const attractCache = new Map();
+  const onInput = () => { st.lastInput = performance.now(); if (attract) stopAttract(); };
+  for (const ev of IDLE_EVENTS) doc.addEventListener(ev, onInput, { capture: true, passive: true });
+  function attractList() {
+    const gl = Object.values(extraViews).filter(v => v?.gl).map(v => v.id), out = st.recent.filter(v => extraViews[v]?.gl);
+    for (const v of gl) { if (out.length >= 5) break; if (!out.includes(v)) out.push(v); }
+    return out;
+  }
+  function attractScene(v) {               // the view's SHOW scene (prepared once, kept ten minutes), or null: the view then just turns slowly
+    const c = attractCache.get(v); if (c && performance.now() - c.at < 600_000) return c.p;
+    const hook = SHOW_HOOKS.find(h => h.id === v) ?? SHOW_HOOKS.find(h => h.id === ATTRACT_ALIAS[v]);
+    const p = (async () => {
+      if (!hook) return null;
+      try {
+        const data = (await hook.prepare?.(xapi)) ?? null, s0 = st.sum, chain = s0 ? { holding: s0.holding, broken: s0.broken, quiet: s0.quiet, judged: s0.judged, brokenShort: s0.brokenShort, headline: s0.headline } : null;
+        const sc = hook.build({ now: new Date(), rows: st.cd?.rows ?? [], movers: [], board: null, chain, events: null, extra: { [hook.id]: data }, mode: 'full' }, data);
+        return sc && (!sc.view || sc.view === v) ? sc : null;
+      } catch (e) { return null; }
+    })();
+    attractCache.set(v, { at: performance.now(), p }); return p;
+  }
+  function attractOk(now) {
+    return !attract && now - st.lastInput > IDLE_MS && open && !st.docked && !doc.hidden && !st.cinemaCtl && !st.cinemaStop && !st.play && vpop.hidden && !root.classList.contains('jv-menu-open')
+      && (st.mod === 'chain' || st.mod === COMPANION[st.view]) && (performance.now() - st.t0) / 1000 > BOOT + 1;
+  }
+  function startAttract() {
+    const list = attractList(); if (!list.length) { st.lastInput = performance.now(); return; }      // nothing to cycle yet: look again in 90 s
+    if (st.mod !== 'chain') setMod('chain');                                                         // a clean wall: the companion list closes
+    const bug = doc.createElement('div'); bug.className = 'jv-attract'; bug.textContent = st.compact ? 'ATTRACT · TAP TO TAKE OVER' : 'ATTRACT · TOUCH ANYTHING TO TAKE OVER'; root.appendChild(bug);
+    const at = list.indexOf(st.view);
+    attract = { list, i: at >= 0 ? at - 1 : -1, at: 0, view: null, scene: null, bug };
+    nextAttract();
+  }
+  function nextAttract() {
+    const a = attract; if (!a) return;
+    a.i = (a.i + 1) % a.list.length; const v = a.list[a.i]; a.view = v; a.scene = null; a.at = performance.now();
+    if (st.view !== v) switchView(v, true);
+    attractScene(v).then(sc => { if (attract !== a || a.view !== v) return; a.scene = sc; try { sc?.enter?.(xapi); } catch (e) { /* a scene must never break the HUD */ } st.spin = !calm && !sc?.motion; a.at = performance.now(); });
+  }
+  function stopAttract() { if (!attract) return; try { attract.bug.remove(); } catch (e) { /* gone */ } attract = null; st.lastInput = performance.now(); }
+  function tickAttract(now) {
+    if (!attract) { if (attractOk(now)) startAttract(); return; }
+    const a = attract, el = now - a.at;
+    if (st.cinemaCtl || st.docked) { stopAttract(); return; }
+    if (el > ATTRACT_DWELL) { nextAttract(); return; }
+    if (a.scene?.motion) { try { a.scene.motion(xapi, calm ? 1 : Math.min(1, el / ATTRACT_MOVE)); } catch (e) { /* a scene's camera must never stop the frame */ } }
+  }
+
   const api = {
     dock() { if (st.docked) return; st.docked = true; root.hidden = true; dock.hidden = false; dockRender(); win.cancelAnimationFrame(raf); win.speechSynthesis?.cancel(); blip(500, 0.06); },
     undock() { if (!st.docked) return; st.docked = false; root.hidden = false; dock.hidden = true; last = performance.now(); resize(); raf = win.requestAnimationFrame(frame); blip(760, 0.06); },
     off() {
       if (!open) return; open = null; stopPlay(); win.cancelAnimationFrame(raf); win.clearInterval(wTimer); win.clearInterval(mTimer); bootTimers.forEach(t => win.clearTimeout(t)); setWake(false);
-      win.removeEventListener('resize', resize); doc.removeEventListener('keydown', onKey, true); win.speechSynthesis?.cancel(); root.remove(); dock.remove();
+      win.removeEventListener('resize', onResize); try { topObs?.disconnect(); } catch (e) { /* gone */ } doc.removeEventListener('pointerdown', onDocPointer, true); doc.removeEventListener('keydown', onKey, true); stopAttract(); for (const ev of IDLE_EVENTS) doc.removeEventListener(ev, onInput, true); win.speechSynthesis?.cancel(); st.speakStop?.(); neural.stopAll(); if (win.__jarvisApi === xapi) win.__jarvisApi = null; try { glDisposeAll(); } catch (e) { /* gone */ } root.remove(); dock.remove();
     },
   };
   const CINE_KEYS = { ' ': 'pause', ArrowRight: 'next', ArrowLeft: 'prev', '+': 'fast', '=': 'fast', '-': 'slow', n: 'next', p: 'prev' };

@@ -48,7 +48,9 @@ export function rowHtml(r, { cv = null, w = 60 } = {}) {
 <span class="ct-hb">${bar}<span class="mono">${sg(r.rho)}</span></span>
 <span class="ct-hms"><span class="ct-hm mono" title="share of ${esc(w)}-day windows over the last year with the same sign as today">held ${fin(r.share) ? Math.round(r.share * 100) + '%' : '–'}</span>
 <span class="ct-hm mono" title="min-variance hedge ratio: units of this per unit of the exposure, from the window's volatilities">ratio ${fin(r.ratio) ? r.ratio.toFixed(2) : '–'}</span>
+<span class="ct-hm mono" title="the same ratio from a recency-weighted fit (EWMA, 250 days, decay 0.97). Out of sample over 12 test sets it removed about 1pp more variance than the plain window ratio (hedge-method-comparison)">ewma ${fin(r.ratioEwma) ? r.ratioEwma.toFixed(2) : '–'}</span>
 <span class="ct-hm mono" title="share of the exposure's variance that ratio would have removed in-window (r²)">cuts ${Math.round(r.varCut * 100)}%</span>
+<span class="ct-hm mono" title="${fin(r.oos?.cut) ? `what this ratio really removed over the last ${esc(r.oos.n)} days, each day hedged with the ratio from the ${esc(w)} days before it${fin(r.oosEwma?.cut) ? `; the recency-weighted ratio removed ${Math.round(r.oosEwma.cut * 100)}%` : ''}` : 'not enough days'}">held up ${fin(r.oos?.cut) ? Math.round(r.oos.cut * 100) + '%' : '–'}</span>
 <span class="ct-hm">${carryTxt(carryOf(r.id, r.side === 'long' ? 1 : -1, cv))}</span></span></span></div>`;
 }
 export function listHtml(rows, opts = {}) {
@@ -79,7 +81,7 @@ export function html(S, { win = 60, book: D = {}, winPills = () => '' } = {}) {
 <div class="tt-pills" role="group"><button type="button" data-hinv="0" aria-pressed="${!H.inv}">Any sign</button><button type="button" data-hinv="1" aria-pressed="${H.inv}">Inverse only</button></div></div>
 <p class="tt-sum">Hedges for being <b>${H.side > 0 ? 'long' : 'short'} ${name(H.target)}</b> over the last ${esc(win)} days.</p>
 <div id="ct-hlist">${listHtml(rows.slice(0, 12), { cv: H.carry, w: win })}</div>
-<p class="tt-note">Bar: today's ${esc(win)}-day correlation (purple = moves with it, gold = moves against it); the shaded band is where that correlation sat 80% of the time over the last year. "held" = share of those windows with today's sign. "ratio" = the min-variance hedge size, "cuts" = the variance it would have removed in-window. Past co-movement only.</p>${chipsFor('hedges')}</div>
+<p class="tt-note">Bar: today's ${esc(win)}-day correlation (purple = moves with it, gold = moves against it); the shaded band is where that correlation sat 80% of the time over the last year. "held" = share of those windows with today's sign. "ratio" = the min-variance hedge size, "ewma" = the same size from a recency-weighted fit, "held up" = the variance the ratio really removed on the last 250 days it had not seen (against "cuts", which is in-window), "cuts" = the variance it would have removed in-window. Past co-movement only.</p>${chipsFor('hedges')}</div>
 <div class="card"><div class="ch"><span class="lbl">Book hedge</span><span class="r"><span class="chip">descriptive · read-only</span></span></div>${bookHedgeHtml(bh, exp, win)}</div>
 </div>`;
 }

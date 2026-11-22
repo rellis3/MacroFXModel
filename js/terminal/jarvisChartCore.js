@@ -112,3 +112,30 @@ export function planeAlpha(k, dolly) {
 export const autoDolly = (t, n, period = 40) => (n <= 1 ? 0 : (n - 1) * (0.5 - 0.5 * Math.cos((t / period) * 2 * Math.PI)));
 /** Step the market through a list (wraps); unknown current starts at the first. */
 export const stepKey = (list, cur, dir) => { if (!list.length) return null; const i = list.indexOf(cur); return list[(((i < 0 ? 0 : i + dir) % list.length) + list.length) % list.length]; };
+
+/** Axis tags on the price scale (last, EMAs, usual band) pushed apart so none overlap: ys = wanted screen y's, h = the gap, [lo, hi] = the allowed band. Returns the placed y's in the same order. */
+export function spreadLabels(ys, h, lo = -Infinity, hi = Infinity) {
+  const n = ys.length, ord = ys.map((y, i) => i).sort((a, b) => ys[a] - ys[b]), out = new Array(n);
+  let prev = -Infinity; for (const i of ord) { out[i] = Math.max(ys[i], prev + h, lo); prev = out[i]; }
+  let next = Infinity; for (let j = n - 1; j >= 0; j--) { const i = ord[j]; out[i] = Math.min(out[i], next - h, hi); next = out[i]; }
+  return out;
+}
+
+const sm = q => { const x = clamp(q, 0, 1); return x * x * (3 - 2 * x); };
+const mix3 = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+/**
+ * The SHOW camera for CANDLES, as a pure function of the narration's progress p (0..1). Acts: 0-0.2 a high establishing look over the whole stack of days, descending;
+ * 0.2-0.8 low along the latest session's candles, riding just ahead of the bars as they print (left to right); 0.8-1 a rise to a three-quarter view of the latest bar.
+ * geo = { x0, x1 (the session's first and last bar x), hy (chart height), depth (z of the farthest plane, negative), yAt(q) (world y of the close at fraction q of the session) }.
+ * Returns { pos: [x,y,z], tgt: [x,y,z], printed: 0..1 (the share of the session's bars printed), act: 'over' | 'ride' | 'rise' }.
+ */
+export function showFlight(p, geo) {
+  const x = clamp(Number(p) || 0, 0, 1), { x0, x1, hy, depth = -6 } = geo, Wd = Math.max(0.5, x1 - x0), mid = (x0 + x1) / 2, yAt = typeof geo.yAt === 'function' ? geo.yAt : () => hy * 0.5;
+  const ride = q => { const hx = x0 + Wd * q, y = clamp(yAt(q), 0, hy); return { pos: [hx - Wd * 0.25, Math.max(hy * 0.25, y * 0.75), Wd * 0.5], tgt: [hx + Wd * 0.12, y * 0.85, -0.5] }; };
+  const K0 = { pos: [mid - Wd * 0.25, hy * 2.1, Wd * 1.15], tgt: [mid, hy * 0.35, depth * 0.45] };
+  const K3 = { pos: [x1 - Wd * 0.5, hy * 1.05, Wd * 0.75], tgt: [x1 - Wd * 0.12, clamp(yAt(1), 0, hy), -0.4] };
+  const printed = clamp((x - 0.14) / 0.64, 0, 1);
+  if (x < 0.2) { const k = sm(x / 0.2), r = ride(0); return { pos: mix3(K0.pos, r.pos, k), tgt: mix3(K0.tgt, r.tgt, k), printed, act: 'over' }; }
+  if (x < 0.8) { const r = ride(sm((x - 0.2) / 0.6) * 0.15 + ((x - 0.2) / 0.6) * 0.85); return { pos: r.pos, tgt: r.tgt, printed, act: 'ride' }; }
+  const k = sm((x - 0.8) / 0.2), r = ride(1); return { pos: mix3(r.pos, K3.pos, k), tgt: mix3(r.tgt, K3.tgt, k), printed, act: 'rise' };
+}

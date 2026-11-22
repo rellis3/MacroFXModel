@@ -45,11 +45,11 @@ export function ccyScore(bias) {
 /** The bias itself, or null when absent (never 0 for "missing"). */
 export const biasOf = v => num(v?.bias);
 
-/** "strong short", "long", "no view" for a card. */
+/** "strong short", "long", "neutral" for a card ("not reviewed" on the terminal when its review hook says the card is unreviewed). */
 export function assetWord(c) {
   if (!c || !Object.prototype.hasOwnProperty.call(DIR, c.rating)) return 'no data';
   const d = DIR[c.rating];
-  return d === 2 ? 'strong long' : d === 1 ? 'long' : d === -1 ? 'short' : d === -2 ? 'strong short' : 'no view';
+  return d === 2 ? 'strong long' : d === 1 ? 'long' : d === -1 ? 'short' : d === -2 ? 'strong short' : (globalThis.ttReviewState?.(c)?.state === 'unreviewed' ? 'not reviewed' : 'neutral');
 }
 /** "strongly bullish" … "strongly bearish" for a bias; "no data" when there is none. */
 export function ccyWord(bias) {

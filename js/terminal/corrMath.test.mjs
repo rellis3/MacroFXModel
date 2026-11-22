@@ -145,7 +145,9 @@ test('evidence chips: real entries, verdict words, UNTESTED for the per-market h
   assert.match(chipFor('fx-dollar-funding-exposure-hit'), /TESTED: NULL/);
   assert.match(chipFor('rule-a-portfolio-budget'), /UNDERPOWERED/);
   assert.equal(chipFor('no-such-entry'), '');
-  assert.doesNotMatch(chipsFor('hedges'), /VALIDATED/);
+  // 2026-11-20: hedge-method-comparison measures the variance a ratio removed OUT OF SAMPLE (12 sets); losses, tails and drawdowns of a per-market hedge stay untested, so UNTESTED stays
+  assert.match(chipsFor('hedges'), /VALIDATED · hedge-method-comparison/);
+  assert.match(chipsFor('hedges'), /BASE RATE · hedge-downside-beta/);
   // the Book hedge: tested by hedge-finder-book (2026-11-06): daily tail cut, drawdowns not shown
   assert.match(chipsFor('bookHedge'), /VALIDATED · hedge-finder-book-es/);
   assert.match(chipsFor('bookHedge'), /UNDERPOWERED · hedge-finder-book</);
@@ -175,4 +177,22 @@ test('hedge view helpers: book cards, carry sign, book hedge text', () => {
   assert.equal(carryOf('GOLD', 1, cv), null);
   assert.match(bookHedgeHtml({ ccy: 'USD', net: 4, rows: [] }, { cap: 4, before: { USD: 8 }, after: { USD: 4 } }, 60), /long USD \+4\.0.*before the ±4 cap/s);
   assert.match(bookHedgeHtml(null, null, 60), /No desk book/);
+});
+
+test('ewmaBeta and oosCut: a known linear link gives its beta, and a hedge is scored only on days it had not seen', () => {
+  const g = gauss(rng(11)), n = 400, x = [], y = [];
+  for (let i = 0; i < n; i++) { const a = g() * 0.005; x.push(a); y.push(0.8 * a + g() * 0.002); }
+  const b = M.ewmaBeta(y, x, n - 1); assert.ok(Math.abs(b - 0.8) < 0.1, `beta ${b}`);
+  assert.equal(M.ewmaBeta(y.slice(0, 30), x.slice(0, 30), 29), null);                                 // under 60 days: no answer
+  const o = M.oosCut(y, x, n - 1, { w: 60 }), e = M.oosCut(y, x, n - 1, { w: 60, kind: 'ewma' });
+  assert.ok(o.cut > 0.7 && o.cut < 1 && o.n === 250 && e.cut > 0.7, `${o.cut} ${e.cut}`);           // a real link removes most of the variance, never all of it
+  const noise = Array.from({ length: n }, () => g() * 0.005), z = M.oosCut(y, noise, n - 1, { w: 60 });
+  assert.ok(z.cut < 0.05, `an unrelated hedge removes nothing out of sample: ${z.cut}`);
+  // lookahead guard: scrambling the days AFTER the test window's last day changes nothing, and day t's ratio never sees day t
+  const y2 = [...y], x2 = [...x]; y2[n - 1] = 99; x2[n - 1] = 99;
+  assert.equal(M.ewmaBeta(y2, x2, n - 2), M.ewmaBeta(y, x, n - 2));
+});
+test('rankHedges rows carry the EWMA ratio and the out-of-sample cut', () => {
+  const rows = M.rankHedges(S, 'EURUSD', S.ids, { w: 60 }), r = rows.find(q => q.id === 'GBPUSD');
+  assert.ok(r.ratioEwma > 0 && r.oos.cut > 0.3 && r.oosEwma.cut > 0.3 && r.oos.n > 60, JSON.stringify([r.ratioEwma, r.oos, r.oosEwma]));
 });

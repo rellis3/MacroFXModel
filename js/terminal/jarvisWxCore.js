@@ -20,6 +20,12 @@ export const GROUPS = [
 export const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
 export const WORD = { clear: 'Clear', warm: 'Warm', hot: 'Hot', cloud: 'Cloudy', rain: 'Rain', storm: 'Storm', wind: 'Choppy' };
 const mean = a => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
+/** The members behind a group's weather, so an average never hides a split: { members: [{ key, name, v }] lowest to highest (v = the member's capped move in usual-move units,
+ *  signed as it counts for the group), lo, hi, spread = hi - lo }. A group with one market up 3x and one down 3x has spread 6 even though its average is 0. */
+export function memberSpread(list) {
+  const members = [...(list ?? [])].sort((a, b) => a.v - b.v), lo = members.length ? members[0].v : 0, hi = members.length ? members[members.length - 1].v : 0;
+  return { members, lo, hi, spread: hi - lo };
+}
 
 /** The condition from the group's average signed move (avg) and average size of move (size), both in usual-move units. */
 export function condition(avg, size) {
@@ -38,25 +44,25 @@ export function groupWeather(rows) {
   for (const g of GROUPS) {
     const m = g.keys.map(k => by.get(k)).filter(Boolean); if (!m.length) continue;
     const r = m.map(x => x.body), avg = mean(r), size = mean(r.map(Math.abs)), top = [...m].sort((a, b) => Math.abs(b.ratio) - Math.abs(a.ratio))[0];
-    out.push({ id: g.id, label: g.label, n: m.length, avg, size, cond: condition(avg, size), top: { key: top.key, ratio: top.ratio, name: marketName(top.key, { short: true }) } });
+    out.push({ id: g.id, label: g.label, n: m.length, avg, size, cond: condition(avg, size), top: { key: top.key, ratio: top.ratio, name: marketName(top.key, { short: true }) }, ...memberSpread(m.map(x => ({ key: x.key, name: marketName(x.key, { short: true }), v: x.body }))) });
   }
   return out;
 }
 
 /** One entry per currency with at least three pairs in the feed: strength = the average of (+move as the base, -move as the quote). */
 export function ccyWeather(rows) {
-  const acc = Object.fromEntries(CCYS.map(c => [c, []])); let top = {};
+  const acc = Object.fromEntries(CCYS.map(c => [c, []])), top = {};   // top[c] = that currency's pairs, signed as they count for it
   for (const r of rows ?? []) {
     if (!/^[A-Z]{6}$/.test(r.key) || r.key === 'BTCUSD') continue;
     const b = r.key.slice(0, 3), q = r.key.slice(3);
-    if (acc[b]) { acc[b].push(r.body); (top[b] ??= []).push(r); }
-    if (acc[q]) { acc[q].push(-r.body); (top[q] ??= []).push(r); }
+    if (acc[b]) { acc[b].push(r.body); (top[b] ??= []).push({ key: r.key, name: marketName(r.key, { short: true }), v: r.body }); }
+    if (acc[q]) { acc[q].push(-r.body); (top[q] ??= []).push({ key: r.key, name: marketName(r.key, { short: true }), v: -r.body }); }
   }
   const out = [];
   for (const c of CCYS) {
     const v = acc[c]; if (v.length < 3) continue;
     const avg = mean(v), size = mean(v.map(Math.abs));
-    out.push({ id: c, label: currencyName(c), code: c, n: v.length, avg, size, cond: condition(avg, size) });
+    out.push({ id: c, label: currencyName(c), code: c, n: v.length, avg, size, cond: condition(avg, size), ...memberSpread(top[c]) });
   }
   return out;
 }

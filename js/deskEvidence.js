@@ -816,6 +816,20 @@ export const DESK_EVIDENCE = [
     use: 'Research-only. The Book hedge card may say the top row cut the daily 5% tail of a 26-year proxy book by about 9%, better than a random candidate from the list, and that trading the currency\'s own USD pair cut it further. It must not say drawdowns fall (hedge-finder-book: untested) or that it works for USD or JPY exposures (no cut there; gold was not in the pool). Per-market hedges (one instrument) are not covered.',
   },
   {
+    id: 'hedge-method-comparison', domain: 'execution', verdict: 'validated', date: '2026-11-20', doc: 'forge/HEDGE_METHOD_COMPARISON_PREREG.md', also: ['analysis/output/hedge-method-comparison/RESULTS.md'],
+    instruments: ['GOLD', 'NQ', 'US30', 'US2000', 'DE30', 'EURUSD', 'GBPUSD', 'AUDUSD', 'USDJPY', 'USDCHF'],
+    claim: 'Some way of sizing a hedge (EWMA, blend, longer windows, ridge, Kalman, downside-weighted, minimum expected shortfall, naive 1:1) removes more daily variance out of sample than the Desk Terminal\'s 60-day least-squares ratio',
+    result: 'VALIDATED for one method, by a small margin. 12 fixed target/hedge sets (gold, Nasdaq, Dow, Russell, DAX, EUR/USD, GBP/USD, AUD/USD, USD/JPY; one to two hedge legs), 2,451 walk-forward days 2016-12 to 2026-08-20, each ratio from returns before the day it hedges. EWMA least squares (lambda 0.97) +1.10pp variance removed over OLS60 [+0.62, +1.71], better on 12 of 12 sets, both halves (+0.71 / +1.56), BH q 0.10 holds (27.1% to 28.2% pooled). Blend 60/250 +0.97pp [+0.43, +1.47], 11 of 12, a hair under the 1.0pp bar. OLS 120d +0.26pp, ridge +0.13pp, Kalman -0.23pp, OLS 250d -0.48pp: all within noise of OLS60. Reliably worse: minimum expected shortfall -2.82pp [-4.65, -1.37], downside-weighted -7.05pp (a selection-on-the-outcome artefact, see hedge-downside-beta), naive 1:1 -100pp (ignores the volatility ratio; adds risk on 7 of 12). The pair matters far more than the method: variance removed runs from about 0% (US2000 on gold) to 60% (Nasdaq on Russell, EUR/USD on USD/CHF), method gaps are 1 to 5pp; a random partner removes 25.3% pooled against 27.1% for the chosen pairs.',
+    use: 'Research-only, variance not P&L, no costs, daily bars. The Hedges tab may say a recency-weighted ratio removed about 1pp more variance than the 60-day ratio out of sample on all 12 test sets, that longer windows, ridge and Kalman added nothing reliable, and that a tail-tuned hedge did worse. It should keep 60-day OLS as the headline and show EWMA beside it, and show out-of-sample variance removed next to in-window r2. It must not call any method the best hedge or claim the hedge holds in future; carry, costs and intraday betas are untested.',
+  },
+  {
+    id: 'hedge-downside-beta', domain: 'execution', verdict: 'context', date: '2026-11-20', doc: 'forge/HEDGE_METHOD_COMPARISON_PREREG.md', also: ['analysis/output/hedge-method-comparison/RESULTS.md'],
+    instruments: ['GOLD', 'NQ', 'US30', 'US2000', 'DE30', 'EURUSD', 'GBPUSD', 'AUDUSD', 'USDJPY', 'USDCHF'],
+    claim: 'The hedge ratio on the asset\'s worst days differs from the all-days ratio, so a ratio sized on average days is wrong when the hedge is needed',
+    result: 'CONTEXT. As registered (beta on the target\'s worst 25% days over beta on all days, 250-day windows every 21 days, 10 pairs) the ratio is 0.34 to 0.70 for every pair, but that is an artefact: conditioning on the dependent variable shrinks an OLS slope toward zero for a perfectly linear relationship (prereg A2, post-hoc). Re-done descriptively on the HEDGE leg\'s days (worst 25%, best 25%, largest moves) the beta barely moves: gold on DXY -1.02 vs -0.89, EUR/USD on USD/CHF -0.75 vs -0.69, GBP/USD on EUR/USD 0.79 vs 0.81, AUD/USD on Nasdaq 0.18 vs 0.19, DAX on Nasdaq 0.54 vs 0.50; the largest shift is Nasdaq on Russell 0.72 to 0.92. The downside-weighted hedge built on the artefact removed 7.05pp less variance than OLS60.',
+    use: 'Do not say hedge ratios are too small on the days that matter, or that downside beta is half the ordinary beta: the second is an artefact of the construction and the first is not seen in daily betas for these 10 pairs (weakly for the Nasdaq-Russell pair). A stress beta on the Hedges tab, if shown, must condition on the hedge leg or a driver, not on the target\'s own loss.',
+  },
+  {
     id: 'hedge-residual-mr', domain: 'price', verdict: 'null', date: '2026-11-06', doc: 'forge/HEDGE_RESIDUAL_SYSTEM_PREREG.md', also: ['analysis/output/hedge-residual-system/RESULTS.md'],
     claim: 'Owner 2026-11-06, the Hedge finder run as a single system: each month, for each of the 21 desk G10 pairs without CHF, the finder\'s top partner (rankHedges, |corr| x sign stability, 60-day NY-close window, data to the previous close, share >= 0.80), spread X - beta.Y at the finder\'s min-variance ratio refreshed daily, hourly decisions, both legs costed at the measured weekday x hour spread, policy-rate accrual on every arm: fading the residual (z of the log spread over the last 120 hours, enter |z| >= 2, exit within 0.5 or after 120 hours) earns a net Sharpe of at least 0.5, positive in both halves, above 95% of random partners, Holm across three cells',
     result: 'NULL. 2017-03-31 to 2026-08-20 (OANDA mid M1 cache, 2,436 sessions, 14.9 spreads on average, 9,353 trades): net Sharpe -1.19 [-1.76, -0.60] (21-session block bootstrap, B 2000), halves -1.17 / -1.21, negative in 9 of 10 years; random partners net median -0.59 (real at the 0th percentile of 200). Gross +0.16 [-0.44, +0.81]: each trade earns about +0.9 bp of X notional gross and pays about 3.3 bp of two-leg spread. Random partners do better gross (median +0.34): a tight hedge leaves a residual too small to pay its costs. Planted 24-hour OU reversion came through the same pipeline at gross 1.3-3.0, so the null is not the code. 7 of 63 per-pair cells survive BH, all losses.',
@@ -3453,6 +3467,20 @@ export const DESK_EVIDENCE = [
     instruments: ['EURUSD'],
   },
   {
+    id: 'ladder-qlike-per-line', domain: 'volatility', verdict: 'underpowered', date: '2026-11-22', doc: 'forge/LADDER_QLIKE_PER_LINE_PREREG.md', also: ['analysis/output/ladder-qlike-per-line/RESULTS.md'],
+    claim: 'On futures, a separate sigma model per line type (HL / OH / OL), each chosen on its own QLIKE, beats one model chosen on summed QLIKE (Jordan, C.OG group member)',
+    result: 'Pre-registered, NQ/GC/6E/6J futures, test 2020-2026.08, picks on prior years only. Planted-oracle control picked 7/7 years on all four, -3.6%. Per line vs one QLIKE model -0.45% [-1.09, +0.03] (2020-22 -0.80%, 2023-26 -0.14%); OH -0.60% [-1.26, -0.12]; regime miss 2.33 -> 2.35pp. Graded weight: faint. Per-line winners: NQ IV-blend HL/OL + SHAR OH; gold IV-adjusted HL/OL + SHAR OH; 6E HAR-CJ HL/OL + SHAR OH; 6J SHAR/R5.',
+    use: 'QLIKE leaderboard per line is the reference for futures sigma choice; the per-line split is a faint candidate (mainly OH on SHAR), not yet a change.',
+    instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
+  },
+  {
+    id: 'ladder-qlike-vs-pinball', domain: 'volatility', verdict: 'underpowered', date: '2026-11-22', doc: 'forge/LADDER_QLIKE_PER_LINE_PREREG.md', also: ['analysis/output/ladder-qlike-per-line/RESULTS.md'],
+    claim: 'The QLIKE-chosen per-line futures ladder beats the current pinball-chosen one-model ladder on QLIKE without losing calibration',
+    result: 'Pre-registered. QL vs pinball pick -0.86% [-1.70, +0.16] (both halves negative, CIs cross 0); OL -1.20% [-1.86, -0.28]. Regime miss 1.89 (pinball) -> 2.35pp (QLIKE): QLIKE picks trade a little calibration. Both beat live: QL -4.0% [-4.8, -2.5], pinball -3.2% vs live A0 (regime miss 2.71pp). Graded weight: faint.',
+    use: 'Keep the pinball-chosen ladder for the levels (better calibrated); QLIKE confirms it is near the best and far better than live.',
+    instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
+  },
+  {
     id: 'ladder-per-line', domain: 'volatility', verdict: 'underpowered', date: '2026-11-22', doc: 'forge/LADDER_PER_LINE_PREREG.md', also: ['analysis/output/ladder-per-line/RESULTS.md'],
     claim: 'A separate sigma model per line type (HL / OH / OL), each chosen on that line own whole-distribution pinball score, beats one model chosen for all lines (Jordan, C.OG group member)',
     result: 'Pre-registered, NQ/GOLD/EURUSD, CFD and futures, test 2019-2026.08, picks on prior out-of-sample years only. Planted-oracle control picked 8/8 years, -14.2%. Per line vs one model: CFD -0.26% [-0.63, +0.03], futures +0.12% [+0.00, +0.22]; per-line picks are mostly the same model (NQ SHAR, EURUSD HAR-CJ/SHAR, gold IV-adjusted/SHAR). Regime miss 2.13->2.01 (C), 1.75->1.72 (F).',
@@ -4539,6 +4567,26 @@ export const DESK_EVIDENCE = [
     use: 'Do not say a rate-of-change reset inside an uptrend is a continuation entry or a "wants to go higher" read: on 30 markets over 13 years it was followed by returns about the same as any other uptrend session. The 200-day filter adds nothing to the banked stall. The educator\'s own stack (single stocks, fundamentals, catalysts, sentiment) is not tested here.',
     instruments: ['SPX', 'NDX', 'RUT', 'DJI', 'DAX', 'FTSE', 'N225', 'HSI', 'XLK', 'XLF', 'XLE', 'XLV', 'XLY', 'XLP', 'XLI', 'XLU', 'XLB', 'GOLD', 'SILVER', 'COPPER', 'WTI', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'TLT', 'BTC'],
   },
+  {
+    id: 'cb-meeting-drift-own', domain: 'events', verdict: 'null', date: '2026-10-26', doc: 'forge/CB_MEETING_DRIFT_PREREG.md', also: ['analysis/output/cb-meeting-drift/RESULTS.md'],
+    claim: 'The own currency drifts up over the five sessions after an ECB or BoE decision (EURUSD, GBPUSD, 16:00 London D to D+5), as the dollar does after the FOMC',
+    result: '170 decisions (103 ECB 2014-2026, 67 BoE 2018-2026): event minus control -6.5bp [-23.0, +12.0], Holm p 0.47, placebo 23rd pct, halves +1.3 / -12.4. The upper bound is under the registered +15bp null line, so an FOMC-sized drift is ruled out. ECB -2.6bp, BoE -12.7bp.',
+    use: 'The post-FOMC dollar drift is a Fed effect only. Never generalise it to "the currency rises after its central bank meets".',
+  },
+  {
+    id: 'cb-meeting-drift-continue', domain: 'events', verdict: 'underpowered', date: '2026-10-26', doc: 'forge/CB_MEETING_DRIFT_PREREG.md', also: ['analysis/output/cb-meeting-drift/RESULTS.md'],
+    claim: 'The decision-day move (12:00 to 16:00 London) after an ECB or BoE decision continues over the next five sessions',
+    result: '170 decisions: sign(D0 move) x D+1..D+5 return, event minus control +14.6bp [-1.1, +31.2], p 0.077 (Holm fail), placebo 95.1st pct, halves +16.3 / +13.1; continued 58% of the time vs ~50% on control days (ECB +16.9bp, BoE +11.1bp, neither significant alone).',
+    use: 'A lead, not a result: do not lean on it. Pooling more central banks (BoJ, RBA, BoC, SNB, RBNZ) under its own prereg is what would judge it.',
+    instruments: ['EURUSD', 'GBPUSD'],
+  },
+  {
+    id: 'pre-fomc-drift-nq', domain: 'events', verdict: 'underpowered', date: '2026-10-26', doc: 'forge/PRE_FOMC_DRIFT_PREREG.md', also: ['analysis/output/pre-fomc-drift/RESULTS.md'],
+    claim: 'Lucca and Moench (2015): US equity index futures rise in the 24 hours before a scheduled FOMC statement (NQ, 14:00 ET D-1 to 13:45 ET D)',
+    result: '99 scheduled meetings 2014-2026: +21.9bp vs +7.7bp on control days, difference +14.2bp [-4.1, +31.5], t 1.56, placebo 88th pct, halves -6.3 / +33.5. Win rate 56.6% vs 56.2%; without the 3 largest meetings +6.9bp; 2022 alone averaged +139bp. The paper\'s 49bp is outside the interval. SPX 2018+ (descriptive) +14.5bp [-2.9, +31.9].',
+    use: 'Do not cite the pre-FOMC drift as a live ~50bp effect: at that size it is gone here since 2014. A +10-15bp lean may remain, concentrated in 2018-2024 (mostly 2022). Reopen with 1994-2013 dates as a confirmation.',
+    instruments: ['NQ', 'SPX500'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -4620,6 +4668,8 @@ const POWER = {
   'exhaustion-v2-gold-fut': { n: '7,699 / 8,737 touches on 1,764 sessions', note: 'NULL bar 1pp; observed -7.9pp' },
   'exhaustion-v2-eurusd': { n: '7,365 / 8,333 touches on 1,744 sessions, 63-session blocks', note: 'NULL bar 1pp; observed -6.7pp' },
   'exhaustion-v2-eurusd-fut': { n: '7,214 / 8,121 touches on 1,706 sessions', note: 'NULL bar 1pp; observed -7.0pp' },
+  'ladder-qlike-per-line': { n: '~1,650 test sessions per instrument (4 futures), 63-session blocks', note: 'planted oracle detected at -3.6%; observed -0.45%' },
+  'ladder-qlike-vs-pinball': { n: 'same sessions', note: 'observed -0.86% [-1.70, +0.16]' },
   'ladder-per-line': { n: '~1,900 test sessions per instrument and track, 63-session blocks', note: 'planted oracle detected at -14%; observed -0.26% (C), +0.12% (F)' },
   'ladder-per-line-oc': { n: 'same sessions', note: 'observed -0.02% (C), +0.29% (F)' },
   'ladder-per-line-oc-tp': { n: '2,990 trades on 5,923 sessions', note: 'NULL bar +0.05R; CI upper -0.065R' },
@@ -4992,6 +5042,8 @@ const POWER = {
   'portfolio-book-prop':     { n: '5,000 paths x cell; 2,763 days', note: 'descriptive; MC error +/-0.7pp; the book mean (CI +0.0004 to +0.044%/day) is the binding uncertainty' },
   'hedge-finder-book':       { n: '6,574 days (~313 21-day blocks), one 26-year path', note: 'max drawdown MDE 8-38pp vs a 5% bar (underpowered by design); ES5 MDE 3.1pp; Sharpe non-inferiority MDE 0.11-0.16 vs a 0.10 margin' },
   'hedge-finder-book-es':    { n: '6,574 days (~313 21-day blocks)', note: 'MDE 3.1pp below the 5% bar; CI [-11.4, -7.0] excludes 0; placebo 0th of 200' },
+  'hedge-method-comparison': { n: '2,451 walk-forward days (~117 21-day blocks), 12 sets that share dates and markets', note: 'paired interval half-width 0.5-1.2pp for the estimators that matter vs a 1.0pp bar; naive/min-ES/downside intervals wider (1.5-15pp) but far from zero' },
+  'hedge-downside-beta':     { n: '117 rolling windows per pair, 10 pairs, one 10-year path', note: 'descriptive; the registered form is a selection artefact (A2), the corrected form has no gate' },
   'hedge-residual-mr':       { n: '2,436 sessions (~116 21-session blocks), 9.4 years; 9,353 trades', note: 'Sharpe SE 0.31 (synthetic MC), MDE 1.01 vs a 0.5 bar; CI [-1.76, -0.60] excludes the bar (null reachable by design)' },
   'hedge-residual-mom':      { n: '2,436 sessions (~116 21-session blocks), 9.4 years; 18,791 flips', note: 'Sharpe SE 0.32, MDE 1.05 vs a 0.5 bar; CI [-2.45, -1.08] excludes the bar' },
   'hedge-residual-carry':    { n: '2,436 sessions (~116 21-session blocks), 9.4 years; 1,869 changes', note: 'Sharpe SE 0.37, MDE 1.20 vs a 0.5 bar (underpowered by design); CI [-0.55, +0.70] includes the bar' },
@@ -5118,6 +5170,9 @@ const POWER = {
   'mtf-structure-pullback': { n: '5,196 called rows on 1,765 dates (18.1% coverage)', note: 'MDE ~3.6pp (24h) / 4.9pp (3d) / 6.0pp (5d) vs 3pp bar; plant 100% / 0% / 0%; gold slice 352 rows' },
   'mtf-structure-conflict-ema': { n: '8,539 kept rows on 2,060 dates (29.4% kept); 1,000 random abstentions', note: 'MDE ~2.2pp (24h) / 3.3pp (3d) / 3.8pp (5d) vs 2pp bar; plant 57% / 0% / 0%' },
   'mtf-structure-conflict-hmm': { n: '13,401 kept rows on 2,237 dates (46.1% kept); 1,000 random abstentions', note: 'MDE ~1.7pp (24h) / 2.4pp (3d) / 3.1pp (5d) vs 2pp bar; plant 100% / 30% / 0%' },
+  'cb-meeting-drift-own':      { n: '170 decisions (103 ECB, 67 BoE) vs 4,281 control windows', note: 'MDE 26.5bp (Holm alpha 0.025); CI [-23.0, +12.0] below the +15bp null line -- a real null' },
+  'cb-meeting-drift-continue': { n: '170 decisions vs 4,281 control windows', note: 'MDE ~26.5bp; CI [-1.1, +31.2] still includes the +15bp line' },
+  'pre-fomc-drift-nq':         { n: '99 scheduled FOMC meetings vs 2,715 control days', note: 'MDE 34.9bp vs paper 49bp; CI [-4.1, +31.5] includes the +20bp null line' },
 };
 
 const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };

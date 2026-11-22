@@ -8,12 +8,44 @@
   "config_hash": "b8957c9d2a"
  },
  {
+  "name": "01-mae-mfe-all-families-v2",
+  "ranAt": "2026-11-20T16:48:20+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 1 (line-touch-mae-futures v2): MAE/MFE at every touch of OH/OL, OC and HL p50/p75/p90, by line group and rung, forecast lines vs the x0.85 / x1.15 placebo ladders.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "5a580da5cf"
+ },
+ {
+  "name": "01-mae-mfe-all-families-v3-2018",
+  "ranAt": "2026-11-20T16:49:03+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 1 (line-touch-mae-futures v2): MAE/MFE at every touch of OH/OL, OC and HL p50/p75/p90, by line group and rung, forecast lines vs the x0.85 / x1.15 placebo ladders.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "ac1b279aaf"
+ },
+ {
   "name": "02-stacks",
   "ranAt": "2026-11-18T16:28:27+00:00",
   "status": "EXPLORATORY (not pre-registered)",
   "description": "Step 2: lines close together. A touch is stacked if another line sits within 5 ticks; lone vs stacked medians in sigma and back-wins. Try --set select.stack.unit=sigma --set select.stack.width=0.05.",
   "lockbox_excluded_from": "2026-08-21",
   "config_hash": "acf7012e79"
+ },
+ {
+  "name": "02-stacks-v2",
+  "ranAt": "2026-11-20T16:49:24+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 2: lines close together. A touch is stacked if another line sits within 5 ticks; lone vs stacked medians in sigma and back-wins. Try --set select.stack.unit=sigma --set select.stack.width=0.05.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "3b07b8f85f"
+ },
+ {
+  "name": "02-stacks-v3-2018",
+  "ranAt": "2026-11-20T16:49:45+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 2: lines close together. A touch is stacked if another line sits within 5 ticks; lone vs stacked medians in sigma and back-wins. Try --set select.stack.unit=sigma --set select.stack.width=0.05.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "49ac03e8b7"
  },
  {
   "name": "03-better-level-race",
@@ -24,6 +56,22 @@
   "config_hash": "7fcc11870e"
  },
  {
+  "name": "03-better-level-race-v2",
+  "ranAt": "2026-11-20T16:50:59+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 3 (v3): better level (outermost line of a 5-tick stack) and the race: stop = median 60m MAE, target = median 60m MFE of the same set, first passage over 60 one-minute bars, gross. Swap select.set to all / first / better_first.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "4ad5f36582"
+ },
+ {
+  "name": "03-better-level-race-v3-2018",
+  "ranAt": "2026-11-20T16:52:16+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 3 (v3): better level (outermost line of a 5-tick stack) and the race: stop = median 60m MAE, target = median 60m MFE of the same set, first passage over 60 one-minute bars, gross. Swap select.set to all / first / better_first.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "c50f072acf"
+ },
+ {
   "name": "04-vwap-fade",
   "ranAt": "2026-11-18T16:26:06+00:00",
   "status": "EXPLORATORY (not pre-registered)",
@@ -32,11 +80,43 @@
   "config_hash": "42c0d4b67e"
  },
  {
+  "name": "04-vwap-fade-v2",
+  "ranAt": "2026-11-20T16:46:42+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 4 (futures-exhaustion-vwap baseline): fade every touch (one per bar and side, the outermost line) to the session VWAP frozen at the bar before the touch, 0.25 sigma stop, held to 22:00 London, 2 ticks + $4 cost. Swap trade.target.anchor to globex or rth.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "b800feaf95"
+ },
+ {
+  "name": "04-vwap-fade-v3-2018",
+  "ranAt": "2026-11-20T16:47:16+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 4 (futures-exhaustion-vwap baseline): fade every touch (one per bar and side, the outermost line) to the session VWAP frozen at the bar before the touch, 0.25 sigma stop, held to 22:00 London, 2 ticks + $4 cost. Swap trade.target.anchor to globex or rth.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "45ff8a0151"
+ },
+ {
   "name": "05-vwap-fade-mae-stop",
   "ranAt": "2026-11-18T16:27:43+00:00",
   "status": "EXPLORATORY (not pre-registered)",
   "description": "Step 5 (2026-11-18 check): the VWAP fade with test 3's median 60m MAE as the stop (fitted on all forecast-line touches) instead of 0.25 sigma. Try stop.horizon=eod or stop.units=sigma with fit=discovery.",
   "lockbox_excluded_from": "2026-08-21",
   "config_hash": "dac90ea827"
+ },
+ {
+  "name": "05-vwap-fade-mae-stop-v2",
+  "ranAt": "2026-11-20T16:52:51+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 5 (2026-11-18 check): the VWAP fade with test 3's median 60m MAE as the stop (fitted on all forecast-line touches) instead of 0.25 sigma. Try stop.horizon=eod or stop.units=sigma with fit=discovery.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "44d665033b"
+ },
+ {
+  "name": "05-vwap-fade-mae-stop-v3-2018",
+  "ranAt": "2026-11-20T16:53:26+00:00",
+  "status": "EXPLORATORY (not pre-registered)",
+  "description": "Step 5 (2026-11-18 check): the VWAP fade with test 3's median 60m MAE as the stop (fitted on all forecast-line touches) instead of 0.25 sigma. Try stop.horizon=eod or stop.units=sigma with fit=discovery.",
+  "lockbox_excluded_from": "2026-08-21",
+  "config_hash": "f082761c30"
  }
 ]

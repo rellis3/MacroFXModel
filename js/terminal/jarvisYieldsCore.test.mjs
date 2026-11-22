@@ -26,3 +26,16 @@ test('ribbons carry values forward, never far, and fail soft', () => {
   assert.equal(r.length, 40); assert.ok(r.every(v => v === 3)); assert.equal(ribbonOn(G, []), null); assert.equal(ribbonOn(G, [{ date: '2000-01-01', value: 1 }]), null);
 });
 test('helpers', () => { assert.equal(xOfYears(0.25), 0); assert.ok(Math.abs(xOfYears(30) - 1) < 1e-9); assert.equal(dayWord('2026-11-17'), '17 November'); assert.equal(bpText(-12.4), '-12bp'); });
+test('monoCurve passes through the points and never overshoots them', async () => {
+  const { monoCurve } = await import('./jarvisYieldsCore.js');
+  const xs = [0, 1, 2, 3, 4], ys = [3.6, 3.5, 3.5, 3.9, 4.6], pts = monoCurve(xs, ys, 5);
+  assert.equal(pts.length, 21); assert.deepEqual(pts[0], [0, 3.6]); assert.deepEqual(pts[20], [4, 4.6]); assert.ok(Math.abs(pts[15][1] - 3.9) < 1e-9);
+  for (let i = 0; i < 4; i++) for (let s = 0; s <= 5; s++) { const y = pts[i * 5 + s][1]; assert.ok(y >= Math.min(ys[i], ys[i + 1]) - 1e-9 && y <= Math.max(ys[i], ys[i + 1]) + 1e-9); }
+  const out = new Float32Array(42); assert.equal(monoCurve(xs, ys, 5, out), 21); assert.ok(Math.abs(out[41] - 4.6) < 1e-6); assert.deepEqual(monoCurve([1], [2]), []);
+});
+test('yieldsShowAct: over, front, rewind back to the oldest row, then return', async () => {
+  const { yieldsShowAct } = await import('./jarvisYieldsCore.js');
+  assert.equal(yieldsShowAct(0, 120).act, 'over'); assert.equal(yieldsShowAct(0.2, 120).act, 'front'); assert.equal(yieldsShowAct(0.2, 120).slice, 119);
+  const r = yieldsShowAct(0.62, 120); assert.equal(r.act, 'rewind'); assert.ok(r.slice > 0 && r.slice < 119); assert.equal(yieldsShowAct(0.859, 120).slice, 0);
+  assert.equal(yieldsShowAct(1, 120).act, 'return'); assert.equal(yieldsShowAct(1, 120).slice, 119); assert.equal(yieldsShowAct(NaN, 0).act, 'over');
+});

@@ -39,6 +39,8 @@ list of runs is `runs/index.json`.
 | Key | Options |
 |---|---|
 | `instruments` | `NQ`, `EURUSD` (6E), `GOLD` (GC) |
+| `lines` | `v3` (production calc via the day-reconstruction archive, 2016+; default) or `v2` (re-synced ladder-v2 futures σ: NQ har_rv_log, GC HAR-RV 5-min, 6E HAR-CJ; walk-forward widths from `ladder-v2-<sym>/test_F.parquet`, 2018+). Compare like for like with `--set select.date_from=2018-01-02` on v3 |
+| `select.date_from` | first London date to use, e.g. `2018-01-02` |
 | `select.kinds` | `line`, `placebo_085`, `placebo_115` |
 | `select.groups` / `rungs` / `sides` | `OH/OL`, `OC`, `HL` / `p50`, `p75`, `p90` / `up`, `dn` |
 | `select.set` | `all`, `better` (outermost of its stack), `first` (touch 1), `better_first` |

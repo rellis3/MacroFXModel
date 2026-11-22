@@ -1,0 +1,60 @@
+{
+  "instruments": [
+    "NQ",
+    "EURUSD",
+    "GOLD"
+  ],
+  "lines": "v2",
+  "select": {
+    "kinds": [
+      "line"
+    ],
+    "groups": null,
+    "rungs": null,
+    "sides": null,
+    "set": "all",
+    "stack": {
+      "unit": "ticks",
+      "width": 5
+    },
+    "query": null,
+    "dedupe_bar": true
+  },
+  "by": [
+    "instrument",
+    "rung"
+  ],
+  "steps": [
+    "trade"
+  ],
+  "trade": {
+    "mode": "fade",
+    "horizon": "eod",
+    "stop": {
+      "type": "median_mae",
+      "mult": 0.25,
+      "horizon": "60m",
+      "units": "price",
+      "fit": "all",
+      "fit_on": "all_lines"
+    },
+    "target": {
+      "type": "vwap",
+      "mult": 1.0,
+      "anchor": "london"
+    },
+    "cost": {
+      "ticks": 2,
+      "commission_usd": 4
+    },
+    "min_k": 30
+  },
+  "splits": {
+    "discovery_end": "2023-01-01"
+  },
+  "boot": {
+    "B": 1000,
+    "seed": 20261118
+  },
+  "description": "Step 5 (2026-11-18 check): the VWAP fade with test 3's median 60m MAE as the stop (fitted on all forecast-line touches) instead of 0.25 sigma. Try stop.horizon=eod or stop.units=sigma with fit=discovery."
+}

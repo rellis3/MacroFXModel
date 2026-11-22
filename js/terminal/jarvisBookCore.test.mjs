@@ -30,3 +30,24 @@ test('bookSummary and bookScript: counts, the top conviction, the not-a-forecast
   const t = bookScript(b); assert.match(t, /view on 3 markets: 1 long and 2 short/); assert.match(t, /biggest conviction is high, on gold/); assert.match(t, /not reviewed, which is not a neutral call/); assert.match(t, /not a forecast/);
   assert.equal(bookScript({ rows: [] }), null); assert.equal(bookScript(null), null);
 });
+
+test('callShape: one fixed height for every call (height never encodes conviction); conviction is width, glow and rings; flat plinths dashed unless reviewed-neutral', async () => {
+  const { callShape, CALL_H, FLAT_H } = await import('./jarvisBookCore.js');
+  const lo = callShape({ call: 1, conv: 'low', state: 'long' }), hi = callShape({ call: 1, conv: 'high', state: 'long' }), sh = callShape({ call: -1, conv: 'medium', state: 'short' });
+  assert.equal(lo.y1, CALL_H); assert.equal(hi.y1, CALL_H); assert.equal(sh.y1, -CALL_H);
+  assert.ok(hi.w > sh.w && sh.w > lo.w); assert.ok(hi.glow > lo.glow); assert.deepEqual([lo.rings, sh.rings, hi.rings], [1, 2, 3]);
+  const unk = callShape({ call: 1, conv: null, state: 'long' }); assert.equal(unk.hollow, true); assert.equal(unk.rings, 0);
+  assert.equal(callShape({ call: 0, state: 'neutral' }).dashed, false); assert.equal(callShape({ call: 0, state: 'unreviewed' }).dashed, true); assert.equal(callShape({ call: 0, state: 'unknown' }).y1, FLAT_H);
+});
+test('moveHeight: linear in usual moves, capped at 3 and flagged, ticks at each whole usual move; null without a move', async () => {
+  const { moveHeight, MOVE_K } = await import('./jarvisBookCore.js');
+  assert.equal(moveHeight({ move: null }), null); assert.equal(moveHeight({}), null);
+  const a = moveHeight({ move: 1.5 }); assert.equal(a.y, 1.5 * MOVE_K); assert.equal(a.ticks.length, 1); assert.equal(a.capped, false);
+  const b = moveHeight({ move: -7 }); assert.equal(b.v, -3); assert.equal(b.capped, true); assert.deepEqual(b.ticks, [-1, -2, -3].map(k => k * MOVE_K));
+});
+test('bookShowCam: starts high, dives low near the focus mid-flight, ends risen; deterministic', async () => {
+  const { bookShowCam } = await import('./jarvisBookCore.js');
+  const f = { x: 0.4, z: -0.3 }, s = bookShowCam(0, f), m = bookShowCam(0.5, f), e = bookShowCam(1, f);
+  assert.ok(m.elev < s.elev && m.elev < e.elev); assert.ok(m.dist < s.dist); assert.ok(Math.abs(m.target[0] - 0.4) < 1e-9); assert.equal(e.target[0], 0);
+  assert.deepEqual(bookShowCam(0.5, f), m); assert.ok(Number.isFinite(bookShowCam(0.5, null).yaw));
+});

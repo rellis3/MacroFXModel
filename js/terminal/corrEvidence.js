@@ -27,8 +27,10 @@ export const VIEW_EVIDENCE = {
       ['fx-dollar-funding-exposure-hit', 'Which currencies get hit in risk-off weeks: the dollar-funding ranking tested null.']],
   },
   hedges: {
-    untested: ['Per-market hedges: no entry tests that hedging one market with these rows cuts its losses out of sample. Past co-movement only.'],
-    ids: [['rule-a-portfolio-budget', 'A tested use of correlation for risk: cluster budgets, underpowered. The Book hedge card carries its own test (hedge-finder-book).'],
+    untested: ['Per-market hedges: the variance a ratio removes out of sample is measured (hedge-method-comparison, 12 sets), but no entry tests that hedging one market with these rows cuts its losses, tail or drawdowns. Past co-movement only.'],
+    ids: [['hedge-method-comparison', 'Sizing the hedge: on 12 target/hedge sets 2016-2026 a recency-weighted (EWMA) ratio removed +1.10pp more variance than the 60-day one out of sample [+0.62, +1.71], on all 12; longer windows, ridge and Kalman were within noise; a tail-tuned or downside-weighted ratio was worse. The pair matters far more than the method (0% to 60% removed).'],
+      ['hedge-downside-beta', 'Hedge ratio on bad days: the apparent halving of beta when conditioning on the target\'s own losses is a statistical artefact; conditioned on the hedge leg the beta barely moves.'],
+      ['rule-a-portfolio-budget', 'A tested use of correlation for risk: cluster budgets, underpowered. The Book hedge card carries its own test (hedge-finder-book).'],
       ['hedge-residual-mr', 'Trading a row as a spread (long the market, short the top row at its ratio), fading the residual hourly: net Sharpe -1.19 [-1.76, -0.60] on 2017-2026, about 0.9bp gross per trade against 3.3bp of spreads.'],
       ['hedge-residual-mom', 'The same spread, following the residual: net Sharpe -1.78 [-2.45, -1.08]. Carry of the spread underpowered (hedge-residual-carry).']],
   },
