@@ -1,16 +1,28 @@
-// js/terminal/jarvisViewVol.js: Jarvis's VOL view: a molten wireframe terrain you fly over. Across = the desk's markets grouped by asset class, along = time (the last ~60 completed sessions, oldest first, flying towards the newest),
-// height and colour = how stretched that day's high-low range was against that market's own normal (the median of its previous 20 sessions' ranges; 1.0 = a normal day, clipped at 3). A white contour marks the 1.0 level.
-// Canvas 2D with its own perspective; every typed array is allocated once and reused. DESCRIPTION ONLY: it shows what already happened, never a forecast. The maths lives in jarvisVolCore.js.
+// js/terminal/jarvisViewVol.js: Jarvis's VOL view: a molten terrain of "range used", drawn by the hologram engine (jarvisGL.js, real bloom); labels on the HUD canvas.
+// ENCODING: across = the desk's markets grouped by asset class (a low ravine between classes, the class named on the floor), along = time (the last ~60 completed sessions, oldest at the back, the
+// newest session the front edge), height AND colour = how stretched that day's high-low range was against that market's own normal (the median of its previous 20 sessions' ranges): height is linear
+// in the ratio, 1.0 = a normal day, clipped at 3 (clipped days carry a white tip). Colour ramp: cool below normal, grey at normal, gold to red when stretched, white-hot at 3x. A white contour marks
+// the 1.0 level. A gold sweep line travels along time and names its session; the tallest ridges carry a flare and a label. The camera drifts round the terrain (drag to turn, scroll to zoom; still
+// under reduced motion). SHOW: down LOW along the newest session's edge, the markets passing one by one, then up and back over the whole window with the tallest ridges named.
+// Data: /api/ohlc-range daily bars (OANDA, one request per market, in batches of 7) and the VIX curve from /api/fredhistory?keys=vix,vix3m. The maths lives in jarvisVolCore.js.
+// DESCRIPTION ONLY: it shows what already happened, never a forecast.
 import { marketName } from './jarvisNames.js';
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
-import { VOL_GROUPS, VOL_MARKETS, CLIP, buildTerrain, dailyRanges, vixCurve, volScript } from './jarvisVolCore.js';
+import { glView, orbitPos } from './jarvisGL.js';
+import { placeBox } from './gammaHoloCore.js';
+import { keyLine } from './jarvisViewGammaPillar.js';
+import { VOL_GROUPS, VOL_MARKETS, CLIP, buildTerrain, dailyRanges, vixCurve, volScript, volShowAct, groupColumns } from './jarvisVolCore.js';
 
-const MAXC = 64, MAXR = 64, SUB = 2, DX = 0.062, DZ = 0.085, HS = 0.12, AHEAD = 40, GAP_V = 0.22, LEVEL = 1;
-const HT = new Float32Array(MAXC * MAXR), PX = new Float32Array(MAXC * MAXR), PY = new Float32Array(MAXC * MAXR), PZ = new Float32Array(MAXC * MAXR);
-const colOf = new Int16Array(MAXC), colMk = new Int16Array(MAXC);        // grid column -> market index (-1 = a group gap) and the market's own column centre
-const S = { data: null, busy: null, at: 0, ready: false, nc: 0, nr: 0, gx: [], showP: -1, showAt: 0, camY: 0.7, lastYaw: 0.35, lastPitch: -0.45, lastZoom: 1, touch: -99, spin: null, bg: null, built: null, p: 0 };
-const tau = 6.2832, sm = u => u * u * (3 - 2 * u), clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+const ID = 'vol', SUB = 2, XW = 7.4, ZD = 6.2, ZF = ZD / 2, HS = 0.55, GAP_V = 0.22, LEVEL = 1;
+const S = { data: null, busy: null, at: 0, showP: -1, showAt: 0, spin: null };
+const KEY = 'across = markets by asset class · along = time, newest session at the front · height and colour = that day\'s range / that market\'s own normal (median of its previous 20 days); 1.0 = normal (white contour), cut at 3 (white tips) · past days, not a forecast';
+const KEY_PH = 'markets across · time along, newest at front · height = range / own normal, white line = 1.0, cut at 3 · past days, not a forecast';
+const clampN = (v, a, b) => Math.max(a, Math.min(b, v)), sm = u => u * u * (3 - 2 * u);
+const fmtD = iso => { const d = new Date(iso + 'T00:00:00Z'); return d.getUTCDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]; };
+// the colour ramp: a cool valley, a neutral normal, then gold, red and white-hot (theme tokens only, blended as three.js colours)
+const STOPS = [0, 0.85, 1.0, 1.5, 2.2, CLIP], NAMES = ['cy', 'cy', 'tx2', 'gold', 'dn', 'tx'];
+function rampAt(v) { let k = 0; while (k < STOPS.length - 2 && v > STOPS[k + 1]) k++; return { a: NAMES[k], b: NAMES[k + 1], f: clampN((v - STOPS[k]) / (STOPS[k + 1] - STOPS[k]), 0, 1) }; }
 
 /** Load the daily ranges for every market plus the VIX curve, once per ten minutes; a failed feed leaves that market out and never throws. */
 export async function loadVol(api, force) {
@@ -22,144 +34,148 @@ export async function loadVol(api, force) {
       await Promise.all(VOL_MARKETS.slice(k, k + 7).map(async m => { const r = await ok(api.jf(`/api/ohlc-range?symbol=${m.oanda}&granularity=D&from=${from}&to=${today}`)); const d = dailyRanges(r, today); if (d.length) bars[m.key] = d; }));
     }
     let T = null; try { T = buildTerrain(bars); } catch (e) { T = null; }
-    S.data = { T, V: vixCurve(await vp), got: Object.keys(bars).length }; S.at = Date.now(); S.busy = null; S.built = null; return S.data;
+    S.data = { T, V: vixCurve(await vp), got: Object.keys(bars).length }; S.at = Date.now(); S.busy = null; return S.data;
   })();
   return S.busy;
 }
 
-/** Turn the terrain into the drawing grid: market columns, a one-column ravine between asset classes, and SUB sub-columns per step (smoothstep between neighbours). Reuses HT. */
-function buildGrid(T) {
-  const cols = []; let last = null;
-  T.markets.forEach((m, i) => { if (last != null && m.group !== last) cols.push(-1); cols.push(i); last = m.group; });
-  const nc = Math.min(MAXC, (cols.length - 1) * SUB + 1), nr = Math.min(MAXR, T.ns); S.nc = nc; S.nr = nr; S.gx = [];
-  const vAt = (c, j) => (cols[c] < 0 ? GAP_V : T.Z[j * T.nm + cols[c]]);
-  for (let j = 0; j < nr; j++) for (let u = 0; u < nc; u++) { const c = Math.min(cols.length - 2, Math.floor(u / SUB)), f = sm((u - c * SUB) / SUB); HT[j * nc + u] = vAt(c, j) * (1 - f) + vAt(c + 1, j) * f; }
-  for (let u = 0; u < nc; u++) { const c = Math.min(cols.length - 1, Math.round(u / SUB)); colOf[u] = cols[c]; }
-  const rows = VOL_GROUPS.map(g => ({ id: g.id, label: g.label, a: 1e9, b: -1 })), byId = Object.fromEntries(rows.map(r => [r.id, r]));
-  cols.forEach((c, k) => { if (c >= 0) { const r = byId[T.markets[c].group], u = k * SUB; r.a = Math.min(r.a, u); r.b = Math.max(r.b, u); } });
-  S.gx = rows.filter(r => r.b >= 0); S.cols = cols; S.built = T;
-}
-const worldX = u => (u - (S.nc - 1) / 2) * DX, worldZ = j => j * DZ;
+function setup(L, H, api) {
+  const { THREE } = L, scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.05, 200), kit = H.kit;
+  let data = null, B = null, builtFor = null, deco = false;
+  const cam = { p: new THREE.Vector3(0, 6, 11), t: new THREE.Vector3(), wp: new THREE.Vector3(), wt: new THREE.Vector3(), init: false };
+  const disposeGroup = g => g?.traverse(o => { o.geometry?.dispose?.(); const m = o.material; if (m) { kit._holo.delete(m); kit._mats.delete(m); if (!m.map) m.dispose?.(); } });
 
-// colour stops for the height ramp: a cool valley, a neutral normal, then gold, red and white-hot. Two theme colours are layered with weights (no colour maths on strings).
-const STOPS = [0, 0.85, 1.0, 1.5, 2.2, CLIP], NAMES = ['cy', 'cy', 'tx2', 'gold', 'dn', 'tx'];
-let rA = 'cy', rB = 'cy', rF = 0;
-function ramp(v) { let k = 0; while (k < STOPS.length - 2 && v > STOPS[k + 1]) k++; rA = NAMES[k]; rB = NAMES[k + 1]; rF = clampN((v - STOPS[k]) / (STOPS[k + 1] - STOPS[k]), 0, 1); }
-const calmMotion = api => !!api.win?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-const fmtD = iso => { const d = new Date(iso + 'T00:00:00Z'); return d.getUTCDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]; };
-
-function draw(ctx, g, api) {
-  const { W, H, C, t, fade } = g, dt = Math.min(0.05, g.dt || 0.016), calm = calmMotion(api), st = api.st, D = S.data, T = D?.T;
-  ctx.save(); ctx.font = '11px ui-monospace,monospace'; ctx.textAlign = 'center';
-  if (!D) { ctx.globalAlpha = fade; ctx.fillStyle = C.tx2; ctx.fillText('Surveying the volatility terrain...', W / 2, H / 2); ctx.restore(); return; }
-  if (!T) { ctx.globalAlpha = fade; ctx.fillStyle = C.tx2; ctx.fillText('The daily range feeds are not available right now, so there is no terrain to draw.', W / 2, H / 2); ctx.restore(); return; }
-  if (S.built !== T) buildGrid(T);
-  const nc = S.nc, nr = S.nr;
-  // the user takes over: any change to yaw / pitch / zoom that is not ours pauses the auto-fly for a few seconds
-  if (st.yaw !== S.lastYaw || st.pitch !== S.lastPitch || st.zoom !== S.lastZoom || st.drag) { S.touch = t; S.lastYaw = st.yaw; S.lastPitch = st.pitch; S.lastZoom = st.zoom; }
-  const held = t - S.touch < 6, show = S.showP >= 0 && Date.now() - S.showAt < 1500;
-  if (show) S.p = S.showP; else if (!held) { S.p += dt * (calm ? 0.004 : 0.0125); if (S.p > 1) S.p = 0; }
-  const zEnd = worldZ(nr - 1) - 0.9, cz = -0.45 + S.p * (zEnd + 0.45), jc = clampN(Math.floor(cz / DZ), 0, nr - 2), sway = calm ? 0.2 : 1;
-  const camX = Math.sin(t * 0.11 + 0.6) * nc * DX * 0.28 * sway, roll = -Math.cos(t * 0.11 + 0.6) * 0.16 * sway;
-  const gu = clampN(Math.round(camX / DX + (nc - 1) / 2), 0, nc - 1), gj = clampN(Math.round(cz / DZ), 0, nr - 1), ground = HT[gj * nc + gu] * HS;
-  S.camY += (Math.max(ground + 0.36, 0.5) + Math.sin(t * 0.37) * 0.05 - S.camY) * Math.min(1, dt * 1.6);
-  const yw = clampN((st.yaw - 0.35) * 0.7, -0.9, 0.9) + Math.sin(t * 0.07) * 0.06 * sway, pt = clampN(0.3 + (st.pitch + 0.45) * 0.6, -0.15, 1.1), F = Math.min(W * 0.62, H * 0.95) * (st.zoom || 1);
-  const cyw = Math.cos(yw), syw = Math.sin(yw), cpt = Math.cos(pt), spt = Math.sin(pt), cr = Math.cos(roll), sr = Math.sin(roll), ox = W / 2, oy = H * 0.46;
-  const j0 = Math.max(0, jc - 1), j1 = Math.min(nr - 1, jc + AHEAD);
-  // project the visible grid once
-  for (let j = j0; j <= j1; j++) for (let u = 0; u < nc; u++) {
-    const k = j * nc + u, dx = worldX(u) - camX, dy = HT[k] * HS - S.camY, dz = worldZ(j) - cz, x1 = dx * cyw - dz * syw, z1 = dx * syw + dz * cyw, y2 = dy * cpt + z1 * spt, z2 = z1 * cpt - dy * spt;
-    PZ[k] = z2; if (z2 < 0.22) { PX[k] = PY[k] = 0; continue; }
-    const sx = x1 / z2 * F, sy = -y2 / z2 * F; PX[k] = ox + sx * cr - sy * sr; PY[k] = oy + sx * sr + sy * cr;
-  }
-  ctx.globalAlpha = fade;
-  // the molten sky glow at the horizon (the accent colour), under everything
-  const hz = ctx.createLinearGradient(0, H * 0.18, 0, H * 0.62); hz.addColorStop(0, 'transparent'); hz.addColorStop(1, C.blue); ctx.globalAlpha = fade * 0.13; ctx.fillStyle = hz; ctx.fillRect(0, H * 0.18, W, H * 0.44);
-  ctx.lineJoin = 'round'; ctx.lineWidth = 0.9;
-  const swr = (t * (calm ? 1.2 : 3.4)) % (nr + 8) - 2;                            // the sweep: a bright line travelling along time
-  for (let j = j1 - 1; j >= j0; j--) {
-    const dep = Math.min(1, Math.max(0, 1 - (j - jc) / AHEAD)), rowA = fade * Math.min(1, dep * 1.6) * (j < jc + 1 ? 0.5 : 1);
-    for (let u = 0; u < nc - 1; u++) {
-      const a = j * nc + u, b = a + 1, c = a + nc + 1, d = a + nc;
-      if (PZ[a] < 0.22 || PZ[b] < 0.22 || PZ[c] < 0.22 || PZ[d] < 0.22) continue;
-      const v = (HT[a] + HT[b] + HT[c] + HT[d]) / 4; ramp(v);
-      ctx.beginPath(); ctx.moveTo(PX[a], PY[a]); ctx.lineTo(PX[b], PY[b]); ctx.lineTo(PX[c], PY[c]); ctx.lineTo(PX[d], PY[d]); ctx.closePath();
-      ctx.globalAlpha = rowA; ctx.fillStyle = S.bg || 'black'; ctx.fill();
-      const lit = 0.1 + 0.55 * clampN((v - 0.5) / 1.8, 0, 1), sw = Math.exp(-Math.abs(j - swr) * 0.9);
-      ctx.fillStyle = C[rA]; ctx.globalAlpha = rowA * lit * (1 - rF) * (1 + sw * 1.4); ctx.fill(); ctx.fillStyle = C[rB]; ctx.globalAlpha = rowA * lit * rF * (1 + sw * 1.4); ctx.fill();
-      ctx.strokeStyle = C[rF > 0.5 ? rB : rA]; ctx.globalAlpha = rowA * (0.28 + 0.6 * clampN((v - 0.6) / 1.6, 0, 1) + sw * 0.4); ctx.stroke();
+  function build(T, C) {
+    if (data) { scene.remove(data); disposeGroup(data); } data = new THREE.Group(); scene.add(data);
+    if (!deco) { deco = true; scene.add(kit.dust(900, 30, C.blue)); }
+    const { cols, at } = groupColumns(T.markets), nc = (cols.length - 1) * SUB + 1, nr = T.ns, DX = XW / Math.max(1, nc - 1), DZ = ZD / Math.max(1, nr - 1);
+    const xOf = u => -XW / 2 + u * DX, zOf = j => ZF - (nr - 1 - j) * DZ, vAt = (c, j) => (cols[c] < 0 ? GAP_V : T.Z[j * T.nm + cols[c]]);
+    const HT = new Float32Array(nc * nr);
+    for (let j = 0; j < nr; j++) for (let u = 0; u < nc; u++) { const c = Math.min(cols.length - 2, Math.floor(u / SUB)), f = sm((u - c * SUB) / SUB); HT[j * nc + u] = cols.length > 1 ? vAt(c, j) * (1 - f) + vAt(c + 1, j) * f : vAt(0, j); }
+    const pal = {}; for (const k of new Set(NAMES)) pal[k] = H.color(C[k]); const tmp = new THREE.Color();
+    const colour = (v, out, o, b) => { const r = rampAt(v); tmp.copy(pal[r.a]).lerp(pal[r.b], r.f); out[o] = tmp.r * b; out[o + 1] = tmp.g * b; out[o + 2] = tmp.b * b; };
+    // floor and its grid: a line under each market, a line every 10 sessions; a faint back wall with the 1x / 2x / 3x levels
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(XW + 0.6, ZD + 0.6), new THREE.MeshBasicMaterial({ color: H.color(C.blue), transparent: true, opacity: 0.04, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+    fl.rotation.x = -Math.PI / 2; data.add(fl);
+    const grid = []; for (let j = nr - 1; j >= 0; j -= 10) grid.push([-XW / 2 - 0.2, 0, zOf(j), XW / 2 + 0.2, 0, zOf(j)]);
+    for (const lv of [1, 2, 3]) grid.push([-XW / 2, lv * HS, -ZF - 0.05, XW / 2, lv * HS, -ZF - 0.05]); grid.push([-XW / 2, 0, -ZF - 0.05, -XW / 2, CLIP * HS, -ZF - 0.05], [XW / 2, 0, -ZF - 0.05, XW / 2, CLIP * HS, -ZF - 0.05]);
+    data.add(kit.segments(grid, H.color(C.blue), 0.14));
+    // the surface: vertex colours from the ramp, brighter where stretched; older sessions a little fainter
+    const pos = new Float32Array(nc * nr * 3), col = new Float32Array(nc * nr * 3), lin = new Float32Array(nc * nr * 3);
+    for (let j = 0; j < nr; j++) { const age = 0.45 + 0.55 * (j / Math.max(1, nr - 1)); for (let u = 0; u < nc; u++) { const k = j * nc + u, v = HT[k]; pos[k * 3] = xOf(u); pos[k * 3 + 1] = v * HS; pos[k * 3 + 2] = zOf(j);
+      const e = Math.pow(clampN((v - 0.55) / 2.2, 0, 1), 1.2); colour(v, col, k * 3, age * (0.05 + 0.7 * e)); colour(v, lin, k * 3, age * (0.1 + 0.8 * e)); } }
+    const idx = []; for (let j = 0; j < nr - 1; j++) for (let u = 0; u < nc - 1; u++) { const a = j * nc + u, b = a + 1, c = a + nc, d = c + 1; idx.push(a, c, b, b, c, d); }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); sg.setAttribute('color', new THREE.BufferAttribute(col, 3)); sg.setIndex(idx);
+    data.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })));
+    const wf = [], wc = [], seg = (a, b) => { wf.push(pos[a * 3], pos[a * 3 + 1], pos[a * 3 + 2], pos[b * 3], pos[b * 3 + 1], pos[b * 3 + 2]); wc.push(lin[a * 3], lin[a * 3 + 1], lin[a * 3 + 2], lin[b * 3], lin[b * 3 + 1], lin[b * 3 + 2]); };
+    for (let j = nr - 1; j >= 0; j -= 2) for (let u = 0; u < nc - 1; u++) seg(j * nc + u, j * nc + u + 1);
+    for (let u = 0; u < nc; u += SUB) for (let j = 0; j < nr - 1; j++) seg(j * nc + u, (j + 1) * nc + u);
+    const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wf, 3)); wg.setAttribute('color', new THREE.Float32BufferAttribute(wc, 3));
+    data.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending })));
+    // the 1.0 contour (marching squares on the grid, in world space, lifted a hair so it rides on the surface)
+    const ct = [];
+    for (let j = 0; j < nr - 1; j++) for (let u = 0; u < nc - 1; u++) {
+      const c4 = [j * nc + u, j * nc + u + 1, (j + 1) * nc + u + 1, (j + 1) * nc + u], hit = [];
+      for (let e = 0; e < 4; e++) { const p = c4[e], q = c4[(e + 1) & 3], hp = HT[p] - LEVEL, hq = HT[q] - LEVEL; if ((hp > 0) === (hq > 0)) continue; const f = hp / (hp - hq);
+        hit.push(pos[p * 3] + (pos[q * 3] - pos[p * 3]) * f, LEVEL * HS + 0.01, pos[p * 3 + 2] + (pos[q * 3 + 2] - pos[p * 3 + 2]) * f); }
+      if (hit.length >= 6) ct.push(hit.slice(0, 6)); if (hit.length === 12) ct.push(hit.slice(6, 12));
     }
+    if (ct.length) { const g = new L.LineSegmentsGeometry(); g.setPositions(ct.flat()); const m = new L.LineMaterial({ color: H.color(C.tx), linewidth: 1.1, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending });
+      m.resolution.set(H.W || 1280, H.H || 720); kit._mats.add(m); data.add(new L.LineSegments2(g, m)); }
+    // the newest session's edge, bright, and white tips on the days clipped at 3x
+    { const pts = []; for (let u = 0; u < nc; u++) pts.push([pos[((nr - 1) * nc + u) * 3], pos[((nr - 1) * nc + u) * 3 + 1] + 0.01, ZF]); data.add(kit.line(pts, H.color(C.tx), 1.8, 0.7)); }
+    const caps = []; for (let i = 0; i < T.nm; i++) for (let j = 0; j < nr; j++) if (T.Z[j * T.nm + i] >= CLIP - 0.005) caps.push([xOf(at[i] * SUB), CLIP * HS + 0.04, zOf(j)]);
+    if (caps.length) { const p = kit.points(caps.length, H.color(C.tx), 6, { opacity: 1 }), a = p.geometry.attributes.position.array; caps.forEach((c, n) => { a[n * 3] = c[0]; a[n * 3 + 1] = c[1]; a[n * 3 + 2] = c[2]; }); data.add(p); }
+    // the tallest ridges in the window (each market's biggest day, 1.6x or more), with a flare
+    const peaks = T.peaks.filter(p => p.v >= 1.6).slice(0, 6).map(p => { const w = [xOf(at[p.i] * SUB), p.v * HS, zOf(p.j)], f = kit.flare(H.color(p.v >= 2.2 ? C.dn : C.gold), 0.32, 0.9); f.position.set(w[0], w[1] + 0.02, w[2]); data.add(f); return { ...p, w }; });
+    // the sweep: a gold line along one session (moved, not rebuilt)
+    const sp = []; for (let u = 0; u < nc; u++) sp.push([pos[u * 3], pos[u * 3 + 1] + 0.02, pos[u * 3 + 2]]); const sweep = kit.line(sp, H.color(C.gold), 2.6, 0.95); data.add(sweep);
+    B = { T, nc, nr, at, cols, xOf, zOf, HT, pos, peaks, sweep, sweepRow: -1, sweepArr: new Float32Array(nc * 3) };
   }
-  // the 1.0 contour: where a day was exactly as wide as that market's normal (marching squares over the visible cells), drawn as a glowing line
-  ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = C.tx; ctx.lineCap = 'round';
-  for (let pass = 0; pass < 2; pass++) {
-    ctx.lineWidth = pass ? 1.3 : 4.5; ctx.beginPath();
-    for (let j = j0; j < j1; j++) for (let u = 0; u < nc - 1; u++) {
-      const a = j * nc + u, c4 = [a, a + 1, a + nc + 1, a + nc]; if (PZ[a] < 0.22 || PZ[a + 1] < 0.22 || PZ[a + nc] < 0.22 || PZ[a + nc + 1] < 0.22) continue;
-      let n = 0, qx0 = 0, qy0 = 0, qx1 = 0, qy1 = 0, qx2 = 0, qy2 = 0, qx3 = 0, qy3 = 0;
-      for (let e = 0; e < 4; e++) {
-        const p = c4[e], q = c4[(e + 1) & 3], hp = HT[p] - LEVEL, hq = HT[q] - LEVEL; if ((hp > 0) === (hq > 0)) continue;
-        const f = hp / (hp - hq), x = PX[p] + (PX[q] - PX[p]) * f, y = PY[p] + (PY[q] - PY[p]) * f;
-        if (n === 0) { qx0 = x; qy0 = y; } else if (n === 1) { qx1 = x; qy1 = y; } else if (n === 2) { qx2 = x; qy2 = y; } else { qx3 = x; qy3 = y; } n++;
+  function setSweep(j) {
+    if (!B || B.sweepRow === j) return; B.sweepRow = j; const a = B.sweepArr, nc = B.nc;
+    for (let u = 0; u < nc; u++) { const k = j * nc + u; a[u * 3] = B.pos[k * 3]; a[u * 3 + 1] = B.pos[k * 3 + 1] + 0.02; a[u * 3 + 2] = B.pos[k * 3 + 2]; }
+    B.sweep.geometry.setPositions(a); B.sweep.computeLineDistances();
+  }
+
+  return {
+    scene, camera, bloom: { strength: 0.6, radius: 0.45, threshold: 0.16 },
+    update(t, dt, a0, g) {
+      const a = a0 ?? api, st = a.st, D = S.data;
+      if (!D) { loadVol(a); return; } if (Date.now() - S.at > 600000) loadVol(a);
+      const T = D.T; if (!T) { if (data) { scene.remove(data); disposeGroup(data); data = null; B = null; } return; }
+      const sig = `${S.at}|${g.C.blue}|${g.C.gold}`; if (sig !== builtFor) { builtFor = sig; build(T, g.C); }
+      const aspect = g.W / Math.max(1, g.H), ph = aspect < 1, show = S.showP >= 0 && Date.now() - S.showAt < 1500, calm = H.calm, nr = B.nr, zoom = st.zoom || 1;
+      if (show) {
+        const A = volShowAct(S.showP); setSweep(nr - 1);
+        if (A.act === 'sweep') { const x = -XW / 2 - 0.4 + (XW + 0.8) * A.k, back = ph ? 2.4 : 1; cam.wp.set(x - 0.8, 1.85, ZF + 2.1 * back); cam.wt.set(x + 0.4, 0.3, ZF - 0.5); }
+        else if (A.act === 'rise') { const k = A.k, zt = ZF * (1 - k) + 0.8 * k, o = orbitPos(0.25 * k, 0.3 + 0.65 * k, (ph ? 9 : 4.5) + (ph ? 9 : 7) * k, [0, 0.3, zt]); cam.wp.set(o[0] + (XW / 2) * (1 - k), o[1], o[2]); cam.wt.set((XW / 2) * (1 - k), 0.3, zt); }
+        else { const o = orbitPos(0.25 - 0.5 * A.k, 0.95, ph ? 18 : 11.5, [0, 0.3, 0.8]); cam.wp.set(o[0], o[1], o[2]); cam.wt.set(0, 0.3, 0.8); }
+      } else {
+        // the drift: the sweep travels oldest -> newest (resting on the newest under reduced motion); the camera orbits slowly
+        const sr = Math.floor((t * 3.4) % (nr + 8)); setSweep(calm ? nr - 1 : Math.min(nr - 1, sr)); B.sweep.visible = calm || sr < nr;
+        const yaw = (st.yaw - 0.35) + (calm ? 0 : Math.sin(t * 0.05) * 0.4), el = clampN((ph ? 0.75 : 0.55) - (st.pitch + 0.45) * 0.8, 0.06, 1.35);
+        const o = orbitPos(yaw, el, (ph ? 18 : 10) / zoom, [0, 0.4, 0.2]); cam.wp.set(o[0], o[1], o[2]); cam.wt.set(0, 0.4, 0.2);
       }
-      if (n >= 2) { ctx.moveTo(qx0, qy0); ctx.lineTo(qx1, qy1); } if (n === 4) { ctx.moveTo(qx2, qy2); ctx.lineTo(qx3, qy3); }
-    }
-    ctx.globalAlpha = fade * (pass ? 0.8 : 0.12); ctx.stroke();
+      if (show) B.sweep.visible = true;
+      if (!cam.init) { cam.p.copy(cam.wp); cam.t.copy(cam.wt); cam.init = true; }
+      const k = Math.min(1, dt * (show ? 2.6 : 3)); cam.p.lerp(cam.wp, k); cam.t.lerp(cam.wt, k); camera.position.copy(cam.p); camera.lookAt(cam.t);
+    },
+    overlay(ctx, g, a) { overlay(ctx, g, a ?? api, H, camera, B); },
+    dispose() { disposeGroup(scene); },
+  };
+}
+
+// ───────────────────────── the 2D overlay: the readout, labels on the terrain, the colour bar and the key ─────────────────────────
+function overlay(ctx, g, api, H, camera, B) {
+  const { W, H: Hh, C, fade } = g, cp = g.compact, D = S.data; ctx.save(); ctx.globalAlpha = fade; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+  const font = (px, w = '') => { ctx.font = `${w}${px}px ui-monospace,monospace`; };
+  const msg = s => { font(13); ctx.fillStyle = C.tx2; ctx.textAlign = 'center'; ctx.fillText(s, W / 2, Hh / 2); ctx.textAlign = 'left'; };
+  if (!D) { msg('Surveying the volatility terrain...'); ctx.restore(); return; }
+  if (!D.T || !B) { msg('The daily range feeds are not available right now, so there is no terrain to draw.'); ctx.restore(); return; }
+  const T = B.T, V = D.V, nr = B.nr, nc = B.nc, Sc = p => H.toScreen(p, camera), taken = [], bg = 'rgba(0,0,0,0.66)', show = S.showP >= 0 && Date.now() - S.showAt < 1500;
+  const bounds = { x0: 4, y0: cp ? 124 : 96, x1: W - 4, y1: Hh - (cp ? 190 : 120) };
+  const draw = (r, text, col, px, w) => { font(px, w); ctx.fillStyle = bg; ctx.globalAlpha = fade * 0.9; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.globalAlpha = fade; ctx.fillStyle = col; ctx.fillText(text, r.x + 4, r.y + px + 1); };
+  const label = (p, text, col, px, w, cands) => { if (!p.vis) return null; font(px, w); const bw = ctx.measureText(text).width + 8, bh = px + 6; const r = placeBox(cands.map(([dx, dy]) => ({ x: p.x + dx(bw), y: p.y + dy(bh), w: bw, h: bh })), taken, bounds); if (r) draw(r, text, col, px, w); return r; };
+  const right = () => 10, left = w => -10 - w, mid = w => -w / 2, up = h => -h - 8, down = () => 8, cen = h => -h / 2;
+  const xv = v => (v >= CLIP - 0.005 ? '3.0x+' : `${v.toFixed(2)}x`), tone = v => (v >= 2.2 ? C.dn : v >= 1.5 ? C.gold : v < 0.85 ? C.cy : C.tx2);
+  const mx = i => B.xOf(B.at[i] * SUB), wy = v => v * HS;
+  // the readout, top left
+  const sj = B.sweepRow;
+  if (cp) {
+    font(11, '600 '); ctx.fillStyle = C.blue; ctx.fillText(`LATEST ${fmtD(T.dates[T.ns - 1])} · ${T.stretched} of ${T.nm} markets at 1.5x normal+`, 14, 96);
+    font(10); ctx.fillStyle = C.tx2; ctx.fillText(V ? `VIX ${V.vix.toFixed(1)}${V.vix3m != null ? ` · VIX3M ${V.vix3m.toFixed(1)} · ${V.inverted ? 'INVERTED' : 'upward'}` : ''}` : 'VIX curve: no feed', 14, 112); taken.push({ x: 8, y: 80, w: W - 16, h: 40 });
+  } else {
+    const x = 24, y = 118, h = 150; ctx.fillStyle = bg; ctx.fillRect(x - 10, y - 18, 320, h);
+    font(12, '600 '); ctx.fillStyle = C.blue; ctx.fillText(`VOL · RANGE USED · latest ${fmtD(T.dates[T.ns - 1])}`, x, y);
+    font(11); ctx.fillStyle = C.tx; ctx.fillText(`${T.stretched} of ${T.nm} markets at 1.5x their normal or more`, x, y + 18);
+    T.latest.slice(0, 4).forEach((m, i) => { ctx.fillStyle = tone(m.v); ctx.fillText(`${m.v >= 1 ? '▲' : '▼'} ${marketName(m.key, { short: true })} ${xv(m.v)}`, x + (i % 2) * 150, y + 36 + Math.floor(i / 2) * 15); });
+    if (sj >= 0 && sj < T.ns) { let bi = 0; for (let i = 1; i < T.nm; i++) if (T.Z[sj * T.nm + i] > T.Z[sj * T.nm + bi]) bi = i; ctx.fillStyle = C.gold; ctx.fillText(`SWEEP ${fmtD(T.dates[sj])} · top ${marketName(T.markets[bi].key, { short: true })} ${xv(T.Z[sj * T.nm + bi])}`, x, y + 74); }
+    ctx.fillStyle = C.tx2; ctx.fillText(V ? `VIX ${V.vix.toFixed(1)}${V.vix3m != null ? ` · VIX3M ${V.vix3m.toFixed(1)} · curve ${V.inverted ? 'INVERTED' : 'upward'}` : ''}` : 'VIX curve: no feed', x, y + 92);
+    // the colour bar
+    const bw = 220, by = y + 104; for (let i = 0; i < bw; i++) { const r = rampAt(i / (bw - 1) * CLIP); ctx.fillStyle = C[r.a]; ctx.globalAlpha = fade * (1 - r.f) * 0.9; ctx.fillRect(x + i, by, 1, 7); ctx.fillStyle = C[r.b]; ctx.globalAlpha = fade * r.f * 0.9; ctx.fillRect(x + i, by, 1, 7); }
+    ctx.globalAlpha = fade; font(10); ctx.fillStyle = C.tx2; ctx.fillText('0x', x, by + 19); ctx.textAlign = 'center'; ctx.fillText('1x normal', x + bw / CLIP, by + 19); ctx.textAlign = 'right'; ctx.fillText('3x+ (cut)', x + bw, by + 19); ctx.textAlign = 'left';
+    taken.push({ x: x - 10, y: y - 18, w: 320, h });
   }
-  // the sweep line itself: a hot line along the markets at the swept session, with its date
-  const sj = Math.round(swr);
-  if (sj >= j0 && sj <= j1) {
-    ctx.beginPath(); let started = false, ex = 0, ey = 0;
-    for (let u = 0; u < nc; u++) { const k = sj * nc + u; if (PZ[k] < 0.22) { started = false; continue; } if (started) ctx.lineTo(PX[k], PY[k]); else { ctx.moveTo(PX[k], PY[k]); started = true; } ex = PX[k]; ey = PY[k]; }
-    ctx.strokeStyle = C.gold; ctx.lineWidth = 6; ctx.globalAlpha = fade * 0.18; ctx.stroke(); ctx.lineWidth = 1.5; ctx.globalAlpha = fade * 0.95; ctx.stroke();
-    ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = C.gold; ctx.textAlign = 'left'; ctx.globalAlpha = fade * 0.9; if (ex > 0 && !g.compact) ctx.fillText(fmtD(T.dates[sj]), Math.min(W - 60, ex + 8), ey);
-  }
-  ctx.globalCompositeOperation = 'source-over';
-  // group names on the ground, ahead of the camera, and the newest edge
-  ctx.textAlign = 'center'; const jl = Math.min(j1, jc + 6);
-  for (const r of S.gx) {
-    const u = (r.a + r.b) / 2, k = jl * nc + Math.round(u); if (PZ[k] < 0.4) continue;
-    ctx.fillStyle = C.tx2; ctx.globalAlpha = fade * 0.75; ctx.fillText(r.label, PX[k], PY[k] + 14);
-  }
-  // peak labels: the biggest ridges in view, named with market and date
-  ctx.textAlign = 'left'; let shown = 0;
-  for (const p of T.peaks) {
-    if (shown >= (g.compact ? 2 : 5) || p.v < 1.6) break; const u = S.cols.indexOf(p.i) * SUB, j = p.j; if (u < 0 || j < j0 + 1 || j > j1) continue; const k = j * nc + u; if (PZ[k] < 0.5) continue;
-    shown++; const x = PX[k], y = PY[k], tx = x + 14, ty = y - 26 - shown * 2;
-    ctx.strokeStyle = C.tx; ctx.globalAlpha = fade * 0.6; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx - 3, ty + 3); ctx.stroke();
-    ctx.fillStyle = C.tx; ctx.globalAlpha = fade; ctx.beginPath(); ctx.arc(x, y, 2.6, 0, tau); ctx.fill();
-    ctx.fillText(`${marketName(p.key, { short: true })}  ${fmtD(p.date)}  ${p.v >= CLIP - 0.005 ? '3.0x+' : p.v.toFixed(1) + 'x'}`, tx, ty);
-  }
-  drawLegend(ctx, g, T, D.V, sj);
+  // the newest session: each market's value at the front edge (the ones near the camera in the SHOW sweep, the stretched ones otherwise)
+  const front = T.markets.map((m, i) => ({ i, key: m.key, v: T.Z[(T.ns - 1) * T.nm + i] }));
+  const pick = show ? front.slice().sort((a, b) => Math.abs(Sc([mx(a.i), 0, ZF]).x - W / 2) - Math.abs(Sc([mx(b.i), 0, ZF]).x - W / 2)).slice(0, cp ? 3 : 7) : front.filter(f => f.v >= 1.5 || f.v < 0.6).sort((a, b) => b.v - a.v).slice(0, cp ? 3 : 6);
+  for (const f of pick) label(Sc([mx(f.i), wy(f.v), ZF]), `${marketName(f.key, { short: true })} ${xv(f.v)}`, tone(f.v), show ? 12 : 11, '600 ', [[mid, up], [right, up], [left, up], [mid, h => -h - 26]]);
+  // the tallest ridges in the window
+  if (!show || volShowAct(S.showP).act !== 'sweep') for (const p of B.peaks.slice(0, cp ? 2 : 5)) label(Sc(p.w), `${marketName(p.key, { short: true })} ${fmtD(p.date)} ${xv(p.v)}`, p.v >= 2.2 ? C.dn : C.gold, 11, '', [[right, up], [left, up], [right, down], [left, down]]);
+  // the sweep's date at its right end
+  if (B.sweep.visible && sj >= 0) { const k = sj * nc + nc - 1; label(Sc([B.pos[k * 3] + 0.1, B.pos[k * 3 + 1], B.pos[k * 3 + 2]]), sj === nr - 1 ? `NEWEST ${fmtD(T.dates[sj])}` : fmtD(T.dates[sj]), C.gold, 11, '600 ', [[right, cen], [right, up]]); }
+  // the asset classes on the floor in front of the newest edge, dates down the left edge, the levels on the back wall
+  for (const gr of VOL_GROUPS) { const ii = T.markets.map((m, i) => (m.group === gr.id ? i : -1)).filter(i => i >= 0); if (!ii.length) continue; const x = (mx(ii[0]) + mx(ii[ii.length - 1])) / 2; label(Sc([x, 0, ZF + 0.3]), gr.label, C.tx2, 11, '600 ', [[mid, down], [mid, () => 24]]); }
+  for (const j of cp ? [0] : [0, Math.round((nr - 1) / 2)]) label(Sc([-XW / 2 - 0.15, 0, B.zOf(j)]), fmtD(T.dates[j]), C.tx2, 10, '', [[left, cen], [left, up]]);
+  for (const lv of [1, 2, 3]) label(Sc([-XW / 2, lv * HS, -ZF]), lv === 3 ? '3x cut' : lv === 1 ? '1x normal' : '2x', C.tx2, 10, '', [[left, cen]]);
+  ctx.globalAlpha = fade; keyLine(ctx, g, cp ? KEY_PH : KEY);
   ctx.restore();
 }
 
-function drawLegend(ctx, g, T, V, sj) {
-  const { W, H, C, fade } = g; ctx.textAlign = 'left';
-  if (g.compact) return legendCompact(ctx, g, T, V);
-  const x0 = 18, y0 = H - 250, bw = 190;
-  ctx.globalAlpha = fade * 0.72; ctx.fillStyle = S.bg || 'black'; ctx.fillRect(x0 - 10, y0 - 16, 440, 172); ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.blue; ctx.fillText('VOL  ·  RANGE USED', x0, y0);
-  const rows = [
-    ['across', 'markets, grouped by asset class'],
-    ['along', `time: last ${T.ns} sessions, oldest to newest`],
-    ['height', "day's range / that market's own normal"],
-    ['', '(median of its previous 20 days); 1.0 = normal, cut at 3'],
-    ['white line', 'the 1.0 level: a normal day'],
-    ['gold line', 'the sweep, moving along time'],
-  ];
-  ctx.fillStyle = C.tx2; rows.forEach(([a, b], i) => { ctx.globalAlpha = fade * 0.9; ctx.fillStyle = C.tx; ctx.fillText(a, x0, y0 + 16 + i * 14); ctx.fillStyle = C.tx2; ctx.fillText(b, x0 + 70, y0 + 16 + i * 14); });
-  // the colour bar: cool = a quiet day, grey = normal, gold to red = stretched, white = three times or more
-  const by = y0 + 16 + rows.length * 14 + 4; for (let i = 0; i < bw; i++) { ramp(i / (bw - 1) * CLIP); ctx.fillStyle = C[rA]; ctx.globalAlpha = fade * (1 - rF) * 0.85; ctx.fillRect(x0 + i, by, 1, 7); ctx.fillStyle = C[rB]; ctx.globalAlpha = fade * rF * 0.85; ctx.fillRect(x0 + i, by, 1, 7); }
-  ctx.fillStyle = C.tx2; ctx.globalAlpha = fade * 0.9; ctx.fillText('0x', x0, by + 19); ctx.textAlign = 'center'; ctx.fillText('1x normal', x0 + bw / 3 + 12, by + 19); ctx.textAlign = 'right'; ctx.fillText('3x+', x0 + bw + 2, by + 19);
-  ctx.textAlign = 'left'; ctx.fillText('A description of what already happened, not a forecast.', x0, by + 34);
-  // right: the latest session, the swept session and the VIX curve
-  const xr = Math.max(18, W - 300); let y = 150; ctx.fillStyle = C.blue; ctx.globalAlpha = fade * 0.95; ctx.fillText(`LATEST SESSION  ${fmtD(T.dates[T.ns - 1])}`, xr, y);
-  ctx.fillStyle = C.tx; ctx.globalAlpha = fade * 0.9; ctx.fillText(`${T.stretched} of ${T.nm} markets at 1.5x their normal or more`, xr, y + 16);
-  T.latest.slice(0, 4).forEach((m, i) => { ctx.fillStyle = m.v >= 1.5 ? C.gold : C.tx2; ctx.fillText(`${marketName(m.key, { short: true })}  ${m.v.toFixed(2)}x`, xr + (i % 2) * 130, y + 32 + Math.floor(i / 2) * 14); });
-  const sw = sj >= 0 && sj < T.ns ? T.dates[sj] : null;
-  if (sw) { let bi = 0; for (let i = 1; i < T.nm; i++) if (T.Z[sj * T.nm + i] > T.Z[sj * T.nm + bi]) bi = i; ctx.fillStyle = C.gold; ctx.fillText(`SWEEP  ${fmtD(sw)}  top: ${marketName(T.markets[bi].key, { short: true })} ${T.Z[sj * T.nm + bi].toFixed(2)}x`, xr, y + 66); }
-  ctx.fillStyle = C.tx2; ctx.fillText(V ? `VIX ${V.vix.toFixed(1)}${V.vix3m != null ? `  ·  VIX3M ${V.vix3m.toFixed(1)}  ·  curve ${V.inverted ? 'INVERTED' : 'upward'}` : ''}` : 'VIX curve: no feed', xr, y + 84);
-}
+const view = glView({ id: ID, label: 'VOL', env: { accent: 'dn', chrome: 'clean', scan: false }, setup,
+  onEnter: api => { S.showP = -1; S.spin = api.st.spin; Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); loadVol(api); },
+  onLeave: api => { S.showP = -1; if (S.spin != null) api.st.spin = S.spin; S.spin = null; } });
 
 registerJarvisModule({
   id: 'vol', label: 'VOL',
@@ -167,30 +183,11 @@ registerJarvisModule({
     pane.innerHTML = `<h3>VOLATILITY LANDSCAPE</h3><p>A terrain you fly over. Across are the desk's markets by asset class, along is time (the last 60 completed sessions), and the height is how stretched each day's range was against that market's own normal: 1.0 is a normal day, and a white contour marks it. Cool valleys are quiet days, gold to red ridges are stretched days. Drag to take the controls.</p><p class="jv-sub">It describes what already happened. It is never a forecast.</p><div class="jv-row"><button type="button" data-w="go">FLY THE TERRAIN</button></div>`;
     pane.querySelector('[data-w="go"]').onclick = () => { api.setView('vol'); loadVol(api, true); };
   },
-  views: [{
-    id: 'vol', label: 'VOL', env: { accent: 'dn', chrome: 'clean' }, draw,
-    onEnter: api => {
-      S.p = 0; S.showP = -1; S.touch = -99; S.lastYaw = 0.35; S.lastPitch = -0.45; S.lastZoom = 1; S.spin = api.st.spin; api.st.spin = false;
-      try { S.bg = api.win.getComputedStyle(api.doc.documentElement).getPropertyValue('--bg1').trim() || 'black'; } catch (e) { S.bg = 'black'; }
-      loadVol(api);
-    },
-    onLeave: api => { S.showP = -1; if (S.spin != null) api.st.spin = S.spin; S.spin = null; },
-  }],
+  views: [view],
 });
 
 registerShowScene({
   id: 'vol', after: 'lean',
   prepare: api => loadVol(api),
-  build: (inp, data) => { const text = data?.T ? volScript(data.T, data.V) : null; return text ? { title: 'The volatility landscape', view: 'vol', cam: { drift: true }, text, motion: (api, p) => { S.showP = clampN(p, 0, 1); S.showAt = Date.now(); } } : null; },
+  build: (inp, data) => { const text = data?.T ? volScript(data.T, data.V) : null; return text ? { title: 'The volatility landscape', view: 'vol', cam: null, text, enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); S.showP = 0; S.showAt = Date.now(); }, motion: (api, p) => { S.showP = clampN(p, 0, 1); S.showAt = Date.now(); } } : null; },
 });
-
-/** Phone: two readout lines at the top, a colour bar and one short caveat line above the transport bar. */
-function legendCompact(ctx, g, T, V) {
-  const { W, H, C, fade } = g; ctx.textAlign = 'left'; ctx.font = '10px ui-monospace,monospace';
-  ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.blue; ctx.fillText(`LATEST ${fmtD(T.dates[T.ns - 1])} · ${T.stretched} of ${T.nm} markets at 1.5x normal+`, 14, 96);
-  ctx.fillStyle = C.tx2; ctx.fillText(V ? `VIX ${V.vix.toFixed(1)}${V.vix3m != null ? ` · VIX3M ${V.vix3m.toFixed(1)} · ${V.inverted ? 'INVERTED' : 'upward'}` : ''}` : 'VIX curve: no feed', 14, 112);
-  const bw = Math.min(200, W - 28), x0 = 14, by = H - 112;
-  for (let i = 0; i < bw; i++) { ramp(i / (bw - 1) * CLIP); ctx.fillStyle = C[rA]; ctx.globalAlpha = fade * (1 - rF) * 0.85; ctx.fillRect(x0 + i, by, 1, 7); ctx.fillStyle = C[rB]; ctx.globalAlpha = fade * rF * 0.85; ctx.fillRect(x0 + i, by, 1, 7); }
-  ctx.fillStyle = C.tx2; ctx.globalAlpha = fade * 0.9; ctx.fillText('0x', x0, by + 19); ctx.textAlign = 'center'; ctx.fillText('1x normal', x0 + bw / 3 + 12, by + 19); ctx.textAlign = 'right'; ctx.fillText('3x+ of own range', x0 + bw + 2, by + 19);
-  ctx.textAlign = 'left'; ctx.globalAlpha = fade * 0.75; ctx.fillText('Range vs own normal; past days, not a forecast.', 14, by + 36);
-}

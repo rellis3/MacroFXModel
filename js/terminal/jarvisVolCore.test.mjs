@@ -39,3 +39,8 @@ test('the script uses the real numbers and the VIX inversion', () => {
   assert.match(volScript(T, vixCurve({ vix: [{ date: 'd', value: 15 }], vix3m: [{ date: 'd', value: 18 }] })), /sloping upward/);
   assert.equal(vixCurve({}), null);
 });
+test('volShowAct runs sweep -> rise -> over, and groupColumns puts a ravine between asset classes', async () => {
+  const { volShowAct, groupColumns } = await import('./jarvisVolCore.js');
+  assert.equal(volShowAct(0).act, 'sweep'); assert.equal(volShowAct(0).k, 0); assert.equal(volShowAct(0.25).act, 'sweep'); assert.equal(volShowAct(0.6).act, 'rise'); assert.equal(volShowAct(1).act, 'over'); assert.equal(volShowAct(1).k, 1); assert.equal(volShowAct('x').act, 'sweep');
+  const g = groupColumns([{ group: 'a' }, { group: 'a' }, { group: 'b' }]); assert.deepEqual(g.cols, [0, 1, -1, 2]); assert.deepEqual(g.at, [0, 1, 3]); assert.deepEqual(groupColumns(null).cols, []);
+});

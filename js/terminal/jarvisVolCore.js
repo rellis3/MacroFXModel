@@ -75,3 +75,20 @@ export function volScript(T, V) {
   if (V && V.ratio != null) s += `The VIX curve is ${V.inverted ? 'inverted: spot is above the three-month, so the front is priced dearer' : 'sloping upward: spot is below the three-month'}. `;
   return s + 'This describes what already happened. It is not a forecast.';
 }
+
+/**
+ * The SHOW camera's act at progress p (0..1): 'sweep' (LOW along the newest session's edge, the markets passing left to right, k = how far across),
+ * 'rise' (up and back until the whole window is in view), 'over' (a slow high pass over the terrain with the tallest ridges named). k is eased 0..1 within the act.
+ */
+export function volShowAct(p) {
+  const x = Math.max(0, Math.min(1, Number(p) || 0)), e = q => { const c = Math.max(0, Math.min(1, q)); return c * c * (3 - 2 * c); };
+  if (x < 0.5) return { act: 'sweep', k: e(x / 0.5) };
+  if (x < 0.75) return { act: 'rise', k: e((x - 0.5) / 0.25) };
+  return { act: 'over', k: e((x - 0.75) / 0.25) };
+}
+/** The world column of each market when asset classes are separated by a one-column ravine: { cols: [market index or -1 for a gap], at: [column of market i] }. */
+export function groupColumns(markets) {
+  const cols = [], at = []; let last = null;
+  (markets ?? []).forEach((m, i) => { if (last != null && m.group !== last) cols.push(-1); at[i] = cols.length; cols.push(i); last = m.group; });
+  return { cols, at };
+}

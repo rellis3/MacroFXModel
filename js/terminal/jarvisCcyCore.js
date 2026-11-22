@@ -25,14 +25,24 @@ export function ccyStrength(vol) {
   return { list, pairs, minPairs: Math.min(...CCYS.map(c => cnt[c])) };
 }
 
+/** Ring radius for rank i (0 = strongest = inner ring). */
+export const ringRadius = i => 0.6 + i * 0.17;
 /** Where a sphere sits: ring i of 8 (0 = inner), angle a, tilted about X by tx and about Z by tz. Writes [x, y, z] into out (no allocation). */
 export function orbitPos(i, a, tx, tz, out) {
-  const r = 0.6 + i * 0.17, x = r * Math.cos(a), z = r * Math.sin(a);
+  const r = ringRadius(i), x = r * Math.cos(a), z = r * Math.sin(a);
   const y1 = -z * Math.sin(tx), z1 = z * Math.cos(tx);
   out[0] = x * Math.cos(tz) - y1 * Math.sin(tz); out[1] = x * Math.sin(tz) + y1 * Math.cos(tz); out[2] = z1; return out;
 }
-/** Sphere size 0..1 (signed strength scaled between the weakest and the strongest) and orbit speed 0..1 (|strength| against the biggest). */
-export const sizeOf = (s, lo, hi) => (hi > lo ? (s - lo) / (hi - lo) : 0.5);
+/** Sphere SIZE shows the SIZE of the move, whatever its direction (a review found the old signed scale drew the weakest currency smallest, hiding a big fall).
+ *  Returns the radius as a fraction 0..1 of the biggest sphere, so the drawn AREA is proportional to |strength| on one fixed scale (CAP usual moves = full size; strength is an
+ *  average of capped pair moves, so it can never pass CAP). A floor (FLOOR of the radius) keeps a still currency visible; the floor is the only place area is not proportional. */
+export const FLOOR = 0.16;
+export const sizeOf = (s, cap = CAP) => Math.max(FLOOR, Math.sqrt(Math.min(1, Math.abs(Number(s) || 0) / cap)));
+/** Direction: 'up' / 'dn' / 'flat' (|strength| under FLAT usual moves counts as barely moved), and its glyph, the second cue beside colour. */
+export const FLAT = 0.12;
+export const dirOf = s => (Math.abs(s) < FLAT ? 'flat' : s > 0 ? 'up' : 'dn');
+export const arrowOf = s => ({ up: '▲', dn: '▼', flat: '–' })[dirOf(s)];
+/** Orbit speed is DECORATION in the view (every sphere turns at the same slow rate). Kept for callers: |strength| against the biggest, 0..1. */
 export const speedOf = (s, maxAbs) => (maxAbs > 0 ? Math.min(1, Math.abs(s) / maxAbs) : 0);
 export const signed = v => { const a = Math.abs(v).toFixed(2); return Number(a) === 0 ? '0.00' : `${v >= 0 ? '+' : '-'}${a}`; };
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);

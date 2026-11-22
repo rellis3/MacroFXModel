@@ -67,3 +67,36 @@ export function yieldsScript(st) {
   const hist = st.invDays > 0 ? ` In this window the curve was inverted on ${st.invDays} of ${st.n} sessions, and those stretches are the red and gold ridge.` : ' It was not inverted on any session in this window.';
   return `Here is the Treasury yield curve through time, as of ${dayWord(st.asOf)}. Maturity runs left to right, the last ${st.n} sessions flow toward you, and height is the yield. The two to ten year slope is ${shape}. Over the last ${st.sessions} sessions it has ${move}. The ten year yield is ${st.y10.toFixed(2)} percent, ${ten} over that stretch.${hist} This describes the shape of the curve, not a forecast.`;
 }
+
+/**
+ * A monotone cubic (Fritsch-Carlson) through points sorted by x, sampled `sub` times per gap, so a drawn curve never overshoots between two printed maturities (no invented humps).
+ * xs, ys: numbers (same length, xs increasing). Writes [x, y] pairs into `out` (a Float32Array of at least ((n - 1) * sub + 1) * 2) when given; returns the number of points written (or an array of pairs without `out`).
+ */
+export function monoCurve(xs, ys, sub = 6, out = null) {
+  const n = Math.min(xs?.length ?? 0, ys?.length ?? 0); if (n < 2) return out ? 0 : [];
+  const d = new Array(n - 1), m = new Array(n);
+  for (let i = 0; i < n - 1; i++) d[i] = (ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]);
+  m[0] = d[0]; m[n - 1] = d[n - 2]; for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  for (let i = 0; i < n - 1; i++) { if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; } const a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b; if (s > 9) { const t = 3 / Math.sqrt(s); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; } }
+  const res = out ? null : []; let k = 0;
+  const put = (x, y) => { if (out) { out[k * 2] = x; out[k * 2 + 1] = y; } else res.push([x, y]); k++; };
+  for (let i = 0; i < n - 1; i++) {
+    const h = xs[i + 1] - xs[i];
+    for (let s = 0; s < sub; s++) { const t = s / sub, t2 = t * t, t3 = t2 * t; put(xs[i] + t * h, (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * m[i + 1]); }
+  }
+  put(xs[n - 1], ys[n - 1]);
+  return out ? k : res;
+}
+
+/**
+ * The SHOW camera's act at progress p (0..1): 'over' (a high establishing look), 'front' (down LOW along the front edge, today's curve, short end to long end),
+ * 'rewind' (back through time: the terrain peels away session by session so each older curve becomes the front edge; slice = the row index shown), 'return' (time runs forward again as the camera rises).
+ * Returns { act, k (0..1 within the act, eased), slice (row index, newest = n - 1) }.
+ */
+export function yieldsShowAct(p, n) {
+  const x = Math.max(0, Math.min(1, Number(p) || 0)), last = Math.max(0, (n | 0) - 1), e = q => { const c = Math.max(0, Math.min(1, q)); return c * c * (3 - 2 * c); };
+  if (x < 0.12) return { act: 'over', k: e(x / 0.12), slice: last };
+  if (x < 0.38) return { act: 'front', k: e((x - 0.12) / 0.26), slice: last };
+  if (x < 0.86) { const k = e((x - 0.38) / 0.48); return { act: 'rewind', k, slice: Math.round(last * (1 - k)) }; }
+  const k = e((x - 0.86) / 0.14); return { act: 'return', k, slice: Math.round(last * k) };
+}

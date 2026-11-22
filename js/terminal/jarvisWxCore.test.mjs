@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { condition, groupWeather, ccyWeather, wxScript, GROUPS } from './jarvisWxCore.js';
+import { condition, groupWeather, ccyWeather, wxScript, GROUPS, memberSpread } from './jarvisWxCore.js';
 import { candleRows } from './jarvisCandles.js';
 import { MARKET_KEYS } from './jarvisMarkets.js';
 
@@ -39,4 +39,12 @@ test('pickRecorderType: MP4 first where the browser can write it, else WebM, els
   assert.deepEqual(pickRecorderType(() => true), { mime: RECORD_TYPES[0], ext: 'mp4' });
   assert.equal(pickRecorderType(t => t.startsWith('video/webm') && !t.includes('vp9')).ext, 'webm');
   assert.equal(pickRecorderType(() => false), null); assert.equal(pickRecorderType(() => { throw new Error('x'); }), null);
+});
+
+test('members: every group and currency carries its members low to high, so a split group shows its spread (one up 3x and one down 3x is not "clear")', () => {
+  const sp = memberSpread([{ key: 'A', v: 3 }, { key: 'B', v: -3 }]); assert.equal(sp.spread, 6); assert.equal(sp.members[0].key, 'B'); assert.equal(memberSpread([]).spread, 0);
+  const r = candleRows(vol, {}), g = Object.fromEntries(groupWeather(r).map(x => [x.id, x]));
+  assert.equal(g.energy.members.length, g.energy.n); assert.ok(g.energy.members.every((m, i, a) => !i || a[i - 1].v <= m.v)); assert.ok(g.energy.lo <= g.energy.avg && g.energy.avg <= g.energy.hi);
+  const c = Object.fromEntries(ccyWeather(r).map(x => [x.id, x])); assert.equal(c.JPY.members.length, c.JPY.n); assert.ok(c.JPY.members.every(m => m.v < 0), 'yen pairs counted from the yen side');
+  const split = groupWeather(candleRows({ WTI: mk('WTI', 3), BRENT: mk('BRENT', -3) }, {}))[0]; assert.notEqual(split.cond, 'clear'); assert.equal(split.spread, 6);
 });

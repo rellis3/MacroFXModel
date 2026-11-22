@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CCYS, ccyStrength, orbitPos, sizeOf, speedOf, ccyScript } from './jarvisCcyCore.js';
+import { CCYS, ccyStrength, orbitPos, sizeOf, speedOf, ccyScript, dirOf, arrowOf, FLOOR, CAP } from './jarvisCcyCore.js';
+
+test('sizeOf: size shows the SIZE of the move: a big fall is as big as an equal rise, area proportional to |strength|, smooth, floored, never past full', () => {
+  assert.equal(sizeOf(-2), sizeOf(2)); assert.ok(sizeOf(-2.1) > sizeOf(0.9), 'the weakest currency on a big fall is drawn bigger than a mild riser');
+  assert.ok(Math.abs(sizeOf(CAP) ** 2 / sizeOf(CAP / 4) ** 2 - 4) < 1e-9, 'area ratio = strength ratio'); assert.equal(sizeOf(0), FLOOR); assert.equal(sizeOf(99), 1); assert.equal(sizeOf(NaN), FLOOR);
+  let prev = FLOOR; for (let s = 0; s <= CAP; s += 0.01) { const v = sizeOf(s); assert.ok(v >= prev && v - prev < 0.06, 'no jumps'); prev = v; }
+});
+test('dirOf / arrowOf: direction has a second cue beside colour', () => {
+  assert.equal(dirOf(0.5), 'up'); assert.equal(dirOf(-0.5), 'dn'); assert.equal(dirOf(0.05), 'flat'); assert.equal(arrowOf(1), '▲'); assert.equal(arrowOf(-1), '▼'); assert.equal(arrowOf(0), '–');
+});
 
 const mk = (moves) => { const v = {}; for (let i = 0; i < 8; i++) for (let j = i + 1; j < 8; j++) { const k = CCYS[i] + CCYS[j]; v[k] = { oc: (moves[CCYS[i]] - moves[CCYS[j]]) * 0.1, forecast: { oc_median: 0.1 } }; } return v; };
 test('ccyStrength: ranks by the average pair move, base +, quote -', () => {
@@ -16,7 +25,7 @@ test('ccyStrength: a reversed key flips the sign; thin data is null', () => {
 test('orbit helpers: radius grows with the ring, size and speed are bounded', () => {
   const o = new Array(3).fill(0), r = i => { orbitPos(i, 0.7, 0.4, 0.3, o); return Math.hypot(...o); };
   assert.ok(r(7) > r(0)); assert.ok(Math.abs(r(0) - 0.6) < 1e-9);
-  assert.equal(sizeOf(1, 0, 2), 0.5); assert.equal(speedOf(5, 2), 1); assert.equal(speedOf(1, 0), 0);
+  assert.equal(speedOf(5, 2), 1); assert.equal(speedOf(1, 0), 0);
 });
 test('ccyScript: names strongest, weakest and the biggest pair; says it is not a forecast', () => {
   const t = ccyScript(ccyStrength(mk({ USD: 3, EUR: 2, GBP: 1, JPY: -3, AUD: 0, NZD: -1, CAD: 0.5, CHF: -0.5 })));
