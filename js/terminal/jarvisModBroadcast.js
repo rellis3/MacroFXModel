@@ -197,8 +197,8 @@ registerJarvisModule({
     pane.innerHTML = `<h3>THE ${part} BRIEFING</h3>
 <div class="jv-row"><button type="button" data-b="go" style="font-size:14px;letter-spacing:.2em;padding:10px 24px">▶ PLAY THIS ${part}</button><span class="jv-sub" data-b="status">Reading today's rundown...</span></div>
 <div data-b="rundown"></div>
-<div class="jv-row"><button type="button" data-b="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-b="len"><option value="quick">QUICK (about 2 min)</option><option value="full">FULL (every view)</option></select></label><label class="jv-sub">speed <select data-b="rate"><option value="0.9">calm</option><option value="1">normal</option><option value="1.15">brisk</option><option value="1.3">fast</option></select></label><button type="button" data-b="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button></div>
-<details class="jv-sub"><summary>How recording works</summary><p class="jv-sub">The browser asks what to share. Choose <b>This tab</b> and tick <b>Also share tab audio</b>; the briefing plays and a video file downloads at the end (MP4 where the browser can, else WebM). On a phone it gets the briefing ready for the phone's own screen recorder. Keep the voice on so it is in the video.</p></details>
+<div class="jv-row"><button type="button" data-b="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-b="len"><option value="quick">QUICK (about 2-3 min)</option><option value="short">SHORT (under 3 min, a YouTube Short)</option><option value="full">FULL (every view)</option></select></label><label class="jv-sub">speed <select data-b="rate"><option value="0.9">calm</option><option value="1">normal</option><option value="1.15">brisk</option><option value="1.3">fast</option></select></label><button type="button" data-b="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button></div>
+<details class="jv-sub"><summary>How recording works</summary><p class="jv-sub">The browser asks what to share. Choose <b>This tab</b>; Jarvis records his own voice and sound straight from the page, so there is no audio box to tick. The briefing plays and a video file downloads at the end (MP4 where the browser can, else WebM). On a phone it gets the briefing ready for the phone's own screen recorder. Keep the voice on so it is in the video.</p></details>
 <p class="jv-sub">A title sequence, the lead, then each segment over its hologram view, with a ticker, lower-thirds and subtitles. The voice leads; the picture follows. Esc ends it. Description only: what has moved and where things sit, never a forecast or a trade.</p>`;
     const q = s => pane.querySelector(`[data-b="${s}"]`), status = (t, bad = false) => { const e = q('status'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--gold)' : ''; } };
     q('rate').value = String(prefs.rate ?? 1); q('len').value = prefs.len ?? 'quick';
@@ -299,6 +299,28 @@ registerJarvisModule({
         if (my === token) { stop(); api.setView('globe'); status('Finished. Press PLAY to watch again.'); }
       }
     }
+    // ── the laptop's daily job (jarvis_broadcast/record_broadcast.py) ──
+    // Plays the broadcast with no human at the controls and records ITS SOUND from the HUD's audio bus (voice + effects; a sound card is not needed), while the job records the
+    // picture from Chrome's own frame feed. Returns the audio (base64) with the wall-clock start/end so the job can line the two up. engine: 'server' (default, steady) or 'kokoro'.
+    api.win.__jarvisBroadcastAuto = async ({ len = 'quick', engine = 'server', kokoroWaitMs = 180000 } = {}) => {
+      const bus = api.audioBus?.(); if (!bus?.stream) throw new Error('the HUD has no audio bus');
+      q('len').value = ['full', 'short'].includes(len) ? len : 'quick'; lsPut({ voice: true }); st.voice = true; st.neural = true; st.sound = true;
+      try { localStorage.setItem('jarvisVoice:v1', JSON.stringify({ ...(JSON.parse(localStorage.getItem('jarvisVoice:v1') || '{}') || {}), engine })); } catch (e) { /* private window */ }
+      if (engine === 'kokoro') { api.voiceBegin?.(); const t0 = Date.now(); while (!api.voiceInfo?.()?.kokoro?.ready && Date.now() - t0 < kokoroWaitMs) await sleep(1000); }
+      await bus.ctx.resume?.();
+      const Rec = globalThis.MediaRecorder, type = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm'].find(t => Rec?.isTypeSupported(t));
+      if (!type) throw new Error('this browser cannot record audio');
+      const rec = new Rec(bus.stream, { mimeType: type, audioBitsPerSecond: 160000 }), chunks = [];
+      rec.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
+      const done = new Promise(r => { rec.onstop = r; });
+      const root = api.doc.getElementById(api.ID); root?.classList.add('jv-rec');        // a clean picture: no playback buttons in the video
+      stop(); const t0 = Date.now(); rec.start(1000);
+      try { await run(); } finally { root?.classList.remove('jv-rec'); }
+      const t1 = Date.now(); rec.stop(); await done;
+      const buf = new Uint8Array(await new Blob(chunks, { type: type.split(';')[0] }).arrayBuffer()); let bin = '';
+      for (let k = 0; k < buf.length; k += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(k, k + 0x8000));
+      return { ok: true, mime: type, t0, t1, audio: api.win.btoa(bin), voice: api.voiceLabel?.() ?? null, voiceInfo: api.voiceInfo?.() ?? null, status: q('status')?.textContent ?? '' };
+    };
     q('go').onclick = () => { stop(); run(); };
     q('rec').onclick = makeRecorder(api, { run, stop, status, btn: q('rec'), file: 'jarvis-morning-broadcast', label: '⏺ RECORD AS VIDEO', bump: () => ++token, alive: my => my === token,
       countdown: n => { if (n > 0 && !ov) { ov = makeOverlay(api); ov?.on(); } ov?.count(n); } });

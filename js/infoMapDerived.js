@@ -5510,12 +5510,7 @@ export const DERIVED = {
    "drift": []
   }
  },
- "unclassified": [
-  "futures-research.html",
-  "noise-area-fx-book.html",
-  "paper-synthesis.html",
-  "tpo-research.html"
- ],
+ "unclassified": [],
  "rootPageCount": 262,
  "packFeeds": 115,
  "generatedAt": "2026-11-22"

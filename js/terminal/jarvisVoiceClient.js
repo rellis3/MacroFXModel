@@ -81,8 +81,10 @@ function kokoroEngine(win) {
   };
 }
 
-/** The voice for one Jarvis window: { prefetch(text), play(text, rate, onEnd) -> Promise<ctl {stop, pause, setRate, progress}|null>, slow(), warm(), info(), stopAll(), engine/setEngine, kvoice/setKvoice }. */
-export function makeNeuralVoice(win, { audioCtx } = {}) {
+/** The voice for one Jarvis window: { prefetch(text), play(text, rate, onEnd) -> Promise<ctl {stop, pause, setRate, progress}|null>; the clip goes through the robot finish into the HUD's audio bus, so a recording has the voice, slow(), warm(), info(), stopAll(), engine/setEngine, kvoice/setKvoice }. */
+export function makeNeuralVoice(win, opts = {}) {
+  // opts: the HUD's audio bus (a function -> { ctx, input, stream }: speakers + the recorder's tap), or { audioBus, audioCtx }
+  const audioBus = typeof opts === 'function' ? opts : (opts?.audioBus ?? null), audioCtx = opts?.audioCtx ?? (audioBus ? () => audioBus()?.ctx ?? null : null);
   const server = serverEngine(win), kokoro = kokoroEngine(win);
   let audio = null;
   const engine = () => lsGet().engine || 'kokoro';
@@ -104,11 +106,15 @@ export function makeNeuralVoice(win, { audioCtx } = {}) {
   const fxLevel = () => (FX_PARAMS[lsGet().fx ?? 'subtle'] ? (lsGet().fx ?? 'subtle') : 'off');
   /** Route a clip through the robot finish. Only when the HUD's audio context is running (else the clip plays plain: a suspended context would make it silent). Returns a cleanup. */
   async function robot(a) {
-    const P = FX_PARAMS[fxLevel()]; if (!P || !audioCtx) return () => {};
+    const P = FX_PARAMS[fxLevel()];
     try {
-      const ac = audioCtx(); if (!ac) return () => {}; if (ac.state !== 'running') await ac.resume().catch(() => {}); if (ac.state !== 'running') return () => {};
-      const src = ac.createMediaElementSource(a), out = ac.createGain(), hp = ac.createBiquadFilter();
-      hp.type = 'highpass'; hp.frequency.value = 110; out.connect(hp); hp.connect(ac.destination);
+      const b = audioBus?.(), ac = b?.ctx ?? audioCtx?.(); if (!ac) return () => {};
+      if (ac.state !== 'running') await Promise.race([ac.resume().catch(() => {}), new Promise(r => win.setTimeout(r, 300))]);
+      if (ac.state !== 'running') return () => {};                 // a suspended context would make the clip silent: it plays plain, straight to the speakers
+      const dest = b?.input ?? ac.destination, src = ac.createMediaElementSource(a);
+      if (!P) { src.connect(dest); return () => {}; }              // HUMAN finish: still through the bus, so a recording has the voice
+      const out = ac.createGain(), hp = ac.createBiquadFilter();
+      hp.type = 'highpass'; hp.frequency.value = 110; out.connect(hp); hp.connect(dest);
       const dry = ac.createGain(); dry.gain.value = P.dry; src.connect(dry); dry.connect(out);
       const ring = ac.createGain(), rmix = ac.createGain(), osc = ac.createOscillator(); ring.gain.value = 0; osc.type = 'sine'; osc.frequency.value = P.ringHz; osc.connect(ring.gain); src.connect(ring); ring.connect(rmix); rmix.gain.value = P.ring; rmix.connect(out); osc.start();
       const dl = ac.createDelay(0.05), fb = ac.createGain(), cmix = ac.createGain(); dl.delayTime.value = P.combMs / 1000; fb.gain.value = P.fb; cmix.gain.value = P.comb; src.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(cmix); cmix.connect(out);

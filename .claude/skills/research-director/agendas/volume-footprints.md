@@ -158,3 +158,53 @@ Not worth building: tick or second-scale direction from flow or the book (lagged
 - 2026-11-07: owner: stop buying data, record all traded markets through NinjaTrader (14 roots), run S1 and S2.
 - 2026-11-07: Databento pull stopped at $102.88 at the owner's request and 51 NQ cash-hours sessions bought for $16.97, so the older months planned as a holdout were not bought. About $4 of credit left.
 - 2026-11-07: owner said "would like to investigate volume footprints in a trade strategy maybe", then "go for it" on Claude's recommended order: Q5, then Q1.
+
+## Added by intake 2026-11-22: single prints, low volume nodes and a delta outlier (Darius FX, informational lane)
+
+Source: `education/intake/informational/darius-fx/2026-11-22-volume-profile-delta-tpo.md`. A short explainer (sales funnel,
+no sample, a drawn example) claims that after an impulse, a price where a low volume node, single prints and a delta
+outlier coincide is a zone price rejects on its return. Candidates only; nothing claimed or run. Both cards use the same
+instrument windows as the TPO and value-migration studies, so count them with that family for multiplicity.
+
+### Q6. Do returns to an impulse-left volume gap reject? — score 11/15
+
+> After an impulse leaves a zone where little traded (a low volume node, single prints), what happens when price first comes
+> back? Read the revisit outcome against matched zones in the same sessions with no such gap, across a family of
+> horizons, for impulses in both directions.
+
+| | |
+|---|---|
+| Construct | Zones from NT8 1-minute volume and 30-minute TPO letters: rows with one TPO letter (single prints) or volume below a stated share of the session's median row, created by an impulse bar. **Count first:** the overlap of the low-volume flag and the single-print flag; if they agree on most rows they are one variable and the "stack" is not a stack |
+| Knowable when | The zone is known only once the impulse has completed, from the profile built to that bar; the return is scored from its first bar close |
+| Condition | First return within the session. Named contrast from the clip's "trap": high volume with low time at price ("size passing through") against high volume with high time |
+| Horizons | 15, 30, 60 minutes after the return, and the rest of the session |
+| Noise threshold | Matched zones: same width, same distance from the session POC, same impulse side, ordinary volume and time. Date-block bootstrap, both halves |
+| Outcome distribution | Hold versus break rate, MFE and MAE in sigma, long and short impulses; no R until the distribution differs |
+| Benchmark / control / mirror | The matched zones; down-impulses as the mirror |
+| Mechanism | Weak: resting orders left behind when price moved fast, the same story as Q4. The book says levels are no more special than comparable lines, so expect a null |
+| Builds on | `tpo-ib-follow` / `tpo-ib-fade` (NULL, one level), `value-migration-nq` (profile code in `scripts/value-migration-nq/vmig/profile.py`), `failed-auction-volume` (UNDERPOWERED), Q4, `day-recon-reach-forecast-specific` |
+| Data & power | NQ and ES NT8 1-minute, 2016-01 to 2026-08-21, on the laptop (not in the sandbox); expect thousands of zones; MDE in the count-first pass. Lockbox sealed |
+| If yes → | A zone overlay on `footprint.html` with its verdict beside it; the base for Q7 |
+| If no → | "Single prints reject on the return" stops being said; the marker stays description with a verdict line |
+| Falsifier | Hold rate inside the matched-zone band in both halves, or the two flags overlap so much that only one fact is being counted |
+
+### Q7. Does a delta outlier at the zone add to it? — score 9/15, gated on Q6
+
+> Within Q6's zones, mark the ones where one side's aggression at the zone rows was an outlier against its own history. Does the return reject more often
+> than the same zones without the outlier?
+
+| | |
+|---|---|
+| Construct | Per-row delta from the exchange aggressor flag; outlier = top decile of absolute row delta against that instrument's own sessions, same direction as the impulse |
+| Knowable when | As Q6; delta from trades up to the impulse bar close |
+| Condition | Q6 zones with versus without the outlier |
+| Horizons | As Q6 |
+| Noise threshold | Same zones with the outlier flag shuffled across zones within session |
+| Outcome distribution | Hold and break rates, MFE and MAE |
+| Benchmark / control / mirror | Q6 zones without the outlier; the opposite-direction outlier as the mirror |
+| Mechanism | One-sided aggression at the impulse leaves positions that will defend their price |
+| Builds on | `delta-at-line-against-hidden` (underpowered, +7.8 pp [-3.1, +18.1], 98 signals), `footprint-absorption` (NULL), `orderflow-lead-aggressor` (NULL) |
+| Data & power | 6E and 6J with the exchange flag (2023-10 on); zones are thin, so count first. NQ cannot be tested on history: its delta is a proxy that recovers about 0.10 of the part price does not explain |
+| If yes → | Delta earns a place in the zone overlay |
+| If no → | Stop saying a delta outlier marks a zone that holds, on FX futures |
+| Falsifier | No increment over Q6 zones without the outlier |

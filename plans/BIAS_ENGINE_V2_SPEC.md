@@ -1,7 +1,9 @@
 # Bias Engine V2 (shadow): specification, calculation definitions and acceptance tests
 
-**Status: v1.1, decisions taken 2026-11-19; build in progress. NOT FROZEN** (the freeze, §6.4, comes after the technical
-trial and before the official forward record). Owner, 2026-11-19: "proceed with Bias Engine V2 in shadow mode", with
+**Status: v1.1, FROZEN 2026-11-22; official forward record from 2026-11-23** (`forge/BIAS_ENGINE_V2_FREEZE.json`).
+Owner, 2026-11-22: the trial ends early ("V1 didn't have this trial"): V2 is scored exactly like V1 from the next London
+weekday, and sits next to V1 in the Desk Bias Process head to head (which also includes the live 2026-11-19/20 V2
+records, made before their outcomes). Trial checks O1–O5 waived; the A7 power simulation is not done. Owner, 2026-11-19: "proceed with Bias Engine V2 in shadow mode", with
 recommendations 1–5 of the audit (`analysis/output/bias-engine-audit/AUDIT.md`), and the decisions in §10.
 
 **No promotion, and no change to any production consumer, without the owner's explicit approval.**

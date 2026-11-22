@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { planBroadcast, pickLead, leadLines, keyFigure, tickerItems, tickerText, subtitleChunks, chunkAt, trimWords, timesWords, timesFig, pctWords, pctFig, dateWords, normEvent, clean,
-  itemSeconds, durText, SEGMENTS, wantedSceneIds, BUILTIN, SIGNOFF_TEXT, QUICK_WORDS, partOfDay, speakFig, dedupeBody, LEAD_OPENERS } from './broadcastCore.js';
+  itemSeconds, durText, SEGMENTS, wantedSceneIds, BUILTIN, SIGNOFF_TEXT, QUICK_WORDS, partOfDay, speakFig, dedupeBody, LEAD_OPENERS, SHORT_BUDGET_SEC } from './broadcastCore.js';
 import { candleRows, boardSummary, topMovers } from './jarvisCandles.js';
 
 const vol = {
@@ -203,7 +203,7 @@ test('speakFig and dedupeBody: key numbers said aloud; disclaimers and repeats r
 
 test('wantedSceneIds: every hook scene the programme may ask for, no built-ins', () => {
   const w = wantedSceneIds();
-  for (const id of ['reactor', 'chainfly', 'surprise', 'cycle', 'cbpaths', 'yields', 'fxgrid', 'ccy', 'ivsurf', 'vol', 'gpillar', 'gterrain', 'cot', 'gamma', 'dayahead', 'shockwave', 'wx']) assert.ok(w.includes(id), id);
+  for (const id of ['reactor', 'chainfly', 'moneyglobe', 'surprise', 'cycle', 'cbpaths', 'yields', 'fxgrid', 'ccy', 'ivsurf', 'vol', 'gpillar', 'gterrain', 'cot', 'gamma', 'dayahead', 'shockwave', 'wx']) assert.ok(w.includes(id), id);
   assert.ok(!w.includes('candles') && !w.includes('chain') && !w.includes('ahead'));
   assert.equal(SEGMENTS.length, 8);
 });
@@ -235,4 +235,20 @@ test('durations: reading time plus card holds, at the chosen speed; a readable c
   assert.equal(itemSeconds({ text: '', hold: 1.9 }), 1.9); assert.ok(Math.abs(itemSeconds({ text: 'one two three four five six seven eight nine ten eleven twelve thirteen', hold: 0 }) - 5) < 1e-9);
   assert.equal(itemSeconds({ text: '', hold: 2 }, 2), 1); assert.equal(itemSeconds(null), 0);
   assert.equal(durText(131), '2 min 11 s'); assert.equal(durText(45), '45 s'); assert.equal(durText(120), '2 min');
+});
+
+test('SHORT (YouTube Short): shorter lead, and long programmes drop the least essential segments until the estimate fits; markets, chain and day ahead stay', () => {
+  const long = 'This is a long line about this view that goes on for a while, with numbers like 1.8 times its usual move and 3 of 9 links, and then some more words to fill the time. A description, not a forecast.';
+  const ids = [['reactor', 'reactor'], ['moneyglobe', 'moneyglobe'], ['cbpaths', 'cbpaths'], ['fxgrid', 'fxgrid'], ['ivsurf', 'ivsurf'], ['gpillar', 'gpillar'], ['dayahead', 'ahead']];
+  const hooks = ids.map(([id, v]) => hook(id, v, long)), have = new Set(ids.map(x => x[1]));
+  const quick = planBroadcast(inp, { hooks, have, mode: 'quick' }), short = planBroadcast(inp, { hooks, have, mode: 'short' });
+  assert.ok(short.totalSec <= SHORT_BUDGET_SEC || short.segments.length === 3, `short ${short.totalSec}s with ${short.segments.length} segments`);
+  assert.ok(short.totalSec < quick.totalSec);
+  assert.ok(short.lead.length <= 2);
+  for (const id of ['markets', 'chain', 'ahead']) assert.ok(short.segments.some(s => s.id === id), `${id} kept`);
+  // numbering closes up after drops
+  assert.deepEqual(short.segments.map(s => s.num), short.segments.map((_, i) => i + 1));
+  // a programme already inside the budget is not cut
+  const small = planBroadcast(inp, { hooks: [hook('reactor', 'reactor', 'Two links broke.')], have: new Set(['reactor']), mode: 'short' });
+  assert.ok(small.segments.some(s => s.id === 'chain'));
 });

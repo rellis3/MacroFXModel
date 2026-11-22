@@ -656,14 +656,19 @@ async function cfFetch(method, key, body, opts) {
   throw new Error(`CF KV ${method} ${key}: rate limited after 4 attempts`);
 }
 
+// Every KV read of 2 MB or more is noted (key, size, time, how long the fetch took), newest 30, so a memory jump can be matched to the key that was read. Diagnostic only; /api/services -> memory.kvBig.
+const _kvBig = [];
+export const kvBigReads = () => _kvBig.slice();
 async function cfGet(key) {
   const cached = cacheGet(key);
   if (cached !== undefined) return cached;
 
+  const t0 = Date.now();
   const r = await cfFetch('GET', key);
   if (r.status === 404) { cacheSet(key, null); return null; }
   if (!r.ok) throw new Error(`CF KV GET ${key}: ${r.status}`);
   const value = await r.text();
+  if (value.length >= 2_000_000) { _kvBig.push({ at: new Date().toISOString().slice(11, 19), key, mb: Math.round(value.length / 1048576 * 10) / 10, ms: Date.now() - t0 }); if (_kvBig.length > 30) _kvBig.shift(); }
   cacheSet(key, value);
   return value;
 }

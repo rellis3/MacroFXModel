@@ -176,7 +176,7 @@ export const SEGMENTS = [
       if (!c.broken) return `The chain is intact: all ${c.holding} judged links hold.`;
       return leadKinds.includes('chain') && fin(c.quiet) ? `The chain: ${c.holding} links holding, ${c.quiet} too quiet to judge.` : `The chain: ${c.holding} links holding, ${c.broken} broken.`;     // the lead said the broken count already
     } },
-  { id: 'macro', name: 'The Macro', segue: 'The bigger picture.', tiers: [['surprise', 'cycle']], say: ({ fig }) => (fig ? `The bigger picture: ${fig}.` : null) },
+  { id: 'macro', name: 'The Macro', segue: 'The bigger picture.', tiers: [['moneyglobe', 'surprise', 'cycle']], say: ({ fig }) => (fig ? `The bigger picture: ${fig}.` : null) },
   { id: 'rates', name: 'Rates', segue: 'Rates.', tiers: [['cbpaths', 'yields']], say: ({ fig }) => (fig ? `Rates. The headline number: ${fig}.` : null) },
   { id: 'ccy', name: 'Currencies', segue: 'Currencies.', tiers: [['fxgrid'], ['ccy']],
     say: ({ inp }) => {       // a count, not a name: the scene names the pairs itself
@@ -197,6 +197,9 @@ export const SEGMENTS = [
 export const wantedSceneIds = () => [...new Set(SEGMENTS.flatMap(s => s.tiers.flat()))].filter(id => !BUILTIN[id]);
 /** In the QUICK broadcast a scene's line is cut to whole sentences of about this many words (eight segments, a little over two minutes). */
 export const QUICK_WORDS = 34;
+/** The SHORT broadcast (mode 'short', for a YouTube Short, which must stay under 3 minutes): shorter lines, a two-item lead, and if the estimate still runs long the
+ *  least essential segments go first, in this order. Markets, The Chain and The Day Ahead always stay. The budget is an ESTIMATE: a real run took about 1.2x it (transitions, the voice's own pace), so 120 s lands near 2.5 minutes. */
+export const SHORT_WORDS = 24, SHORT_BUDGET_SEC = 120, SHORT_DROP = ['vol', 'pos', 'ccy', 'macro', 'rates'];
 /** The one spoken disclaimer of the programme. */
 export const SIGNOFF_TEXT = 'That is the briefing. Description, not advice. Until tomorrow.';
 /** A sentence that is only a disclaimer or a cliché: dropped from scene bodies (the sign-off says it once for the whole programme). */
@@ -232,7 +235,7 @@ export function keyFigure(text) {
  * Never throws because of a hook. A segment with no available scene is skipped and the numbering closes up.
  */
 export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick' } = {}) {
-  const quick = mode !== 'full', date = dateWords(inp.now ?? new Date()), viewOk = v => !have || have.has(v) || CORE_VIEWS.has(v);
+  const quick = mode !== 'full', short = mode === 'short', words = short ? SHORT_WORDS : QUICK_WORDS, date = dateWords(inp.now ?? new Date()), viewOk = v => !have || have.has(v) || CORE_VIEWS.has(v);
   const built = {}, sceneFor = id => {
     if (id in built) return built[id];
     let x = null; const h = hooks.find(k => k.id === id);
@@ -251,32 +254,37 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     if (quick) scenes = scenes.slice(0, 1);
     segs.push({ id: s.id, name: s.name, segue: s.segue, scenes });
   }
-  const total = segs.length + 1;                               // + the sign-off
-  segs.forEach((s, i) => { s.num = i + 1; s.total = total; });
-  const part = partOfDay(date.hour), when = part === 'morning' ? 'this morning' : part === 'afternoon' ? 'this afternoon' : 'tonight', items = [];
-  let lead = pickLead(inp, 3); if (lead.length === 3 && lead[2].score < 1.5) lead = lead.slice(0, 2);       // a weak third item is left out: two strong stories beat three
-  const lines = leadLines(lead, when, date.doy % 3), leadKeys = lead.map(x => x.key).filter(Boolean), said = new Set();
-  for (const l of lines) for (const x of sentences(l)) said.add(norm(x));
-  items.push({ kind: 'open', title: `THE ${part.toUpperCase()} BRIEFING`, view: 'globe', cam: { region: 'world' }, hold: 4.2, text: `${greeting(date.hour)}. This is Jarvis, with the ${part} briefing for ${date.spoken}.` });
-  lead.forEach((x, i) => items.push({ kind: 'lead', idx: i, n: lead.length, lead: x, title: 'The Lead', view: 'globe', cam: x.key ? { focus: x.key } : { region: 'world' }, hold: 0.6, text: lines[i] }));
+  const part = partOfDay(date.hour), when = part === 'morning' ? 'this morning' : part === 'afternoon' ? 'this afternoon' : 'tonight';
+  let lead = pickLead(inp, short ? 2 : 3); if (lead.length === 3 && lead[2].score < 1.5) lead = lead.slice(0, 2);       // a weak third item is left out: two strong stories beat three
+  const lines = leadLines(lead, when, date.doy % 3), leadKeys = lead.map(x => x.key).filter(Boolean);
   const ctxInp = { ...inp, leadKeys };
-  for (const s of segs) {
-    const seg = { id: s.id, name: s.name, num: s.num, total }, def = SEGMENTS.find(x => x.id === s.id);
-    items.push({ kind: 'bumper', seg, title: s.name, view: s.scenes[0].view, cam: null, hold: 1.9, text: '' });
-    s.scenes.forEach((sc, j) => {
-      const src = sc.id === 'candles' ? (BUILTIN.candles(ctxInp)?.text ?? sc.text) : sc.text;          // the board's body knows what the lead already said
-      let body = dedupeBody(quick ? trimWords(src, QUICK_WORDS + 8) : src, said); if (quick) body = trimWords(body, QUICK_WORDS);
-      const figure = sc.figure && sc.figure.value ? sc.figure : keyFigure(body);
-      let segue = '';
-      const unitFig = figure && (String(figure.label ?? '').trim() || /[×%:]|bp|\bof\b/.test(String(figure.value))) ? speakFig(figure) : null;      // a bare number ("60" sessions) is not a headline
-      if (j === 0) { try { segue = def?.say?.({ inp: ctxInp, scene: sc, fig: unitFig, leadKeys, leadKinds: lead.map(x => x.kind) }) || s.segue; } catch (e) { segue = s.segue; } }
-      const text = [segue, body].filter(Boolean).join(' ');
-      if (text) items.push({ kind: 'scene', seg, scene: sc, title: sc.title, view: sc.view, cam: sc.cam, hold: 0.65, text, figure });
-    });
-  }
-  items.push({ kind: 'close', seg: { id: 'signoff', name: 'Sign-off', num: total, total }, title: 'Sign-off', view: 'globe', cam: { region: 'world' }, hold: 2.5, text: SIGNOFF_TEXT, date });
-  const totalSec = Math.round(items.reduce((a, x) => a + (x.text ? readSeconds(x.text) : 0) + (x.hold ?? 0), 0));
-  return { date, lead, segments: segs.map(s => ({ id: s.id, name: s.name, num: s.num, total, scenes: s.scenes.map(x => x.id) })), items, ticker: tickerItems(inp.rows ?? inp.movers ?? []), totalSec };
+  const build = list => {
+    const total = list.length + 1, items = [], said = new Set();          // + the sign-off
+    for (const l of lines) for (const x of sentences(l)) said.add(norm(x));
+    list.forEach((s, i) => { s.num = i + 1; s.total = total; });
+    items.push({ kind: 'open', title: `THE ${part.toUpperCase()} BRIEFING`, view: 'globe', cam: { region: 'world' }, hold: short ? 3 : 4.2, text: `${greeting(date.hour)}. This is Jarvis, with the ${part} briefing for ${date.spoken}.` });
+    lead.forEach((x, i) => items.push({ kind: 'lead', idx: i, n: lead.length, lead: x, title: 'The Lead', view: 'globe', cam: x.key ? { focus: x.key } : { region: 'world' }, hold: 0.6, text: lines[i] }));
+    for (const s of list) {
+      const seg = { id: s.id, name: s.name, num: s.num, total }, def = SEGMENTS.find(x => x.id === s.id);
+      items.push({ kind: 'bumper', seg, title: s.name, view: s.scenes[0].view, cam: null, hold: short ? 1.2 : 1.9, text: '' });
+      s.scenes.forEach((sc, j) => {
+        const src = sc.id === 'candles' ? (BUILTIN.candles(ctxInp)?.text ?? sc.text) : sc.text;          // the board's body knows what the lead already said
+        let body = dedupeBody(quick ? trimWords(src, words + 8) : src, said); if (quick) body = trimWords(body, words);
+        const figure = sc.figure && sc.figure.value ? sc.figure : keyFigure(body);
+        let segue = '';
+        const unitFig = figure && (String(figure.label ?? '').trim() || /[×%:]|bp|\bof\b/.test(String(figure.value))) ? speakFig(figure) : null;      // a bare number ("60" sessions) is not a headline
+        if (j === 0) { try { segue = def?.say?.({ inp: ctxInp, scene: sc, fig: unitFig, leadKeys, leadKinds: lead.map(x => x.kind) }) || s.segue; } catch (e) { segue = s.segue; } }
+        const text = [segue, body].filter(Boolean).join(' ');
+        if (text) items.push({ kind: 'scene', seg, scene: sc, title: sc.title, view: sc.view, cam: sc.cam, hold: 0.65, text, figure });
+      });
+    }
+    items.push({ kind: 'close', seg: { id: 'signoff', name: 'Sign-off', num: total, total }, title: 'Sign-off', view: 'globe', cam: { region: 'world' }, hold: 2.5, text: SIGNOFF_TEXT, date });
+    return { items, total, totalSec: Math.round(items.reduce((a, x) => a + (x.text ? readSeconds(x.text) : 0) + (x.hold ?? 0), 0)) };
+  };
+  let segsUsed = segs, P = build(segsUsed.map(x => ({ ...x })));
+  if (short) for (const id of SHORT_DROP) { if (P.totalSec <= SHORT_BUDGET_SEC) break; if (segsUsed.some(x => x.id === id)) { segsUsed = segsUsed.filter(x => x.id !== id); P = build(segsUsed.map(x => ({ ...x }))); } }
+  const { items, total, totalSec } = P;
+  return { date, lead, segments: segsUsed.map((s, i) => ({ id: s.id, name: s.name, num: i + 1, total, scenes: s.scenes.map(x => x.id) })), items, ticker: tickerItems(inp.rows ?? inp.movers ?? []), totalSec };
 }
 
 /** How long an item holds on screen with the voice off, at a speed: reading time plus its card hold. */

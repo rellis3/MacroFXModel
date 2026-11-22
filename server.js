@@ -10,6 +10,9 @@
 // Required env vars: OANDA_KEY  (+ same vars as _worker.js)
 // Optional:         MONITOR_MS  (default 3000), DATA_DIR, PORT
 
+// FIRST import on purpose: replaces Intl.DateTimeFormat/NumberFormat and Date/Number toLocale*String with cached versions before any other module runs (native-memory fix, 2026-11-22).
+import './js/intlCache.js';
+import { intlCacheStats } from './js/intlCache.js';
 import express              from 'express';
 import zlib from 'node:zlib';
 import path                from 'path';
@@ -454,7 +457,7 @@ import { biasEngine as _bsBiasEngine, biasEngineV2 as _bsBiasEngineV2, h4Trend a
 import { PROCESS_MARKETS as _DBP_MARKETS, OANDA as _DBP_OANDA, buildLayers as _dbpLayers, buildPack as _dbpPack, historyFor as _dbpHistory, runProcessAi as _dbpAi, finishCard as _dbpFinish, dayRecord as _dbpDay, PROCESS_VERSION as _DBP_VERSION, AI_PROMPT_VERSION as _DBP_PROMPT } from './js/deskBiasProcess.js';   // Desk Bias Process (plans/DESK_BIAS_PROCESS_SPEC.md)
 import { buildV2Record as _bev2Build, CONFIG as _BEV2_CONFIG, CONFIG_HASH as _BEV2_CONFIG_HASH, V2_VERSION as _BEV2_VERSION, SPEC_VERSION as _BEV2_SPEC, VARIANTS as _BEV2_VARIANTS, canonicalJson as _bev2Canon, sha256 as _bev2Sha } from './js/biasEngineV2.js';   // Bias Engine V2, shadow only (plans/BIAS_ENGINE_V2_SPEC.md); no production consumer reads it
 import { slotsFor as _rcSlots, dueSlot as _rcDue, stateFor as _rcState, invalidationHit as _rcInvalid, reactionOf as _rcReaction, systemUpdate as _rcUpdate, needsAi as _rcNeedsAi, buildRecheckPack as _rcPack, RECHECK_SYSTEM_PROMPT as _RC_SYSTEM, recheckPromptOf as _rcPrompt, slotRow as _rcRow, slotRecord as _rcRecord, recheckCalls as _rcCalls, timeline as _rcTimeline, RECHECK_VERSION as _RC_VERSION, RECHECK_PROMPT_VERSION as _RC_PROMPT, SLOT_WINDOW_MS as _RC_WINDOW } from './js/deskBiasRecheck.js';   // Desk Bias Process intraday rechecks
-import { headToHead as _h2hRun, processCalls as _h2hProcessCalls, ledgerCalls as _h2hLedgerCalls, callOutcome as _h2hOutcome, H2H_VERSION as _H2H_VERSION } from './js/deskBiasH2H.js';   // the Desk Bias Process head to head (GET /api/desk-bias-process/h2h)
+import { headToHead as _h2hRun, processCalls as _h2hProcessCalls, ledgerCalls as _h2hLedgerCalls, engineV2Calls as _h2hEngineV2Calls, callOutcome as _h2hOutcome, H2H_VERSION as _H2H_VERSION } from './js/deskBiasH2H.js';   // the Desk Bias Process head to head (GET /api/desk-bias-process/h2h)
 import { weeklyReview as _dbpWeeklyReview } from './js/terminal/deskBiasProcessView.js';   // its weekly review of wrong calls (pure)
 import { scoreTrack as _dlScoreTrack } from './js/directionScore.js';
 import { hedgingScenario, hedgingRead } from './js/hedgingScenario.js';   // dealer hedging map: /api/hedging-summary
@@ -679,6 +682,7 @@ function svcEnabled(id) {
  * pass-through: a throw still throws and a rejected promise still rejects, so
  * each job's existing `.catch(...)` keeps behaving exactly as it did.
  */
+const _svcLive = new Map();   // job id -> how many runs are in flight right now (the memory trace names them, so a jump can be matched to a job)
 function svcRun(id, fn) {
   // Scheduled jobs that call a model can be paused from Bot Config > AI models (KV ai_jobs_off_v1), no redeploy.
   // The Railway SVC_<ID> variable still decides whether the job is scheduled at all; this only skips its runs.
@@ -689,7 +693,8 @@ function svcRun(id, fn) {
   const st = _svcStat(id);
   st.started = true;   // a one-shot svcRun (e.g. volForecastScheduler's boot call) counts as started
   const t0 = Date.now();
-  const done = () => { st.runs++; st.lastMs = Date.now() - t0; st.totalMs += st.lastMs; st.lastAt = new Date().toISOString(); };
+  _svcLive.set(id, (_svcLive.get(id) ?? 0) + 1);
+  const done = () => { st.runs++; st.lastMs = Date.now() - t0; st.totalMs += st.lastMs; st.lastAt = new Date().toISOString(); const c = (_svcLive.get(id) ?? 1) - 1; if (c > 0) _svcLive.set(id, c); else _svcLive.delete(id); };
   let out;
   try { out = fn(); }
   catch (e) { st.errors++; done(); throw e; }
@@ -7333,7 +7338,7 @@ const _libRoute = (method, p, fn) => app[method](`/api/library/${p}`, async (req
 });
 // warm the library's list and search index ONCE after boot so the first screen after a login is not a cold build (errors are ignored). It used to repeat every 4 minutes, but a tick older than the
 // catalog's 30 s freshness window forced a full rebuild each time (650 papers, uploads, notes) for nothing: writes already drop the catalog, and any page visit refreshes it behind the scenes.
-svcTimeout('libraryWarm', () => _libApi.warm?.(), 20_000);
+svcTimeout('libraryWarm', () => _libApi.warm?.(), 60_000);   // once, a minute after boot (the 3 GB boot jump was the Intl formatter leak, not this job)
 _libRoute('get', 'concepts', _libApi.conceptsCards);   // the concept cards for the Concepts tab (library login)
 _libRoute('post', 'concepts/review', _libApi.conceptsReview);   // the owner's mark on a card; free, no model call
 _libRoute('get', 'papers', _libApi.papers);
@@ -31040,7 +31045,12 @@ async function _dbpH2HCompute() {
   const rcRecs = [];
   for (const r of records) { const rc = await _dbpRcLoad(r.date); if (rc) rcRecs.push({ ...rc, date: r.date }); }
   status.rechecks = `${rcRecs.length} day(s) with rechecks`;
-  const calls = [..._h2hProcessCalls(records), ..._rcCalls(records, rcRecs), ..._h2hLedgerCalls(ledger, _BS_DESK_NAME)].filter(c => c.date >= first);
+  // Bias Engine V2 sits on the list next to V1 (owner, 2026-11-22): every stored daily V2 record, made live before its outcomes
+  const v2Recs = [];
+  for (const r of records) { try { const raw = await kv.get(_BEV2_KEY(r.date)); if (raw) v2Recs.push(JSON.parse(raw)); } catch { /* a missing day is a gap */ } }
+  status.engineV2 = `${v2Recs.length} day(s)`;
+  const sigOf = (d, m) => records.find(r => r.date === d)?.markets?.[m]?.layers?.range?.sigmaDay ?? null;
+  const calls = [..._h2hProcessCalls(records), ..._rcCalls(records, rcRecs), ..._h2hLedgerCalls(ledger, _BS_DESK_NAME), ..._h2hEngineV2Calls(v2Recs, sigOf).filter(c => _DBP_OANDA[c.market])].filter(c => c.date >= first);
   const bars = {}, errs = [];
   if (process.env.OANDA_KEY) {
     const from = Date.parse(`${first}T00:00:00Z`) - 864e5, to = Math.min(Date.now(), Date.parse(`${last}T00:00:00Z`) + 4 * 864e5);
@@ -45884,6 +45894,9 @@ app.get('/api/services', (req, res) => {
       m1Loads: { active: _m1LoadStats.active(), waiting: _m1LoadStats.waiting(), peakWaiting: _m1LoadStats.peakWaiting, total: _m1LoadStats.total },
       workers: [..._liveWorkers.values()].map(x => ({ file: x.label, ageSec: Math.round((Date.now() - x.since) / 1000), maxOldMb: x.maxOldMb })),
       trace: _memTrace,
+      kvBig: kv.kvBigReads(),
+      bootProfile: _bootProfile,
+      intlCache: intlCacheStats,
       mappings: _memShots.list,
       sampledAt: new Date().toISOString(),
       note: 'This process only, not the container total (start.sh bots run as separate OS processes with their own RSS Railway meters separately). '
@@ -47570,14 +47583,49 @@ svcInterval('memSample', () => {
 const _memTrace = [];
 function _memTracePush(m = process.memoryUsage()) {
   const mb = n => Math.round(n / 1048576);
-  _memTrace.push({ t: new Date().toISOString().slice(11, 19), rss: mb(m.rss), heap: mb(m.heapUsed), ext: mb(m.external + m.arrayBuffers), other: mb(m.rss - m.heapTotal - m.external), w: [..._liveWorkers.values()].map(x => x.label).join(',') || null });
-  if (_memTrace.length > 360) _memTrace.shift();
+  _memTrace.push({ t: new Date().toISOString().slice(11, 19), rss: mb(m.rss), heap: mb(m.heapUsed), ext: mb(m.external + m.arrayBuffers), other: mb(m.rss - m.heapTotal - m.external), w: [..._liveWorkers.values()].map(x => x.label).join(',') || null, run: [..._svcLive.keys()].join(',') || null });
+  if (_memTrace.length > 520) _memTrace.shift();
   // a jump of more than 400 MB between two samples (or the two fixed checkpoints) takes a look inside the process: which kind of memory grew. At most 6 per boot.
   const prev = _memTrace.at(-2), jump = prev && m.rss - prev.rss * 1048576 > 400 * 1048576, up = Date.now() - _serverBootedAt, cp = (up > 90_000 && !_memShots.cp1) || (up > 600_000 && !_memShots.cp2);
   if ((jump || cp) && _memShots.list.length < 6) { if (cp) { if (up > 600_000) _memShots.cp2 = true; else _memShots.cp1 = true; } try { _memShots.list.push({ t: _memTrace.at(-1).t, rssMB: mb(m.rss), why: jump ? `+${mb(m.rss - prev.rss * 1048576)} MB since the last sample` : 'checkpoint', top: _topMappings(8) }); } catch (e) { /* diagnostic only */ } }
 }
 const _memShots = { list: [], cp1: false, cp2: false };
-{ const fast = setInterval(() => { if (Date.now() - _serverBootedAt > 600_000) { clearInterval(fast); return; } _memTracePush(); }, 5000); fast.unref?.(); }
+
+// ── Boot profile (2026-11-22, diagnostic): the server's first ~240 s of CPU time, by second, so the 3 GB memory jump at ~40 s boot can be matched to the function running at that moment. Node's built-in
+// profiler (inspector), sampled every 2 ms; the answer is in /api/services -> memory.bootProfile. Runs once per boot, then stops. Linux only (Railway); skipped when BOOT_PROFILE=0. ──
+const _bootProfile = { state: 'off', seconds: [], top: [] };
+if (process.platform === 'linux' && process.env.BOOT_PROFILE !== '0') {
+  import('node:inspector').then(({ default: insp }) => {
+    const ses = new insp.Session(); ses.connect();
+    const post = (m, p) => new Promise((res, rej) => ses.post(m, p ?? {}, (e, r) => e ? rej(e) : res(r)));
+    post('Profiler.enable').then(() => post('Profiler.setSamplingInterval', { interval: 2000 })).then(() => post('Profiler.start')).then(() => {
+      _bootProfile.state = 'running';
+      const t0 = Date.now();
+      const stop = setTimeout(async () => {
+        try {
+          const { profile } = await post('Profiler.stop');
+          const byId = new Map(profile.nodes.map(n => [n.id, n])), parent = new Map();
+          for (const n of profile.nodes) for (const c of n.children ?? []) parent.set(c, n.id);
+          const label = n => { const f = n.callFrame; return `${f.functionName || '(anon)'} ${String(f.url).split('/').slice(-2).join('/')}:${f.lineNumber + 1}`; };
+          const chainOf = id => { const out = []; for (let q = parent.get(id), k = 0; q && k < 6; q = parent.get(q), k++) { const n = byId.get(q); if (n && n.callFrame.functionName !== '(root)') out.push(label(n)); } return out; };
+          const self = new Map(), perSec = new Map(); let at = 0;
+          profile.samples.forEach((id, i) => {
+            const dt = (profile.timeDeltas[i] ?? 0) / 1000; at += dt;                       // ms since the profile started
+            const n = byId.get(id); if (!n || n.callFrame.functionName === '(idle)') return;
+            self.set(id, (self.get(id) ?? 0) + dt);
+            const s = Math.floor(at / 1000), m = perSec.get(s) ?? new Map(); m.set(id, (m.get(id) ?? 0) + dt); perSec.set(s, m);
+          });
+          const startWall = Date.now() - at;
+          _bootProfile.top = [...self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([id, ms]) => ({ ms: Math.round(ms), fn: label(byId.get(id)), chain: chainOf(id) }));
+          _bootProfile.seconds = [...perSec.entries()].sort((a, b) => a[0] - b[0]).map(([s, m]) => ({ t: new Date(startWall + s * 1000).toISOString().slice(11, 19), busyMs: Math.round([...m.values()].reduce((x, y) => x + y, 0)), top: [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, ms]) => ({ ms: Math.round(ms), fn: label(byId.get(id)), chain: chainOf(id).slice(0, 4) })) })).filter(x => x.busyMs > 250);
+          _bootProfile.state = 'done'; ses.disconnect();
+        } catch (e) { _bootProfile.state = 'error: ' + e.message; }
+      }, 240_000); stop.unref?.();
+    }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
+  }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
+}
+// every second for the first 90 s (where the boot jump happens, so it can be matched to the jobs running at that second), every 5 s after, until 10 min
+{ let n = 0; const fast = setInterval(() => { const up = Date.now() - _serverBootedAt; if (up > 600_000) { clearInterval(fast); return; } if (up < 90_000 || ++n % 5 === 0) _memTracePush(); }, 1000); fast.unref?.(); }
 
 svcInterval('monitor', monitorTick, MONITOR_MS);
 if (svcEnabled('monitor')) svcRun('monitor', monitorTick).catch(console.error);

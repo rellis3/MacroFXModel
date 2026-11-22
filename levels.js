@@ -113,12 +113,13 @@ const bO = b => parseFloat(b.open);
 
 // ── OANDA fetch + bar conversion ──────────────────────────────────────────────
 
+// One formatter, not one per candle (a per-call toLocaleString with a timeZone builds a new native ICU formatter each time; see js/marketHistory.js londonDate). Same text: 'YYYY-MM-DD HH:MM:SS' London time.
+const _LONDON_SV = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
 function convertBars(candles) {
   return candles
     .filter(c => c.complete !== false)
     .map(c => ({
-      datetime: new Date(c.time)
-        .toLocaleString('sv-SE', { timeZone: 'Europe/London' })
+      datetime: _LONDON_SV.format(new Date(c.time))
         .substring(0, 19),
       open:  c.mid.o,
       high:  c.mid.h,

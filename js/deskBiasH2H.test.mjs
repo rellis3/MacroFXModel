@@ -1,6 +1,6 @@
 // node js/deskBiasH2H.test.mjs   (plans/DESK_BIAS_PROCESS_SPEC.md "Head to head")
 import assert from 'node:assert/strict';
-import { tradeRule, priceAt, fridayCloseMs, callOutcome, headToHead, processCalls, ledgerCalls, dayBoot } from './deskBiasH2H.js';
+import { tradeRule, priceAt, fridayCloseMs, callOutcome, headToHead, processCalls, ledgerCalls, engineV2Calls, dayBoot } from './deskBiasH2H.js';
 import { londonMs } from './directionLedger.js';
 
 let passed = 0;
@@ -104,6 +104,13 @@ ok('records to calls: process issues give two competitors; ledger rows keep thei
   const lc = ledgerCalls(led, { gold: 'GOLD' });
   assert.deepEqual(lc.map(c => [c.competitor, c.side]), [['max-signals', -1], ['h4-trend', 0]]);
   assert.equal(dayBoot([{ day: 'a', v: 1 }]), null);
+});
+
+ok('engine V2 calls: the v2 variant per market, side only with strength > 0, knowable at the issue time', () => {
+  const recs = [{ date: '2026-11-20', issuedAt: '2026-11-20T05:31:00Z', variants: { v2: { markets: { EURUSD: { dir: 'BEARISH', strength: 3 }, GOLD: { dir: 'BULLISH', strength: 0 }, USDJPY: { dir: 'NEUTRAL', strength: 1 } } }, v1r: { markets: { EURUSD: { dir: 'BULLISH', strength: 2 } } } } }];
+  const c = engineV2Calls(recs, (d, m) => m === 'EURUSD' ? 0.005 : null);
+  assert.deepEqual(c.map(x => [x.competitor, x.market, x.side]), [['bias-engine-v2', 'EURUSD', -1], ['bias-engine-v2', 'GOLD', 0], ['bias-engine-v2', 'USDJPY', 0]]);
+  assert.equal(c[0].ms, Date.parse('2026-11-20T05:31:00Z')); assert.equal(c[0].sigmaDay, 0.005); assert.equal(c[0].conviction, 3);
 });
 
 console.log(`\n${passed} passed`);

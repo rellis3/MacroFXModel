@@ -74,8 +74,8 @@ export const VARIANTS = Object.freeze({
   ...Object.fromEntries(SWITCHES.map(s => [`v2-no${s}`, Object.freeze({ ...ALL, [s]: false })])),
   ...Object.fromEntries(SWITCHES.map(s => [`v1r+${s}`, Object.freeze({ ...NONE, [s]: true })])),
 });
-/** Configuration that is frozen with the forward record (spec §6.4). FORWARD_START stays null until the freeze commit. */
-export const CONFIG = Object.freeze({ FORWARD_START: null, PRIMARY: Object.freeze(['v2', 'v1r']), SCORED_TARGETS: Object.freeze(['d21', 'n07', 'd5', 'd20']) });
+/** Configuration that is frozen with the forward record (spec §6.4). Owner 2026-11-22: trial ended early, V2 scored like V1 from 2026-11-23. */
+export const CONFIG = Object.freeze({ FORWARD_START: '2026-11-23', PRIMARY: Object.freeze(['v2', 'v1r']), SCORED_TARGETS: Object.freeze(['d21', 'n07', 'd5', 'd20']) });
 /** Canonical JSON (sorted keys) and its SHA-256: the snapshot hash and the config hash. */
 export function canonicalJson(x) {
   if (Array.isArray(x)) return `[${x.map(canonicalJson).join(',')}]`;

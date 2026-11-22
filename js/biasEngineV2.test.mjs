@@ -149,7 +149,9 @@ ok('A13 V1 untouched: js/biasEngine.js matches its pinned hash', () => {
 
 ok('A14 no production reads: only V2\'s own files, its server section, its panel and the scoreboard mention V2', () => {
   const allowed = new Set(['js/biasEngineV2.js', 'js/biasEngineV2.test.mjs', 'js/biasEngineV2.econ.test.mjs', 'js/biasEngineV2.fixture.mjs', 'server.js', 'js/biasForecasters.js',
-    'js/terminal/biasEngineV2View.js', 'js/terminal/biasEngineV2View.test.mjs', 'js/terminal/terminalTabs.js', 'js/terminal/tabRegistry.js', 'js/deskAccess.js', 'js/serviceFlags.js', 'js/storeRegistry.js', 'js/deskSnapshot.js', 'kv.js', '_worker.js', 'desk-terminal.html', 'js/biasForecasters.test.mjs']);
+    'js/terminal/biasEngineV2View.js', 'js/terminal/biasEngineV2View.test.mjs', 'js/terminal/terminalTabs.js', 'js/terminal/tabRegistry.js', 'js/deskAccess.js', 'js/serviceFlags.js', 'js/storeRegistry.js', 'js/deskSnapshot.js', 'kv.js', '_worker.js', 'desk-terminal.html', 'js/biasForecasters.test.mjs',
+    // owner 2026-11-22: V2 sits next to V1 in the Desk Bias Process head to head (scoring display only, not a consumer of its calls)
+    'js/deskBiasH2H.js', 'js/deskBiasH2H.test.mjs', 'js/terminal/deskBiasProcessView.js']);
   const hits = [];
   const walkDir = d => { for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
     const rel = path.join(d, e.name);
@@ -237,10 +239,10 @@ ok('A20 the trial is excluded: a trial record gives no scoreboard views; an offi
   assert.ok(views.some(x => x.model_id === 'bias-engine-v1' && x.inst === 'gold'));
 });
 ok('A20b phases: no forward start (or before it) is trial; on and after it is forward', () => {
-  assert.equal(CONFIG.FORWARD_START, null, 'the forward start is set only by the freeze commit (spec §6.4)');
-  assert.equal(phaseOf('2026-11-20'), 'trial');
+  assert.ok(CONFIG.FORWARD_START === null || fs.existsSync(path.join(ROOT, 'forge/BIAS_ENGINE_V2_FREEZE.json')), 'a forward start needs the freeze manifest (spec §6.4)');
+  assert.equal(phaseOf('2026-11-20', null), 'trial');
   assert.equal(phaseOf('2026-11-20', '2026-11-27'), 'trial'); assert.equal(phaseOf('2026-11-27', '2026-11-27'), 'forward');
-  assert.equal(buildV2Record(snapshot()).phase, 'trial');
+  assert.equal(buildV2Record(snapshot(), { forwardStart: null }).phase, 'trial');
 });
 
 ok('A21 freeze: after the freeze the spec, the config and the engine match the manifest', () => {
