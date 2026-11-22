@@ -120,19 +120,19 @@ const HOOKS = [hook('reactor', 'reactor', 'The chain reactor: every market on on
 test('planBroadcast QUICK: cold open, the lead, one scene per segment (first available tier), numbered segments, sign-off', () => {
   const have = new Set(['reactor', 'chainfly', 'cbpaths', 'yields', 'ccy', 'vol', 'gpillar', 'gterrain', 'gamma', 'ahead']);
   const P = planBroadcast(inp, { hooks: HOOKS, have, mode: 'quick' });
-  assert.deepEqual(P.segments.map(s => [s.name, s.num, s.total, s.scenes.join()]), [['Markets', 1, 8, 'candles'], ['The Chain', 2, 8, 'reactor'], ['Rates', 3, 8, 'cbpaths'], ['Currencies', 4, 8, 'ccy'],
-    ['Volatility', 5, 8, 'vol'], ['Positioning', 6, 8, 'gpillar'], ['The Day Ahead', 7, 8, 'dayahead']]);
+  assert.deepEqual(P.segments.map(s => [s.name, s.num, s.total, s.scenes.join()]), [['The Outlook', 1, 8, 'dayahead'], ['Markets', 2, 8, 'candles'], ['The Chain', 3, 8, 'reactor'], ['Rates', 4, 8, 'cbpaths'], ['Currencies', 5, 8, 'ccy'],
+    ['Volatility', 6, 8, 'vol'], ['Positioning', 7, 8, 'gpillar']], 'in the morning the outlook comes first');
   const kinds = P.items.map(x => x.kind);
   assert.equal(kinds[0], 'open'); assert.deepEqual(kinds.slice(1, 4), ['lead', 'lead', 'lead']); assert.equal(kinds[kinds.length - 1], 'close');
   assert.equal(kinds.filter(k => k === 'bumper').length, 7); assert.equal(kinds.filter(k => k === 'scene').length, 7);
   assert.equal(P.items[0].text, 'Good morning. This is Mach, with the morning briefing for Friday the twentieth of November.');
   const close = P.items[P.items.length - 1]; assert.equal(close.text, SIGNOFF_TEXT); assert.deepEqual([close.seg.num, close.seg.total], [8, 8]); assert.equal(close.date.card, 'FRIDAY 20 NOVEMBER');
-  const scenes = P.items.filter(x => x.kind === 'scene');
+  const all = P.items.filter(x => x.kind === 'scene'), scenes = [...all.slice(1), all[0]];      // indices below as before: the outlook (played first) is last here
   assert.match(scenes[0].text, /^Starting with the markets\. Of 5 on the board, 2 are up, 2 down, 1 barely moving\. Beyond the lead, /, 'the lead already named gold and the yen');
   assert.equal(scenes[1].text, 'The chain: 5 links holding, 18 too quiet to judge. Two of 7 links are broken.', 'the lead said the broken count, so the segue carries another number; the disclaimer sentence is gone');
   assert.equal(scenes[2].text, 'Rates. The headline number: 65 basis points. The Fed has about 65 basis points of cuts priced.', 'QUICK drops the picture-naming opener and keeps the number');
   assert.match(scenes[3].text, /^Currencies\. All 2 pairs are on the move\. The franc/); assert.match(scenes[5].text, /^Positioning, and where the options sit: 5,813, the gamma flip\./);
-  assert.match(scenes[6].text, /^And the day ahead: three high-impact releases on the clock\./);
+  assert.match(scenes[6].text, /^The outlook for today: three high-impact releases on the clock\./);
   assert.deepEqual(scenes[2].figure, { value: '65 bp', label: '' }); assert.deepEqual(scenes[5].figure, { value: '5,813', label: 'gamma flip' }, 'a scene may give its own key number');
   assert.equal(scenes[6].view, 'ahead');
   for (const s of scenes) assert.ok(s.text.split(/\s+/).length <= QUICK_WORDS + 12, s.text);
@@ -144,12 +144,12 @@ test('planBroadcast QUICK: cold open, the lead, one scene per segment (first ava
 
 test('planBroadcast FULL plays every available scene of a tier; missing views fall back; empty segments are skipped and the numbering closes up', () => {
   const full = planBroadcast(inp, { hooks: HOOKS, have: new Set(['reactor', 'cbpaths', 'yields', 'gpillar', 'gterrain', 'ahead']), mode: 'full' });
-  assert.deepEqual(full.segments.map(s => s.scenes.join()), ['candles', 'reactor', 'cbpaths,yields', 'gpillar,gterrain', 'dayahead']);
+  assert.deepEqual(full.segments.map(s => s.scenes.join()), ['dayahead', 'candles', 'reactor', 'cbpaths,yields', 'gpillar,gterrain']);
   assert.match(full.items.find(x => x.scene?.id === 'yields').text, /^The curve/, 'only the first scene of a segment carries the segue');
   assert.match(full.items.find(x => x.scene?.id === 'cbpaths').text, /^Rates\. The headline number: 65 basis points\. Rate paths: what futures price\./, 'FULL keeps the whole line');
   // nothing new is registered: the HUD's own views carry the programme
   const bare = planBroadcast(inp, { hooks: [], have: new Set(), mode: 'quick' });
-  assert.deepEqual(bare.segments.map(s => `${s.num}/${s.total} ${s.name}:${s.scenes}`), ['1/4 Markets:candles', '2/4 The Chain:chain', '3/4 The Day Ahead:ahead']);
+  assert.deepEqual(bare.segments.map(s => `${s.num}/${s.total} ${s.name}:${s.scenes}`), ['1/4 The Outlook:ahead', '2/4 Markets:candles', '3/4 The Chain:chain']);
   // a view that is not loaded never plays, even when its hook is registered; a hook that throws or returns nothing is skipped
   const noReactor = planBroadcast(inp, { hooks: [...HOOKS, { id: 'fxgrid', build: () => null }], have: new Set(['chainfly']), mode: 'quick' });
   assert.equal(noReactor.segments.find(s => s.id === 'chain').scenes[0], 'chainfly');
@@ -251,4 +251,18 @@ test('SHORT (YouTube Short): shorter lead, and long programmes drop the least es
   // a programme already inside the budget is not cut
   const small = planBroadcast(inp, { hooks: [hook('reactor', 'reactor', 'Two links broke.')], have: new Set(['reactor']), mode: 'short' });
   assert.ok(small.segments.some(s => s.id === 'chain'));
+});
+
+test('THE OUTLOOK: today\'s typical ranges (sizes, not direction) join the calendar even in the quick cut; first only in the morning', () => {
+  const v = { NQ: { oc: -0.3, oh: 0.2, ol: 0.5, hl: 0.7, forecast: { oc_median: 0.6, hl_median: 1.4, hl_75: 1.9 } }, GOLD: { oc: 0.4, oh: 0.6, ol: 0.1, hl: 0.7, forecast: { oc_median: 0.5, hl_median: 1.2, hl_75: 1.6 } },
+    EURUSD: { oc: 0.05, oh: 0.1, ol: 0.1, hl: 0.2, forecast: { oc_median: 0.28, hl_median: 0.59, hl_75: 0.73 } } };
+  const rows = candleRows(v, {}), r = BUILTIN.ranges({ rows });
+  assert.equal(r.text, "The vol model's typical range for today, high to low: Nasdaq about 1.4 percent, gold about 1.2 percent and Euro Dollar about 0.59 percent. Gold has already used 58 percent of it. One day in four runs bigger. Those are sizes, not direction.");
+  assert.deepEqual(r.figure, { value: '1.4%', label: `${r.figure.label}` }); assert.equal(r.view, 'vol');
+  assert.equal(BUILTIN.ranges({ rows: rows.slice(0, 1) }), null, 'one market is not an outlook');
+  const P = planBroadcast({ ...inp, rows, movers: topMovers(rows, 6), board: boardSummary(rows) }, { hooks: HOOKS, have: new Set(['ahead', 'vol']), mode: 'quick' });
+  assert.deepEqual(P.segments[0].scenes, ['dayahead', 'ranges']);
+  const eve = planBroadcast({ ...inp, now: new Date('2026-11-20T19:00:00Z'), rows }, { hooks: HOOKS, have: new Set(['ahead', 'vol']), mode: 'quick' });
+  assert.equal(eve.segments.at(-1).id, 'ahead', 'in the evening it closes the programme');
+  for (const x of P.items) assert.doesNotMatch(x.text, FORECASTY, x.text);
 });

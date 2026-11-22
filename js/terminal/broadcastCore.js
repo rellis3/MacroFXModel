@@ -125,7 +125,19 @@ export function leadLines(lead, when = 'this morning', form = 0) {
 }
 
 // ── built-in scenes (the HUD's own views: candles, skyline, globe) ──
+/** Markets the RANGES scene names, in order of preference (the first four present with a typical range). */
+export const RANGE_KEYS = ['NQ', 'SPX500', 'GOLD', 'EURUSD', 'USDJPY', 'GBPUSD', 'BRENT', 'WTI', 'BTCUSD', 'DE30'];
 export const BUILTIN = {
+  // the vol model's typical high-to-low range for today (its median day), per headline market, and how much of it the day has already used. Sizes, never direction.
+  ranges(inp) {
+    const rows = (inp.rows ?? []).filter(r => r && fin(r.range) && r.range > 0), pick = RANGE_KEYS.map(k => rows.find(r => r.key === k)).filter(Boolean).slice(0, 4);
+    if (pick.length < 2) return null;
+    const t = [`The vol model's typical range for today, high to low: ${list(pick.map(r => `${spokenName(r.key)} about ${pctWords(r.range)}`))}.`];
+    const used = pick.filter(r => fin(r.hl) && r.hl > 0).map(r => ({ r, u: r.hl / r.range })).sort((a, b) => b.u - a.u)[0];
+    if (used && used.u >= 0.25) t.push(`${cap1(spokenName(used.r.key))} has already used ${used.u >= 1 ? 'all' : `${Math.round(used.u * 100)} percent`} of its${used.u >= 1 ? ' typical range, and more' : ''}.`.replace(/of its\.$/, 'of it.'));
+    if (pick.some(r => fin(r.range75))) t.push('One day in four runs bigger. Those are sizes, not direction.');
+    return { title: "Today's ranges", view: 'vol', cam: null, text: t.join(' '), figure: { value: `${pick[0].range >= 1 ? pick[0].range.toFixed(1) : String(+pick[0].range.toFixed(2))}%`, label: `${marketName(pick[0].key, { short: true })} typical range` } };
+  },
   // the board's counts are in the Markets segue; the body names the movers, skipping any the lead has already covered (inp.leadKeys)
   candles(inp) {
     const bd = inp.board, mv = (inp.movers ?? []).filter(m => m && fin(m.ratio) && fin(m.oc)); if (!bd || !bd.n) return null;
@@ -190,8 +202,9 @@ export const SEGMENTS = [
       return big ? `Over to volatility. ${cap1(numWord(big))} of ${rows.length} markets are moving at least twice their usual size.` : fig ? `Over to volatility: ${fig}.` : null;
     } },
   { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', tiers: [['gpillar', 'gterrain', 'cot'], ['gamma']], say: ({ fig }) => (fig ? `Positioning, and where the options sit: ${fig}.` : null) },
-  { id: 'ahead', name: 'The Day Ahead', segue: 'And the day ahead.', tiers: [['dayahead', 'shockwave'], ['ahead']],
-    say: ({ inp }) => { const n = (inp.events ?? []).map(normEvent).filter(Boolean).length; return n ? `And the day ahead: ${numWord(n)} high-impact release${n === 1 ? '' : 's'} on the clock.` : null; } },
+  // THE OUTLOOK: what today holds: the calendar with its expectations and typical reaction, then today's typical ranges. keep: 2 = both scenes play even in the quick and short cuts. First in the morning.
+  { id: 'ahead', name: 'The Outlook', segue: 'The outlook for today.', keep: 2, tiers: [['dayahead', 'ranges', 'shockwave'], ['ahead', 'ranges'], ['ranges']],
+    say: ({ inp }) => { const n = (inp.events ?? []).map(normEvent).filter(Boolean).length; return n ? `The outlook for today: ${numWord(n)} high-impact release${n === 1 ? '' : 's'} on the clock.` : null; } },
 ];
 /** Every hook scene id the programme may use (so the director only prepares those). */
 export const wantedSceneIds = () => [...new Set(SEGMENTS.flatMap(s => s.tiers.flat()))].filter(id => !BUILTIN[id]);
@@ -247,11 +260,12 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     return (built[id] = x);
   };
   const segs = [];
-  for (const s of SEGMENTS) {
+  const morning = partOfDay(date.hour) === 'morning', order = morning ? [...SEGMENTS.filter(s => s.id === 'ahead'), ...SEGMENTS.filter(s => s.id !== 'ahead')] : SEGMENTS;
+  for (const s of order) {
     let scenes = [];
     for (const tier of s.tiers) { scenes = tier.map(sceneFor).filter(Boolean); if (scenes.length) break; }
     if (!scenes.length) continue;
-    if (quick) scenes = scenes.slice(0, 1);
+    if (quick) scenes = scenes.slice(0, s.keep ?? 1);
     segs.push({ id: s.id, name: s.name, segue: s.segue, scenes });
   }
   const part = partOfDay(date.hour), when = part === 'morning' ? 'this morning' : part === 'afternoon' ? 'this afternoon' : 'tonight';

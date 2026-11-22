@@ -207,6 +207,34 @@ export function placeLabels(items, W, H, taken = [], pad = 3) {
 // ── words ──
 const NAT = { US: 'US', EZ: 'euro area', UK: 'UK', JP: 'Japanese', AU: 'Australian', NZ: 'New Zealand', CA: 'Canadian', CH: 'Swiss', CN: 'Chinese', DE: 'German', FR: 'French', IT: 'Italian', ES: 'Spanish' };
 const say = e => e.short.replace(/^[A-Z]{2} (\w+ speaks)$/, '$1').replace(/^([A-Z]{2}) /, (m, c) => `${NAT[c] ?? c} `).replace(/\bmfg\b/, 'manufacturing').replace(/\bconf\.$/, 'conference');
+/** A calendar figure for the voice: "0.3%" -> "0.3 percent", "-0.1%" -> "minus 0.1 percent", "245K" -> "245 thousand", "1.2M" -> "1.2 million", "4.50%" -> "4.5 percent". */
+export function sayFig(v) {
+  let t = String(v ?? '').trim(); if (!t) return null;
+  t = t.replace(/^[−-]\s*(?=\d)/, 'minus ').replace(/(\d)\.?0+%$/, '$1%').replace(/(\d\.\d*?)0+%$/, '$1%').replace(/%$/, ' percent').replace(/(\d)\s*K$/i, '$1 thousand').replace(/(\d)\s*M$/i, '$1 million').replace(/(\d)\s*B$/i, '$1 billion');
+  return t;
+}
+/** The typical first-half-hour reaction out of an event-day history line ("... the typical first-30-minute move, either way, was Nasdaq 0.41%, EUR/USD 14 pips. ..."), for the voice; null when the line has none. */
+export function reactionWords(line) {
+  const m = /typical first-30-minute move, either way, was ([^.]+(?:\.\d[^.]*)*?)(?:\.\s|\.$|$)/.exec(String(line ?? '')); if (!m) return null;
+  const n = /over the (\d+) previous/.exec(String(line))?.[1];
+  const sizes = m[1].split(/,\s*/).filter(x => !/\bleg\b|note future|\(price\)/.test(x)).slice(0, 3).map(x => x.replace(/S&P 500/g, 'the S and P 500').replace(/(\d) pt\b/g, '$1 points').replace(/(\d)%/g, '$1 percent').replace(/(\d)\s*bp\b/g, '$1 basis points').replace(/\bEUR\/USD\b/g, 'euro dollar').replace(/\bUSD\/JPY\b/g, 'dollar yen').replace(/\bGBP\/USD\b/g, 'sterling'));
+  return { n: n ? +n : null, sizes };
+}
+/** The SHOW's OUTLOOK line for today: each high-impact release still to come with its London time, the consensus and the last print, then how big the first half hour has
+ * typically been on that kind of day (the Release Reaction record). Schedule and history only: the expectations are the market consensus, not the desk's. */
+export function outlookScript(day, now, max = 3) {
+  if (!day) return null;
+  const left = (day.events ?? []).filter(e => e.rank >= 3 && e.ms > now && !e.actual);
+  if (!left.length) return dayScript(day, now);
+  const lines = left.slice(0, max).map(e => {
+    const f = sayFig(e.forecast), p = sayFig(e.previous);
+    return `At ${e.hm}, ${say(e)}${f ? `: expected ${f}${p ? `, after ${p} last time` : ''}` : p ? `, last time ${p}` : ''}.`;
+  });
+  const more = left.length - lines.length; if (more > 0) lines.push(`Plus ${more} more high-impact release${more === 1 ? '' : 's'} later.`);
+  const h = left.map(e => ({ e, r: reactionWords(e.line) })).find(x => x.r?.sizes.length);
+  if (h) lines.push(`On past ${say(h.e)} days${h.r.n ? `, ${h.r.n} of them` : ''}, the first half hour typically moved ${h.r.sizes.length > 1 ? `${h.r.sizes.slice(0, -1).join(', ')} and ${h.r.sizes.at(-1)}` : h.r.sizes[0]}, either way.`);
+  return `On the calendar today, London time. ${lines.join(' ')}`;
+}
 /** The SHOW line: the high-impact releases still to come today with their London times, in plain words (at most five named), or a quiet calendar. Never a forecast. */
 export function dayScript(day, now) {
   if (!day) return null;

@@ -20,7 +20,7 @@ export function candleRows(vol = {}, bias = {}) {
     const oc = num(v.oc), oh = num(v.oh), ol = num(v.ol), noise = num(v.forecast?.oc_median);
     if (oc == null || oh == null || ol == null || !(noise > 0)) continue;
     const b = bias[k], dirWord = String(b?.dir ?? '').toUpperCase(), lean = dirWord === 'BULLISH' ? 1 : dirWord === 'BEARISH' ? -1 : 0, ratio = oc / noise;
-    out.push({ key: k, oc, noise, body: clip(ratio), hi: clip(Math.max(oh, oc, 0) / noise), lo: clip(Math.min(-ol, oc, 0) / noise), ratio, tone: Math.abs(ratio) < 0.5 ? 'quiet' : ratio > 0 ? 'up' : 'dn', lean: b ? lean : null, strength: num(b?.strength) ?? 0, haveLean: !!b });
+    out.push({ key: k, oc, noise, body: clip(ratio), hi: clip(Math.max(oh, oc, 0) / noise), lo: clip(Math.min(-ol, oc, 0) / noise), ratio, tone: Math.abs(ratio) < 0.5 ? 'quiet' : ratio > 0 ? 'up' : 'dn', lean: b ? lean : null, strength: num(b?.strength) ?? 0, haveLean: !!b, hl: num(v.hl), range: num(v.forecast?.hl_median), range75: num(v.forecast?.hl_75) });
   }
   return out;
 }

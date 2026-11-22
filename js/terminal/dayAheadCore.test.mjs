@@ -1,6 +1,6 @@
 // node js/terminal/dayAheadCore.test.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { londonParts, angleOf, polar, SESSIONS, ccyOfCountry, regionOf, shortName, mergeDay, assignLanes, laneOffset, pylonHeight, nextBig, countdown, hourProfile, ridgeAt, placeLabels, dayScript, sweepMins } from './dayAheadCore.js';
+import { outlookScript, sayFig, reactionWords, londonParts, angleOf, polar, SESSIONS, ccyOfCountry, regionOf, shortName, mergeDay, assignLanes, laneOffset, pylonHeight, nextBig, countdown, hourProfile, ridgeAt, placeLabels, dayScript, sweepMins } from './dayAheadCore.js';
 
 const D = '2026-11-20', at = hm => Date.parse(`${D}T${hm}:00Z`);          // November: London = UTC
 const NOW = at('10:47');
@@ -122,4 +122,14 @@ test('the SHOW line: plain words, London times, never a forecast', () => {
 test('SHOW sweep: from now round to the last release, at least a quarter turn', () => {
   assert.equal(sweepMins(600, 1200, 0), 600); assert.equal(sweepMins(600, 1200, 1), 1200); assert.equal(sweepMins(600, 660, 1), 960); assert.equal(sweepMins(1300, 100, 1), 1300 + 360);
   assert.equal(sweepMins(600, null, 1), 960);
+});
+
+test('outlookScript: each release still to come with the consensus and the last print, then the typical first half hour on that kind of day', () => {
+  assert.equal(sayFig('0.30%'), '0.3 percent'); assert.equal(sayFig('-0.1%'), 'minus 0.1 percent'); assert.equal(sayFig('245K'), '245 thousand'); assert.equal(sayFig('4.50%'), '4.5 percent'); assert.equal(sayFig(''), null);
+  const line = 'US CPI (due 13:30 London today): over the 24 previous CPI events in the Release Reaction record (from 2024-01), the typical first-30-minute move, either way, was Nasdaq 0.41%, EUR/USD 0.18%, 10y yield 4.2bp. Descriptive history, not a forecast.';
+  assert.deepEqual(reactionWords(line), { n: 24, sizes: ['Nasdaq 0.41 percent', 'euro dollar 0.18 percent', '10y yield 4.2 basis points'] });
+  const now = Date.UTC(2026, 10, 20, 7, 15);
+  const day = { events: [{ rank: 3, ms: now + 6 * 3600e3, hm: '13:30', short: 'US CPI m/m', forecast: '0.3%', previous: '0.2%', line }, { rank: 3, ms: now + 2 * 3600e3, hm: '09:30', short: 'UK Retail Sales', forecast: null, previous: '-0.4%' }, { rank: 3, ms: now - 3600e3, hm: '06:15', short: 'CH GDP', actual: '0.1%' }].sort((a, b) => a.ms - b.ms) };
+  assert.equal(outlookScript(day, now), 'On the calendar today, London time. At 09:30, UK Retail Sales, last time minus 0.4 percent. At 13:30, US CPI m/m: expected 0.3 percent, after 0.2 percent last time. On past US CPI m/m days, 24 of them, the first half hour typically moved Nasdaq 0.41 percent, euro dollar 0.18 percent and 10y yield 4.2 basis points, either way.');
+  assert.match(outlookScript({ events: [] }, now), /quiet calendar/);
 });
