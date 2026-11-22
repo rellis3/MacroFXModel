@@ -2,9 +2,11 @@
 // Input is the daily-close panel /api/corr-terminal serves. Everything here DESCRIBES how markets moved together over a trailing window of daily returns;
 // a correlation is a description of the past window, not a relationship that persists, and nothing here forecasts anything.
 import { spokenName } from './jarvisNames.js';
-import { series, matrix, changes, labelOf } from './corrMath.js';
+import { series, matrix, labelOf, retOf, corrWin, sdWin } from './corrMath.js';
 
 export const WINDOW = 60, DEFAULT_THR = 0.5, MAX_LINKS = 260;
+/** The time scrub: window lengths offered, the step between scrub dates (5 trading days = a week), and the look-back for "the biggest change" (~3 months). */
+export const WINDOWS = [20, 60, 120], STEP_DAYS = 5, CHANGE_BACK = 63;
 /** The clusters drawn as halos. A market in none of them is its own loose node. */
 export const CLUSTERS = [
   { id: 'eq', name: 'Equity indices', ids: ['NQ', 'SPX500', 'US30', 'US2000'] },
@@ -27,12 +29,12 @@ export const rng = seed => { let a = seed >>> 0; return () => { a = (a + 0x6d2b7
  * so tightly correlated markets are pulled together and negatively correlated ones are pushed apart (stress minimisation by gradient steps, cooling step size).
  * A missing correlation (null) exerts no pull, only a weak repulsion. Deterministic for a given seed. Returns a Float32Array of n*3 positions, centred and scaled to radius 1.
  */
-export function forceLayout(m, { iters = 400, seed = 7 } = {}) {
-  const n = m.length, P = new Float32Array(n * 3), r = rng(seed);
-  for (let i = 0; i < n * 3; i++) P[i] = r() - 0.5;
-  const F = new Float32Array(n * 3);
+export function forceLayout(m, { iters = 400, seed = 7, init = null } = {}) {
+  const n = m.length, P = new Float32Array(n * 3), r = rng(seed), warm = init && init.length === n * 3 && Array.prototype.every.call(init, Number.isFinite);
+  if (warm) P.set(init); else for (let i = 0; i < n * 3; i++) P[i] = r() - 0.5;     // warm start: begin from the previous arrangement, so nodes move rather than jump
+  const F = new Float32Array(n * 3), hot = warm ? 0.1 : 0.25;
   for (let it = 0; it < iters; it++) {
-    const step = 0.25 * (1 - it / iters) + 0.01; F.fill(0);
+    const step = hot * (1 - it / iters) + 0.01; F.fill(0);
     for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
       let dx = P[i * 3] - P[j * 3], dy = P[i * 3 + 1] - P[j * 3 + 1], dz = P[i * 3 + 2] - P[j * 3 + 2], d = Math.hypot(dx, dy, dz);
       if (d < 1e-6) { dx = r() - 0.5; dy = r() - 0.5; dz = r() - 0.5; d = Math.hypot(dx, dy, dz) + 1e-6; }
@@ -48,6 +50,10 @@ export function forceLayout(m, { iters = 400, seed = 7 } = {}) {
   for (let i = 0; i < n * 3; i++) P[i] /= mx;
   return P;
 }
+/** Warm-started layout: few, cooler iterations from the previous positions. The cloud keeps its orientation, so a changed matrix reads as nodes gliding. */
+export const relayout = (m, prev, { iters = 140, seed = 7 } = {}) => forceLayout(m, { iters, seed, init: prev });
+/** Mean distance a node moved between two layouts (same node order). */
+export function meanShift(A, B) { const n = Math.min(A.length, B.length) / 3 | 0; if (!n) return null; let s = 0; for (let i = 0; i < n; i++) s += Math.hypot(A[i * 3] - B[i * 3], A[i * 3 + 1] - B[i * 3 + 1], A[i * 3 + 2] - B[i * 3 + 2]); return s / n; }
 
 /** How well the layout kept the correlation distances: the Pearson correlation between layout distance and correlation distance over all pairs (1 = perfect). */
 export function layoutFit(P, m) {
@@ -83,9 +89,97 @@ export function partners(ids, m, i, top = 3) {
   return { pos: row.filter(x => x.r > 0).sort((a, b) => b.r - a.r).slice(0, top), neg: row.filter(x => x.r < 0).sort((a, b) => a.r - b.r).slice(0, top) };
 }
 
+// ── the time scrub: point-in-time windows ──
+// Every matrix below is built from returns on days <= its end index only (corrWin reads (end - w, end]), so a scrubbed date never sees a later day.
+
+/** Each id's daily log returns as a Float64Array, NaN where missing. Built once; every window reads these. */
+export function returnsOf(S, ids) { return ids.map(id => { const r = retOf(S, id) ?? [], out = new Float64Array(S.n).fill(NaN); for (let i = 0; i < S.n; i++) { const v = r[i]; if (v != null && Number.isFinite(v)) out[i] = v; } return out; }); }
+
+/** The scrub dates as end indices, ascending: the last day, then every `every` trading days back, while a full window of `w` days still fits. */
+export function scrubSteps(n, w = WINDOW, every = STEP_DAYS) { const out = []; for (let e = n - 1; e >= w; e -= every) out.push(e); return out.reverse(); }
+
+/** Index of pair (i, j), i < j, in the packed upper triangle of an n-market matrix. */
+export const triIx = (n, i, j) => (i < j ? i * (2 * n - i - 1) / 2 + (j - i - 1) : j * (2 * n - j - 1) / 2 + (i - j - 1));
+/** The window-w correlation of every pair ending on day `end` (pairwise-complete days, null -> NaN when too thin), packed upper triangle. */
+export function triAt(R, end, w) {
+  const n = R.length, t = new Float32Array(n * (n - 1) / 2); let k = 0;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const c = corrWin(R[i], R[j], end, w); t[k++] = c == null ? NaN : c; }
+  return t;
+}
+/** A packed triangle as the n x n matrix the layout uses (1 on the diagonal, null where unknown). */
+export function toMatrix(tri, n) {
+  const m = Array.from({ length: n }, (_, i) => { const row = new Array(n).fill(null); row[i] = 1; return row; }); let k = 0;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { const v = tri[k++]; m[i][j] = m[j][i] = Number.isFinite(v) ? v : null; }
+  return m;
+}
+
+/** A cache of every scrub step's matrix for one window length, filled a few steps at a time (latest first) so the HUD never freezes. */
+export const makeScan = (R, steps, w) => ({ R, steps, w, tri: new Array(steps.length).fill(null), left: steps.length, next: steps.length - 1, done: !steps.length });
+/** Compute up to `k` more steps; returns true when the whole history is cached. Also fills one specific step first when asked (the one on screen). */
+export function scanSome(scan, k = 4, want = -1) {
+  if (want >= 0 && want < scan.steps.length && !scan.tri[want]) { scan.tri[want] = triAt(scan.R, scan.steps[want], scan.w); scan.left--; k--; }
+  while (k > 0 && scan.next >= 0) { const s = scan.next--; if (!scan.tri[s]) { scan.tri[s] = triAt(scan.R, scan.steps[s], scan.w); scan.left--; k--; } }
+  scan.done = scan.left <= 0; return scan.done;
+}
+/** One step's packed matrix, computing it now if the background scan has not reached it. */
+export function triOf(scan, s) { if (!scan.tri[s]) { scan.tri[s] = triAt(scan.R, scan.steps[s], scan.w); scan.left--; scan.done = scan.left <= 0; } return scan.tri[s]; }
+/** One pair's correlation at every cached step (NaN where not computed yet or too thin): the strip chart. */
+export function pairPath(scan, i, j) { const n = scan.R.length, k = triIx(n, i, j), out = new Float32Array(scan.steps.length).fill(NaN); scan.tri.forEach((t, s) => { if (t) out[s] = t[k]; }); return out; }
+
 /**
- * The whole model from the corr-terminal body: { ids, labels, m, P (layout), fit, window, asOf, S (the returns), tight, hi, lo, moved } or null when the panel is missing or too short.
- * hi / lo = the tightest and the most opposed pair now; moved = the pair whose 20-day correlation moved most against its 120-day level.
+ * The headline pair for the strip: the pair whose correlation swung the most (max - min) across the scrub history, leaving out FX pairs that share a currency
+ * (partly arithmetic). Needs at least half the steps known. { a, b, i, j, lo, hi, range } or null.
+ */
+export function swingPair(scan, ids) {
+  const n = ids.length; let best = null; const need = Math.max(3, scan.steps.length / 2);
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    if (sharesCurrency(ids[i], ids[j])) continue;
+    const k = triIx(n, i, j); let lo = Infinity, hi = -Infinity, c = 0;
+    for (const t of scan.tri) { const v = t?.[k]; if (Number.isFinite(v)) { c++; if (v < lo) lo = v; if (v > hi) hi = v; } }
+    if (c >= need && (!best || hi - lo > best.range)) best = { a: ids[i], b: ids[j], i, j, lo, hi, range: hi - lo };
+  }
+  return best;
+}
+
+/** The pair whose window-w correlation changed most between `back` trading days ago and `end` (shared-currency FX pairs left out). Point-in-time at `end`. */
+export function biggestChange(R, ids, { w = WINDOW, end = (R[0]?.length ?? 0) - 1, back = CHANGE_BACK } = {}) {
+  const then = end - back; if (then < w) return null;
+  const A = triAt(R, end, w), B = triAt(R, then, w), n = ids.length; let best = null, k = 0;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++, k++) {
+    const now = A[k], was = B[k]; if (!Number.isFinite(now) || !Number.isFinite(was) || sharesCurrency(ids[i], ids[j])) continue;
+    if (!best || Math.abs(now - was) > Math.abs(best.delta)) best = { a: ids[i], b: ids[j], now, then: was, delta: now - was, end, from: then };
+  }
+  return best;
+}
+
+/** How big each market's move was on day `end` against its own spread over the `look` days before it (point-in-time): { id: { move (%), ratio, size 0..1, tone } }. */
+export const FULL_AT = 3, QUIET_BELOW = 0.5;
+export function dayMoves(R, ids, end, look = 60) {
+  const out = {};
+  ids.forEach((id, i) => { const x = R[i], v = x?.[end]; if (!Number.isFinite(v) || end < 2) return; const sd = sdWin(x, end - 1, look); if (!(sd > 0)) return; const ratio = Math.abs(v) / sd; out[id] = { move: v * 100, ratio, size: Math.min(1, ratio / FULL_AT), tone: ratio < QUIET_BELOW ? 'quiet' : v >= 0 ? 'up' : 'dn' }; });
+  return out;
+}
+
+/** The extremes of one matrix: hi = tightest pair, lo = most opposed (with the shared-currency flag). */
+export function extremes(ids, m) {
+  let hi = null, lo = null;
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+    const r = m[i][j]; if (!Number.isFinite(r)) continue;
+    if (!hi || r > hi.r) hi = { a: ids[i], b: ids[j], r, shared: sharesCurrency(ids[i], ids[j]) };
+    if (!lo || r < lo.r) lo = { a: ids[i], b: ids[j], r, shared: sharesCurrency(ids[i], ids[j]) };
+  }
+  return { hi, lo };
+}
+
+/** The picture at one scrub step: { s, end, date, m, P (warm-started from prev), fit, hi, lo, tight }. */
+export function stepState(net, scan, s, prevP = null) {
+  const m = toMatrix(triOf(scan, s), net.ids.length), P = prevP ? relayout(m, prevP) : forceLayout(m), end = scan.steps[s];
+  return { s, end, date: net.dates[end], w: scan.w, m, P, fit: layoutFit(P, m), ...extremes(net.ids, m), tight: clusterTightness(net.ids, m) };
+}
+
+/**
+ * The whole model from the corr-terminal body: { ids, labels, m, P (layout), fit, window, asOf, S (the returns), R, dates, tight, hi, lo, change } or null when the panel is missing or too short.
+ * hi / lo = the tightest and the most opposed pair now; change = the pair whose correlation changed most over the last ~3 months (CHANGE_BACK days).
  */
 export function buildNet(resp, { w = WINDOW, seed = 7 } = {}) {
   const panel = resp?.ok === false ? null : resp?.panel ?? resp; if (!panel?.syms?.length || !panel?.dates?.length || !panel.closes) return null;
@@ -93,15 +187,8 @@ export function buildNet(resp, { w = WINDOW, seed = 7 } = {}) {
   const ids = S.ids.filter(k => S.ret[k]?.some(v => v != null));
   if (ids.length < 6) return null;
   const { m } = matrix(S, ids, w);
-  const P = forceLayout(m, { seed });
-  let hi = null, lo = null;
-  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
-    const r = m[i][j]; if (!Number.isFinite(r)) continue;
-    if (!hi || r > hi.r) hi = { a: ids[i], b: ids[j], r, shared: sharesCurrency(ids[i], ids[j]) };
-    if (!lo || r < lo.r) lo = { a: ids[i], b: ids[j], r, shared: sharesCurrency(ids[i], ids[j]) };
-  }
-  const moved = changes(S, ids, { w: 20, base: 120, top: 1 })[0] ?? null;
-  return { ids, labels: Object.fromEntries(ids.map(k => [k, labelOf(k)])), m, P, fit: layoutFit(P, m), window: w, asOf: S.dates[S.n - 1], S, tight: clusterTightness(ids, m), hi, lo, moved };
+  const P = forceLayout(m, { seed }), R = returnsOf(S, ids);
+  return { ids, labels: Object.fromEntries(ids.map(k => [k, labelOf(k)])), m, P, fit: layoutFit(P, m), window: w, asOf: S.dates[S.n - 1], S, R, dates: S.dates, tight: clusterTightness(ids, m), ...extremes(ids, m), change: biggestChange(R, ids, { w }) };
 }
 
 const f2 = v => (v >= 0 ? '' : 'minus ') + Math.abs(v).toFixed(2);
@@ -113,7 +200,7 @@ export function netScript(net) {
   s.push(`The tightest pair is ${pairName(net, net.hi.a, net.hi.b)}, at ${f2(net.hi.r)}${net.hi.shared ? ', though they share a currency, so part of that is arithmetic' : ''}.`);
   s.push(`The most opposed pair is ${pairName(net, net.lo.a, net.lo.b)}, at ${f2(net.lo.r)}${net.lo.shared ? ', again partly arithmetic' : ''}.`);
   const t = net.tight[0]; if (t) s.push(`The most tightly bound group is ${t.name.toLowerCase()}, averaging ${f2(t.mean)} inside the group.`);
-  const mv = net.moved; if (mv && Math.abs(mv.delta) >= 0.15) s.push(`The biggest recent change is ${pairName(net, mv.a, mv.b)}: ${f2(mv.now)} over twenty days against ${f2(mv.base)} over a hundred and twenty.`);
+  const mv = net.change; if (mv && Math.abs(mv.delta) >= 0.15) s.push(`Over the last three months the biggest change is ${pairName(net, mv.a, mv.b)}, from ${f2(mv.then)} to ${f2(mv.now)}${Math.sign(mv.then) !== Math.sign(mv.now) && Math.abs(mv.then) >= 0.2 && Math.abs(mv.now) >= 0.2 ? ', a change of sign' : ''}.`);
   s.push('This describes how these markets moved together in the past. It is not a relationship that persists, and it is not a forecast.');
   return s.join(' ');
 }
