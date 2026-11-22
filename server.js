@@ -8714,7 +8714,9 @@ app.get('/api/desk-cot-history', async (req, res) => {
     for (const [sym, s] of Object.entries(all)) {
       if (!s?.dates?.length || !s?.specShare?.length) continue;
       const n = Math.min(weeks, s.dates.length);
-      out[sym] = { label: s.label ?? sym, dates: s.dates.slice(-n), specShare: s.specShare.slice(-n) };
+      out[sym] = { label: s.label ?? sym, dates: s.dates.slice(-n), specShare: s.specShare.slice(-n),
+        // asset managers' net share, only where the contract reports it (financial futures); Jarvis's POSITIONING TERRAIN draws it as a second sheet
+        ...(Array.isArray(s.amShare) && s.amShare.some(v => v != null) ? { amShare: s.amShare.slice(-n) } : {}) };
     }
     res.json({ ok: Object.keys(out).length > 0, series: out, error: Object.keys(out).length ? null : 'no COT series cached yet' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
