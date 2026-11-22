@@ -12,7 +12,9 @@ import { candleRows, candleLayout, candleBox, boardSummary, ROWS as CD_ROWS } fr
 import { EXTRA, loadModules, viewsOf } from './jarvisModules.js';
 import { SECTIONS, COMPANION, labelOf, itemsFor, activeSection } from './jarvisNav.js';
 import { shortLabel } from './chainBoard.js';
-import { glDisposeAll } from './jarvisGL.js';
+import { glDisposeAll, glInstance } from './jarvisGL.js';
+import { GLOBE_HOLO, drawGlobeOverlay } from './jarvisGlobeHolo.js';
+import { globeFrame } from './jarvisGlobeHoloCore.js';
 import { makeNeuralVoice, KOKORO_VOICES, ENGINES } from './jarvisVoiceClient.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -82,7 +84,7 @@ const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-ind
 #${ID}.jv-compact button{font-size:10px;padding:4px 9px}
 #${ID}.jv-compact .jv-reg{left:0;transform:none;width:100%;justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding:0 12px;box-sizing:border-box}
 #${ID}.jv-compact .jv-pane,#${ID}.jv-compact .jv-card{left:10px;right:10px;width:auto;bottom:74px;max-height:50vh}#${ID}.jv-compact .jv-pane{top:calc(var(--jvtop,62px) + 6px);max-height:none}
-#${ID}.jv-compact .jv-scrub{left:10px;right:10px;bottom:10px;padding:5px 8px;gap:6px}#${ID}.jv-compact .jv-scrub #${ID}-sd,#${ID}.jv-compact .jv-foot{display:none}
+#${ID}.jv-compact .jv-scrub{left:10px;right:10px;bottom:10px;padding:5px 8px;gap:6px}#${ID}.jv-noscrub .jv-scrub{display:none}#${ID} .jv-scrubt{display:none}#${ID}.jv-compact .jv-scrubt{display:inline-block}#${ID}.jv-compact .jv-scrub:not(.open){left:auto;right:10px;padding:3px}#${ID}.jv-compact .jv-scrub:not(.open)>:not(.jv-scrubt){display:none}#${ID}.jv-compact .jv-scrub #${ID}-sd,#${ID}.jv-compact .jv-foot{display:none}
 #${ID}.jv-compact .jv-cap{padding:50px 14px 88px}#${ID}.jv-compact .jv-cap .x{font-size:15px;line-height:1.45}#${ID}.jv-compact .jv-cap .t{font-size:10px;letter-spacing:.3em;margin-bottom:6px}
 #${ID}.jv-compact .jv-cine{bottom:8px;width:calc(100vw - 16px);flex-wrap:wrap;justify-content:center;gap:5px}#${ID}.jv-compact .jv-cinexit{right:10px;top:10px;font-size:10px}
 #${ID}.jv-compact .jv-br{width:20px;height:20px}
@@ -109,7 +111,7 @@ export async function openJarvis(win = window) {
 <div class="jv-menu" id="${ID}-menu"><span class="jv-mh">SECTIONS</span><div class="jv-nav" id="${ID}-nav"></div><span class="jv-mh">TIME WINDOW</span><span id="${ID}-win"></span><span class="jv-mh">OPTIONS</span><span id="${ID}-opts">
 <button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-nv" aria-pressed="${prefs.neural !== false}" title="A natural neural voice from the server (ElevenLabs with a key, else a free British neural voice). Off = the browser's built-in voice">NATURAL VOICE</button><select id="${ID}-veng" title="Which natural voice: Kokoro runs in your browser (open source, free; first use downloads ~90 MB), SERVER uses ElevenLabs when a key is set, else a free neural voice">${ENGINES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select><select id="${ID}-vkv" title="Kokoro voice">${KOKORO_VOICES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Jarvis, ..." (microphone, this tab only)'>HEY JARVIS</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Jarvis keeps watching">DOCK ▾</button><button type="button" id="${ID}-off" title="Switch Jarvis off">OFF ✕</button></span><span id="${ID}-mods" hidden></span><span id="${ID}-view" hidden></span></div></div>
 <div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-cine" id="${ID}-cine"><button type="button" data-c="prev" title="Back one scene (left arrow)">⏮ BACK</button><button type="button" data-c="pause" id="${ID}-cpause" title="Pause or resume (space)">⏸ PAUSE</button><button type="button" data-c="next" title="Skip this scene (right arrow)">SKIP ⏭</button><button type="button" data-c="slow" title="Slower (minus)">−</button><span id="${ID}-crate">1.0×</span><button type="button" data-c="fast" title="Faster (plus)">+</button></div><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div>
-<div class="jv-scrub" id="${ID}-scrub"><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button><button type="button" id="${ID}-expl" title="Describe what was going on around this day (one model call)">EXPLAIN THIS DAY</button></div>
+<div class="jv-scrub" id="${ID}-scrub"><button type="button" class="jv-scrubt" id="${ID}-scrubt" aria-expanded="false" title="Replay the chain through past sessions">⏱ TIME</button><button type="button" id="${ID}-play" title="Replay the last 60 sessions">▶ PLAY</button><input type="range" id="${ID}-sl" min="0" max="0" value="0" aria-label="Session to show"><span id="${ID}-sd" class="jv-sub" style="min-width:150px;text-align:right">LATEST</span><button type="button" id="${ID}-now">LATEST</button><button type="button" id="${ID}-expl" title="Describe what was going on around this day (one model call)">EXPLAIN THIS DAY</button></div>
 <div class="jv-foot">drag to turn · wheel to zoom · click a market · Esc docks · none of this is a forecast</div>`;
   doc.body.appendChild(root);
   const dock = doc.createElement('div'); dock.id = `${ID}-dock`; dock.hidden = true; doc.body.appendChild(dock);
@@ -134,7 +136,8 @@ export async function openJarvis(win = window) {
     root.classList.toggle('jv-clean', e.chrome === 'clean'); root.classList.toggle('jv-noscan', e.scan === false);
     cv.classList.remove('jv-sw'); void cv.offsetWidth; cv.classList.add('jv-sw');
   }
-  const setCamAll = () => { applyEnv(); try { const b = $('view').querySelector(`[data-v="${st.view}"]`); $('cur').textContent = (b?.textContent ?? st.view).toUpperCase(); } catch (e) { /* label only */ } setCam(); $('reg').hidden = st.view !== 'globe'; if (extraViews[st.view]) { Object.assign(st, { yaw: 0.35, pitch: -0.45, zoom: 1 }); try { extraViews[st.view].onEnter?.(xapi); } catch (e) { /* a view must never break the HUD */ } } if (st.view === 'candles') { Object.assign(st, { yaw: 0.3, pitch: -0.5, zoom: 1 }); st.cdTarget = { x: 0, z: 0 }; st.cdCam = { x: 0, z: 0 }; ensureCandles(); } };
+  const SCRUB_VIEWS = new Set(['globe', 'skyline', 'orbit', 'bubbles', 'reactor', 'chainfly']);
+  const setCamAll = () => { root.classList.toggle('jv-noscrub', !SCRUB_VIEWS.has(st.view)); applyEnv(); try { const b = $('view').querySelector(`[data-v="${st.view}"]`); $('cur').textContent = (b?.textContent ?? st.view).toUpperCase(); } catch (e) { /* label only */ } setCam(); $('reg').hidden = st.view !== 'globe'; if (extraViews[st.view]) { Object.assign(st, { yaw: 0.35, pitch: -0.45, zoom: 1 }); try { extraViews[st.view].onEnter?.(xapi); } catch (e) { /* a view must never break the HUD */ } } if (st.view === 'candles') { Object.assign(st, { yaw: 0.3, pitch: -0.5, zoom: 1 }); st.cdTarget = { x: 0, z: 0 }; st.cdCam = { x: 0, z: 0 }; ensureCandles(); } };
   async function ensureCandles(force = false) {
     if (!force && st.cd && Date.now() - st.cd.at < 60_000) return st.cd;
     if (st.cdBusy) return st.cdBusy;
@@ -172,9 +175,13 @@ export async function openJarvis(win = window) {
   }
 
   // ── sound: tiny WebAudio blips (free, no files) ──
-  let ac = null;
+  let ac = null, bus = null, tap = null;
+  // ONE audio bus for everything Jarvis plays (sound effects, the natural voice): it goes to the speakers AND to a tap a recorder can read, so a recording
+  // (RECORD AS VIDEO, the laptop's daily broadcast job) gets the sound straight from the page: no "share tab audio" tick, no sound device needed.
+  const audioCtx = () => { ac ??= new (win.AudioContext || win.webkitAudioContext)(); if (!bus) { bus = ac.createGain(); bus.connect(ac.destination); tap = ac.createMediaStreamDestination(); bus.connect(tap); } return ac; };
+  const busIn = () => { audioCtx(); return bus; };
   const blip = (f = 660, d = 0.08, type = 'sine', g = 0.03, at = 0) => {
-    if (!st.sound) return; try { ac ??= new (win.AudioContext || win.webkitAudioContext)(); const o = ac.createOscillator(), v = ac.createGain(), t = ac.currentTime + at; o.type = type; o.frequency.setValueAtTime(f, t); v.gain.setValueAtTime(g, t); v.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(v); v.connect(ac.destination); o.start(t); o.stop(t + d + 0.02); } catch (e) { /* no audio */ }
+    if (!st.sound) return; try { audioCtx(); const o = ac.createOscillator(), v = ac.createGain(), t = ac.currentTime + at; o.type = type; o.frequency.setValueAtTime(f, t); v.gain.setValueAtTime(g, t); v.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(v); v.connect(busIn()); o.start(t); o.stop(t + d + 0.02); } catch (e) { /* no audio */ }
   };
   // ambience and whooshes for the SHOW: a low drone with a slow swell and a breath of filtered noise, and a swept-noise whoosh on a scene change (all WebAudio, no files)
   let amb = null;
@@ -183,19 +190,19 @@ export async function openJarvis(win = window) {
     ambient(on) {
       try {
         if (!on) { if (amb) { const a = amb; amb = null; a.g.gain.cancelScheduledValues(ac.currentTime); a.g.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 1.2); win.setTimeout(() => { try { a.nodes.forEach(n => n.stop?.()); } catch (e) { /* done */ } }, 1400); } return; }
-        if (!st.sound || amb) return; ac ??= new (win.AudioContext || win.webkitAudioContext)();
+        if (!st.sound || amb) return; audioCtx();
         const g = ac.createGain(), lp = ac.createBiquadFilter(), o1 = ac.createOscillator(), o2 = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), nz = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();
         o1.type = 'sine'; o1.frequency.value = 55; o2.type = 'triangle'; o2.frequency.value = 82.6; lp.type = 'lowpass'; lp.frequency.value = 420; lfo.frequency.value = 0.12; lg.gain.value = 0.012; lfo.connect(lg); lg.connect(g.gain);
         nz.buffer = noiseBuf(); nz.loop = true; nf.type = 'bandpass'; nf.frequency.value = 260; ng.gain.value = 0.008; nz.connect(nf); nf.connect(ng); ng.connect(g);
-        o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(ac.destination); g.gain.setValueAtTime(0.0001, ac.currentTime); g.gain.linearRampToValueAtTime(0.045, ac.currentTime + 3);
+        o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(busIn()); g.gain.setValueAtTime(0.0001, ac.currentTime); g.gain.linearRampToValueAtTime(0.045, ac.currentTime + 3);
         [o1, o2, lfo, nz].forEach(n => n.start()); amb = { g, nodes: [o1, o2, lfo, nz] };
       } catch (e) { /* no audio */ }
     },
     whoosh() {
       if (!st.sound) return; try {
-        ac ??= new (win.AudioContext || win.webkitAudioContext)(); const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        audioCtx(); const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
         s.buffer = noiseBuf(); f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(220, t); f.frequency.exponentialRampToValueAtTime(2600, t + 0.45); f.frequency.exponentialRampToValueAtTime(300, t + 1.0);
-        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07, t + 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.05); s.connect(f); f.connect(g); g.connect(ac.destination); s.start(t); s.stop(t + 1.1);
+        g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.07, t + 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.05); s.connect(f); f.connect(g); g.connect(busIn()); s.start(t); s.stop(t + 1.1);
       } catch (e) { /* no audio */ }
     },
   };
@@ -205,7 +212,8 @@ export async function openJarvis(win = window) {
   // ── voice out (the browser's own synthesis; the best British male on offer) ──
   let voice = null; const loadVoice = () => { voice = pickVoice(win.speechSynthesis?.getVoices?.() ?? []); }; loadVoice(); win.speechSynthesis?.addEventListener?.('voiceschanged', loadVoice);
   // the NATURAL voice (server MP3: ElevenLabs with a key, else Microsoft's free British neural voice) leads; the browser's own synthesis is the fallback
-  const neural = makeNeuralVoice(win); st.neural = prefs.neural !== false;
+  const audioBus = () => { try { audioCtx(); return { ctx: ac, input: bus, stream: tap.stream }; } catch (e) { return null; } };
+  const neural = makeNeuralVoice(win, audioBus); st.neural = prefs.neural !== false;
   const builtIn = (t, rate, onEnd) => { const u = new win.SpeechSynthesisUtterance(String(t).slice(0, 1200)); if (voice) u.voice = voice; u.lang = voice?.lang ?? 'en-GB'; u.rate = 1.02 * rate; u.pitch = 0.82; if (onEnd) { u.onend = onEnd; u.onerror = onEnd; } win.speechSynthesis.speak(u); };
   let sayCtl = null;
   const say = (t, force = false) => {
@@ -381,8 +389,9 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
     const it = e.target.closest('button[data-i]'); if (it) { goNav(it.dataset.k, it.dataset.i); return; }
     if (e.target.closest('button[data-side]')) { const comp = COMPANION[st.view]; if (comp) { const open = st.mod === comp; lsPut({ side: !open }); setMod(open ? 'chain' : comp); } }
   };
-  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), voicePrefetch: t => voicePrefetch(t), voiceInfo: () => neural.info(), voiceBegin: () => neural.begin(), voiceLabel: () => (st.voice ? (st.neural ? neural.label() : 'built-in voice') : 'voice off'), caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
+  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), voicePrefetch: t => voicePrefetch(t), voiceInfo: () => neural.info(), voiceBegin: () => neural.begin(), audioBus: () => audioBus(), voiceLabel: () => (st.voice ? (st.neural ? neural.label() : 'built-in voice') : 'voice off'), caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
     globeTo: (lat, lon, zoom = 1) => { Object.assign(st.gl, { tlat: lat, tlon: lon, tzoom: zoom }); st.spin = false; }, flyTo: (x, z) => { st.cdTarget = { x, z }; }, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
+  win.__jarvisApi = xapi;          // the laptop's daily broadcast job (jarvis_broadcast/record_broadcast.py) drives Jarvis through this; the page is owner-only
   loadModules().then(list => {
     win.setTimeout(fitTop, 0);
     for (const v of viewsOf()) { if (!$('view').querySelector(`[data-v="${v.id}"]`)) $('view').insertAdjacentHTML('beforeend', ` <button type="button" data-v="${esc(v.id)}" aria-pressed="${v.id === st.view}">${esc(v.label)}</button>`); extraViews[v.id] = v; }
@@ -424,6 +433,8 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
     if (busy) return; busy = true;
     try { const r = await loadAt(st.win, date); if (r) { setGraph(r.graph, r.sum); if (st.mod === 'radar') R.radar(); if (st.sel) showCard(); } } finally { busy = false; }
   }
+  // the time scrub replays the CHAIN, so it shows only on the chain pictures; on a phone it folds into a small TIME pill (it used to cover the bottom of every view)
+  $('scrubt').onclick = e => { const sc = $('scrub'), open = !sc.classList.contains('open'); sc.classList.toggle('open', open); e.currentTarget.setAttribute('aria-expanded', String(open)); blip(640, 0.05); };
   $('sl').oninput = e => { stopPlay(); scrubTo(+e.target.value); };
   $('now').onclick = () => { stopPlay(); scrubTo(st.dates.length - 1); };
   $('expl').onclick = () => { stopPlay(); setMod('explain'); };
@@ -509,9 +520,38 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
     }
   }
 
+  // the WORLD MAP globe: a WebGL hologram (jarvisGlobeHolo.js) under crisp 2D labels; the old 2D drawing (drawGlobe2D) stays as the fallback when WebGL is missing or still loading
+  const NULLCTX = { save() {}, restore() {}, fillText() {}, measureText: () => ({ width: 0 }) };
+  const bars = { at: -9, top: 110, bottom: 80, bg: 'black', legend: 300, hud: [] };
+  function measureBars(t) {      // the free band between the top bar (and region buttons) and the bottom scrub bar, read once a second
+    if (t - bars.at < 1) return; bars.at = t;
+    try {
+      const rr = root.getBoundingClientRect(), reg = $('reg'), sc = $('scrub'), tp = root.querySelector('.jv-top');
+      let top = (tp?.getBoundingClientRect().bottom ?? rr.top + 62) - rr.top; if (reg && !reg.hidden) top = Math.max(top, reg.getBoundingClientRect().bottom - rr.top);
+      const sb = sc && sc.style.display !== 'none' ? rr.bottom - sc.getBoundingClientRect().top : 24;
+      bars.top = top + 8; bars.bottom = sb + (st.compact ? 24 : 10);      // phone: the key line sits above the scrub bar
+      const hud = $('hud'), hb = hud && hud.offsetHeight && !root.classList.contains('jv-clean') ? hud.getBoundingClientRect() : null; bars.legend = hb ? hb.bottom - rr.top + 22 : top + 30; bars.hud = hb ? [{ x: hb.left - rr.left, y: hb.top - rr.top, w: hb.width, h: hb.height }] : [];
+      bars.bg = win.getComputedStyle(doc.documentElement).getPropertyValue('--bg1').trim() || 'black';
+    } catch (e) { /* layout only */ }
+  }
+  const cardBox = () => { const c = $('card'); if (c.hidden) return []; try { const rr = root.getBoundingClientRect(), b = c.getBoundingClientRect(); return [{ x: b.left - rr.left, y: b.top - rr.top, w: b.width, h: b.height }]; } catch (e) { return []; } };
   function drawGlobe(t, fade, dt) {
     const g = st.gl; g.tzoom = Math.max(0.8, Math.min(5, g.tzoom)); if (st.spin && !st.drag) { g.tlon += dt * 4; g.lon += dt * 4; }
     let dl = ((g.tlon - g.lon + 540) % 360) - 180; g.lon += dl * Math.min(1, dt * 3); g.lat += (g.tlat - g.lat) * Math.min(1, dt * 3); g.zoom += (g.tzoom - g.zoom) * Math.min(1, dt * 3);
+    const gg = { t, dt, fade, W: st.w, H: st.h, compact: st.compact, C };
+    if (!glInstance('globe-holo')) { try { GLOBE_HOLO.draw(NULLCTX, gg, xapi); } catch (e) { /* the 2D globe carries on */ } return drawGlobe2D(t, fade); }
+    measureBars(t);
+    const { X, Y, Rg } = globeFrame({ w: st.w, h: st.h, top: bars.top, bottom: bars.bottom, compact: st.compact, panel: st.mod !== 'chain', zoom: g.zoom }), ctr = { lat: g.lat, lon: g.lon };
+    const P = (vec, h = 0) => { const p = globeProject(vec, ctr, h); return { x: X + p.x * Rg, y: Y - p.y * Rg, z: p.z }; };
+    gg.globe = { X, Y, Rg, lat: g.lat, lon: g.lon, zoom: g.zoom, graph: st.graph, disp: st.disp, sel: st.sel };
+    GLOBE_HOLO.draw(ctx, gg, xapi);
+    if (!glInstance('globe-holo')) return drawGlobe2D(t, fade);       // the hologram stopped this frame: fall back at once
+    drawGlobeOverlay(ctx, { P, X, Y, Rg, zoom: g.zoom, graph: st.graph, disp: st.disp, sel: st.sel, compact: st.compact, fade, t, C, W: st.w, H: st.h, top: bars.top, bottom: bars.bottom, bg: bars.bg,
+      hit: (key, x, y) => st.proj.push({ key, sx: x, sy: y }), key: !root.classList.contains('jv-cinema') && !root.classList.contains('jv-booting'), legendY: bars.legend, obstacles: [...bars.hud, ...cardBox()] });
+    for (const m of EXTRA) { try { m.drawGlobe?.(ctx, { P, X, Y, Rg, ctr, t, fade, zoom: g.zoom, compact: st.compact }, xapi); } catch (e) { /* a layer must never stop the frame */ } }
+  }
+  function drawGlobe2D(t, fade) {
+    const g = st.gl;
     const Rg = Math.min(st.w * 0.5, st.h) * 0.4 * g.zoom, X = st.w / 2 - (st.mod === 'chain' ? 0 : st.w * 0.1), Y = st.h / 2 + 8, ctr = { lat: g.lat, lon: g.lon };
     const P = (vec, h = 0) => { const p = globeProject(vec, ctr, h); return { x: X + p.x * Rg, y: Y - p.y * Rg, z: p.z }; };
     // the sea, a rim of light and a faint atmosphere
@@ -693,7 +733,7 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
     undock() { if (!st.docked) return; st.docked = false; root.hidden = false; dock.hidden = true; last = performance.now(); resize(); raf = win.requestAnimationFrame(frame); blip(760, 0.06); },
     off() {
       if (!open) return; open = null; stopPlay(); win.cancelAnimationFrame(raf); win.clearInterval(wTimer); win.clearInterval(mTimer); bootTimers.forEach(t => win.clearTimeout(t)); setWake(false);
-      win.removeEventListener('resize', resize); doc.removeEventListener('keydown', onKey, true); win.speechSynthesis?.cancel(); st.speakStop?.(); neural.stopAll(); try { glDisposeAll(); } catch (e) { /* gone */ } root.remove(); dock.remove();
+      win.removeEventListener('resize', resize); doc.removeEventListener('keydown', onKey, true); win.speechSynthesis?.cancel(); st.speakStop?.(); neural.stopAll(); if (win.__jarvisApi === xapi) win.__jarvisApi = null; try { glDisposeAll(); } catch (e) { /* gone */ } root.remove(); dock.remove();
     },
   };
   const CINE_KEYS = { ' ': 'pause', ArrowRight: 'next', ArrowLeft: 'prev', '+': 'fast', '=': 'fast', '-': 'slow', n: 'next', p: 'prev' };

@@ -45886,6 +45886,8 @@ app.get('/api/services', (req, res) => {
       m1Loads: { active: _m1LoadStats.active(), waiting: _m1LoadStats.waiting(), peakWaiting: _m1LoadStats.peakWaiting, total: _m1LoadStats.total },
       workers: [..._liveWorkers.values()].map(x => ({ file: x.label, ageSec: Math.round((Date.now() - x.since) / 1000), maxOldMb: x.maxOldMb })),
       trace: _memTrace,
+      kvBig: kv.kvBigReads(),
+      bootProfile: _bootProfile,
       mappings: _memShots.list,
       sampledAt: new Date().toISOString(),
       note: 'This process only, not the container total (start.sh bots run as separate OS processes with their own RSS Railway meters separately). '
@@ -47579,6 +47581,40 @@ function _memTracePush(m = process.memoryUsage()) {
   if ((jump || cp) && _memShots.list.length < 6) { if (cp) { if (up > 600_000) _memShots.cp2 = true; else _memShots.cp1 = true; } try { _memShots.list.push({ t: _memTrace.at(-1).t, rssMB: mb(m.rss), why: jump ? `+${mb(m.rss - prev.rss * 1048576)} MB since the last sample` : 'checkpoint', top: _topMappings(8) }); } catch (e) { /* diagnostic only */ } }
 }
 const _memShots = { list: [], cp1: false, cp2: false };
+
+// ── Boot profile (2026-11-22, diagnostic): the server's first ~240 s of CPU time, by second, so the 3 GB memory jump at ~40 s boot can be matched to the function running at that moment. Node's built-in
+// profiler (inspector), sampled every 2 ms; the answer is in /api/services -> memory.bootProfile. Runs once per boot, then stops. Linux only (Railway); skipped when BOOT_PROFILE=0. ──
+const _bootProfile = { state: 'off', seconds: [], top: [] };
+if (process.platform === 'linux' && process.env.BOOT_PROFILE !== '0') {
+  import('node:inspector').then(({ default: insp }) => {
+    const ses = new insp.Session(); ses.connect();
+    const post = (m, p) => new Promise((res, rej) => ses.post(m, p ?? {}, (e, r) => e ? rej(e) : res(r)));
+    post('Profiler.enable').then(() => post('Profiler.setSamplingInterval', { interval: 2000 })).then(() => post('Profiler.start')).then(() => {
+      _bootProfile.state = 'running';
+      const t0 = Date.now();
+      const stop = setTimeout(async () => {
+        try {
+          const { profile } = await post('Profiler.stop');
+          const byId = new Map(profile.nodes.map(n => [n.id, n])), parent = new Map();
+          for (const n of profile.nodes) for (const c of n.children ?? []) parent.set(c, n.id);
+          const label = n => { const f = n.callFrame; return `${f.functionName || '(anon)'} ${String(f.url).split('/').slice(-2).join('/')}:${f.lineNumber + 1}`; };
+          const chainOf = id => { const out = []; for (let q = parent.get(id), k = 0; q && k < 6; q = parent.get(q), k++) { const n = byId.get(q); if (n && n.callFrame.functionName !== '(root)') out.push(label(n)); } return out; };
+          const self = new Map(), perSec = new Map(); let at = 0;
+          profile.samples.forEach((id, i) => {
+            const dt = (profile.timeDeltas[i] ?? 0) / 1000; at += dt;                       // ms since the profile started
+            const n = byId.get(id); if (!n || n.callFrame.functionName === '(idle)') return;
+            self.set(id, (self.get(id) ?? 0) + dt);
+            const s = Math.floor(at / 1000), m = perSec.get(s) ?? new Map(); m.set(id, (m.get(id) ?? 0) + dt); perSec.set(s, m);
+          });
+          const startWall = Date.now() - at;
+          _bootProfile.top = [...self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([id, ms]) => ({ ms: Math.round(ms), fn: label(byId.get(id)), chain: chainOf(id) }));
+          _bootProfile.seconds = [...perSec.entries()].sort((a, b) => a[0] - b[0]).map(([s, m]) => ({ t: new Date(startWall + s * 1000).toISOString().slice(11, 19), busyMs: Math.round([...m.values()].reduce((x, y) => x + y, 0)), top: [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, ms]) => ({ ms: Math.round(ms), fn: label(byId.get(id)), chain: chainOf(id).slice(0, 4) })) })).filter(x => x.busyMs > 250);
+          _bootProfile.state = 'done'; ses.disconnect();
+        } catch (e) { _bootProfile.state = 'error: ' + e.message; }
+      }, 240_000); stop.unref?.();
+    }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
+  }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
+}
 // every second for the first 90 s (where the boot jump happens, so it can be matched to the jobs running at that second), every 5 s after, until 10 min
 { let n = 0; const fast = setInterval(() => { const up = Date.now() - _serverBootedAt; if (up > 600_000) { clearInterval(fast); return; } if (up < 90_000 || ++n % 5 === 0) _memTracePush(); }, 1000); fast.unref?.(); }
 

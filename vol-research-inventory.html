@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vol Research Inventory</title>
+<!--
+  Volatility, forecasting, exhaustion and trade-management research inventory (2026-11-22).
+  Read-only consolidation of results already banked in the repo. Content: scripts/vol-research-inventory/inventory.mjs.
+  Data: analysis/output/vol-research-inventory/inventory.json, built (and every quoted proof verified against its
+  source file) by `node scripts/vol-research-inventory/build.mjs`.
+-->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/index.css">
+<style>
+#app { padding:0 20px 70px; max-width:1240px; margin:0 auto; }
+.topbar { padding-top:16px; }
+.lead { font-size:14px;color:var(--text2);line-height:1.65;max-width:900px;margin:0 0 6px; }
+.stamp { font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin:6px 0 0; }
+.stamp a { color:var(--blue); }
+.h2 { font-size:18px;font-weight:700;margin:34px 0 4px;scroll-margin-top:16px; }
+.h2sub { font-size:12.5px;color:var(--text3);margin:0 0 12px; }
+.tiles { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:18px 0 6px; }
+.tile { background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px; }
+.tile .tk { font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace; }
+.tile .tv { font-size:21px;font-weight:700;font-family:'DM Mono',monospace;margin-top:3px; }
+.tile .td { font-size:11.5px;color:var(--text2);margin-top:3px;line-height:1.4; }
+.callout { background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:var(--r);padding:13px 16px;margin:12px 0;font-size:13.5px;line-height:1.65; }
+.callout.amber { border-left-color:var(--amber); }
+.callout.green { border-left-color:var(--green); }
+.callout .ct { font-weight:700;margin-bottom:4px; }
+.method { margin:8px 0 0 18px;font-size:13px;color:var(--text2);line-height:1.7; }
+/* filters */
+.filters { display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:14px 0 4px;position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5; }
+.chip { border:1.5px solid var(--border);background:var(--s1);border-radius:20px;padding:4px 11px;font-size:11.5px;cursor:pointer;color:var(--text2);font-family:'DM Sans',sans-serif; }
+.chip.on { border-color:var(--blue);color:var(--blue);font-weight:600; }
+.chip .n { font-family:'DM Mono',monospace;margin-left:4px;opacity:.75; }
+.search { flex:1;min-width:160px;max-width:280px;border:1.5px solid var(--border);background:var(--s1);color:var(--text);border-radius:20px;padding:5px 12px;font-size:12px;font-family:'DM Sans',sans-serif; }
+.toc { display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 0; }
+.toc a { font-size:12px;color:var(--text2);text-decoration:none;border-bottom:1px dotted var(--border2); }
+.toc a:hover { color:var(--blue); }
+/* table */
+.card { background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);overflow:hidden; }
+.scroll { overflow-x:auto; }
+table.inv { width:100%;border-collapse:collapse;font-size:12.8px;min-width:900px; }
+table.inv th { text-align:left;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);font-family:'DM Mono',monospace;padding:9px 10px;border-bottom:1px solid var(--border);background:var(--s2);font-weight:600; }
+table.inv td { padding:10px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5;color:var(--text); }
+table.inv td.area { width:15%;font-weight:600; }
+table.inv td.area .q { display:inline-block;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--blue);border:1px solid var(--border);border-radius:5px;padding:0 6px;margin-bottom:4px;font-weight:600; }
+table.inv td.work { width:16%;color:var(--text2); }
+table.inv td.work .cls { display:block;margin-top:6px;font-size:10.5px;font-family:'DM Mono',monospace;color:var(--text3); }
+table.inv td.res { width:35%; }
+table.inv td.rem { width:20%;color:var(--text2); }
+table.inv td.st { width:10%;white-space:nowrap; }
+tr.proofrow td { background:var(--s2);padding:10px 14px 12px; }
+.badge { display:inline-block;font-size:10.5px;font-weight:600;border-radius:5px;padding:2px 7px;border:1px solid; }
+.b-Complete { color:var(--green);background:var(--green-bg);border-color:var(--green-bd); }
+.b-Partially { color:var(--blue);background:var(--blue-bg);border-color:var(--blue-bd); }
+.b-Needs { color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd); }
+.b-Not { color:var(--red);background:var(--red-bg);border-color:var(--red-bd); }
+.b-Inconclusive { color:var(--purple);background:var(--purple-bg);border-color:var(--purple-bd); }
+.pbtn { margin-top:8px;display:inline-flex;align-items:center;gap:4px;font-size:11px;border:1px solid var(--border);background:var(--s1);color:var(--text2);border-radius:5px;padding:2px 8px;cursor:pointer;font-family:'DM Mono',monospace; }
+.pbtn:hover { border-color:var(--blue);color:var(--blue); }
+.proof { margin:0 0 9px; }
+.proof:last-child { margin-bottom:0; }
+.proof .src { font-family:'DM Mono',monospace;font-size:11px; }
+.proof .src a { color:var(--blue);text-decoration:none; }
+.proof .src a:hover { text-decoration:underline; }
+.proof .ok { color:var(--green);font-weight:700;margin-right:5px; }
+.proof q { display:block;quotes:none;font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text);background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:5px;padding:6px 9px;margin-top:3px;white-space:pre-wrap;word-break:break-word; }
+.callout .proofs { margin-top:10px; }
+.hidden { display:none !important; }
+/* status bar */
+.sbar { display:flex;height:12px;border-radius:6px;overflow:hidden;margin:12px 0 6px;border:1px solid var(--border); }
+.sbar span { display:block;height:100%; }
+.legend { display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--text2); }
+.legend i { display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px; }
+/* lists */
+ol.top, ul.plain { margin:8px 0 0 22px;font-size:13.5px;line-height:1.6; }
+ol.top li, ul.plain li { margin-bottom:8px; }
+ol.top li b { display:block; }
+ol.top li span, .conf span { color:var(--text2); }
+.conf { background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;margin:0 0 8px;font-size:13.3px;line-height:1.6; }
+.conf b { display:block;margin-bottom:2px; }
+.next { background:var(--green-bg);border:1.5px solid var(--green-bd);border-radius:var(--rl);padding:16px 18px;margin-top:10px; }
+.next .nq { font-size:16px;font-weight:700;line-height:1.45;margin-bottom:8px; }
+.next .nw { font-size:13.5px;color:var(--text2);line-height:1.6; }
+pre.cmd { font-family:'DM Mono',monospace;font-size:12px;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:9px 12px;overflow-x:auto;margin:8px 0; }
+.err { color:var(--red);font-family:'DM Mono',monospace;font-size:12.5px;padding:20px 0; }
+@media (max-width:640px){ #app{padding:0 16px 60px;} .tile .tv{font-size:18px;} }
+</style>
+</head>
+<body>
+<script>try{var t=localStorage.getItem('vri_theme');if(t==='dark'||(!t&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.body.classList.add('dark');}catch(e){}</script>
+<div id="app">
+  <div class="topbar">
+    <div class="logo-box"><svg viewBox="0 0 16 16"><path d="M2 13h12M4 10l3-4 3 2 4-5"/></svg></div>
+    <div class="title-block">
+      <div class="title">Vol, Exhaustion &amp; Trade-Management Research Inventory</div>
+      <div class="sub">What we already know · what was tested · what remains · with proof</div>
+    </div>
+    <div style="flex:1"></div>
+    <button class="dark-btn" id="themeBtn" onclick="toggleTheme()">◐ Theme</button>
+    <a href="vol-research-book.html" style="text-decoration:none"><button class="dark-btn">📖 Vol Research Book</button></a>
+    <a href="index.html" style="text-decoration:none"><button class="dark-btn">← Home</button></a>
+  </div>
+
+  <div id="root"><div class="stamp">Loading…</div></div>
+</div>
+
+<script>
+const DATA_URL = 'analysis/output/vol-research-inventory/inventory.json';
+let D = null, statusFilter = 'All', query = '';
+
+function toggleTheme(){
+  const dark = document.body.classList.toggle('dark');
+  try { localStorage.setItem('vri_theme', dark ? 'dark' : 'light'); } catch(e) {}
+}
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const badgeCls = s => 'b-' + s.split(' ')[0];
+const STATUS_VAR = { 'Complete':'--green', 'Partially complete':'--blue', 'Needs validation':'--amber', 'Not investigated':'--red', 'Inconclusive':'--purple' };
+const gh = (p) => `https://github.com/${D.repo}/blob/${D.commit}/${p.file.split('/').map(encodeURIComponent).join('/')}#L${p.line}`;
+
+function proofHtml(list){
+  return list.map(p => `<div class="proof"><div class="src"><span class="ok" title="Verified: this exact line exists in the file">✓</span><a href="${gh(p)}" target="_blank" rel="noopener">${esc(p.file)}:${p.line}</a></div><q>${esc(p.text)}</q></div>`).join('');
+}
+
+function render(){
+  const rows = D.sections.flatMap(s => s.rows);
+  const counts = Object.fromEntries(D.statuses.map(s => [s, rows.filter(r => r.status === s).length]));
+  const total = rows.length;
+  const builtAt = new Date(D.built);
+  let h = '';
+
+  h += `<p class="lead">This page consolidates every piece of volatility, range-forecast, exhaustion, VWAP and trade-management research already in the repo. It maps each study to the 30 questions in the research brief (the C.OG forecaster principles plus Jordan's guidance). It is an inventory, not a new study: nothing was re-run to build it.</p>`;
+  h += `<p class="lead"><b>Why you can trust it:</b> every finding carries its proof, the exact line from the results file it came from, linked to that line on GitHub at a fixed commit. A build script checks each quote against its file and refuses to build if any is missing. Press <b>Proof</b> on any row to see them.</p>`;
+  h += `<div class="stamp">${D.proofCount} quotes verified across ${D.sourceCount} source files · built ${builtAt.toISOString().slice(0,16).replace('T',' ')} UTC · commit <a href="https://github.com/${D.repo}/tree/${D.commit}" target="_blank" rel="noopener">${D.commit.slice(0,9)}</a> · scope: ${esc(D.meta.scope)}</div>`;
+
+  h += `<div class="tiles">${D.keyFacts.map(k => `<div class="tile"><div class="tk">${esc(k.k)}</div><div class="tv">${esc(k.v)}</div><div class="td">${esc(k.d)}</div></div>`).join('')}</div>`;
+
+  h += `<div class="callout amber"><div class="ct">In flight in another session: <code>${esc(D.inFlight.slug)}</code></div>${esc(D.inFlight.text)}<div class="proofs">${proofHtml(D.inFlight.proof)}</div></div>`;
+  h += `<div class="callout"><div class="ct">${esc(D.clarification.title)}</div>${esc(D.clarification.text)}<div class="proofs">${proofHtml(D.clarification.proof)}</div></div>`;
+
+  h += `<div class="h2" id="method">How this was done</div><ul class="method">${D.meta.method.map(m => `<li>${esc(m)}</li>`).join('')}</ul>`;
+  h += `<div class="h2sub" style="margin-top:10px">Evidence classes used for prior work: completed and validated · completed but only exploratory · implemented but not properly evaluated · partially completed · not yet investigated. Negative results are kept.</div>`;
+
+  // status overview
+  h += `<div class="h2" id="overview">Status overview</div><div class="h2sub">${total} research areas across ${D.sections.length} themes</div>`;
+  h += `<div class="sbar">${D.statuses.map(s => counts[s] ? `<span style="width:${100*counts[s]/total}%;background:var(${STATUS_VAR[s]})" title="${s}: ${counts[s]}"></span>` : '').join('')}</div>`;
+  h += `<div class="legend">${D.statuses.map(s => `<span><i style="background:var(${STATUS_VAR[s]})"></i>${s} ${counts[s]}</span>`).join('')}</div>`;
+
+  // inventory
+  h += `<div class="h2" id="inventory">Research inventory</div><div class="h2sub">Research area · existing work · evidence/result · remaining question · status. Q-numbers refer to the brief.</div>`;
+  h += `<div class="toc">${D.sections.map(s => `<a href="#sec-${s.id}">${esc(s.title)}</a>`).join(' · ')} · <a href="#top5">Top 5 open</a> · <a href="#norepeat">Don't repeat</a> · <a href="#conflicts">Conflicts</a> · <a href="#next">Next question</a> · <a href="#verify">Verify</a></div>`;
+  h += `<div class="filters"><button class="chip ${statusFilter==='All'?'on':''}" data-st="All">All<span class="n">${total}</span></button>${D.statuses.map(s => `<button class="chip ${statusFilter===s?'on':''}" data-st="${s}">${s}<span class="n">${counts[s]}</span></button>`).join('')}<input class="search" id="q" placeholder="Search (e.g. VWAP, MFE, OC)…" value="${esc(query)}"><button class="chip" id="expandAll">Show all proofs</button></div>`;
+
+  D.sections.forEach(s => {
+    h += `<div class="h2" id="sec-${s.id}" style="font-size:15.5px;margin-top:22px">${esc(s.title)}</div>`;
+    h += `<div class="card"><div class="scroll"><table class="inv"><thead><tr><th>Research area</th><th>Existing work</th><th>Evidence / result</th><th>Remaining question</th><th>Status</th></tr></thead><tbody>`;
+    s.rows.forEach((r, i) => {
+      const id = `${s.id}-${i}`;
+      const hay = [r.q, r.area, r.work, r.result, r.remaining, r.status, r.cls].join(' ').toLowerCase();
+      h += `<tr class="row" data-id="${id}" data-st="${esc(r.status)}" data-hay="${esc(hay)}">
+        <td class="area"><span class="q">${esc(r.q)}</span><br>${esc(r.area)}</td>
+        <td class="work">${esc(r.work)}<span class="cls">Prior work: ${esc(r.cls)}</span></td>
+        <td class="res">${esc(r.result)}<br><button class="pbtn" data-p="${id}">▸ Proof (${r.proof.length})</button></td>
+        <td class="rem">${esc(r.remaining)}</td>
+        <td class="st"><span class="badge ${badgeCls(r.status)}">${esc(r.status)}</span></td></tr>
+        <tr class="proofrow hidden" id="p-${id}" data-st="${esc(r.status)}" data-hay="${esc(hay)}"><td colspan="5">${proofHtml(r.proof)}</td></tr>`;
+    });
+    h += `</tbody></table></div></div>`;
+  });
+
+  h += `<div class="h2" id="top5">1 · The five most important unanswered questions</div><ol class="top">${D.top5.map(t => `<li><b>${esc(t.t)}</b><span>${esc(t.d)}</span></li>`).join('')}</ol>`;
+  h += `<div class="h2" id="norepeat">2 · Research that should not be repeated</div><div class="h2sub">Each is banked with a result; see the matching row above for its proof.</div><ul class="plain">${D.dontRepeat.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`;
+  h += `<div class="h2" id="conflicts">3 · Conflicting findings and assumptions</div>${D.conflicts.map(c => `<div class="conf"><b>${esc(c.t)}</b><span>${esc(c.d)}</span></div>`).join('')}`;
+  h += `<div class="callout"><div class="ct">Proof for the two older positives that were never re-tested</div><div class="proofs">${proofHtml(D.conflictProof)}</div></div>`;
+  h += `<div class="h2" id="next">4 · The single most logical next research question</div><div class="next"><div class="nq">${esc(D.next.q)}</div><div class="nw">${esc(D.next.why)}</div></div>`;
+
+  h += `<div class="h2" id="verify">Check it yourself</div><div class="h2sub">The page's content lives in <code>scripts/vol-research-inventory/inventory.mjs</code>. Rebuilding re-checks every quote against its file and fails loudly if a source has changed:</div><pre class="cmd">node scripts/vol-research-inventory/build.mjs</pre><div class="h2sub">Each ✓ link opens the cited line on GitHub at commit ${D.commit.slice(0,9)}, so the quote can be read in its full context, with the study's sample, method and caveats around it.</div>`;
+
+  document.getElementById('root').innerHTML = h;
+  bind();
+  applyFilter();
+}
+
+function applyFilter(){
+  const q = query.trim().toLowerCase();
+  document.querySelectorAll('tr.row').forEach(tr => {
+    const show = (statusFilter === 'All' || tr.dataset.st === statusFilter) && (!q || tr.dataset.hay.includes(q));
+    tr.classList.toggle('hidden', !show);
+    const pr = document.getElementById('p-' + tr.dataset.id);
+    if (!show) pr.classList.add('hidden'); else if (pr.dataset.open === '1') pr.classList.remove('hidden');
+  });
+  document.querySelectorAll('.card').forEach(card => {
+    const any = card.querySelector('tr.row:not(.hidden)');
+    card.classList.toggle('hidden', !any);
+    const h = card.previousElementSibling; if (h && h.classList.contains('h2')) h.classList.toggle('hidden', !any);
+  });
+}
+
+function bind(){
+  document.querySelectorAll('.chip[data-st]').forEach(b => b.onclick = () => {
+    statusFilter = b.dataset.st;
+    document.querySelectorAll('.chip[data-st]').forEach(x => x.classList.toggle('on', x === b));
+    applyFilter();
+  });
+  document.getElementById('q').oninput = e => { query = e.target.value; applyFilter(); };
+  document.querySelectorAll('.pbtn').forEach(b => b.onclick = () => {
+    const pr = document.getElementById('p-' + b.dataset.p);
+    const open = pr.dataset.open !== '1';
+    pr.dataset.open = open ? '1' : '0';
+    pr.classList.toggle('hidden', !open);
+    b.textContent = (open ? '▾' : '▸') + b.textContent.slice(1);
+  });
+  const ex = document.getElementById('expandAll');
+  ex.onclick = () => {
+    const open = ex.textContent.startsWith('Show');
+    document.querySelectorAll('tr.proofrow').forEach(pr => { pr.dataset.open = open ? '1' : '0'; });
+    document.querySelectorAll('.pbtn').forEach(b => { b.textContent = (open ? '▾' : '▸') + b.textContent.slice(1); });
+    ex.textContent = open ? 'Hide all proofs' : 'Show all proofs';
+    applyFilter();
+  };
+}
+
+fetch(DATA_URL, { cache: 'no-cache' })
+  .then(r => { if (!r.ok) throw new Error(r.status + ' ' + r.statusText); return r.json(); })
+  .then(d => { D = d; render(); })
+  .catch(e => { document.getElementById('root').innerHTML = `<div class="err">Could not load ${DATA_URL}: ${esc(e.message)}. Run <code>node scripts/vol-research-inventory/build.mjs</code>, and open the page through the server (not file://).</div>`; });
+</script>
+</body>
+</html>
