@@ -83,6 +83,7 @@ against our code; where his code shows the failure mode, the note says so. That 
 | "What profitable traders do" as evidence (prop-firm payout traders average RR < 1.5, so take 1:1; "big people ask about drawdown") | Survivorship: the population is selected on the outcome, and RR trades off against win rate at a fixed edge. Only EV net of cost against a placebo counts (#27) | Colez Trades (Max Cole) |
 | "Adding to a winner risks nothing, only unrealised gains" | Unrealised profit is money; an add is a new position at today's price with its own risk. Zero-EV on a no-drift entry; on a drifting book it is trend following, judged as such | Colez Trades (Max Cole) |
 | Synthetic demos as evidence (planted crises, puts that know the crisis, flat-vol "arbitrage") | Synthetic data is a known-answer check only (#1), never evidence of an edge | QG diversification vs hedging, tail risk, IV surface, covered call |
+| A single clean chart where price returns to a zone and rejects, shown as the proof of a setup | One example selects itself. The test is the distribution over every such zone against matched zones with no such property (#1); stacked descriptors (low volume node, single prints, delta) must first be checked for overlap, since two of them are likely one measurement | Darius FX |
 
 ## For the owner's own learning (not research rules)
 
