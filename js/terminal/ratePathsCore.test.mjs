@@ -1,7 +1,7 @@
 // Tests for js/terminal/ratePathsCore.js (RATE PATHS hologram): parsing the real API shapes (/api/cb-expectations, /api/fed-path, /api/cb-path/boe),
 // the strip solvers, sorting, the scale cap, label placement and the spoken line. Run: node js/terminal/ratePathsCore.test.mjs
 import assert from 'node:assert/strict';
-import { buildLanes, stripSteps3m, stripSteps1m, stepWords, heightOf, scaleOf, windowDates, monthTicks, placeLabels, ratePathsScript, dateLabel, depthOf } from './ratePathsCore.js';
+import { buildLanes, stripSteps3m, stripSteps1m, stepWords, heightOf, scaleOf, windowDates, monthTicks, placeLabels, ratePathsScript, dateLabel, depthOf, showAct } from './ratePathsCore.js';
 
 const DAY = 864e5, NOW = Date.parse('2026-11-20T12:00:00Z');
 let n = 0; const t = (name, fn) => { fn(); n++; };
@@ -133,5 +133,16 @@ t('the spoken line: biggest easer and tightener, the next meetings of the bigges
   assert.ok(s.split(/(?<=\.)\s/).length <= 4, s);
   assert.equal(ratePathsScript({ lanes: [] }), null); assert.equal(ratePathsScript(null), null);
 });
+
+// the SHOW camera plan: overview, then the most-easing lane, then the most-tightening lane
+{
+  const L = [{ ccy: 'USD', totalBp: -63 }, { ccy: 'EUR', totalBp: 14 }, { ccy: 'JPY', totalBp: 48 }];
+  assert.equal(showAct(0.1, L).act, 'overview');
+  assert.deepEqual([showAct(0.3, L).ccy, showAct(0.95, L).ccy], ['USD', 'JPY']);
+  assert.ok(showAct(0.21, L).k < 0.05 && showAct(0.59, L).k > 0.95, 'each lane act runs 0 -> 1');
+  assert.equal(showAct(0.9, [{ ccy: 'USD', totalBp: -63 }, { ccy: 'GBP', totalBp: -10 }]).ccy, 'USD', 'all easing: one lane, the biggest');
+  assert.equal(showAct(0.5, []).act, 'overview'); assert.equal(showAct(NaN, L).act, 'overview');
+  n++;
+}
 
 console.log(`ratePathsCore: ${n} tests passed`);

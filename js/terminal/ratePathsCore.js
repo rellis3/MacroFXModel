@@ -241,3 +241,18 @@ export function ratePathsScript(model) {
   s.push('That is market pricing, a description and not a forecast.');
   return s.join(' ');
 }
+
+/**
+ * The SHOW's camera plan for this view, by progress p (0..1): a short overview, then a low flight down the side of the lane with the most
+ * easing priced, then the lane with the most tightening priced (one lane when only one has a path, or both ends price the same way).
+ * lanes = model.lanes ({ ccy, totalBp }). Returns { act: 'overview' | 'lane', ccy?, k (0..1 along the act) }.
+ */
+export function showAct(p, lanes) {
+  const x = Math.max(0, Math.min(1, Number(p) || 0)), L = (lanes ?? []).filter(l => l && Number.isFinite(l.totalBp));
+  const OV = 0.2; if (!L.length || x < OV) return { act: 'overview', k: L.length ? x / OV : x };
+  const ease = q => { const c = Math.max(0, Math.min(1, q)); return c * c * (3 - 2 * c); };
+  const lo = L.reduce((a, b) => (b.totalBp < a.totalBp ? b : a)), hi = L.reduce((a, b) => (b.totalBp > a.totalBp ? b : a));
+  const two = lo !== hi && lo.totalBp < 0 && hi.totalBp > 0, pick = two ? [lo, hi] : [Math.abs(lo.totalBp) >= Math.abs(hi.totalBp) ? lo : hi];
+  const span = (1 - OV) / pick.length, i = Math.min(pick.length - 1, Math.floor((x - OV) / span));
+  return { act: 'lane', ccy: pick[i].ccy, k: ease((x - OV - i * span) / span) };
+}

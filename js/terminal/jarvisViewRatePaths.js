@@ -20,7 +20,7 @@
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView } from './jarvisGL.js';
-import { buildLanes, heightOf, depthOf, monthTicks, placeLabels, stepWords, bpText, dateLabel, ratePathsScript } from './ratePathsCore.js';
+import { buildLanes, heightOf, depthOf, monthTicks, placeLabels, stepWords, bpText, dateLabel, ratePathsScript, showAct } from './ratePathsCore.js';
 import { FOMC_MEETINGS } from '../fomcCalendar.js';
 import { ECB_MEETINGS } from '../ecbCalendar.js';
 import { BOE_MEETINGS } from '../boeCalendar.js';
@@ -132,16 +132,20 @@ function setup(L, H, api) {
       }
       // the camera: an overview that glides across the lanes, or a flight along the focused lane
       const fw = (field.xr - field.xl) + SP * 2.2, fit = aspect < 1 ? Math.max(14, fw * 1.3 / aspect) : Math.max(14, fw * 1.25 / Math.min(1.5, aspect));
+      // in the SHOW the picture follows the script: an overview, then down to the side of the lane with the most easing priced, then the most tightening
+      const act = show ? showAct(S.showP, M.lanes) : null;
+      if (act?.act === 'lane') { if (S.focus !== act.ccy) { S.focus = act.ccy; S.focusT = t; } S.showFocus = true; }
+      else if (S.showFocus) { S.focus = null; S.showFocus = false; }
       const fr = S.focus ? recs.find(r => r.ln.ccy === S.focus) : null;
       if (fr) {
-        // fly along the lane from its head to its far end over ~10 s, seen from the side and above so the steps read as a staircase profile
-        const ft = t - S.focusT, k = H.calm ? 0.5 : 0.5 - 0.5 * Math.cos(Math.min(1, ft / 10) * Math.PI), zc = -1 - k * DEPTH * 0.6, ph = aspect < 1;
-        const side = (ph ? 9 : 7) / (st.zoom || 1), up = clamp(1.7 - (st.pitch + 0.45) * 3, 0.3, 6);
+        // fly along the lane from its head to its far end (~10 s, or with the narration in the SHOW), low and from the side so the steps read as a staircase profile
+        const ft = t - S.focusT, k = act?.act === 'lane' ? act.k : H.calm ? 0.5 : 0.5 - 0.5 * Math.cos(Math.min(1, ft / 10) * Math.PI), zc = -1 - k * DEPTH * 0.6, ph = aspect < 1;
+        const side = (ph ? 9 : act ? 6.2 : 7) / (st.zoom || 1), up = act ? 0.9 + 0.5 * Math.sin(k * Math.PI) : clamp(1.7 - (st.pitch + 0.45) * 3, 0.3, 6);
         cam.wp.set(fr.x + side, up, zc + (ph ? 3 : 2)); cam.wt.set(fr.x, -0.3, zc - 1.5);
       } else {
         const z = st.zoom || 1, elev = clamp((aspect < 1 ? 0.8 : 0.62) - (st.pitch + 0.45) * 0.8, 0.12, 1.3), glide = H.calm ? 0 : Math.sin(t * 0.11) * (aspect < 1 ? 0.03 : 0.06);
         let yaw = (st.yaw - 0.35) + glide, tx = 0;
-        if (show) { const p = clamp(S.showP, 0, 1), e = p * p * (3 - 2 * p); tx = field.xl + (field.xr - field.xl) * e; yaw = -0.32 + 0.64 * e; }
+        if (show) { const e = act?.k ?? 0; tx = field.xl + (field.xr - field.xl) * e; yaw = -0.32 + 0.64 * e; }
         const d = fit / z, tz = -DEPTH * 0.42;
         cam.wt.set(tx * (show ? 0.8 : 0), -1.5, tz); cam.wp.set(cam.wt.x + d * Math.cos(elev) * Math.sin(yaw), cam.wt.y + d * Math.sin(elev), tz + d * Math.cos(elev) * Math.cos(yaw));
       }
@@ -316,7 +320,7 @@ registerShowScene({
   build: (inp, data) => {
     const M = data ?? S.model, text = M ? ratePathsScript(M) : null; if (!text) return null;
     return { title: 'Rate paths', view: ID, cam: null, text,
-      enter: api => { S.focus = null; S.showP = 0; S.showAt = Date.now(); Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); },
+      enter: api => { S.focus = null; S.showFocus = false; S.showP = 0; S.showAt = Date.now(); Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); },
       motion: (api, p) => { S.showP = clamp(p, 0, 1); S.showAt = Date.now(); } };
   },
 });

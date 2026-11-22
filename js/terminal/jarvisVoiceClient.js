@@ -3,10 +3,18 @@
 //                     voices bm_george (default), bm_daniel, bm_lewis, bm_fable. First use downloads the model (~90 MB, then cached). Lines are rendered ahead of the narration.
 //   SERVER:           POST /api/jarvis/voice (ElevenLabs when the server has a key, else Microsoft's free British neural voice).
 // Every clip plays through an <audio> element, so it reaches a tab recording (SHOW / BROADCAST -> RECORD). Clips are cached per line; any failure falls through to the next engine.
+// A ROBOT FINISH (FX_LEVELS: human / a little robotic (default) / full robot) runs the clip through the HUD's audio context: a ring modulator and a short metallic comb. Recorded with the tab like the rest.
 // The words are whatever is already on screen; nothing is generated here. Description only.
 
 const MAX_CLIPS = 80, LS = 'jarvisVoice:v1';
 export const KOKORO_VOICES = [['bm_george', 'GEORGE'], ['bm_daniel', 'DANIEL'], ['bm_lewis', 'LEWIS'], ['bm_fable', 'FABLE']];
+/** The robot finish on the voice: off, a light machine edge (default), or a full synthetic voice. */
+export const FX_LEVELS = [['off', 'HUMAN'], ['subtle', 'A LITTLE ROBOTIC'], ['full', 'FULL ROBOT']];
+/** The settings of each level: ring-modulator carrier (Hz) and mix, metallic comb delay (ms), feedback and mix, the dry level. Pure data (tested). */
+export const FX_PARAMS = {
+  subtle: { ringHz: 48, ring: 0.22, combMs: 7, fb: 0.32, comb: 0.18, dry: 0.85 },
+  full: { ringHz: 78, ring: 0.5, combMs: 11, fb: 0.5, comb: 0.34, dry: 0.5 },
+};
 export const ENGINES = [['kokoro', 'KOKORO (open source, in browser)'], ['server', 'SERVER (ElevenLabs / free neural)']];
 const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { return {}; } };
 const lsPut = o => { try { localStorage.setItem(LS, JSON.stringify({ ...lsGet(), ...o })); } catch (e) { /* private window */ } };
@@ -74,7 +82,7 @@ function kokoroEngine(win) {
 }
 
 /** The voice for one Jarvis window: { prefetch(text), play(text, rate, onEnd) -> Promise<ctl|null>, slow(), warm(), info(), stopAll(), engine/setEngine, kvoice/setKvoice }. */
-export function makeNeuralVoice(win) {
+export function makeNeuralVoice(win, { audioCtx } = {}) {
   const server = serverEngine(win), kokoro = kokoroEngine(win);
   let audio = null;
   const engine = () => lsGet().engine || 'kokoro';
@@ -93,11 +101,26 @@ export function makeNeuralVoice(win) {
     }
     const u = await server.fetch(text); return u ? { u, by: 'server' } : null;
   }
+  const fxLevel = () => (FX_PARAMS[lsGet().fx ?? 'subtle'] ? (lsGet().fx ?? 'subtle') : 'off');
+  /** Route a clip through the robot finish. Only when the HUD's audio context is running (else the clip plays plain: a suspended context would make it silent). Returns a cleanup. */
+  async function robot(a) {
+    const P = FX_PARAMS[fxLevel()]; if (!P || !audioCtx) return () => {};
+    try {
+      const ac = audioCtx(); if (!ac) return () => {}; if (ac.state !== 'running') await ac.resume().catch(() => {}); if (ac.state !== 'running') return () => {};
+      const src = ac.createMediaElementSource(a), out = ac.createGain(), hp = ac.createBiquadFilter();
+      hp.type = 'highpass'; hp.frequency.value = 110; out.connect(hp); hp.connect(ac.destination);
+      const dry = ac.createGain(); dry.gain.value = P.dry; src.connect(dry); dry.connect(out);
+      const ring = ac.createGain(), rmix = ac.createGain(), osc = ac.createOscillator(); ring.gain.value = 0; osc.type = 'sine'; osc.frequency.value = P.ringHz; osc.connect(ring.gain); src.connect(ring); ring.connect(rmix); rmix.gain.value = P.ring; rmix.connect(out); osc.start();
+      const dl = ac.createDelay(0.05), fb = ac.createGain(), cmix = ac.createGain(); dl.delayTime.value = P.combMs / 1000; fb.gain.value = P.fb; cmix.gain.value = P.comb; src.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(cmix); cmix.connect(out);
+      return () => { try { osc.stop(); } catch (e) { /* stopped */ } win.setTimeout(() => { try { out.disconnect(); hp.disconnect(); } catch (e) { /* gone */ } }, 400); };
+    } catch (e) { return () => {}; }
+  }
   async function play(text, rate = 1, onEnd = () => {}) {
     const c = await clip(text); if (!c) return null;
     try { audio?.pause(); } catch (e) { /* idle */ }
     const a = new win.Audio(c.u); audio = a; a.playbackRate = Math.max(0.5, Math.min(2, rate || 1)); a.preservesPitch = true;
-    let ended = false; const end = () => { if (!ended) { ended = true; onEnd(); } };
+    const unfx = await robot(a);
+    let ended = false; const end = () => { if (!ended) { ended = true; unfx(); onEnd(); } };
     a.onended = end; a.onerror = end;
     try { await a.play(); } catch (e) { return null; }
     return { by: c.by, stop() { try { a.pause(); } catch (e) { /* idle */ } end(); }, pause(on) { try { on ? a.pause() : a.play(); } catch (e) { /* idle */ } }, setRate(r) { a.playbackRate = Math.max(0.5, Math.min(2, r || 1)); } };
@@ -113,6 +136,7 @@ export function makeNeuralVoice(win) {
     /** One line for a status bar: which voice is speaking, and Kokoro's download progress while it warms up. */
     label() { const k = kokoro.info(); if (engine() !== 'kokoro') return 'server voice'; if (k.broken) return 'server voice (Kokoro could not start here)'; if (!k.ready) return `server voice while Kokoro downloads${k.loading ? ` (${Math.round(k.loading * 100)}%)` : ''}`; return lock === 'server' ? 'server voice this time (Kokoro is ready for the next run)' : 'Kokoro'; },
     stopAll() { try { audio?.pause(); } catch (e) { /* idle */ } },
+    fx: fxLevel, setFx: v => lsPut({ fx: v }),
     engine, setEngine: e => lsPut({ engine: e }), kvoice: () => lsGet().kvoice || 'bm_george', setKvoice: v => lsPut({ kvoice: v }),
   };
 }
