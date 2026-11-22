@@ -85,3 +85,9 @@ a winner is never chosen on its test year; calibration guard so a QLIKE pick can
 - Otherwise: the leaderboard still names the QLIKE-best model per line, kept as a graded candidate.
 
 ## Amendments
+
+### A1 — 2026-11-22, PRE-RESULTS (nothing scored): first scored year
+QLIKE needs the walk-forward scale c (fitted on 2018 … Y−1), so 2019 is the first year with a QLIKE value, and a
+QLIKE-based pick needs at least one such year. **Scored test years are therefore 2020 → 2026-08 for every strategy**
+(picks for Y use QLIKE / pinball on 2019 … Y−1); halves become 2020–22 and 2023–26. PC: ORACLE must be picked for oh in
+≥ 6 of the 7 test years on every instrument. Nothing else changes.
