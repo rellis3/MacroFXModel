@@ -288,7 +288,7 @@ function regSeries(spec, inp) {
   return out;
 }
 
-function specSeries(spec, P, inp) {
+export function specSeries(spec, P, inp) {
   if (spec.type === 'est') return estSeries(spec.est, d1For(P, inp.d1 || []));
   if (spec.type === 'garch') return garchSeries(spec.model, spec.params, d1For(P, inp.d1 || []));
   if (spec.type === 'reg') return regSeries(spec, inp);

@@ -955,6 +955,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
         <button class="vf-exp-item" id="vfL2FcFutBtn" onclick="closeExpDropdown();exportLadderV2('forecast','fut')" title="Shadow ladder-v2 (not live): each instrument&#39;s winning σ from the 2026-11-19 races (NQ har_rv_log on daily ranges; gold and EURUSD HAR-CJ on 5-minute RV), calibrated in every vol regime walk-forward 2018-2026. GOLD, EURUSD, NQ plus every rollout instrument whose v2 forecast and exhaustion validated (ladder-v2-rollout 2026-11-20: 32 CFDs; futures for 6B 6A 6N 6C 6S ES YM RTY FDAX SI HG PL CL BZ); USDJPY, CHFJPY, GBPJPY, UK100 and the grains/natgas CFDs stay on the live ladder. No event multiplier. Same paste format as Forecast. Futures paste: gold uses CME GC widths; NQ and EURUSD futures share the CFD ladder.">⬇ v2 Forecast · Futures <span style="font-size:9px;opacity:.55">GC1! 6E1! NQ1!</span></button>
         <button class="vf-exp-item" id="vfL2ExCfdBtn" onclick="closeExpDropdown();exportLadderV2('exhaustion','cfd')" title="Shadow exhaustion zones (not live): per OH/OL line, how far price typically runs past it before its first 0.25σ pullback, and the chance a touch in each London time bucket goes on to the next line. Paste into pine/exhaustion_zones.pine.">⬇ v2 Exhaustion · CFD <span style="font-size:9px;opacity:.55">zones + next-line odds</span></button>
         <button class="vf-exp-item" id="vfL2ExFutBtn" onclick="closeExpDropdown();exportLadderV2('exhaustion','fut')" title="Shadow exhaustion zones (not live): per OH/OL line, how far price typically runs past it before its first 0.25σ pullback, and the chance a touch in each London time bucket goes on to the next line. Paste into pine/exhaustion_zones.pine.">⬇ v2 Exhaustion · Futures <span style="font-size:9px;opacity:.55">zones + next-line odds</span></button>
+        <button class="vf-exp-item" id="vfL2QlFutBtn" onclick="closeExpDropdown();exportLadderV2('qlike','fut')" title="Shadow QLIKE per-line ladder (not live; ladder-qlike-per-line 2026-11-22). Jordan&#39;s method: each line (HL / OH / OL) uses the σ model with the best QLIKE for that line on the futures, out of sample 2020-2026.08. NQ: HL+OH SHAR, OL HAR+GARCH-t; gold and EURUSD: HAR-CJ (widths refitted on futures ranges); USDJPY: HL+OH SHAR, OL R5. OC uses the OH model. Each line shows its model. Compare on the Forecast Reversion page (Calc QLIKE, +v2).">⬇ QLIKE per-line · Futures <span style="font-size:9px;opacity:.55">NQ GC 6E 6J</span></button>
         <div class="vf-exp-sep"></div>
         <button class="vf-exp-item" id="vfCogBtn"        onclick="closeExpDropdown();exportCog()"                    disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
         <button class="vf-exp-item" id="vfCogWkBtn"      onclick="closeExpDropdown();exportCogWeekly()"              disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">√5 + √20 in one</span></button>
@@ -2727,11 +2728,12 @@ async function exportPersist(withSession = false) {
 
 // ladder-v2 shadow exports (js/ladderV2ShadowRoutes.js): forecast or exhaustion, CFD or futures paste.
 async function exportLadderV2(kind, track) {
-  const id = { 'forecast|cfd': 'vfL2FcCfdBtn', 'forecast|fut': 'vfL2FcFutBtn', 'exhaustion|cfd': 'vfL2ExCfdBtn', 'exhaustion|fut': 'vfL2ExFutBtn' }[`${kind}|${track}`];
+  const id = { 'forecast|cfd': 'vfL2FcCfdBtn', 'forecast|fut': 'vfL2FcFutBtn', 'exhaustion|cfd': 'vfL2ExCfdBtn', 'exhaustion|fut': 'vfL2ExFutBtn', 'qlike|fut': 'vfL2QlFutBtn' }[`${kind}|${track}`];
   const btn = document.getElementById(id);
   _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;
   try {
-    const r = await fetch(`/api/vol-forecast/ladder-v2/export?kind=${kind}&track=${track}`);
+    const r = await fetch(kind === 'qlike' ? `/api/vol-forecast/ladder-v2/export?calc=qlike&track=fut`
+                                           : `/api/vol-forecast/ladder-v2/export?kind=${kind}&track=${track}`);
     const text = await r.text();
     if (!r.ok) { btn.textContent = '✗ failed'; setTimeout(() => _btnRestore(btn), 2600); return; }
     btn.disabled = false;
