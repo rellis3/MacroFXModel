@@ -137,7 +137,7 @@ const CORE_VIEWS = new Set(['globe', 'candles', 'skyline', 'bubbles', 'orbit']);
 export const SEGMENTS = [
   { id: 'markets', name: 'Markets', segue: 'First, the markets.', tiers: [['candles', 'wx']] },
   { id: 'chain', name: 'The Chain', segue: 'Now, the chain.', tiers: [['reactor'], ['chainfly'], ['chain']] },
-  { id: 'macro', name: 'The Macro', segue: 'The bigger picture.', tiers: [['surprise', 'cycle']] },
+  { id: 'macro', name: 'The Macro', segue: 'The bigger picture.', tiers: [['moneyglobe', 'surprise', 'cycle']] },
   { id: 'rates', name: 'Rates', segue: 'To rates.', tiers: [['cbpaths', 'yields']] },
   { id: 'ccy', name: 'Currencies', segue: 'Currencies.', tiers: [['fxgrid'], ['ccy']] },
   { id: 'vol', name: 'Volatility', segue: 'Volatility.', tiers: [['ivsurf'], ['vol']] },
