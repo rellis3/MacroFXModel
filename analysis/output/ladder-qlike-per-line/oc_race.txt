@@ -1,0 +1,4 @@
+NQ: OC best SHAR 1.4372, 2nd R5 1.4381, 3rd HARCJ 1.4421 | OH-best model SHAR on OC 1.4372 (#1/20) | live A0 1.5186 (#11) | |OC p50 - OH p50| in sigma: SHAR 0.034
+GOLD: OC best V3 1.4557, 2nd V4 1.4572, 3rd B_har_iv 1.4717 | OH-best model B_har_iv on OC 1.4717 (#3/20) | live A0 1.5156 (#8) | |OC p50 - OH p50| in sigma: V3 0.008, B_har_iv 0.018
+EURUSD: OC best HARCJ 1.3520, 2nd R15 1.3528, 3rd SHAR 1.3535 | OH-best model HARCJ on OC 1.3520 (#1/17) | live A0 1.3771 (#8) | |OC p50 - OH p50| in sigma: HARCJ 0.015
+USDJPY: OC best R15 1.5291, 2nd R5 1.5323, 3rd SHAR 1.5330 | OH-best model SHAR on OC 1.5330 (#3/17) | live A0 1.5988 (#15) | |OC p50 - OH p50| in sigma: R15 0.005, SHAR 0.010
