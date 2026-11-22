@@ -33,9 +33,11 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/ccyMacroStrip.js",
      "js/terminal/economiesView.js",
+     "js/terminal/jarvisViewSurprise.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
-     "js/terminal/mapLayers.js"
+     "js/terminal/mapLayers.js",
+     "js/terminal/surpriseHoloCore.js"
     ],
     "today": [
      "today.html"
@@ -90,9 +92,11 @@ export const DERIVED = {
      "js/terminal/calendarDrillsCore.js",
      "js/terminal/ccyMacroStrip.js",
      "js/terminal/economiesView.js",
+     "js/terminal/jarvisViewSurprise.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
-     "js/terminal/mapLayers.js"
+     "js/terminal/mapLayers.js",
+     "js/terminal/surpriseHoloCore.js"
     ],
     "today": [
      "today.html"
@@ -154,9 +158,11 @@ export const DERIVED = {
      "js/terminal/calendarDrillsCore.js",
      "js/terminal/ccyMacroStrip.js",
      "js/terminal/economiesView.js",
+     "js/terminal/jarvisViewSurprise.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
-     "js/terminal/mapLayers.js"
+     "js/terminal/mapLayers.js",
+     "js/terminal/surpriseHoloCore.js"
     ],
     "today": [
      "today.html"
@@ -211,9 +217,11 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/ccyMacroStrip.js",
+     "js/terminal/jarvisViewSurprise.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
-     "js/terminal/mapLayers.js"
+     "js/terminal/mapLayers.js",
+     "js/terminal/surpriseHoloCore.js"
     ],
     "today": [
      "today.html"
@@ -258,9 +266,11 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/ccyMacroStrip.js",
+     "js/terminal/jarvisViewSurprise.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
-     "js/terminal/mapLayers.js"
+     "js/terminal/mapLayers.js",
+     "js/terminal/surpriseHoloCore.js"
     ],
     "today": [
      "today.html"
@@ -306,9 +316,11 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/ccyMacroStrip.js",
      "js/terminal/economiesView.js",
+     "js/terminal/jarvisViewSurprise.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
-     "js/terminal/mapLayers.js"
+     "js/terminal/mapLayers.js",
+     "js/terminal/surpriseHoloCore.js"
     ],
     "today": [
      "today.html"
@@ -356,9 +368,11 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/ccyMacroStrip.js",
      "js/terminal/economiesView.js",
+     "js/terminal/jarvisViewSurprise.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
-     "js/terminal/mapLayers.js"
+     "js/terminal/mapLayers.js",
+     "js/terminal/surpriseHoloCore.js"
     ],
     "today": [
      "today.html"
@@ -406,9 +420,11 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/ccyMacroStrip.js",
      "js/terminal/economiesView.js",
+     "js/terminal/jarvisViewSurprise.js",
      "js/terminal/macroEngines.js",
      "js/terminal/macroEnginesCore.js",
-     "js/terminal/mapLayers.js"
+     "js/terminal/mapLayers.js",
+     "js/terminal/surpriseHoloCore.js"
     ],
     "today": [
      "today.html"
@@ -543,6 +559,8 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/cycleHoloCore.js",
+     "js/terminal/jarvisViewCycle.js",
      "js/terminal/macroSubtabs.js"
     ],
     "today": [],
@@ -591,8 +609,10 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/calendarDrillsView.js",
+     "js/terminal/jarvisViewSurprise.js",
      "js/terminal/macroEnginesCore.js",
      "js/terminal/regimeBoardView.js",
+     "js/terminal/surpriseHoloCore.js",
      "js/terminal/surpriseRollup.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -1466,6 +1486,7 @@ export const DERIVED = {
      "js/terminal/analogueView.js",
      "js/terminal/biasEngineView.js",
      "js/terminal/broadcastCore.js",
+     "js/terminal/cotHoloCore.js",
      "js/terminal/deepDive.js",
      "js/terminal/fedPathYieldsView.js",
      "js/terminal/insightSeries.js",
@@ -2955,8 +2976,10 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/cotHoloCore.js",
      "js/terminal/goldCore.js",
      "js/terminal/goldView.js",
+     "js/terminal/jarvisViewCot.js",
      "js/terminal/releasesBoardView.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -3250,10 +3273,12 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/eventReplay.js",
+     "js/terminal/jarvisViewShockwave.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/reactionPanel.js",
      "js/terminal/releasesBoardView.js",
+     "js/terminal/shockwaveCore.js",
      "js/terminal/sinceLast.js",
      "js/terminal/terminalFeel.js",
      "js/terminal/traderReadView.js"
@@ -3384,9 +3409,11 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/dayAheadCore.js",
      "js/terminal/jarvisViewDayAhead.js",
+     "js/terminal/jarvisViewShockwave.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
-     "js/terminal/releasesBoardView.js"
+     "js/terminal/releasesBoardView.js",
+     "js/terminal/shockwaveCore.js"
     ],
     "today": [
      "today.html"
@@ -5274,7 +5301,9 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/cycleHoloCore.js",
      "js/terminal/fairValueView.js",
+     "js/terminal/jarvisViewCycle.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
      "js/terminal/terminalTabs.js"
@@ -5489,5 +5518,5 @@ export const DERIVED = {
  ],
  "rootPageCount": 262,
  "packFeeds": 115,
- "generatedAt": "2026-11-21"
+ "generatedAt": "2026-11-22"
 };
