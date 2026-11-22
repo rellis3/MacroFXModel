@@ -47582,7 +47582,7 @@ function _memTracePush(m = process.memoryUsage()) {
 }
 const _memShots = { list: [], cp1: false, cp2: false };
 
-// ── Boot profile (2026-11-22, diagnostic): the server's first ~100 s of CPU time, by second, so the 3 GB memory jump at ~40 s boot can be matched to the function running at that moment. Node's built-in
+// ── Boot profile (2026-11-22, diagnostic): the server's first ~240 s of CPU time, by second, so the 3 GB memory jump at ~40 s boot can be matched to the function running at that moment. Node's built-in
 // profiler (inspector), sampled every 2 ms; the answer is in /api/services -> memory.bootProfile. Runs once per boot, then stops. Linux only (Railway); skipped when BOOT_PROFILE=0. ──
 const _bootProfile = { state: 'off', seconds: [], top: [] };
 if (process.platform === 'linux' && process.env.BOOT_PROFILE !== '0') {
@@ -47611,7 +47611,7 @@ if (process.platform === 'linux' && process.env.BOOT_PROFILE !== '0') {
           _bootProfile.seconds = [...perSec.entries()].sort((a, b) => a[0] - b[0]).map(([s, m]) => ({ t: new Date(startWall + s * 1000).toISOString().slice(11, 19), busyMs: Math.round([...m.values()].reduce((x, y) => x + y, 0)), top: [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id, ms]) => ({ ms: Math.round(ms), fn: label(byId.get(id)), chain: chainOf(id).slice(0, 4) })) })).filter(x => x.busyMs > 250);
           _bootProfile.state = 'done'; ses.disconnect();
         } catch (e) { _bootProfile.state = 'error: ' + e.message; }
-      }, 100_000); stop.unref?.();
+      }, 240_000); stop.unref?.();
     }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
   }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
 }
