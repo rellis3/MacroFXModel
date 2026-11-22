@@ -7331,9 +7331,9 @@ const _libRoute = (method, p, fn) => app[method](`/api/library/${p}`, async (req
     if (out.body !== undefined) res.end(out.body); else res.json(out.json);
   } catch (e) { console.error(`[library] ${p}:`, e.message); res.status(500).json({ ok: false, error: 'library error' }); }
 });
-// keep the library's list and search index warm so the first screen after a login is not a cold build (a cheap read; errors are ignored)
+// warm the library's list and search index ONCE after boot so the first screen after a login is not a cold build (errors are ignored). It used to repeat every 4 minutes, but a tick older than the
+// catalog's 30 s freshness window forced a full rebuild each time (650 papers, uploads, notes) for nothing: writes already drop the catalog, and any page visit refreshes it behind the scenes.
 svcTimeout('libraryWarm', () => _libApi.warm?.(), 20_000);
-svcInterval('libraryWarm', () => _libApi.warm?.(), 4 * 60_000);
 _libRoute('get', 'concepts', _libApi.conceptsCards);   // the concept cards for the Concepts tab (library login)
 _libRoute('post', 'concepts/review', _libApi.conceptsReview);   // the owner's mark on a card; free, no model call
 _libRoute('get', 'papers', _libApi.papers);
