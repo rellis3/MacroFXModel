@@ -233,7 +233,7 @@ registerJarvisModule({
       const my = ++token; status('Gathering the morning...');
       const c = await gather(true); if (my !== token) return;
       const P = plan(c.inp, q('len').value), items = P.items; api.win.__jarvisBroadcastPlan = P;     // for the lab harness and the console
-      ctl.rate = +q('rate').value || 1; ctl.paused = false; ctl.jump = null; st.voice = lsGet().voice !== false;
+      ctl.rate = +q('rate').value || 1; ctl.paused = false; ctl.jump = null; st.voice = lsGet().voice !== false; api.voiceBegin?.();
       const sync = () => api.cineLabel(ctl.rate, ctl.paused), steps = [0.75, 1, 1.25, 1.5, 1.75, 2];
       api.cinema(true, () => { stop(); status('Ended.'); }, {
         next: () => { ctl.jump = 1; api.st.speakCtl?.stop(); },
@@ -244,7 +244,7 @@ registerJarvisModule({
       }); sync(); api.caption(null);
       ov?.remove(); ov = makeOverlay(api); if (!ov) { status('The HUD is not open.', true); return; }
       ov.open(P.date); ov.ticker(P.ticker); ov.on(); api.sfx.ambient(true);
-      status(`On air: ${P.segments.length} segments, about ${durText(items.reduce((a, x) => a + itemSeconds(x, ctl.rate), 0))}.`);
+      status(`On air: ${P.segments.length} segments, about ${durText(items.reduce((a, x) => a + itemSeconds(x, ctl.rate), 0))}. Voice: ${api.voiceLabel?.() ?? "on"}.`);
       api.voicePrefetch?.(items[0]?.text);
       let i = Math.max(0, Math.min(items.length - 1, +(api.win.__jarvisBroadcastFrom ?? 0) || 0)), prevKind = null, prevView = null;
       while (i < items.length && my === token) {
