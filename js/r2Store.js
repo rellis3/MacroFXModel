@@ -16,11 +16,17 @@ import { noteBytes } from './egressMeter.js';
 export const R2_ENDPOINT = process.env.R2_ENDPOINT || 'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com';
 export const R2_BUCKET   = process.env.R2_BUCKET   || 'r2-storage';
 
+// One shared client per credential pair (2026-11-23). This used to build a NEW S3Client (own HTTP agent, socket pool and middleware stack) on every putJSON/getJSON/getBuffer/listKeys and never close it;
+// with ~50 pairs polling and snapshotting that is thousands of abandoned clients holding native socket state. The SDK client is safe to share across concurrent requests.
+let _sharedClient = null, _sharedClientKey = '';
 export function makeR2Client() {
   const accessKeyId     = process.env.R2_ACCESS_KEY;
   const secretAccessKey = process.env.R2_SECRET_KEY;
   if (!accessKeyId || !secretAccessKey) return null;
-  return new S3Client({
+  const k = `${R2_ENDPOINT}|${accessKeyId}|${secretAccessKey}`;
+  if (_sharedClient && _sharedClientKey === k) return _sharedClient;
+  _sharedClientKey = k;
+  return _sharedClient = new S3Client({
     endpoint: R2_ENDPOINT,
     region: 'auto',
     credentials: { accessKeyId, secretAccessKey },
