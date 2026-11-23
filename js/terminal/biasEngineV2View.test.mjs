@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as V from './biasEngineV2View.js';
 import { surfaceById } from './tabRegistry.js';
+import { timeline } from '../biasIntraday.js';
 
 const P = { ok: true, date: '2026-11-20', phase: 'trial', spec: '1.1', configHash: 'abcdef1234567890', dataIdentity: { labelAgreement: 1 }, riskGate: { pass: false, note: 'gate failed' },
   riskFactor: { score: 0.42, usedInScore: false }, record: { note: 'technical trial: no official record yet' },
@@ -36,4 +37,16 @@ test('an opened row lists every driver contribution with its family, the reprici
   assert.match(x, /carry<\/th><td class="muted">monetary/); assert.match(x, /level −0\.020, change \+0\.070/); assert.match(x, /carry gap −1\.50pp/); assert.match(x, /2y gap −1\.70pp \(context\)/);
   assert.match(x, /F5 expected repricing \(6 m\)/); assert.match(x, /Missing: EUR data \(stale\)/);
   assert.doesNotMatch(V.CSS, /#[0-9a-fA-F]{3,6}\b|rgb\(\d/, 'theme tokens only');
+});
+
+test('intradayHtml: loading, empty day, and the shift marked with its slot time', () => {
+  assert.match(V.intradayHtml(null), /Loading the day/);
+  assert.match(V.intradayHtml({ ok: true, date: '2026-11-24', points: [], markets: [] }), /Nothing stored for 2026-11-24/);
+  const day = { issue: { v2: { EURUSD: ['NEUTRAL', -0.4, 0], GBPUSD: ['BULLISH', 0.7, 4] }, v1r: {} },
+    slots: { '09:00': { v2: { EURUSD: ['BEARISH', -0.55, 3], GBPUSD: ['BULLISH', 0.7, 4] }, v1r: {} } } };
+  const T = { ok: true, date: '2026-11-24', issueAt: '2026-11-24T05:41:00Z', slotTimes: { '09:00': '2026-11-24T09:03:00Z' }, ...timeline(day), schedule: null };
+  const h = V.intradayHtml(T, { engine: 'v2' });
+  assert.match(h, /1 of 2 markets changed direction/); assert.match(h, /<b>09:00<\/b> Neutral → Bearish/); assert.match(h, /held all day/); assert.match(h, /bevi-shift/);
+  const only = V.intradayHtml(T, { engine: 'v2', only: 'shifted' });
+  assert.ok(only.includes('EURUSD') && !only.includes('GBPUSD'));
 });
