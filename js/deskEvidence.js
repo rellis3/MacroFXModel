@@ -3509,6 +3509,13 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
   },
   {
+    id: 'ladder-anchor-sweep', domain: 'volatility', verdict: 'underpowered', date: '2026-11-23', doc: 'forge/LADDER_ANCHOR_SWEEP_PREREG.md', also: ['analysis/output/ladder-anchor-sweep/RESULTS.md'],
+    claim: 'Anchoring the forecast day at another London hour (01:00-23:00, 22h window, features from 24h blocks ending at the anchor) gives better QLIKE range forecasts (HL / OH / OL) than London 00:00 (Jordan asked, owner suggested e.g. 07:00)',
+    result: 'Pre-registered, NQ/GC/6E/6J futures, 24 anchors, walk-forward QLIKE pick, skill vs same-anchor 5-day RV baseline, test 2020-2026.08. Anchor chosen on 2020-22, confirmed 2023-26: pooled -0.45pp [-1.27, +1.34], 6/12 cells positive. EURUSD morning anchor holds: 6E HL 10:00 +5.6pp [+2.0, +10.0], 6E OL 11:00 +2.6pp [+1.5, +4.3] (10-11 above the best-of-24 chance line). NQ within +/-2pp at every hour; 07:00 within +/-1pp on 11/12 cells; evening anchors worst for GC/6E/6J HL. Graded weight: faint overall, leaning for EURUSD 10-11 London.',
+    use: 'Keep London 00:00 for the ladder. EURUSD 10:00-11:00 London anchor is a candidate for its own confirm prereg (forward data).',
+    instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
+  },
+  {
     id: 'ladder-qlike-per-line', domain: 'volatility', verdict: 'underpowered', date: '2026-11-22', doc: 'forge/LADDER_QLIKE_PER_LINE_PREREG.md', also: ['analysis/output/ladder-qlike-per-line/RESULTS.md'],
     claim: 'On futures, a separate sigma model per line type (HL / OH / OL), each chosen on its own QLIKE, beats one model chosen on summed QLIKE (Jordan, C.OG group member)',
     result: 'Pre-registered, NQ/GC/6E/6J futures, test 2020-2026.08, picks on prior years only. Planted-oracle control picked 7/7 years on all four, -3.6%. Per line vs one QLIKE model -0.45% [-1.09, +0.03] (2020-22 -0.80%, 2023-26 -0.14%); OH -0.60% [-1.26, -0.12]; regime miss 2.33 -> 2.35pp. Graded weight: faint. Per-line winners: NQ IV-blend HL/OL + SHAR OH; gold IV-adjusted HL/OL + SHAR OH; 6E HAR-CJ HL/OL + SHAR OH; 6J SHAR/R5.',
@@ -4716,6 +4723,7 @@ const POWER = {
   'fqt-nam-lines-tp': { n: '1,417 NQ trades', note: 'NULL bar +1 bp; CI upper -2.04 bp' },
   'futures-oc-tp-fade-p75': { n: '3,377 trades on ~6,600 sessions (4 futures)', note: 'NULL bar +0.05R; CI upper -0.043R' },
   'futures-oc-tp-fade-p90': { n: '1,364 trades', note: 'NULL bar +0.05R; CI upper -0.064R' },
+  'ladder-anchor-sweep': { n: '~1,650 test windows per anchor per instrument (4 futures x 24 anchors), 63-session blocks, paired days', note: 'oracle control +6 to +62pp; observed pooled -0.45pp, CI upper +1.34 (NULL bar +1.0)' },
   'ladder-qlike-per-line': { n: '~1,650 test sessions per instrument (4 futures), 63-session blocks', note: 'planted oracle detected at -3.6%; observed -0.45%' },
   'ladder-qlike-vs-pinball': { n: 'same sessions', note: 'observed -0.86% [-1.70, +0.16]' },
   'ladder-per-line': { n: '~1,900 test sessions per instrument and track, 63-session blocks', note: 'planted oracle detected at -14%; observed -0.26% (C), +0.12% (F)' },
