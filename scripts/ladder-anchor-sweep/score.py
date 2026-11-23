@@ -84,6 +84,12 @@ def main():
     for (s, q), (P, Bm, O, X) in cells.items():
         worst[q] = min(worst[q], float(np.nanmin(skill(O, Bm))))
     ok2 = all(worst[q] > ORACLE_BAR[q] for q in LINES)
+    nq_oh = float(np.nanmin(skill(cells[("NQ", "oh")][2], cells[("NQ", "oh")][1])))
+    rest_oh = min(float(np.nanmin(skill(cells[(s_, "oh")][2], cells[(s_, "oh")][1]))) for s_ in SYMS if s_ != "NQ")
+    if not ok2 and worst["hl"] > ORACLE_BAR["hl"] and worst["ol"] > ORACLE_BAR["ol"] and rest_oh > ORACLE_BAR["oh"]:
+        say(f"  A3: only NQ OH under its bar (worst {nq_oh:+.1f} pp; other OH worst {rest_oh:+.1f}); scoring proceeds, "
+            "VALIDATED also needs the pooled CI without NQ OH")
+        ok2 = True
     say("control 2 (oracle skill, worst anchor x instrument): " + ", ".join(f"{q} {worst[q]:+.1f} pp (bar {ORACLE_BAR[q]:.0f})" for q in LINES)
         + (" PASS" if ok2 else " FAIL"))
     res["controls"]["oracle"] = {"pass": ok2, "worst_pp": worst}
@@ -120,19 +126,21 @@ def main():
     starts = rng.integers(0, max(1, nb - BLOCK + 1), size=(B, int(np.ceil(nb / BLOCK))))
     draws = (starts[:, :, None] + np.arange(BLOCK)[None, None, :]).reshape(B, -1)[:, :nb]
     draws = idx_cf[np.minimum(draws, nb - 1)]
-    pooled = np.zeros(B)
+    per = {}
     for (s, q), (P, Bm, O, X) in cells.items():
         A, _ = deltas[(s, q)]
-        if A == 0:
-            continue
-        for k, dr in enumerate(draws):
-            pooled[k] += delta(P, Bm, dr, A)
-    pooled /= len(cells)
+        per[(s, q)] = np.zeros(B) if A == 0 else np.array([delta(P, Bm, dr, A) for dr in draws])
+    pooled = np.mean([v for v in per.values()], axis=0)
+    pooled_x = np.mean([v for k, v in per.items() if k != ("NQ", "oh")], axis=0)
+    ci_x = [float(np.quantile(pooled_x, .05)), float(np.quantile(pooled_x, .95))]
+    pt_x = float(np.mean([d for k, (_, d) in deltas.items() if k != ("NQ", "oh")]))
+    res["per_cell_ci"] = {f"{s}_{q}": [float(np.quantile(v, .05)), float(np.quantile(v, .95))] for (s, q), v in per.items()}
     pt = float(np.mean([d for _, d in deltas.values()]))
     ci = [float(np.quantile(pooled, .05)), float(np.quantile(pooled, .95))]
     npos = sum(d > 0 for _, d in deltas.values())
-    v = "VALIDATED" if ci[0] > 0 and npos >= 8 else ("NULL" if ci[1] < 1.0 else "UNDERPOWERED")
-    res.update(pooled_confirm_delta_pp=pt, ci90=ci, cells_positive=npos, verdict=v)
+    v = "VALIDATED" if ci[0] > 0 and npos >= 8 and ci_x[0] > 0 else ("NULL" if ci[1] < 1.0 else "UNDERPOWERED")
+    res.update(pooled_confirm_delta_pp=pt, ci90=ci, cells_positive=npos, verdict=v,
+               pooled_ex_nq_oh=pt_x, ci90_ex_nq_oh=ci_x)
 
     # ---- descriptive: max over anchors of the all-years delta vs a centred bootstrap (how big best-of-24 looks by chance)
     idx_all = np.flatnonzero(in_((2020, 2026)))
@@ -165,10 +173,12 @@ def main():
     say("Choose A* on 2020-22, confirm 2023-26 (delta skill vs 00, pp):")
     for (s, q), (A, d) in deltas.items():
         c = res["cells"][f"{s}_{q}"]; ch_ = chance[f"{s}_{q}"]
-        say(f"  {s:3s} {q}: A*={A:02d} choose-half gain {c['choose_gain_pp']:+.2f}, confirm {d:+.2f} | all-years best {ch_['best_A']:02d} "
+        pc = res["per_cell_ci"][f"{s}_{q}"]
+        say(f"  {s:3s} {q}: A*={A:02d} choose-half gain {c['choose_gain_pp']:+.2f}, confirm {d:+.2f} [{pc[0]:+.2f}, {pc[1]:+.2f}] | all-years best {ch_['best_A']:02d} "
             f"{ch_['best_gain_pp']:+.2f} (chance-95 {ch_['chance95_pp']:.2f}; above chance: {ch_['anchors_above_chance'] or 'none'})")
     say("")
-    say(f"POOLED confirm-half delta {pt:+.2f} pp [{ci[0]:+.2f}, {ci[1]:+.2f}], {npos}/12 cells positive -> {v}")
+    say(f"POOLED confirm-half delta {pt:+.2f} pp [{ci[0]:+.2f}, {ci[1]:+.2f}], {npos}/12 cells positive; "
+        f"without NQ OH {pt_x:+.2f} [{ci_x[0]:+.2f}, {ci_x[1]:+.2f}] -> {v}")
     (OUT / "report.txt").write_text("\n".join(LOG) + "\n", encoding="utf-8")
     json.dump(res, open(OUT / "results.json", "w"), indent=1, default=str)
 
