@@ -44689,6 +44689,43 @@ app.get('/api/corr-terminal', async (_req, res) => {
   res.send(`{"ok":true,"refreshEveryH":${CORR_STALE_MS / 3600_000},"ageH":${Number.isFinite(ageH) ? +ageH.toFixed(2) : null},"stale":${ageH > CORR_STALE_MS / 3600_000 * 2},"building":${corrRunning},"src":"${p.src}","panel":${p.body}}`);
 });
 
+// Hedge for today (Desk Terminal Hedges tab, "Today" card; js/hedgeTodayCore.js; evidence forge/HEDGE_TODAY_PREREG.md):
+// the 08:00-17:00 London price at each hour for the last 200 completed sessions of the correlation build's markets, from
+// OANDA H1 (one request per market, count 5000). Built on demand, at most once per completed session, kept in memory and KV.
+// Owner-only for the desk login through the '/api/hedge-' deny prefix (js/deskAccess.js). Read-only: no positions, no orders.
+const HEDGE_TODAY_KV = 'hedge_today_v1';
+let _hedgeTodayMem = null, _hedgeTodayBuilding = null, _hedgeTodayTried = 0;
+async function _hedgeTodayBuild() {
+  const HT = await import('./js/hedgeTodayCore.js');
+  const bySym = {}, syms = [...CORR_PAIRS];
+  for (let i = 0; i < syms.length; i += 4) {
+    await Promise.all(syms.slice(i, i + 4).map(async sym => {
+      try { bySym[sym] = (await fetchOandaRecentH1(sym, 5000)).map(c => ({ t: c.t, c: c.c })); } catch (e) { console.warn('[hedge-today]', sym, e.message); }
+    }));
+  }
+  const panel = HT.buildTodayPanel(bySym);
+  if (!panel) throw new Error('no H1 data returned');
+  _hedgeTodayMem = { body: JSON.stringify(panel), last: panel.sessions.at(-1) ?? null };
+  try { await kv.put(HEDGE_TODAY_KV, _hedgeTodayMem.body, { expirationTtl: 86400 * 4 }); } catch (e) { console.warn('[hedge-today] kv', e.message); }
+  console.log(`[hedge-today] built: ${panel.syms.length} markets, ${panel.sessions.length} sessions to ${_hedgeTodayMem.last}`);
+  return _hedgeTodayMem;
+}
+app.get('/api/hedge-today', async (_req, res) => {
+  try {
+    const HT = await import('./js/hedgeTodayCore.js'), want = HT.lastCompletedSession();
+    if (!_hedgeTodayMem) { try { const raw = await kv.get(HEDGE_TODAY_KV); if (raw) _hedgeTodayMem = { body: raw, last: JSON.parse(raw).sessions?.at(-1) ?? null }; } catch { /* rebuild below */ } }
+    const fresh = _hedgeTodayMem && _hedgeTodayMem.last >= want;
+    if (!fresh && !_hedgeTodayBuilding && Date.now() - _hedgeTodayTried > 10 * 60_000) {
+      _hedgeTodayTried = Date.now();
+      _hedgeTodayBuilding = _hedgeTodayBuild().catch(e => { console.warn('[hedge-today] build', e.message); return null; }).finally(() => { _hedgeTodayBuilding = null; });
+    }
+    if (!_hedgeTodayMem && _hedgeTodayBuilding) await _hedgeTodayBuilding;
+    if (!_hedgeTodayMem) return res.json({ ok: false, building: !!_hedgeTodayBuilding, error: 'The session panel is not built yet (about 30 seconds of OANDA H1 requests).' });
+    res.setHeader('Content-Type', 'application/json');
+    res.send(`{"ok":true,"stale":${_hedgeTodayMem.last < want},"building":${!!_hedgeTodayBuilding},"panel":${_hedgeTodayMem.body}}`);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // Hedge alerts — compact summary for the dashboard beta panel.
 // Returns avg_corr, corr_std (computed from records), last rolling corr, and last betas.
 // Much smaller than the full corr-history response.

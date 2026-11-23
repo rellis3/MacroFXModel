@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import * as M from './corrMath.js';
 import { chipFor, chipsFor, VIEW_EVIDENCE } from './corrEvidence.js';
 import { heatmapSvg, changesHtml, corrColor, asOfHtml, regimeTableHtml } from './corrView.js';
-import { rowHtml, bookCards, carryOf, bookHedgeHtml, html as hedgeHtml } from './hedgeView.js';
+import { rowHtml, bookCards, carryOf, bookHedgeHtml, html as hedgeHtml, todayHtml, _state as HState } from './hedgeView.js';
+import { buildTodayPanel } from '../hedgeTodayCore.js';
 import { DESK_EVIDENCE } from '../deskEvidence.js';
 
 // a seeded generator so the synthetic markets are the same every run
@@ -195,4 +196,20 @@ test('ewmaBeta and oosCut: a known linear link gives its beta, and a hedge is sc
 test('rankHedges rows carry the EWMA ratio and the out-of-sample cut', () => {
   const rows = M.rankHedges(S, 'EURUSD', S.ids, { w: 60 }), r = rows.find(q => q.id === 'GBPUSD');
   assert.ok(r.ratioEwma > 0 && r.oos.cut > 0.3 && r.oosEwma.cut > 0.3 && r.oos.n > 60, JSON.stringify([r.ratioEwma, r.oos, r.oosEwma]));
+});
+test('todayHtml: loading line, market not in the panel, and ranked rows with the cuts-your-view split', () => {
+  assert.match(todayHtml(S, null), /Loading the session panel/);
+  // hourly candles over 220 days: GBPUSD and USDCHF move with EURUSD inside 08:00-17:00 London, SPX500 does not
+  const g = gauss(rng(11)), t0 = Date.UTC(2025, 5, 2), c = { EURUSD: [], GBPUSD: [], USDCHF: [], SPX500_USD: [] }, px = { EURUSD: 1.1, GBPUSD: 1.3, USDCHF: 0.9, SPX500_USD: 5000 };
+  for (let i = 0; i < 220 * 24; i++) { const t = t0 + i * 3600e3, e = g() * 0.001; px.EURUSD *= Math.exp(e); px.GBPUSD *= Math.exp(0.9 * e + g() * 0.0004); px.USDCHF *= Math.exp(-0.8 * e + g() * 0.0004); px.SPX500_USD *= Math.exp(g() * 0.001); for (const k in c) c[k].push({ t, c: px[k] }); }
+  const panelT = buildTodayPanel(c, { nowSec: t0 / 1000 + 220 * 86400 });
+  HState.target = 'GOLD'; assert.match(todayHtml(S, panelT), /not in the session panel/);
+  HState.target = 'EURUSD'; HState.side = -1; HState.view = '';
+  const h = todayHtml(S, panelT);
+  assert.match(h, /short EUR\/USD/); assert.match(h, /GBP\/USD/); assert.match(h, /session \d\.\d\d/); assert.match(h, /held up \d+%/);
+  assert.ok(h.indexOf('GBP/USD') < h.indexOf('USD/CHF'), 'GBP/USD (0.9) ranks above USD/CHF (0.8)');
+  HState.view = 'USD';
+  const hv = todayHtml(S, panelT);
+  assert.match(hv, /keeping the USD view/); assert.match(hv, /cuts your USD view/); assert.match(hv, /carry USD/);
+  HState.view = ''; HState.side = 1;
 });
