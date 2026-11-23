@@ -223,7 +223,7 @@ registerJarvisModule({
       cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra } };
       return cache;
     }
-    const plan = (inp, mode) => planBroadcast({ ...inp, now: new Date(), mode }, { hooks: SHOW_HOOKS, have: new Set([...CORE_VIEWS, ...viewsOf().map(v => v.id)]), mode });
+    const plan = (inp, mode) => planBroadcast({ ...inp, now: new Date(), mode }, { hooks: SHOW_HOOKS, have: new Set([...CORE_VIEWS, ...viewsOf().map(v => v.id)]), mode, rate: +q('rate').value || 1 });
     async function rundown() {
       const box = q('rundown'); if (!box) return;
       try {
@@ -309,9 +309,9 @@ registerJarvisModule({
     // ── the laptop's daily job (jarvis_broadcast/record_broadcast.py) ──
     // Plays the broadcast with no human at the controls and records ITS SOUND from the HUD's audio bus (voice + effects; a sound card is not needed), while the job records the
     // picture from Chrome's own frame feed. Returns the audio (base64) with the wall-clock start/end so the job can line the two up. engine: 'server' (default, steady) or 'kokoro'.
-    api.win.__jarvisBroadcastAuto = async ({ len = 'quick', engine = 'server', kokoroWaitMs = 180000 } = {}) => {
+    api.win.__jarvisBroadcastAuto = async ({ len = 'quick', engine = 'server', kokoroWaitMs = 180000, rate = 1 } = {}) => {
       const bus = api.audioBus?.(); if (!bus?.stream) throw new Error('the HUD has no audio bus');
-      q('len').value = ['full', 'short'].includes(len) ? len : 'quick'; lsPut({ voice: true }); st.voice = true; st.neural = true; st.sound = true;
+      q('len').value = ['full', 'short'].includes(len) ? len : 'quick'; q('rate').value = String([0.9, 1, 1.15, 1.3].includes(+rate) ? +rate : 1);      // one of the panel's speeds (calm, normal, brisk, fast); the planner's short budget scales with it lsPut({ voice: true }); st.voice = true; st.neural = true; st.sound = true;
       try { localStorage.setItem('jarvisVoice:v1', JSON.stringify({ ...(JSON.parse(localStorage.getItem('jarvisVoice:v1') || '{}') || {}), engine })); } catch (e) { /* private window */ }
       if (engine === 'kokoro') { api.voiceBegin?.(); const t0 = Date.now(); while (!api.voiceInfo?.()?.kokoro?.ready && Date.now() - t0 < kokoroWaitMs) await sleep(1000); }
       await bus.ctx.resume?.();

@@ -30,6 +30,32 @@ export function compact(rec) {
   return { v1r: slim(rec?.variants?.v1r?.markets), v2: slim(rec?.variants?.v2?.markets) };
 }
 
+const dkey = x => (x.leg ? `${x.leg} ${x.key}` : x.key);
+/** The drivers behind each call (for "what moved"): { v1r: {m: [[driver, contrib, reading]]}, v2: {...} }. Stored per slot, apart
+ *  from the day's compact calls, so the timeline stays small and the detail is read one market at a time. */
+export function detail(rec) {
+  const one = markets => Object.fromEntries(Object.entries(markets ?? {}).map(([m, v]) => [m, (v.drivers ?? []).map(x => [dkey(x), r3(x.contrib), String(x.reading ?? '').slice(0, 140)])]));
+  return { v1r: one(rec?.variants?.v1r?.markets), v2: one(rec?.variants?.v2?.markets) };
+}
+/** The drivers whose contribution changed most between two points (each [[driver, contrib, reading]]), largest change first. */
+export function whatMoved(prev, cur, n = 3) {
+  const P = new Map((prev ?? []).map(d => [d[0], d])), C = new Map((cur ?? []).map(d => [d[0], d]));
+  const keys = new Set([...P.keys(), ...C.keys()]);
+  return [...keys].map(k => { const a = P.get(k)?.[1] ?? 0, b = C.get(k)?.[1] ?? 0; return { driver: k, from: a, to: b, d: r3(b - a), was: P.get(k)?.[2] ?? null, now: C.get(k)?.[2] ?? null }; })
+    .filter(x => Math.abs(x.d) >= 0.005).sort((x, y) => Math.abs(y.d) - Math.abs(x.d)).slice(0, n);
+}
+
+/** FundaBias readings the owner logs through the day (time as published, London HH:MM): validate one row. */
+export function fbRow(b, markets) {
+  const m = String(b?.market ?? '').toUpperCase().replace(/[^A-Z0-9]/g, ''), market = markets[m] ?? null;
+  const dir = String(b?.dir ?? '').toUpperCase(), score10 = Number(b?.score10), at = String(b?.at ?? '');
+  if (!market) return { error: `unknown market ${b?.market}` };
+  if (!['BULLISH', 'BEARISH', 'NEUTRAL'].includes(dir)) return { error: 'dir must be BULLISH, BEARISH or NEUTRAL' };
+  if (!Number.isInteger(score10) || score10 < 0 || score10 > 10) return { error: 'score10 must be an integer 0-10' };
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(at)) return { error: 'at must be the London time it was published, HH:MM' };
+  return { row: { market, dir, score10, at, note: String(b?.note ?? '').slice(0, 300) || null } };
+}
+
 /**
  * day = { issue: { at, v1r, v2 } | null, slots: { 'HH:MM': { at, v1r, v2 } } }  (each engine as compact() gives it)
  * -> { points: ['issue', '07:00', ...] that exist, markets: [{ market, calls: {v2: [[point, dir, score, strength]...], v1r: [...]},

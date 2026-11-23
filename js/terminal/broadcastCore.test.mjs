@@ -246,6 +246,10 @@ test('SHORT (YouTube Short): shorter lead, and long programmes drop the least es
   assert.ok(short.totalSec < quick.totalSec);
   assert.ok(short.lead.length <= 2);
   for (const id of ['markets', 'chain', 'ahead']) assert.ok(short.segments.some(s => s.id === id), `${id} kept`);
+  // a faster voice (brisk, 1.15x) gets a bigger estimate budget, so it keeps at least as many segments; normal speed is unchanged
+  const brisk = planBroadcast(inp, { hooks, have, mode: 'short', rate: 1.15 });
+  assert.ok(brisk.segments.length >= short.segments.length && brisk.totalSec <= SHORT_BUDGET_SEC * 1.15 + 1e-9 || brisk.segments.length === 3, `brisk ${brisk.totalSec}s with ${brisk.segments.length} segments`);
+  assert.deepEqual(planBroadcast(inp, { hooks, have, mode: 'short', rate: 1 }).segments.map(s => s.id), short.segments.map(s => s.id));
   // numbering closes up after drops
   assert.deepEqual(short.segments.map(s => s.num), short.segments.map((_, i) => i + 1));
   // a programme already inside the budget is not cut
