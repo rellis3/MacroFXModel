@@ -4,8 +4,8 @@
 
 Per instrument and line (hl / oh / ol) the sigma model is the one with the lowest out-of-sample QLIKE on the futures
 (2020 -> 2026-08, analysis/output/ladder-qlike-per-line/leaderboard.csv) among the models the site can compute from
-OANDA (no IV feed on the site yet: V3 / V4 / B_har_iv are skipped, and H8). OC uses the OH model (OC and OH lines sit
-0.01-0.05 sigma apart, ladder-per-line B1). The sigma is computed on OANDA data as the rollout does for futures; the
+OANDA (no IV feed on the site yet: V3 / V4 / B_har_iv are skipped, and H8). OC has its own calc: the site-computable
+winner of the OC QLIKE race (oc_race.py, exploratory) - since 2026-11-23; before that OC borrowed the OH model. The sigma is computed on OANDA data as the rollout does for futures; the
 widths of each line are fitted on the FUTURES' realised ranges with that sigma, every session <= 2026-08-21.
 Zones and next-line odds are the instrument's existing v2 ones (js/ladderV2Params.json).
 """
@@ -65,9 +65,11 @@ def spec_sigma(sym, arm, rows):
 
 def main():
     LB = pd.read_csv(ROOT / "analysis/output/ladder-qlike-per-line/leaderboard.csv")
+    global OCR
+    OCR = pd.read_csv(ROOT / "analysis/output/ladder-qlike-per-line/oc_race.csv")
     V2 = json.loads((ROOT / "js/ladderV2Params.json").read_text())["instruments"]
     out = {"banked": "ladder-qlike-per-line", "track": "fut", "research_window_end": "2026-08-21",
-           "note": "QLIKE-best site-computable sigma per line (futures, OOS 2020-2026.08); OC uses the OH model",
+           "note": "QLIKE-best site-computable sigma per line (futures, OOS 2020-2026.08); OC has its own calc from the OC QLIKE race",
            "instruments": {}}
     fx = {"instruments": {}}
     for sym, oanda in SYMS.items():
@@ -83,7 +85,14 @@ def main():
             r = g.iloc[0]
             picks[q] = {"arm": r.arm, "qlike": round(float(r.qlike), 4), "rank": int(r["rank"]), "of": int(r.n_arms),
                         "best_overall": best.arm, "best_qlike": round(float(best.qlike), 4), "live_qlike": round(float(a0.qlike), 4)}
-        picks["oc"] = dict(picks["oh"])
+        # OC gets its own calc (2026-11-23, owner: Jordan's "different KPI for close levels" = a different calc):
+        # the site-computable winner of the OC QLIKE race (oc_race.csv, futures 2020 -> 2026-08), not the OH model
+        oc = OCR[OCR.sym == sym].sort_values("oc_qlike")
+        g = oc[~oc.arm.isin(NO_SITE)]
+        r, best, a0 = g.iloc[0], oc.iloc[0], oc[oc.arm == "A0"].iloc[0]
+        picks["oc"] = {"arm": r.arm, "qlike": round(float(r.oc_qlike), 4), "rank": int(r["rank"]), "of": int(r.n),
+                       "best_overall": best.arm, "best_qlike": round(float(best.oc_qlike), 4),
+                       "live_qlike": round(float(a0.oc_qlike), 4), "oh_model": picks["oh"]["arm"]}
         for q in ("hl", "oh", "ol", "oc"):
             arm = picks[q]["arm"]
             if arm not in specs:
