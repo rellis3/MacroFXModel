@@ -95,3 +95,9 @@ years (how big the best-of-24 gap looks by chance).
   Δ(A) = Skill(A) − Skill(00) (choose half, confirm half, bootstrap, max-over-anchors) is computed on the session labels
   **both** anchors have, so the comparison is on the same days. The grid still reports each anchor's skill on its own
   windows.
+- **A3, 2026-11-23, POST-HOC (control results seen, no hypothesis result seen; demote-only).** Control 1 passed
+  (98.7–100%). Control 2 passed on 11 of 12 cells at every anchor (HL ≥ 47 pp, OL ≥ 21 pp, OH ≥ 18 pp on GC/6E/6J) but
+  **NQ OH scored 6–13 pp at every anchor**, under its 15 pp bar. Cause: NQ's upside 5-min semivariance is dominated by
+  rebound rallies inside down days, so it says little about the high above the open; it is flat across anchors, so it
+  cannot favour one anchor. Scoring proceeds as registered; **VALIDATED additionally requires the pooled confirm-half
+  CI lower > 0 with the NQ OH cell left out** (can only demote).
