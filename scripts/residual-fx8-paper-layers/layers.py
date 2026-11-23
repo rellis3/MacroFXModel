@@ -120,23 +120,29 @@ def allow_fn(G, layers):
 
 
 # ---------------------------------------------------------------- trades and book
-def trade_mask(disp, allow, entry=1.5, exit_abs=None):
+def trade_mask(disp, allow, entry=1.5, exit_abs=None, episodes=None):
     D = disp.values
     n, m = D.shape
     mask = np.zeros((n, m), dtype=bool)
     trades = 0
     for i in range(m):
         z0 = None
+        t0 = None
         for t in range(n):
             z = D[t, i]
             if z0 is not None:
                 if np.sign(z) != np.sign(z0) or (exit_abs is not None and abs(z) <= exit_abs):
+                    if episodes is not None:
+                        episodes.append({"i": i, "t0": t0, "t1": t, "z0": float(z0), "z1": float(z), "open": False})
                     z0 = None
             if z0 is None and abs(z) >= entry and allow(t, i, int(-np.sign(z))):
                 z0 = z
+                t0 = t
                 trades += 1
             if z0 is not None:
                 mask[t, i] = True
+        if z0 is not None and episodes is not None:
+            episodes.append({"i": i, "t0": t0, "t1": n - 1, "z0": float(z0), "z1": float(D[n - 1, i]), "open": True})
     return pd.DataFrame(mask, index=disp.index, columns=disp.columns), trades
 
 
@@ -241,12 +247,15 @@ def main():
         "stack V+M+VAL": (["V", "M", "VAL"], 1.5, None, True),
         "stack V+M+VAL+C": (["V", "M", "VAL", "C"], 1.5, None, True),
     }
-    recs, res = {}, {}
+    recs, res, site_trades = {}, {}, {}
+    xnext = x.shift(-1)   # leg P&L vs the basket: sum w*x = sum w*r because sum w = 0, and USD gets its share
     for name, (lay, ent, ex, neu) in variants.items():
-        mask, ntr = trade_mask(disp, allow_fn(G, lay), entry=ent, exit_abs=ex)
+        eps = []
+        mask, ntr = trade_mask(disp, allow_fn(G, lay), entry=ent, exit_abs=ex, episodes=eps)
         rec, Wd = walk_w(x, r, K, mask, neutral=neu)
         rec = add_carry(rec, Wd, G["rates"])
         recs[name] = rec
+        site_trades[name] = trade_records(eps, disp, Wd, xnext, G)
         res[name] = {"net": summary(rec, ntr, mask, "net"), "net_carry": summary(rec, ntr, mask, "net_carry"),
                      "carry_ann_pct": round(float(rec.carry.mean() * 252 * 100), 3)}
         if name == "base":
@@ -273,7 +282,58 @@ def main():
     pd.DataFrame({k: v.net_carry for k, v in recs.items()}).to_csv(os.path.join(OUT, "daily_net_carry.csv"),
                                                                    float_format="%.7f")
     pd.DataFrame({k: v.net for k, v in recs.items()}).to_csv(os.path.join(OUT, "daily_net.csv"), float_format="%.7f")
+    write_site(meta, res, recs, site_trades, disp, x, G, variants)
     print(json.dumps(meta))
+
+
+# ---------------------------------------------------------------- site export (residual-fx8-paper-layers.html)
+def trade_records(eps, disp, Wd, xnext, G):
+    """One row per trade. Leg P&L = sum over the trade's days of w[t, ccy] * x[t+1, ccy] (x = return
+    vs the 8-currency basket; sum_i w_i x_i = sum_i w_i r_i since sum w = 0): the contribution of
+    that currency's leg to the gross-1 book, in bp (spread cost and carry are
+    booked at book level, not per leg). MAE / MFE = worst / best running leg P&L in the trade."""
+    W = Wd.reindex(disp.index).values
+    RN = xnext.reindex(disp.index).values
+    idx = disp.index
+    cd = G["cd"].values
+    out = []
+    for e in eps:
+        i, t0, t1 = e["i"], e["t0"], e["t1"]
+        days = t1 - t0
+        if days <= 0:
+            continue
+        legs = W[t0:t1, i] * RN[t0:t1, i] * 1e4
+        legs = np.nan_to_num(legs)
+        cum = np.cumsum(legs)
+        out.append({"ccy": disp.columns[i], "dir": int(-np.sign(e["z0"])),
+                    "entry": str(idx[t0].date()), "exit": str(idx[t1].date()), "days": int(days),
+                    "z0": round(e["z0"], 2), "z1": round(e["z1"], 2),
+                    "pnl_bp": round(float(cum[-1]), 2), "mae_bp": round(float(min(0.0, cum.min())), 2),
+                    "mfe_bp": round(float(max(0.0, cum.max())), 2),
+                    "carry_pp": None if not np.isfinite(cd[t0, i]) else round(float(-np.sign(e["z0"]) * cd[t0, i]), 2),
+                    "open": e["open"]})
+    out.sort(key=lambda d: d["entry"])
+    return out
+
+
+def write_site(meta, res, recs, site_trades, disp, x, G, variants):
+    dates = [str(d.date()) for d in recs["base"].index]
+    series = {k: {"net": [round(v * 1e4, 3) for v in rec.net.values],
+                  "net_carry": [round(v * 1e4, 3) for v in rec.net_carry.values],
+                  "gross": [round(v * 1e4, 3) for v in rec.gross.values],
+                  "cost": [round(v * 1e4, 3) for v in rec.cost.values],
+                  "carry": [round(v * 1e4, 3) for v in rec.carry.values]} for k, rec in recs.items()}
+    idx = disp.index
+    level = (np.exp(x.cumsum()) * 100).reindex(idx)
+    ccy = {c: {"level": [round(float(v), 3) for v in level[c].values],
+               "z": [round(float(v), 3) for v in disp[c].values]} for c in disp.columns}
+    gv = G["gv_pct"].reindex(idx)
+    defs = {k: {"layers": v[0], "entry": v[1], "exit_abs": v[2], "neutral": v[3]} for k, v in variants.items()}
+    site = {"meta": meta, "variants": res, "defs": defs, "dates": dates, "series_bp": series,
+            "trades": site_trades, "sig_dates": [str(d.date()) for d in idx], "ccy": ccy,
+            "gv_pct": [None if not np.isfinite(v) else round(float(v), 3) for v in gv.values]}
+    with open(os.path.join(OUT, "site.json"), "w") as f:
+        json.dump(site, f, separators=(",", ":"))
 
 
 if __name__ == "__main__":

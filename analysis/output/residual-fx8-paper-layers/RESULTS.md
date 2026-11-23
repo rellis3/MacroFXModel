@@ -52,4 +52,5 @@ Base full sample: +carry Sharpe 0.43, about 1.0% a year at 2.3% vol (gross 1), m
   `residual-fx8-forward` (same days, same costs, real OANDA financing), judged on new data only.
 - Not done: NOK and SEK (full G10) need adding to the panel first.
 
-Files: `results.json` (every variant, every half, bootstrap), `daily_net.csv`, `daily_net_carry.csv`.
+Page: `residual-fx8-paper-layers.html` (equity + drawdown, layer ladder, years, months, trade distribution, MAE, by currency, trade view, trade list + CSV).
+Files: `results.json` (every variant, every half, bootstrap), `site.json` (page data), `daily_net.csv`, `daily_net_carry.csv`.
