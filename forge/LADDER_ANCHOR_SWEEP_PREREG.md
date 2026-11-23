@@ -90,3 +90,8 @@ years (how big the best-of-24 gap looks by chance).
   pin down a one-sided extreme). Bar reset, openly after seeing those A = 00 values: **HL > 30 pp, OH and OL > 15 pp, at
   every anchor and instrument** (a control of the machinery, not of the hypothesis). The A = 00 run also passed control 1
   (99.5–100% of sessions match rows_F) and sits within 6% of the per-line study's QLIKE (control 3, reported).
+- **A2, 2026-11-23, PRE-RESULTS** (build running, no anchor other than 00 scored). Anchors 01–22 lose their Friday
+  windows (they would run past the Friday close), so anchor 00 has ~2,950 windows and the others ~2,350. Every
+  Δ(A) = Skill(A) − Skill(00) (choose half, confirm half, bootstrap, max-over-anchors) is computed on the session labels
+  **both** anchors have, so the comparison is on the same days. The grid still reports each anchor's skill on its own
+  windows.
