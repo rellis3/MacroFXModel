@@ -394,10 +394,34 @@ export function londonMidnightEpochSec(nowSec) {
   const t0 = Date.UTC(y, m - 1, d);
   return t0 / 1000 - (_londonIsBst(new Date(t0 - 3600000)) ? 3600 : 0);
 }
-function _londonDateKey(dt) {
+function _londonDateKeySlow(dt) {
   const local = new Date(dt.getTime() + (_londonIsBst(dt) ? 3600000 : 0));
   return `${local.getUTCFullYear()}-${String(local.getUTCMonth() + 1).padStart(2, '0')}-${String(local.getUTCDate()).padStart(2, '0')}`;
 }
+// Fast path (2026-11-23): the per-bar Date + two DST-boundary Dates + string padding above cost ~1 s and ~40 MB of garbage per pass over 180 days of M1 (the Level Atlas live walk re-buckets every warm
+// pair on every new bar). Same answer from integer arithmetic: the date string of each UTC day number and each year's BST window are computed once and cached. js/londonKeyFast.test.mjs compares both
+// over a million random instants plus every clock-change edge.
+const _ymdCache = new Map(), _dstCache = new Map();
+/** 'YYYY-MM-DD' and year of a UTC day number (days since 1970-01-01), cached. */
+export function ymdOfDayNum(dayN) {
+  let v = _ymdCache.get(dayN);
+  if (!v) { const d = new Date(dayN * 86400000); v = { s: d.toISOString().slice(0, 10), y: d.getUTCFullYear() }; _ymdCache.set(dayN, v); }
+  return v;
+}
+function _bstWindow(y) {
+  let w = _dstCache.get(y);
+  if (!w) { w = [_lastSundayUtc1am(y, 2).getTime(), _lastSundayUtc1am(y, 9).getTime()]; _dstCache.set(y, w); }
+  return w;
+}
+/** London calendar date for an epoch-millisecond instant; identical to _londonDateKeySlow(new Date(ms)). */
+export function londonDateKeyMs(ms) {
+  if (!Number.isFinite(ms) || ms < 0 || ms > 4e12) return _londonDateKeySlow(new Date(ms));
+  const w = _bstWindow(ymdOfDayNum(Math.floor(ms / 86400000)).y);
+  const local = (ms >= w[0] && ms < w[1]) ? ms + 3600000 : ms;
+  return ymdOfDayNum(Math.floor(local / 86400000)).s;
+}
+function _londonDateKey(dt) { return londonDateKeyMs(dt.getTime()); }
+export const _londonDateKeySlowForTest = _londonDateKeySlow;
 
 // ── 3a) Bucket raw M1 into trading-day SESSIONS ──────────────────────────────
 // M1-ONLY: the analyser derives everything from the R2 M1 parquet — no D1 bars,
@@ -413,13 +437,17 @@ export function bucketM1IntoSessions(packed, boundaryHour = 22) {
   if (!packed || !packed.n) return map;
   const london = boundaryHour === 'Europe/London' || boundaryHour === 'london';
   const { n, times, opens, highs, lows, closes, volumes } = packed;
+  let lastKey = null, lastArr = null;                         // consecutive bars share a day: skip the Map lookup
   for (let i = 0; i < n; i++) {
     const t  = times[i];
     // times may be epoch SECONDS (Int32, from loadM1ForPair), epoch ms, or ISO.
-    const dt = typeof t === 'number' ? new Date(t < 1e12 ? t * 1000 : t) : new Date(t);
     let key;
+    if (london && typeof t === 'number') {
+      key = londonDateKeyMs(t < 1e12 ? t * 1000 : t);         // session = London calendar day (no Date object per bar)
+    } else {
+    const dt = typeof t === 'number' ? new Date(t < 1e12 ? t * 1000 : t) : new Date(t);
     if (london) {
-      key = _londonDateKey(dt);                              // session = London calendar day
+      key = _londonDateKey(dt);
     } else {
       // Label = the date the session TRADES on. An evening boundary (>= 12, e.g. 22/23 UTC) opens
       // the NEXT date's session; a boundary at/after midnight (0..11) opens that same date's
@@ -432,8 +460,9 @@ export function bucketM1IntoSessions(packed, boundaryHour = 22) {
       else if (h < boundaryHour) d.setUTCDate(d.getUTCDate() - 1);
       key = d.toISOString().slice(0, 10);
     }
-    if (!map.has(key)) map.set(key, []);
-    map.get(key).push({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes ? volumes[i] : 0 });
+    }
+    if (key !== lastKey) { lastArr = map.get(key); if (!lastArr) { lastArr = []; map.set(key, lastArr); } lastKey = key; }
+    lastArr.push({ time: t, open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes ? volumes[i] : 0 });
   }
   for (const arr of map.values()) arr.sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0));
   return map;

@@ -36,7 +36,7 @@
  * Pure: no network, no I/O. Callers supply packed M1 + sessions.
  */
 
-import { bucketM1IntoSessions } from './forecastAnalyser.js';
+import { bucketM1IntoSessions, ymdOfDayNum } from './forecastAnalyser.js';
 import { buildLadder } from './forecastLadder.js';
 import { LADDER_PARAMS } from './forecastLadderParams.js';
 import { forecastSigma } from './forecastSigma.js';
@@ -99,20 +99,22 @@ function dowOf(dateStr) { return new Date(dateStr + 'T00:00:00Z').getUTCDay(); }
 export function sessionRangeSeries(packed) {
   const { n, times, opens, highs, lows, closes } = packed;
   const out = new Map();   // key -> { hi, lo, range, open, close, t0 }
+  // Integer arithmetic instead of two Date objects + an ISO string per bar (2026-11-23: this was 3.5 s of a 6 s walk over 180 days of M1). Same keys, same values, same insertion order.
+  const SESS = ['Asia', 'London', 'NY'], byNum = new Map();
   for (let i = 0; i < n; i++) {
-    const t = times[i], d = new Date(t * 1000);
-    const h = d.getUTCHours();
-    const sess = sessionOf(h);
+    const t = times[i];
+    const dayN = Math.floor(t / 86400), h = Math.floor((t - dayN * 86400) / 3600);
+    const si = (h >= 22 || h < 7) ? 0 : h < 13 ? 1 : 2;
     // Session date: Asia (22:00-07:00) is keyed to the date it STARTS on, so it
     // groups with the London/NY of the SAME trading day that follows it —
     // matching bucketM1IntoSessions' own day convention.
-    const dayD = new Date(t * 1000);
-    if (sess === 'Asia' && h < 7) dayD.setUTCDate(dayD.getUTCDate() - 1);
-    const date = dayD.toISOString().slice(0, 10);
-    const key = `${date}|${sess}`;
-    const cur = out.get(key);
-    if (!cur) out.set(key, { hi: highs[i], lo: lows[i], range: 0, open: opens[i], close: closes[i], t0: t });
-    else { if (highs[i] > cur.hi) cur.hi = highs[i]; if (lows[i] < cur.lo) cur.lo = lows[i]; cur.close = closes[i]; }
+    const keyDay = (si === 0 && h < 7) ? dayN - 1 : dayN;
+    const nk = keyDay * 4 + si;
+    let cur = byNum.get(nk);
+    if (!cur) {
+      cur = { hi: highs[i], lo: lows[i], range: 0, open: opens[i], close: closes[i], t0: t };
+      byNum.set(nk, cur); out.set(`${ymdOfDayNum(keyDay).s}|${SESS[si]}`, cur);
+    } else { if (highs[i] > cur.hi) cur.hi = highs[i]; if (lows[i] < cur.lo) cur.lo = lows[i]; cur.close = closes[i]; }
   }
   for (const v of out.values()) v.range = v.hi - v.lo;
   return out;
