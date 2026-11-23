@@ -3530,6 +3530,13 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
   },
   {
+    id: 'ladder-exhaustion-accuracy', domain: 'volatility', verdict: 'null', date: '2026-11-23', doc: 'forge/LADDER_EXHAUSTION_ACCURACY_PREREG.md', also: ['analysis/output/ladder-exhaustion-accuracy/RESULTS.md'],
+    claim: 'Jordan\'s recipe as published (3-day ATR sigma x textbook constants) lands its median high-low and close lines nearer the actual day range and close than our QLIKE per-line picks (owner: the purpose is exhaustion, predicting the high, low and close)',
+    result: 'Pre-registered, NQ/GC/6E/6J futures, abs error of p50 lines, test 2020-2026.08. HL: Jordan +13.0% more error [+11.6, +14.8], both halves, all four (NQ +6.6%, gold +16.5%); Bank EMA alpha 0.15 +6.0%. Close: Jordan +2.8% [+2.1, +3.7]. Ours lands within 20% of the actual HL on 38-42% of days vs 33-36%. After big days Jordan overshoots and ours undershoots; NQ after big days level. Graded weight: against (ours nearer).',
+    use: 'Our HL lines are the better exhaustion lines. Candidate fix: NQ HL after big days runs low.',
+    instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
+  },
+  {
     id: 'ladder-jordan-recipe', domain: 'volatility', verdict: 'null', date: '2026-11-23', doc: 'forge/LADDER_JORDAN_RECIPE_PREREG.md', also: ['analysis/output/ladder-jordan-recipe/RESULTS.md'],
     claim: 'A fast True-Range sigma (ATR 2/3/10 days, EMA of TR alpha 0.15-0.60; the recipe that best matches Jordan\'s one-off 23 Nov levels, and the C.OG Bank\'s EMA-of-TR method) gives lower QLIKE for HL / OH / OL than our QLIKE per-line pick',
     result: 'Pre-registered, NQ/GC/6E/6J futures, walk-forward pick among the TR arms, fitted scale, test 2020-2026.08. +1.85% [+0.66, +2.31] worse (2020-22 +0.59%, 2023-26 +2.89%); NQ +2.3%, gold +3.0%, EURUSD +1.2%. Best of family = Bank alpha 0.15 EMA (ranks ~13-32 of 52-56); the fast 2-3 day versions that match Jordan rank 35-51. Graded weight: against.',
@@ -4797,6 +4804,7 @@ const POWER = {
   'fqt-nam-lines-tp': { n: '1,417 NQ trades', note: 'NULL bar +1 bp; CI upper -2.04 bp' },
   'futures-oc-tp-fade-p75': { n: '3,377 trades on ~6,600 sessions (4 futures)', note: 'NULL bar +0.05R; CI upper -0.043R' },
   'futures-oc-tp-fade-p90': { n: '1,364 trades', note: 'NULL bar +0.05R; CI upper -0.064R' },
+  'ladder-exhaustion-accuracy': { n: '~1,650 test sessions per instrument (4 futures, HL and close), 63-session blocks', note: 'observed HL +13.0%, CI [+11.6, +14.8]' },
   'ladder-jordan-recipe': { n: '~1,650 test sessions per instrument (4 futures x 3 lines), 63-session blocks', note: 'observed +1.85%, CI [+0.66, +2.31]; NULL bar CI lower > -0.5% met' },
   'ladder-jordan-recipe-published': { n: '~1,650 test sessions per instrument (4 futures x 3 lines), 63-session blocks', note: 'observed +9.05%, CI [+6.87, +9.85]' },
   'ladder-wide-race': { n: '~1,650 test sessions per instrument (4 futures x 3 lines, 51-55 models), 63-session blocks', note: 'oracle picked every year; observed -0.06%, CI [-0.89, +0.29]; NULL bar needs CI lower > -0.5%' },

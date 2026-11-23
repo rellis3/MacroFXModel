@@ -1,0 +1,52 @@
+
+== hl_JORDAN: total abs error vs OURS (% change; negative = theirs nearer the actual)
+  all      +12.97% [+11.62, +14.76]
+  2020-22  +12.68% [+10.68, +15.27]
+  2023-26  +13.73% [+11.88, +15.48]
+  NQ +6.6% [+2.5,+11.1]  GOLD +16.5% [+13.7,+19.6]  EURUSD +14.3% [+12.0,+17.1]  USDJPY +14.5% [+11.9,+17.2]
+
+== hl_BANK: total abs error vs OURS (% change; negative = theirs nearer the actual)
+  all      +5.99% [+4.76, +7.26]
+  2020-22  +5.57% [+3.82, +7.14]
+  2023-26  +6.69% [+5.23, +8.14]
+  NQ +3.8% [+0.4,+7.3]  GOLD +6.5% [+4.4,+8.9]  EURUSD +5.2% [+3.8,+6.8]  USDJPY +8.4% [+6.4,+10.4]
+
+== oc_JORDAN: total abs error vs OURS (% change; negative = theirs nearer the actual)
+  all      +2.80% [+2.08, +3.71]
+  2020-22  +2.76% [+1.67, +3.99]
+  2023-26  +3.09% [+2.25, +3.83]
+  NQ +1.9% [-0.1,+4.4]  GOLD +3.7% [+2.4,+5.2]  EURUSD +2.5% [+1.2,+3.8]  USDJPY +3.2% [+1.6,+4.4]
+
+== oc_BANK: total abs error vs OURS (% change; negative = theirs nearer the actual)
+  all      +0.98% [+0.32, +1.72]
+  2020-22  +0.85% [-0.05, +2.08]
+  2023-26  +1.34% [+0.72, +1.85]
+  NQ +1.1% [-1.4,+3.4]  GOLD +0.8% [-0.1,+1.9]  EURUSD +0.5% [+0.1,+1.0]  USDJPY +1.6% [+0.6,+2.4]
+
+VERDICT (HL, Jordan as published vs ours): NULL
+
+== Descriptive: mean abs error (% of open), median abs error, % of days within 10% / 20% of the actual, mean line vs mean actual
+  NQ      hl all           n=1681  OURS 0.658/0.433 20%/40% line 1.70 vs 2.04  |  JORDAN 0.701/0.508 17%/36% line 2.06 vs 2.04  |  BANK 0.683/0.503 19%/37% line 2.06 vs 2.04
+  NQ      hl after big day n= 359  OURS 0.980/0.585 22%/42% line 2.28 vs 3.02  |  JORDAN 0.985/0.715 21%/40% line 3.26 vs 3.02  |  BANK 0.977/0.693 20%/39% line 2.94 vs 3.02
+  NQ      hl other days    n=1322  OURS 0.570/0.404 20%/39% line 1.55 vs 1.78  |  JORDAN 0.624/0.474 16%/34% line 1.74 vs 1.78  |  BANK 0.603/0.468 19%/37% line 1.82 vs 1.78
+  NQ      oc all           n=1681  OURS 0.654/0.440 8%/16% line 0.77 vs 1.06  |  JORDAN 0.667/0.478 7%/15% line 0.88 vs 1.06  |  BANK 0.661/0.483 7%/16% line 0.88 vs 1.06
+  NQ      oc after big day n= 359  OURS 0.934/0.670 8%/15% line 1.10 vs 1.52  |  JORDAN 0.939/0.702 7%/16% line 1.40 vs 1.52  |  BANK 0.936/0.692 8%/17% line 1.26 vs 1.52
+  NQ      oc other days    n=1322  OURS 0.578/0.409 8%/16% line 0.69 vs 0.94  |  JORDAN 0.593/0.441 7%/14% line 0.74 vs 0.94  |  BANK 0.587/0.444 7%/16% line 0.78 vs 0.94
+  GOLD    hl all           n=1650  OURS 0.514/0.344 21%/40% line 1.43 vs 1.63  |  JORDAN 0.598/0.432 16%/33% line 1.64 vs 1.63  |  BANK 0.547/0.392 20%/37% line 1.64 vs 1.63
+  GOLD    hl after big day n= 372  OURS 0.751/0.417 22%/40% line 1.75 vs 2.16  |  JORDAN 0.918/0.679 15%/29% line 2.41 vs 2.16  |  BANK 0.812/0.536 18%/35% line 2.16 vs 2.16
+  GOLD    hl other days    n=1278  OURS 0.444/0.324 20%/39% line 1.33 vs 1.48  |  JORDAN 0.505/0.382 17%/34% line 1.42 vs 1.48  |  BANK 0.469/0.370 21%/38% line 1.48 vs 1.48
+  GOLD    oc all           n=1650  OURS 0.517/0.350 8%/15% line 0.58 vs 0.82  |  JORDAN 0.536/0.390 8%/16% line 0.70 vs 0.82  |  BANK 0.521/0.391 8%/17% line 0.70 vs 0.82
+  GOLD    oc after big day n= 372  OURS 0.659/0.410 8%/15% line 0.71 vs 1.03  |  JORDAN 0.719/0.490 8%/17% line 1.03 vs 1.03  |  BANK 0.676/0.477 7%/16% line 0.93 vs 1.03
+  GOLD    oc other days    n=1278  OURS 0.476/0.338 8%/15% line 0.55 vs 0.76  |  JORDAN 0.483/0.363 8%/16% line 0.61 vs 0.76  |  BANK 0.476/0.366 8%/17% line 0.64 vs 0.76
+  EURUSD  hl all           n=1651  OURS 0.203/0.147 22%/42% line 0.64 vs 0.70  |  JORDAN 0.232/0.171 19%/35% line 0.69 vs 0.70  |  BANK 0.213/0.160 20%/39% line 0.69 vs 0.70
+  EURUSD  hl after big day n= 368  OURS 0.248/0.172 22%/45% line 0.82 vs 0.89  |  JORDAN 0.302/0.237 19%/34% line 0.98 vs 0.89  |  BANK 0.266/0.202 23%/40% line 0.90 vs 0.89
+  EURUSD  hl other days    n=1283  OURS 0.190/0.136 22%/41% line 0.59 vs 0.64  |  JORDAN 0.211/0.156 19%/36% line 0.61 vs 0.64  |  BANK 0.198/0.151 20%/39% line 0.64 vs 0.64
+  EURUSD  oc all           n=1651  OURS 0.211/0.161 8%/16% line 0.28 vs 0.35  |  JORDAN 0.216/0.166 8%/16% line 0.30 vs 0.35  |  BANK 0.212/0.166 8%/17% line 0.30 vs 0.35
+  EURUSD  oc after big day n= 368  OURS 0.251/0.200 8%/19% line 0.35 vs 0.43  |  JORDAN 0.260/0.216 9%/21% line 0.42 vs 0.43  |  BANK 0.254/0.208 9%/21% line 0.39 vs 0.43
+  EURUSD  oc other days    n=1283  OURS 0.199/0.153 8%/16% line 0.26 vs 0.32  |  JORDAN 0.203/0.159 8%/15% line 0.26 vs 0.32  |  BANK 0.200/0.153 8%/16% line 0.27 vs 0.32
+  USDJPY  hl all           n=1624  OURS 0.272/0.174 19%/38% line 0.71 vs 0.81  |  JORDAN 0.312/0.206 18%/34% line 0.82 vs 0.81  |  BANK 0.295/0.207 17%/33% line 0.82 vs 0.81
+  USDJPY  hl after big day n= 351  OURS 0.342/0.231 21%/41% line 0.94 vs 1.06  |  JORDAN 0.423/0.335 17%/30% line 1.21 vs 1.06  |  BANK 0.381/0.294 18%/34% line 1.06 vs 1.06
+  USDJPY  hl other days    n=1273  OURS 0.253/0.165 18%/37% line 0.65 vs 0.74  |  JORDAN 0.281/0.186 18%/35% line 0.71 vs 0.74  |  BANK 0.272/0.193 17%/33% line 0.75 vs 0.74
+  USDJPY  oc all           n=1624  OURS 0.256/0.168 8%/16% line 0.30 vs 0.41  |  JORDAN 0.264/0.183 8%/17% line 0.35 vs 0.41  |  BANK 0.260/0.182 8%/17% line 0.35 vs 0.41
+  USDJPY  oc after big day n= 351  OURS 0.311/0.215 7%/18% line 0.40 vs 0.52  |  JORDAN 0.331/0.241 9%/17% line 0.52 vs 0.52  |  BANK 0.322/0.236 10%/16% line 0.46 vs 0.52
+  USDJPY  oc other days    n=1273  OURS 0.241/0.158 8%/16% line 0.28 vs 0.38  |  JORDAN 0.245/0.166 8%/17% line 0.30 vs 0.38  |  BANK 0.243/0.170 8%/17% line 0.32 vs 0.38
