@@ -690,6 +690,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/deskBiasProcessView.js",
+     "js/terminal/jarvisViewMoneyGlobe.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/regimeBoardView.js",
@@ -1278,7 +1279,9 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
-     "js/terminal/mapLayers.js"
+     "js/terminal/jarvisViewMoneyGlobe.js",
+     "js/terminal/mapLayers.js",
+     "js/terminal/moneyGlobeCore.js"
     ],
     "today": [],
     "atlas": [],
@@ -1490,8 +1493,10 @@ export const DERIVED = {
      "js/terminal/deepDive.js",
      "js/terminal/fedPathYieldsView.js",
      "js/terminal/insightSeries.js",
+     "js/terminal/jarvisViewMoneyGlobe.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
+     "js/terminal/moneyGlobeCore.js",
      "js/terminal/ratesBoardCore.js",
      "js/terminal/ratesBoardView.js",
      "js/terminal/spreadsDerived.js",
@@ -1922,6 +1927,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/hedgeView.js",
+     "js/terminal/jarvisViewMoneyGlobe.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -2153,9 +2159,11 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/bisView.js",
+     "js/terminal/jarvisViewMoneyGlobe.js",
      "js/terminal/links.js",
      "js/terminal/macroSubtabs.js",
-     "js/terminal/mapLayers.js"
+     "js/terminal/mapLayers.js",
+     "js/terminal/moneyGlobeCore.js"
     ],
     "today": [
      "today.html"
@@ -2424,7 +2432,7 @@ export const DERIVED = {
     {
      "file": "vol-forecast-v3.html",
      "exists": true,
-     "lastModified": "2026-11-20",
+     "lastModified": "2026-11-22",
      "hub": [
       "live"
      ]
@@ -2544,11 +2552,13 @@ export const DERIVED = {
      "js/terminal/jarvisModMarkets.js",
      "js/terminal/jarvisSessionCore.js",
      "js/terminal/jarvisView.js",
+     "js/terminal/jarvisViewBoard.js",
      "js/terminal/jarvisViewBook.js",
      "js/terminal/jarvisViewCcy.js",
      "js/terminal/jarvisViewDayAhead.js",
      "js/terminal/jarvisViewNet.js",
      "js/terminal/jarvisViewSession.js",
+     "js/terminal/jarvisViewWx.js",
      "js/terminal/monitorCore.js",
      "js/terminal/monitorView.js",
      "js/terminal/reachCore.js",
@@ -4339,6 +4349,7 @@ export const DERIVED = {
      "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
      "js/terminal/insightSeries.js",
+     "js/terminal/jarvisViewMoneyGlobe.js",
      "js/terminal/links.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/mapLayers.js",
@@ -5511,7 +5522,7 @@ export const DERIVED = {
   }
  },
  "unclassified": [],
- "rootPageCount": 262,
+ "rootPageCount": 263,
  "packFeeds": 115,
  "generatedAt": "2026-11-22"
 };

@@ -35,11 +35,13 @@ function serverEngine(win) {
       if (clips.has(t)) return clips.get(t);
       const p = (async () => {
         try {
-          const ac = new win.AbortController(), to = win.setTimeout(() => ac.abort(), 15000);      // never let one slow clip hold up the programme
+          // never let one slow clip hold up the programme, but give a long line time to render: the Edge voice needs ~3-4 s per 100 characters on a slow minute, and a
+          // flat 15 s cut-off made a 500-character line fail twice (prefetch, then play) = 30 s of picture with no voice in the 23 Nov recording
+          const ac = new win.AbortController(), to = win.setTimeout(() => ac.abort(), Math.min(50000, 15000 + 70 * t.length));
           const r = await win.fetch('/api/jarvis/voice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, rate: 1 }), signal: ac.signal }).finally(() => win.clearTimeout(to));
           if (!r.ok) throw new Error(String(r.status)); provider = r.headers.get('X-Jarvis-Voice') || provider;
           const blob = await r.blob(); if (!blob.size) throw new Error('empty'); failures = 0; return win.URL.createObjectURL(blob);
-        } catch (e) { clips.del(t); if (++failures >= 2) disabledUntil = Date.now() + 5 * 60_000; return null; }
+        } catch (e) { clips.del(t); if (++failures >= 3) disabledUntil = Date.now() + 5 * 60_000; return null; }     // one slow line (prefetch + play = 2) must not silence the rest of the show
       })();
       clips.set(t, p); return p;
     },

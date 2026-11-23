@@ -33,11 +33,11 @@ export function loadDay(api, force) {
   if (S.busy) return S.busy; if (S.day && !force && S.date === date && Date.now() - S.at < TTL) return Promise.resolve(S.day);
   S.busy = (async () => {
     const ok = p => Promise.resolve().then(() => p()).catch(() => null);
-    const [feed, cal, evday, prof] = await Promise.all([ok(() => api.jf('/api/calendar-feed')), ok(() => api.jf(`/api/calendar-events?from=${addDays(date, -1)}&to=${addDays(date, 1)}&minRank=1`)),
-      ok(() => api.jf('/api/event-day')), ok(() => api.jf('/api/vol-forecast/intraday-profile'))]);
+    const [feed, cal, evday, prof, week] = await Promise.all([ok(() => api.jf('/api/calendar-feed')), ok(() => api.jf(`/api/calendar-events?from=${addDays(date, -1)}&to=${addDays(date, 1)}&minRank=1`)),
+      ok(() => api.jf('/api/event-day')), ok(() => api.jf('/api/vol-forecast/intraday-profile')), ok(() => api.jf('/api/events'))]);     // /api/events: ForexFactory's full week, medium impact too
     try {
       const f = feed?.ok === false ? null : feed, c = cal?.ok === false ? null : cal, e = evday?.ok === false ? null : evday;
-      S.day = mergeDay({ feed: f, cal: c, evday: e, now });
+      S.day = mergeDay({ feed: f, cal: c, evday: e, week: Array.isArray(week) ? week : null, now });
       S.feedOk = Array.isArray(f?.ahead) || S.day.events.length > 0;      // the week-ahead feed is the forward source; without it an empty list is no data, not a quiet day S.later = laterBig(f, S.day.date);
       S.prof = prof?.ok === false ? null : hourProfile(prof); S.status = 'ok'; S.date = date; S.stamp = (S.stamp ?? 0) + 1;
     } catch (err) { if (!S.day) S.status = 'fail'; }

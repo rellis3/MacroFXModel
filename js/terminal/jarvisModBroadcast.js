@@ -243,7 +243,7 @@ registerJarvisModule({
       let left = ms; while (left > 0 && my === token && ctl.jump == null) { await sleep(100); if (!ctl.paused) left -= 100 * ctl.rate; }
     }
 
-    async function run() {
+    async function run(onAir = null) {
       const my = ++token; status('Gathering the morning...');
       const c = await gather(true); if (my !== token) return;
       const P = plan(c.inp, q('len').value), items = P.items; api.win.__jarvisBroadcastPlan = P;     // for the lab harness and the console
@@ -258,6 +258,7 @@ registerJarvisModule({
       }); sync(); api.caption(null);
       ov?.remove(); ov = makeOverlay(api); if (!ov) { status('The HUD is not open.', true); return; }
       ov.open(P.date); ov.ticker(P.ticker); ov.on(); api.sfx.ambient(true);
+      if (onAir) { try { await onAir(); } catch (e) { /* the recorder's hook must never stop the show */ } if (my !== token) return; }      // the daily job starts recording HERE, on the title card, not on the panel while the data loads
       status(`On air: ${P.segments.length} segments, about ${durText(items.reduce((a, x) => a + itemSeconds(x, ctl.rate), 0))}. Voice: ${api.voiceLabel?.() ?? "on"}.`);
       api.voicePrefetch?.(items[0]?.text);
       let i = Math.max(0, Math.min(items.length - 1, +(api.win.__jarvisBroadcastFrom ?? 0) || 0)), prevKind = null, prevView = null;
@@ -282,7 +283,7 @@ registerJarvisModule({
         ov.sub(null);
         if (it.kind === 'open') { sting(api); await hold(1500, my); }
         // the line: subtitles and the scene's own camera follow the voice's REAL progress (the audio clock; the reading-speed estimate when there is none)
-        api.voicePrefetch?.(items[i + 1]?.text);
+        for (const nx of items.slice(i + 1, i + 4)) api.voicePrefetch?.(nx.text);     // three lines ahead: a long line renders while the short ones before it play
         for (const nx of items.slice(i + 1, i + 4)) if (nx.view && nx.view !== st.view) { glWarm(nx.view, api).catch(() => {}); break; }   // build the next hologram while this line plays
         if (it.text) {
           const chunks = subtitleChunks(it.text, st.compact ? 8 : 14), dur = itemSeconds({ text: it.text }, ctl.rate);
@@ -320,8 +321,10 @@ registerJarvisModule({
       rec.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
       const done = new Promise(r => { rec.onstop = r; });
       const root = api.doc.getElementById(api.ID); root?.classList.add('jv-rec');        // a clean picture: no playback buttons in the video
-      stop(); const t0 = Date.now(); rec.start(1000);
-      try { await run(); } finally { root?.classList.remove('jv-rec'); }
+      // recording starts once the title card is up (plus a beat for it to paint), so the video never opens on the PLAY panel while the morning's data loads
+      stop(); let t0 = 0; const onAir = async () => { await sleep(400); t0 = Date.now(); rec.start(1000); };
+      try { await run(onAir); } finally { root?.classList.remove('jv-rec'); }
+      if (!t0 || rec.state === 'inactive') throw new Error('the broadcast never went on air (is the HUD open?)');
       const t1 = Date.now(); rec.stop(); await done;
       const buf = new Uint8Array(await new Blob(chunks, { type: type.split(';')[0] }).arrayBuffer()); let bin = '';
       for (let k = 0; k < buf.length; k += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(k, k + 0x8000));
