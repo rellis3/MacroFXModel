@@ -17,6 +17,7 @@
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView } from './jarvisGL.js';
+import { isEvening, reactionOf, releasedGroups, reviewScript, reviewFigure, tomorrowScript, REACT_PAIR } from './eveningCore.js';
 import { SESSIONS, REGION_LABEL, londonParts, polar, angleOf, laneOffset, pylonHeight, mergeDay, nextBig, countdown, hourProfile, ridgeAt, placeLabels, dayScript, outlookScript, sweepMins } from './dayAheadCore.js';
 
 const R = 3, R_SESS = 2.68, RB = 1.2, RA = 1.08, FULL = 1.5, TTL = 10 * 60_000, NR = 289, TAIL = 70, MAXP = 64;
@@ -38,6 +39,7 @@ export function loadDay(api, force) {
     try {
       const f = feed?.ok === false ? null : feed, c = cal?.ok === false ? null : cal, e = evday?.ok === false ? null : evday;
       S.day = mergeDay({ feed: f, cal: c, evday: e, week: Array.isArray(week) ? week : null, now });
+      S.week = Array.isArray(week) ? week : null; S.feed = f;      // kept for the evening's TOMORROW scene
       S.feedOk = Array.isArray(f?.ahead) || S.day.events.length > 0;      // the week-ahead feed is the forward source; without it an empty list is no data, not a quiet day S.later = laterBig(f, S.day.date);
       S.prof = prof?.ok === false ? null : hourProfile(prof); S.status = 'ok'; S.date = date; S.stamp = (S.stamp ?? 0) + 1;
     } catch (err) { if (!S.day) S.status = 'fail'; }
@@ -288,4 +290,31 @@ registerShowScene({
     return { title: 'The day ahead', view: 'ahead', cam: null, text, enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); S.sel = null; S.showP = 0; S.showAt = Date.now(); },
       motion: (api, p) => { S.showP = clamp(p, 0, 1); S.showAt = Date.now(); } };
   },
+});
+
+// ── the EVENING programme (after 18:00 London): the day's releases looked back on, and tomorrow's calendar ──
+// dayreview: each released number against its forecast, and what its currency did in the half hour after (15-minute bars of the currency's main pair, against the same half hour on earlier days)
+registerShowScene({
+  id: 'dayreview', after: 'dayahead',
+  prepare: async api => {
+    const now = nowMs(api); if (!isEvening(now)) return null;
+    await loadDay(api); if (!S.day) return null;
+    const groups = releasedGroups(S.day, now); if (!groups.length) return null;
+    const pairs = [...new Set(groups.map(g => REACT_PAIR[g.ccy]?.[0]).filter(Boolean))], bars = {};
+    await Promise.all(pairs.map(async p => { try { const j = await api.jf(`/api/cog-chart/candles?asset=${p}&tf=15m&count=1500`); if (j?.ok && Array.isArray(j.candles)) bars[p] = j.candles.map(c => ({ t: +c.t, o: +c.o, c: +c.c })).sort((a, b) => a.t - b.t); } catch (e) { /* that pair goes unmeasured */ } }));
+    const react = {}; for (const g of groups) { const b = bars[REACT_PAIR[g.ccy]?.[0]]; if (b) react[g.key] = reactionOf(b, g.ms, g.ccy); }
+    return { now, react };
+  },
+  build: (inp, data) => {
+    if (!data || !S.day) return null; const text = reviewScript(S.day, data.react, data.now, inp?.mode === 'short' ? 2 : 3); if (!text) return null;
+    return { title: "Today's releases", view: 'ahead', cam: null, text, figure: reviewFigure(S.day, data.react, data.now),
+      enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: true }); S.sel = null; S.showP = -1; } };
+  },
+});
+// tomorrow: the next day's calendar (Friday evening: Monday, when the week's calendar reaches it), read over the world globe
+registerShowScene({
+  id: 'tomorrow', after: 'dayreview',
+  prepare: api => { const now = nowMs(api); if (!isEvening(now)) return null; return loadDay(api).then(() => { const t = tomorrowScript(S.week, now, { feed: S.feed }); return t ? { t } : null; }).catch(() => null); },
+  build: (inp, data) => (data?.t ? { title: `${data.t.label}'s calendar`, view: 'globe', cam: { region: 'world' }, text: data.t.text,
+    figure: { value: String(data.t.n), label: `release${data.t.n === 1 ? '' : 's'} ${data.t.label === 'Tomorrow' ? 'tomorrow' : `on ${data.t.label}`}` } } : null),
 });

@@ -33,7 +33,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from broadcast_core import concat_list, max_volume, is_silent, title_for, description_for, short_warning  # noqa: E402
+from broadcast_core import concat_list, max_volume, is_silent, title_for, description_for, short_warning, part_of_day  # noqa: E402
 
 BASE = 'https://macrofxmodel-production.up.railway.app'
 PROFILE = Path(os.environ.get('JARVIS_PROFILE', HERE / '.profile'))                     # the saved, logged-in browser profile (git-ignored)
@@ -211,7 +211,8 @@ def main() -> None:
         if not a.no_upload:
             from youtube_upload import upload
             today = datetime.now().date()
-            vid = upload(mp4, title_for(today), description_for(today, cap['voice'], cap['seconds']), privacy='unlisted')
+            part = part_of_day(datetime.now().hour)          # 07:15 -> the morning briefing, 21:00 -> the evening one (the page picks its programme by the same London clock)
+            vid = upload(mp4, title_for(today, part), description_for(today, cap['voice'], cap['seconds'], part), privacy='unlisted')
             result.update({'videoId': vid, 'url': f'https://youtube.com/shorts/{vid}', 'privacy': 'unlisted'})
             log(f"uploaded (unlisted): {result['url']}")
         (out_dir / 'last_run.json').write_text(json.dumps(result, indent=2), encoding='utf-8')

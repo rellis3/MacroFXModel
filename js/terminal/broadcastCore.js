@@ -138,6 +138,15 @@ export const BUILTIN = {
     if (pick.some(r => fin(r.range75))) t.push('One day in four runs bigger. Those are sizes, not direction.');
     return { title: "Today's ranges", view: 'vol', cam: null, text: t.join(' '), figure: { value: `${pick[0].range >= 1 ? pick[0].range.toFixed(1) : String(+pick[0].range.toFixed(2))}%`, label: `${marketName(pick[0].key, { short: true })} typical range` } };
   },
+  // EVENING: how much of its typical high-to-low range each headline market actually used today (the morning's ranges scene, told looking back). Sizes, never direction.
+  rangeused(inp) {
+    const rows = (inp.rows ?? []).filter(r => r && fin(r.range) && r.range > 0 && fin(r.hl) && r.hl > 0), pick = RANGE_KEYS.map(k => rows.find(r => r.key === k)).filter(Boolean).slice(0, 6);
+    if (pick.length < 2) return null;
+    const u = pick.map(r => ({ r, u: r.hl / r.range })).sort((a, b) => b.u - a.u), top = u.slice(0, 3), over = rows.filter(r => r.hl > r.range).length;
+    const t = [`How much of its typical day each market used: ${list(top.map(x => `${spokenName(x.r.key)} ${Math.round(x.u * 100)} percent`))} of the vol model's typical range.`];
+    t.push(over ? `${cap1(numWord(over))} of ${rows.length} markets ran past their typical range.` : `None of the ${rows.length} markets ran past its typical range.`);
+    return { title: 'The range used', view: 'vol', cam: null, text: t.join(' '), figure: { value: `${Math.round(top[0].u * 100)}%`, label: `${marketName(top[0].r.key, { short: true })} of its typical range` } };
+  },
   // the board's counts are in the Markets segue; the body names the movers, skipping any the lead has already covered (inp.leadKeys)
   candles(inp) {
     const bd = inp.board, mv = (inp.movers ?? []).filter(m => m && fin(m.ratio) && fin(m.oc)); if (!bd || !bd.n) return null;
@@ -202,6 +211,10 @@ export const SEGMENTS = [
       return big ? `Over to volatility. ${cap1(numWord(big))} of ${rows.length} markets are moving at least twice their usual size.` : fig ? `Over to volatility: ${fig}.` : null;
     } },
   { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', tiers: [['gpillar', 'gterrain', 'cot'], ['gamma']], say: ({ fig }) => (fig ? `Positioning, and where the options sit: ${fig}.` : null) },
+  // THE EVENING programme (after 18:00 London) opens on THE DAY and THE RELEASES and closes on TOMORROW, and drops THE OUTLOOK. evening: true = only in the evening.
+  { id: 'day', name: 'The Day', evening: true, keep: 2, segue: 'The day, looking back.', tiers: [['daymove', 'rangeused'], ['rangeused']], say: () => 'The day, looking back.' },
+  { id: 'releases', name: 'The Releases', evening: true, keep: 2, words: 75, segue: '', tiers: [['shocktoday', 'dayreview'], ['dayreview']] },      // the scene opens with its own words
+  { id: 'next', name: 'Tomorrow', evening: true, words: 45, segue: '', tiers: [['tomorrow']] },
   // THE OUTLOOK: what today holds: the calendar with its expectations and typical reaction, then today's typical ranges. keep: 2 = both scenes play even in the quick and short cuts. First in the morning.
   { id: 'ahead', name: 'The Outlook', segue: 'The outlook for today.', keep: 2, tiers: [['dayahead', 'ranges', 'shockwave'], ['ahead', 'ranges'], ['ranges']],
     say: ({ inp }) => { const n = (inp.events ?? []).map(normEvent).filter(Boolean).length; return n ? `The outlook for today: ${numWord(n)} high-impact release${n === 1 ? '' : 's'} on the clock.` : null; } },
@@ -213,6 +226,8 @@ export const QUICK_WORDS = 34;
 /** The SHORT broadcast (mode 'short', for a YouTube Short, which must stay under 3 minutes): shorter lines, a two-item lead, and if the estimate still runs long the
  *  least essential segments go first, in this order. Markets, The Chain and The Day Ahead always stay. The budget is an ESTIMATE: a real run took about 1.2x it (transitions, the voice's own pace), so 120 s lands near 2.5 minutes. */
 export const SHORT_WORDS = 24, SHORT_BUDGET_SEC = 120, SHORT_DROP = ['vol', 'pos', 'ccy', 'macro', 'rates'];
+/** The evening's order of drops: the snapshots go before the look-back (The Day, The Releases and Tomorrow always stay; Markets repeats The Day, so it goes last). */
+export const SHORT_DROP_EVENING = ['vol', 'pos', 'ccy', 'macro', 'rates', 'chain', 'markets'];
 /** The one spoken disclaimer of the programme. */
 export const SIGNOFF_TEXT = 'That is the briefing. Description, not advice. Until tomorrow.';
 /** A sentence that is only a disclaimer or a cliché: dropped from scene bodies (the sign-off says it once for the whole programme). */
@@ -260,7 +275,9 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     return (built[id] = x);
   };
   const segs = [];
-  const morning = partOfDay(date.hour) === 'morning', order = morning ? [...SEGMENTS.filter(s => s.id === 'ahead'), ...SEGMENTS.filter(s => s.id !== 'ahead')] : SEGMENTS;
+  const pod = partOfDay(date.hour), seg = id => SEGMENTS.find(s => s.id === id), day = SEGMENTS.filter(s => !s.evening && s.id !== 'ahead');
+  // morning: the outlook first; afternoon: the outlook last; evening: the day and its releases first, tomorrow last, no outlook (the day is done)
+  const order = pod === 'morning' ? [seg('ahead'), ...day] : pod === 'evening' ? [seg('day'), seg('releases'), ...day, seg('next')] : [...day, seg('ahead')];
   for (const s of order) {
     let scenes = [];
     for (const tier of s.tiers) { scenes = tier.map(sceneFor).filter(Boolean); if (scenes.length) break; }
@@ -283,7 +300,8 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
       items.push({ kind: 'bumper', seg, title: s.name, view: s.scenes[0].view, cam: null, hold: short ? 1.2 : 1.9, text: '' });
       s.scenes.forEach((sc, j) => {
         const src = sc.id === 'candles' ? (BUILTIN.candles(ctxInp)?.text ?? sc.text) : sc.text;          // the board's body knows what the lead already said
-        let body = dedupeBody(quick ? trimWords(src, words + 8) : src, said); if (quick) body = trimWords(body, words);
+        const w = def?.words ?? words;      // a segment may carry a longer line (the evening's releases: several numbers each with its reaction)
+        let body = dedupeBody(quick ? trimWords(src, w + 8) : src, said); if (quick) body = trimWords(body, w);
         const figure = sc.figure && sc.figure.value ? sc.figure : keyFigure(body);
         let segue = '';
         const unitFig = figure && (String(figure.label ?? '').trim() || /[×%:]|bp|\bof\b/.test(String(figure.value))) ? speakFig(figure) : null;      // a bare number ("60" sessions) is not a headline
@@ -297,7 +315,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
   };
   let segsUsed = segs, P = build(segsUsed.map(x => ({ ...x })));
   const budget = SHORT_BUDGET_SEC * Math.max(0.75, Math.min(1.5, +rate || 1));      // the budget is in seconds at normal speed: a faster voice fits more of the programme in the same 2.5 minutes
-  if (short) for (const id of SHORT_DROP) { if (P.totalSec <= budget) break; if (segsUsed.some(x => x.id === id)) { segsUsed = segsUsed.filter(x => x.id !== id); P = build(segsUsed.map(x => ({ ...x }))); } }
+  if (short) for (const id of (pod === 'evening' ? SHORT_DROP_EVENING : SHORT_DROP)) { if (P.totalSec <= budget) break; if (segsUsed.some(x => x.id === id)) { segsUsed = segsUsed.filter(x => x.id !== id); P = build(segsUsed.map(x => ({ ...x }))); } }
   const { items, total, totalSec } = P;
   return { date, lead, segments: segsUsed.map((s, i) => ({ id: s.id, name: s.name, num: i + 1, total, scenes: s.scenes.map(x => x.id) })), items, ticker: tickerItems(inp.rows ?? inp.movers ?? []), totalSec };
 }

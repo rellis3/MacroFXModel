@@ -15,10 +15,10 @@ const DAILY = { NQ: 'NAS100_USD', SPX500: 'SPX500_USD', US30: 'US30_USD', US2000
 export const dailySymbol = k => DAILY[k] ?? (FX.has(k) && k.length === 6 ? `${k.slice(0, 3)}_${k.slice(3)}` : null);
 
 /** The market to draw: the HUD's selection if it is a desk market with data, else the biggest mover against its own usual move. instruments = /api/vol-forecast/live `instruments`. */
-export function pickMarket(sel, inst = {}) {
-  if (sel && inst[sel] && MARKET_KEYS.includes(sel)) return sel;
+export function pickMarket(sel, inst = {}, keys = MARKET_KEYS) {
+  if (sel && inst[sel] && keys.includes(sel)) return sel;
   let best = null, bs = -1;
-  for (const k of MARKET_KEYS) {
+  for (const k of keys) {
     const v = inst[k], oc = num(v?.oc), med = num(v?.forecast?.oc_median); if (oc == null || !(med > 0)) continue;
     const s = Math.abs(oc) / med; if (s > bs) { bs = s; best = k; }
   }
@@ -73,6 +73,16 @@ export function sessionScript(key, st, mode = 'intraday') {
   const a = `Here is the chart of ${nm}'s ${mode === 'daily' ? 'last sixty days' : 'session'}. It ${mode === 'daily' ? 'started at' : 'opened at'} ${said(st.open)}, has traded between ${said(st.lo)} and ${said(st.hi)}, and is now ${said(st.last)}.`;
   const b = mode === 'daily' ? `Over ${span} it is ${dir} ${pctWord(st.movePct)}.` : `That is ${dir} ${pctWord(st.movePct)} from the open${st.times != null ? `, which is ${timesWord(st.times)} its usual move` : ''}.`;
   return `${a} ${b}`;
+}
+
+/** The EVENING's "move of the day" is chosen from these: the Nasdaq, gold and the seven dollar majors (the biggest move against its own usual size). */
+export const DAY_MOVE_KEYS = ['NQ', 'GOLD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'];
+/** The EVENING line over the chart: the day's biggest mover told as a finished day (open, range, where it stands, the move against its usual). */
+export function dayMoveScript(key, st) {
+  if (!st) return null;
+  const nm = spoken(key), dir = st.movePct >= 0 ? 'up' : 'down';
+  return `The move of the day: ${nm}. It opened at ${said(st.open)}, traded between ${said(st.lo)} and ${said(st.hi)}, and stands at ${said(st.last)} this evening. `
+    + `That is ${dir} ${pctWord(st.movePct)} on the day${st.times != null ? `, ${timesWord(st.times)} its usual move` : ''}.`;
 }
 
 /** How far the draw-in has got: the number of bars printed (fractional, so the leading one is still rising) and the phase. One loop = draw + hold. */

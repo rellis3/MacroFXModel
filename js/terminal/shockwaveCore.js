@@ -208,6 +208,19 @@ const spokenNative = (v, unit) => {
 
 const SPOKEN = { eurusd: 'Euro Dollar', gbpusd: 'Sterling Dollar', usdjpy: 'Dollar Yen', nq: 'the Nasdaq', es: 'the S and P', gold: 'gold', sofr: 'the SOFR futures leg', zt: 'the two-year note future',
   zn: 'the ten-year note future', gilt: 'the gilt future', bund: 'the Bund future', eur: 'the Euribor leg', spr: 'the SOFR-Euribor spread', dx: 'the dollar index', ftse: 'the FTSE', dax: 'the DAX', nikkei: 'the Nikkei', vix: 'the VIX', vxn: 'the VXN' };
+/**
+ * The EVENING line for a big release that printed TODAY (rel = its record row, typ = typical30 over the family's past releases, hm = London time): what printed against the consensus,
+ * then the main market's first 30 minutes against the typical size, signed (it has happened). null without a 30-minute move or a history to size it against.
+ */
+export function shockTodayScript({ rel, mkt, typ, hm }) {
+  const m = rel?.M?.[mkt]?.m30; if (!fin(m) || !typ || !fin(typ.med) || typ.med <= 0) return null;
+  const fam = familyLabel(rel.family), mk = SPOKEN[mkt] ?? marketLabel(mkt), r = Math.abs(m) / typ.med;
+  const pr = fin(rel.actual) && fin(rel.consensus) ? ` It printed ${fmtNum(rel.actual)} against ${fmtNum(rel.consensus)} expected.` : '';
+  const size = r < 0.6 ? 'smaller than the typical' : r < 1.4 ? 'about the typical' : r < 1.75 ? 'about one and a half times the typical' : r < 2.5 ? 'about twice the typical' : `about ${Math.round(r)} times the typical`;
+  const sz = v => (typ.unit === '%' && Math.abs(v) < 1 ? `${Math.abs(v).toFixed(2)} percent` : spokenNative(v, typ.unit));      // two decimals under one percent, so 0.31 is not read as 0.3 next to 0.15 read as 0.1
+  return `Today's big one: the ${fam}${hm ? ` at ${hm}` : ''}.${pr} In the first thirty minutes, ${mk} ${m > 0 ? 'rose' : 'fell'} ${sz(m)}, ${size} ${sz(typ.med)} over the last ${typ.n} of them.`;
+}
+const fmtNum = v => { const a = Math.abs(v); return a >= 1000 ? `${Math.round(v / 1000)} thousand` : String(+(+v).toFixed(2)).replace(/^-/, 'minus '); };
 /** The SHOW line: the size (not the direction) of the main market's first 30 minutes after this kind of release. */
 export function shockwaveScript({ family, mkt, typ, next }) {
   if (!family || !typ || !fin(typ.med) || typ.n < MIN_FAMILY) return null;
