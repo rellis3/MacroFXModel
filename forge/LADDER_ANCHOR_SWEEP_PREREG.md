@@ -83,4 +83,10 @@ years (how big the best-of-24 gap looks by chance).
 
 ## Amendments
 
-(none yet)
+- **A1, 2026-11-23, PRE-RESULTS** (only the A = 00 control run seen; no other anchor scored). Control 2's oracle
+  σ = √(window's total 5-min RV) cannot show skill on OH/OL (total variance says nothing about how much of the move was
+  up): at A = 00 it scored −5 pp on OH. Oracle per line instead: HL → total RV, OH → upside semivariance, OL → downside
+  semivariance of the window. Checked at A = 00 on 6E: HL +56 pp, OH +24 pp, OL +25 pp (semivariance still does not
+  pin down a one-sided extreme). Bar reset, openly after seeing those A = 00 values: **HL > 30 pp, OH and OL > 15 pp, at
+  every anchor and instrument** (a control of the machinery, not of the hypothesis). The A = 00 run also passed control 1
+  (99.5–100% of sessions match rows_F) and sits within 6% of the per-line study's QLIKE (control 3, reported).
