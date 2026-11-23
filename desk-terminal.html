@@ -383,8 +383,7 @@ const VBIAS = { STRONG_LONG: 'strongly bullish', LONG: 'bullish', FLAT: 'neutral
 const ratingWord = r => (globalThis.deskIsViewer?.() ? (VBIAS[r] ?? 'no view') : String(r ?? 'FLAT').replace('_', ' '));
 const assetWordV = c => (globalThis.deskIsViewer?.() ? (VBIAS[c?.rating] ?? 'no data') : assetWord(c));
 const sh = f => { try { return f(); } catch (e) { console.warn(f.name, e); return ''; } };   // a panel that cannot draw (its data is the owner's) draws nothing
-const rateChip = r => { const d = DIR[r] ?? 0; return `<span class="chip ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}">${d > 0 ? '▲' : d < 0 ? '▼' : '●'} ${esc(ratingWord(r))}</span>`; };
-
+const rateChip = r => { const d = DIR[r] ?? 0; return `<span class="chip ${d > 0 ? 'up' : d < 0 ? 'dn' : ''}">${d > 0 ? '▲' : d < 0 ? '▼' : '●'} ${esc(ratingWord(r))}</span>`; };
 const rateChipC = c => globalThis.ttStateChip?.(c) ?? rateChip(c?.rating);   // a flat card is 'Neutral - reviewed' or a dashed 'Not reviewed' (js/terminal/reviewState.js), never one grey chip for both
 const biasChip = b => (numOrNull(b) == null ? `<span class="chip" title="no currency ruling for this currency">No ruling</span>` : `<span class="chip ${b > 0 ? 'up' : b < 0 ? 'dn' : ''}">${b >= 2 ? 'Strong bullish' : b > 0 ? 'Bullish' : b <= -2 ? 'Strong bearish' : b < 0 ? 'Bearish' : 'Neutral'}</span>`);
 const scoreBar = (s, w = '100%', word = null) => { const fr = s == null ? 0 : Math.min(1, Math.abs(s) / 5) * 50; return `<div class="score" style="width:${w}" title="${esc(SCALE_NOTE)}"><b class="${s == null ? 'fl' : dirCls(s)}">${fmtScore(s)}</b><small>${s == null ? 'no data' : esc(word ?? 'of ±5')}</small><div class="bar dv"><i style="margin-left:${s != null && s < 0 ? 50 - fr : 50}%;width:${fr}%;background:${s > 0.2 ? 'var(--up)' : s < -0.2 ? 'var(--dn)' : 'var(--flat)'}"></i></div></div>`; };
