@@ -100,4 +100,11 @@ Whether hedging makes money (no P&L, no costs netted, no carry), whether a bias 
 
 ## Amendments
 
+### A1 — 2026-11-23 — PRE-RESULTS
+Only the panel build had run (counts below); no weight or outcome had been computed.
+- **Calendar coverage is USD, EUR and GBP only.** `calendar_events.csv` holds no rows for JPY, AUD, NZD, CAD or CHF. The day type (§3.4) therefore tags Major in-session releases of USD, EUR and GBP only. A JPY, AUD, NZD, CAD or CHF release does not make a session an event session. Most of them fall outside 08:00–17:00 London anyway, but CAD (13:30 UTC) and CHF (morning) do not, so H3 is a test of "US, euro-area or UK tier-1 day or not". Deduped in-session Major counts: USD 973, EUR 161, GBP 223 sessions.
+- **Panel:** 2,739 London weekday sessions 2016-01-04 → 2026-07-02; sessions with P8 and P17 per instrument 2,659 (DE30) to 2,720; daily inner-join dates 2,666 from 2016-01-04.
+- **B2 in the first weeks of 2017:** the daily history starts 2016-01-04, so B2 uses the available daily returns (at least 200) when fewer than 250 exist. B1 (60) is unaffected.
+- **Hourly prices:** the close of the last M1 bar opening in [h:00 − 5 min, h:00) London, as §3.1; London time from the BST rule (last Sunday of March / October, 01:00 UTC).
+
 ## RESULTS
