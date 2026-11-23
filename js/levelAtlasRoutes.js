@@ -306,6 +306,7 @@ const liveWarming = new Set(); // pairs currently doing their one-time cold load
 const liveColdStartFailedAt = new Map(); // pair -> Date.now() of its last failed cold start
 const COLD_START_FAIL_COOLDOWN_MS = 30 * 60_000;
 
+const MAX_LIVE_COLD_STARTS = Math.max(1, parseInt(process.env.LIVE_COLD_STARTS ?? '3', 10) || 3);   // concurrent cold starts of the live cache (see getFastLive)
 const LIVE_WINDOW_DAYS = 180;   // comfortable margin over the widest context lookback (60 trading days)
 
 function boundPacked(packed, days) {
@@ -492,6 +493,9 @@ async function getFastLive(pair) {
       // unchanged.
       return { warming: false, date: null, touches: [], pending: [] };
     }
+    // Cap (2026-11-23): a page asking for every instrument in one call (vote-preview) used to start ~50 cold starts at once: each parses a ~15 MB snapshot, and that churn took the server from 1.2 to 3-4 GB, which
+    // Railway keeps billing. Only MAX_LIVE_COLD_STARTS run at a time; the rest answer "warming" and are picked up by the page's next poll, so every pair still warms, just a few at a time.
+    if (!liveWarming.has(pair) && liveWarming.size >= MAX_LIVE_COLD_STARTS) return { warming: true, date: null, touches: [], pending: [] };
     if (!liveWarming.has(pair)) {
       // Diagnostic (2026-11-23): name whoever asked for this cold start (the synchronous part of the call stack), so a boot-time warm of every pair can be traced to its job.
       try { console.log(`[level-atlas-live] ${sym}: cold start requested by ` + (new Error().stack || '').split('\n').slice(2, 7).map(l => l.trim().replace(/^at /, '').replace(/file:.*\//, '')).join(' < ')); } catch {}
