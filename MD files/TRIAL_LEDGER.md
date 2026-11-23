@@ -10,16 +10,16 @@ Generated 2026-11-23.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **579** |
-| validated | 196 |
-| null | 218 |
+| claims tested (validated + null + underpowered) | **583** |
+| validated | 197 |
+| null | 221 |
 | underpowered | 165 |
 | context (base rates, descriptions: not counted as tests) | 85 |
 | pre-registrations with no banked verdict (below) | 86 |
 
-**What the count says (Lesson 02 §05).** If none of the 579 claims were real, tests at the usual 5% size would still pass
-about **29** of them by luck. 196 passed, so most passes are unlikely to be luck alone, but
-**roughly 29 of the 196 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 583 claims were real, tests at the usual 5% size would still pass
+about **29.2** of them by luck. 197 passed, so most passes are unlikely to be luck alone, but
+**roughly 29 of the 197 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -689,6 +689,10 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-22 | ladder-per-line-oc-tp | price | null | forge/LADDER_PER_LINE_PREREG.md |
 | 2026-11-22 | ladder-qlike-per-line | volatility | underpowered | forge/LADDER_QLIKE_PER_LINE_PREREG.md |
 | 2026-11-22 | ladder-qlike-vs-pinball | volatility | underpowered | forge/LADDER_QLIKE_PER_LINE_PREREG.md |
+| 2026-11-23 | fqt-nam-lines-tp | price | null | forge/FUTURES_QLIKE_TRADES_PREREG.md |
+| 2026-11-23 | fqt-p90-follow | price | validated | forge/FUTURES_QLIKE_TRADES_PREREG.md |
+| 2026-11-23 | fqt-vwap-band | price | null | forge/FUTURES_QLIKE_TRADES_PREREG.md |
+| 2026-11-23 | fqt-vwap-fade | price | null | forge/FUTURES_QLIKE_TRADES_PREREG.md |
 | 2026-11-23 | futures-oc-tp-fade-p75 | price | null | forge/FUTURES_OC_TP_FADE_PREREG.md |
 | 2026-11-23 | futures-oc-tp-fade-p90 | price | null | forge/FUTURES_OC_TP_FADE_PREREG.md |
 
