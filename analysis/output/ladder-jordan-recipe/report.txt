@@ -1,0 +1,64 @@
+NQ: control 1 yz_20 100.0%   control 2 OLD vs QL +0.000%
+GOLD: control 1 yz_20 100.0%   control 2 OLD vs QL +0.000%
+EURUSD: control 1 yz_20 100.0%   control 2 OLD vs QL +0.000%
+USDJPY: control 1 yz_20 100.0%   control 2 OLD vs QL +0.000%
+
+== Part A: JORDAN vs OLD (our QLIKE pick); summed QLIKE % change, negative = Jordan-style better
+  all      +1.85% [+0.66, +2.31]
+  2020-22  +0.59% [-0.27, +2.05]
+  2023-26  +2.89% [+1.33, +3.37]
+  line hl  +3.53% [-0.42, +5.79]
+  line oh  +1.22% [+0.53, +1.89]
+  line ol  +1.99% [+0.40, +2.62]
+  NQ      +2.34% [+0.88, +4.06]
+  GOLD    +2.95% [+2.05, +4.15]
+  EURUSD  +1.20% [+0.31, +1.94]
+  USDJPY  +0.91% [-3.21, +1.91]
+  VERDICT A: NULL
+
+== Part B: TEXTBOOK vs OLD (our QLIKE pick); summed QLIKE % change, negative = Jordan-style better
+  all      +9.05% [+6.87, +9.85]
+  2020-22  +7.56% [+6.44, +10.03]
+  2023-26  +10.28% [+6.63, +11.29]
+  line hl  +23.55% [+18.14, +26.89]
+  line oh  +5.69% [+4.38, +6.98]
+  line ol  +8.31% [+5.22, +9.66]
+  NQ      +7.20% [+4.97, +10.45]
+  GOLD    +8.17% [+6.17, +10.90]
+  EURUSD  +7.75% [+5.45, +9.85]
+  USDJPY  +13.09% [+6.05, +14.08]
+  VERDICT B: NULL
+
+== Jordan-style arms: out-of-sample QLIKE, rank inside the ladder-wide-race field
+  NQ      hl: our pick 0.3780, best of wide 0.3356 | ema30 0.3756 (#22/56)  ema40 0.3832 (#28/56)  ema15 0.3844 (#28/56)  ema50 0.3982 (#31/56)  atr3 0.4045 (#35/56)  atr10 0.4175 (#38/56)  ema60 0.4209 (#39/56)  atr3_textbook 0.4221 (#39/56)  atr2 0.4487 (#47/56)
+  NQ      oh: our pick 1.2334, best of wide 1.2079 | ema30 1.2553 (#19/56)  ema40 1.2578 (#20/56)  ema50 1.2670 (#24/56)  atr3_textbook 1.2715 (#24/56)  atr3 1.2722 (#26/56)  ema15 1.2747 (#26/56)  ema60 1.2829 (#28/56)  atr10 1.3068 (#38/56)  atr2 1.3149 (#40/56)
+  NQ      ol: our pick 1.5708, best of wide 1.5565 | ema15 1.6219 (#23/56)  ema30 1.6225 (#23/56)  ema40 1.6341 (#28/56)  ema50 1.6533 (#36/56)  atr10 1.6560 (#37/56)  atr3 1.6575 (#38/56)  ema60 1.6820 (#48/56)  atr2 1.7060 (#49/56)  atr3_textbook 1.7177 (#49/56)
+  GOLD    hl: our pick 0.3395, best of wide 0.3252 | ema30 0.3649 (#20/56)  ema15 0.3650 (#20/56)  ema40 0.3759 (#24/56)  atr10 0.3858 (#30/56)  ema50 0.3928 (#32/56)  atr3 0.4004 (#37/56)  ema60 0.4160 (#44/56)  atr3_textbook 0.4193 (#46/56)  atr2 0.4307 (#48/56)
+  GOLD    oh: our pick 1.2903, best of wide 1.2864 | ema15 1.3067 (#21/56)  ema30 1.3184 (#27/56)  atr10 1.3204 (#28/56)  ema40 1.3343 (#37/56)  ema50 1.3546 (#47/56)  atr3 1.3610 (#49/56)  atr3_textbook 1.3702 (#50/56)  ema60 1.3802 (#50/56)  atr2 1.3953 (#51/56)
+  GOLD    ol: our pick 1.5584, best of wide 1.5380 | ema30 1.5971 (#13/56)  ema40 1.6025 (#17/56)  ema15 1.6110 (#21/56)  ema50 1.6157 (#22/56)  atr3 1.6250 (#24/56)  ema60 1.6363 (#28/56)  atr10 1.6403 (#28/56)  atr2 1.6468 (#33/56)  atr3_textbook 1.6592 (#37/56)
+  EURUSD  hl: our pick 0.2992, best of wide 0.2940 | ema15 0.3127 (#17/52)  atr10 0.3235 (#25/52)  ema30 0.3264 (#27/52)  ema40 0.3417 (#39/52)  ema50 0.3599 (#46/52)  atr3 0.3684 (#47/52)  ema60 0.3804 (#49/52)  atr3_textbook 0.3850 (#49/52)  atr2 0.4069 (#49/52)
+  EURUSD  oh: our pick 1.3707, best of wide 1.3655 | ema15 1.3846 (#21/52)  atr10 1.3954 (#26/52)  ema30 1.3965 (#27/52)  ema40 1.4117 (#40/52)  ema50 1.4305 (#49/52)  atr3 1.4410 (#49/52)  ema60 1.4522 (#49/52)  atr3_textbook 1.4537 (#49/52)  atr2 1.4779 (#49/52)
+  EURUSD  ol: our pick 1.2961, best of wide 1.2728 | ema15 1.3005 (#15/52)  atr10 1.3091 (#24/52)  ema30 1.3101 (#26/52)  ema40 1.3238 (#32/52)  ema50 1.3405 (#42/52)  atr3 1.3447 (#44/52)  atr3_textbook 1.3573 (#46/52)  ema60 1.3598 (#46/52)  atr2 1.3847 (#48/52)
+  USDJPY  hl: our pick 0.5088, best of wide 0.5018 | ema15 0.5216 (#22/52)  atr10 0.5424 (#32/52)  ema30 0.5427 (#32/52)  ema40 0.5626 (#43/52)  ema50 0.5853 (#47/52)  atr3 0.5988 (#48/52)  ema60 0.6118 (#48/52)  atr2 0.6309 (#48/52)  atr3_textbook 0.6632 (#49/52)
+  USDJPY  oh: our pick 1.4296, best of wide 1.4194 | ema15 1.4379 (#20/52)  ema30 1.4608 (#27/52)  atr10 1.4646 (#30/52)  ema40 1.4830 (#41/52)  ema50 1.5085 (#46/52)  atr3 1.5119 (#46/52)  atr3_textbook 1.5357 (#48/52)  ema60 1.5373 (#49/52)  atr2 1.5556 (#49/52)
+  USDJPY  ol: our pick 1.7471, best of wide 1.7154 | ema15 1.7565 (#32/52)  ema30 1.7749 (#41/52)  atr10 1.7780 (#41/52)  ema40 1.7894 (#42/52)  ema50 1.8054 (#45/52)  ema60 1.8254 (#48/52)  atr3 1.8370 (#48/52)  atr2 1.8551 (#48/52)  atr3_textbook 1.9690 (#49/52)
+
+== Hit rates, % of sessions beyond the line (targets p50 50, p75 25, p90 10)
+  NQ      hl: Jordan-style 46/24/12   ours 58/28/11
+  NQ      oh: Jordan-style 49/23/10   ours 51/28/12
+  NQ      ol: Jordan-style 47/26/14   ours 52/27/10
+  GOLD    hl: Jordan-style 46/24/12   ours 52/26/10
+  GOLD    oh: Jordan-style 49/25/13   ours 56/27/10
+  GOLD    ol: Jordan-style 45/24/13   ours 48/24/11
+  EURUSD  hl: Jordan-style 44/23/12   ours 50/24/10
+  EURUSD  oh: Jordan-style 47/25/12   ours 48/25/9
+  EURUSD  ol: Jordan-style 49/26/11   ours 51/26/10
+  USDJPY  hl: Jordan-style 42/23/13   ours 50/27/12
+  USDJPY  oh: Jordan-style 46/23/11   ours 50/24/10
+  USDJPY  ol: Jordan-style 45/25/12   ours 50/25/10
+
+== Jordan-style walk-forward picks
+  NQ: hl J_ema30,J_ema40  oh J_ema30  ol J_ema30,J_ema40
+  GOLD: hl J_ema15  oh J_ema15  ol J_ema15,J_ema30
+  EURUSD: hl J_ema15  oh J_ema15  ol J_atr10,J_ema15
+  USDJPY: hl J_ema15  oh J_ema15,J_ema30  ol J_ema15

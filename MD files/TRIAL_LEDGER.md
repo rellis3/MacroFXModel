@@ -10,16 +10,16 @@ Generated 2026-11-23.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **588** |
+| claims tested (validated + null + underpowered) | **590** |
 | validated | 198 |
-| null | 221 |
+| null | 223 |
 | underpowered | 169 |
 | context (base rates, descriptions: not counted as tests) | 85 |
 | pre-registrations with no banked verdict (below) | 90 |
 
-**What the count says (Lesson 02 §05).** If none of the 588 claims were real, tests at the usual 5% size would still pass
-about **29.4** of them by luck. 198 passed, so most passes are unlikely to be luck alone, but
-**roughly 29 of the 198 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 590 claims were real, tests at the usual 5% size would still pass
+about **29.5** of them by luck. 198 passed, so most passes are unlikely to be luck alone, but
+**roughly 30 of the 198 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -699,6 +699,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-23 | hedge-today-daytype | execution | underpowered | forge/HEDGE_TODAY_PREREG.md |
 | 2026-11-23 | hedge-today-pick | execution | validated | forge/HEDGE_TODAY_PREREG.md |
 | 2026-11-23 | ladder-anchor-sweep | volatility | underpowered | forge/LADDER_ANCHOR_SWEEP_PREREG.md |
+| 2026-11-23 | ladder-jordan-recipe | volatility | null | forge/LADDER_JORDAN_RECIPE_PREREG.md |
+| 2026-11-23 | ladder-jordan-recipe-published | volatility | null | forge/LADDER_JORDAN_RECIPE_PREREG.md |
 | 2026-11-23 | ladder-wide-race | volatility | underpowered | forge/LADDER_WIDE_RACE_PREREG.md |
 
 ## Pre-registered, but no banked verdict
