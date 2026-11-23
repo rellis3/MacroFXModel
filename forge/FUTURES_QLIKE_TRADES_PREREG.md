@@ -59,3 +59,17 @@ Anything VALIDATED becomes a style on the Forecast Reversion page's QLIKE calc a
 everything else is shown on the page as a style too (for looking), labelled with its verdict.
 
 ## Amendments
+
+### A1 — 2026-11-23, PRE-RESULTS for A and C (their control failed, nothing of A or C scored): a time-aware benchmark
+The A/C mechanics control came out at −5.05pp (limit 3), so A and C were not scored. Cause: s / (s + d) assumes
+unlimited time, but VWAP targets are often far and every trade ends at 22:00, so among trades that end at a barrier the
+nearer stop is over-represented. The benchmark for A and C (control **and** the A rule's TP-vs-benchmark part) becomes
+a **driftless random walk over the time actually left**: per trade, 300 simulated 1-minute paths from the fill to
+22:00 London with each minute's variance = σ² × that minute's share of the instrument's vol clock (`exhaustion-v2-<sym>/clock_F.parquet`,
+the year's column), barriers at the real stop and TP; benchmark = P(TP first | a barrier is hit). Control limit stays 3pp.
+B was scored under its own rule (no benchmark part) and is unaffected.
+
+### A2 — 2026-11-23, POST-HOC (B results seen), describe only
+B passed its rule (net +0.054R [+0.007, +0.092], both halves > 0). Concentration: the upside breaks carry it (OH +0.115R,
+OL −0.009R) and 2020–26 was a rising period for NQ, gold and USD/JPY, so part of it may be market drift. Needs a
+drift-controlled confirmation (e.g. against random same-time entries in the same direction) before any use.
