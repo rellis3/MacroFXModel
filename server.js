@@ -30692,6 +30692,9 @@ svcInterval('biasEngineV2', () => _biasEngineV2Tick().catch(e => console.error('
 // back-filled. Nothing in production reads it. GET /api/bias-engine-v2/intraday?date=D serves the morning issue, the slots, each market's
 // calls in time order with the time of every change of direction, and the day's schedule. Owner only (not in the desk login's routes).
 const _BEVI_KEY = date => `bias_engine_v2_intraday_${date}`;
+const _BEVI_DKEY = (date, slot) => `bias_engine_v2_intraday_${date}_${slot.replace(':', '')}`;   // the drivers behind each call (js/biasIntraday.js detail)
+const _FBI_KEY = date => `fundabias_log_intraday_${date}`;   // FundaBias readings logged through the day with their published time (not scored)
+const _BEVI_ALIAS = { XAUUSD: 'GOLD', XAU: 'GOLD', NAS100: 'NQ', NAS100USD: 'NQ', US100: 'NQ', USTEC: 'NQ', SPX: 'SPX500', US500: 'SPX500', SPX500USD: 'SPX500', DJI: 'US30', DOW: 'US30', GER40: 'DE30', DE40: 'DE30', DAX: 'DE30', XAGUSD: 'SILVER', USOIL: 'WTI', WTICOUSD: 'WTI', UK100: 'UK100', FTSE: 'UK100', XCUUSD: 'COPPER', COPPER: 'COPPER' };
 let _bevIBusy = false;
 async function _bevIntradayTick() {
   const now = Date.now(), date = _dpLondonDate(now);
@@ -30709,9 +30712,34 @@ async function _bevIntradayTick() {
     const fresh = await kv.get(_BEVI_KEY(date)).catch(() => null), cur = fresh ? JSON.parse(fresh) : day;
     cur.slots = { ...(cur.slots ?? {}), [slot]: { at: rec.issuedAt, ...BI.compact(rec) } };
     await kv.put(_BEVI_KEY(date), JSON.stringify(cur), { expirationTtl: 120 * 86400 });
+    await kv.put(_BEVI_DKEY(date, slot), JSON.stringify(BI.detail(rec)), { expirationTtl: 120 * 86400 }).catch(e => console.warn('[bias-intraday] detail', e.message));
     console.log(`[bias-intraday] ${date} ${slot} stored`);
   } finally { _bevIBusy = false; }
 }
+// POST /api/fundabias-log/intraday { market, dir, score10, at: 'HH:MM' London as published, note? }  or { market, undo: true } (removes that
+// market's last row today). Owner only, today's London date only. Several rows per market per day: FundaBias re-issues through the day.
+// Shown on the Through the day view beside the engines' calls; NOT scored (the scored FundaBias record stays the once-a-day log above).
+let _fbiChain = Promise.resolve();
+app.post('/api/fundabias-log/intraday', (req, res, next) => (_srIsOwner(req) ? next() : res.status(403).json({ ok: false, error: 'Owner only.' })), async (req, res) => {
+  try {
+    const BI = await import('./js/biasIntraday.js'), b = req.body ?? {}, date = _dpLondonDate(Date.now());
+    const names = new Set(); try { const mr = await kv.get(_BEV2_KEY(date)); for (const m of Object.keys(JSON.parse(mr || '{}').variants?.v2?.markets ?? {})) names.add(m); } catch { /* names from the alias map only */ }
+    const markets = { ..._BEVI_ALIAS }; for (const m of names) markets[m] = m;
+    const out = await (_fbiChain = _fbiChain.catch(() => {}).then(async () => {
+      const log = JSON.parse((await kv.get(_FBI_KEY(date))) || 'null') ?? { date, rows: [] };
+      if (b.undo) {
+        const raw = String(b.market ?? '').toUpperCase().replace(/[^A-Z0-9]/g, ''), m = markets[raw];
+        const i = log.rows.map(r => r.market).lastIndexOf(m); if (i < 0) return { status: 404, body: { ok: false, error: `nothing logged for ${b.market} today` } };
+        const [gone] = log.rows.splice(i, 1); await kv.put(_FBI_KEY(date), JSON.stringify(log), { expirationTtl: 400 * 86400 }); return { status: 200, body: { ok: true, removed: gone, rows: log.rows } };
+      }
+      const v = BI.fbRow(b, markets); if (v.error) return { status: 400, body: { ok: false, error: v.error } };
+      log.rows.push({ ...v.row, loggedAt: new Date().toISOString() }); log.rows.sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : 0));
+      await kv.put(_FBI_KEY(date), JSON.stringify(log), { expirationTtl: 400 * 86400 });
+      return { status: 200, body: { ok: true, rows: log.rows } };
+    }));
+    res.status(out.status).json(out.body);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 svcInterval('biasEngineIntraday', () => _bevIntradayTick().catch(e => console.error('[bias-intraday]', e.message)), 2 * 60_000);
 app.get('/api/bias-engine-v2/intraday', async (req, res) => {
   try {
@@ -30720,9 +30748,18 @@ app.get('/api/bias-engine-v2/intraday', async (req, res) => {
     const today = _dpLondonDate(Date.now()), date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : today;
     const [mr, ir] = await Promise.all([kv.get(_BEV2_KEY(date)).catch(() => null), kv.get(_BEVI_KEY(date)).catch(() => null)]);
     const morning = mr ? JSON.parse(mr) : null, intra = ir ? JSON.parse(ir) : { slots: {} };
+    if (req.query.market) {   // one market: the drivers at every point, and what moved at each point against the one before
+      const raw = String(req.query.market).toUpperCase().replace(/[^A-Z0-9]/g, ''), m = _BEVI_ALIAS[raw] ?? raw;
+      const pts = [];
+      if (morning) { const d = BI.detail(morning); pts.push({ point: 'issue', at: morning.issuedAt, v2: d.v2[m] ?? null, v1r: d.v1r[m] ?? null }); }
+      for (const sl of BI.SLOTS) { if (!intra.slots?.[sl]) continue; let d = null; try { d = JSON.parse((await kv.get(_BEVI_DKEY(date, sl))) || 'null'); } catch { d = null; } pts.push({ point: sl, at: intra.slots[sl].at ?? null, v2: d?.v2?.[m] ?? null, v1r: d?.v1r?.[m] ?? null }); }
+      for (let i = 1; i < pts.length; i++) for (const e of BI.ENGINES) pts[i][`moved_${e}`] = pts[i - 1][e] && pts[i][e] ? BI.whatMoved(pts[i - 1][e], pts[i][e]) : null;
+      return res.json({ ok: true, date, market: m, points: pts });
+    }
+    let fb = []; try { fb = JSON.parse((await kv.get(_FBI_KEY(date))) || '{"rows":[]}').rows ?? []; } catch { fb = []; }
     const day = { issue: morning ? { at: morning.issuedAt, ...BI.compact(morning) } : null, slots: intra.slots ?? {} };
     res.json({ ok: true, date, issueAt: morning?.issuedAt ?? null, slotTimes: Object.fromEntries(Object.entries(day.slots).map(([k, v]) => [k, v.at ?? null])),
-      ...BI.timeline(day), schedule: date === today ? BI.schedule(day, Date.now(), date, _bsLondonMs) : null,
+      ...BI.timeline(day), fundabias: fb, schedule: date === today ? BI.schedule(day, Date.now(), date, _bsLondonMs) : null,
       note: 'The morning issue (05:30-06:00 London) is the record of the day. Each hourly slot re-runs the same shadow engines on the data available then; v1r = V1\'s logic, v2 = V2. Not a production signal.' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

@@ -48,5 +48,9 @@ test('intradayHtml: loading, empty day, and the shift marked with its slot time'
   const h = V.intradayHtml(T, { engine: 'v2' });
   assert.match(h, /1 of 2 markets changed direction/); assert.match(h, /<b>09:00<\/b> Neutral → Bearish/); assert.match(h, /held all day/); assert.match(h, /bevi-shift/);
   const only = V.intradayHtml(T, { engine: 'v2', only: 'shifted' });
-  assert.ok(only.includes('EURUSD') && !only.includes('GBPUSD'));
+  assert.ok(only.includes('data-im="EURUSD"') && !only.includes('data-im="GBPUSD"'));
+  const withFb = V.intradayHtml({ ...T, fundabias: [{ market: 'EURUSD', dir: 'BEARISH', score10: 8, at: '07:38' }, { market: 'EURUSD', dir: 'BULLISH', score10: 7, at: '16:06' }] }, { engine: 'v2' });
+  assert.match(withFb, /FundaBias/); assert.match(withFb, /<b>07:38<\/b> <span class="dn">▼8<\/span><\/span> → <span[^>]*><b>16:06<\/b> <span class="up">▲7/); assert.match(withFb, /Log a FundaBias reading/);
+  const D = { ok: true, points: [{ point: 'issue', v2: [['trend', -0.333, 'D1 down']] }, { point: '16:00', v2: [['trend', 0.1, 'H4 up']], moved_v2: [{ driver: 'trend', from: -0.333, to: 0.1, d: 0.433, now: 'H4 up' }] }] };
+  assert.match(V.detailHtml(D, 'v2'), /<b>16:00<\/b> trend −0.33 → \+0.10 <span class="muted">\(H4 up\)/);
 });
