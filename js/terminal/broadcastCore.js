@@ -247,7 +247,7 @@ export function keyFigure(text) {
  *   { kind: 'open'|'lead'|'bumper'|'scene'|'close', text, view, cam, title, hold (seconds the card holds with no voice), ...kind fields }.
  * Never throws because of a hook. A segment with no available scene is skipped and the numbering closes up.
  */
-export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick' } = {}) {
+export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick', rate = 1 } = {}) {
   const quick = mode !== 'full', short = mode === 'short', words = short ? SHORT_WORDS : QUICK_WORDS, date = dateWords(inp.now ?? new Date()), viewOk = v => !have || have.has(v) || CORE_VIEWS.has(v);
   const built = {}, sceneFor = id => {
     if (id in built) return built[id];
@@ -296,7 +296,8 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     return { items, total, totalSec: Math.round(items.reduce((a, x) => a + (x.text ? readSeconds(x.text) : 0) + (x.hold ?? 0), 0)) };
   };
   let segsUsed = segs, P = build(segsUsed.map(x => ({ ...x })));
-  if (short) for (const id of SHORT_DROP) { if (P.totalSec <= SHORT_BUDGET_SEC) break; if (segsUsed.some(x => x.id === id)) { segsUsed = segsUsed.filter(x => x.id !== id); P = build(segsUsed.map(x => ({ ...x }))); } }
+  const budget = SHORT_BUDGET_SEC * Math.max(0.75, Math.min(1.5, +rate || 1));      // the budget is in seconds at normal speed: a faster voice fits more of the programme in the same 2.5 minutes
+  if (short) for (const id of SHORT_DROP) { if (P.totalSec <= budget) break; if (segsUsed.some(x => x.id === id)) { segsUsed = segsUsed.filter(x => x.id !== id); P = build(segsUsed.map(x => ({ ...x }))); } }
   const { items, total, totalSec } = P;
   return { date, lead, segments: segsUsed.map((s, i) => ({ id: s.id, name: s.name, num: i + 1, total, scenes: s.scenes.map(x => x.id) })), items, ticker: tickerItems(inp.rows ?? inp.movers ?? []), totalSec };
 }
