@@ -46013,6 +46013,7 @@ app.get('/api/services', (req, res) => {
       kvBig: kv.kvBigReads(),
       bootProfile: _bootProfile,
       heapAlloc: _heapAlloc,
+      heapGc: _heapGc,
       intlCache: intlCacheStats,
       liveAtlas: { warmPairs: _laLiveCache.size, warming: _laLiveWarming.size, walks: _laWalkStats.walks, walkSec: +(_laWalkStats.ms / 1000).toFixed(1), sinceMin: +((Date.now() - _laWalkStats.since) / 60000).toFixed(1), top: Object.entries(_laWalkStats.byPair).sort((a, b) => b[1].ms - a[1].ms).slice(0, 8).map(([p, v]) => `${p}:${v.n}/${(v.ms / 1000).toFixed(1)}s`) },
       mappings: _memShots.list,
@@ -47742,6 +47743,31 @@ if (process.platform === 'linux' && process.env.BOOT_PROFILE !== '0') {
     }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
   }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
 }
+// ── Heap cap by forced collection (2026-11-23). The Level Atlas live walk allocates ~0.7 GB a minute of short-lived arrays (31 warm pairs x a walk per new bar). V8 sizes its old generation to the machine, so it lets that
+// garbage pile up to ~2 GB before a full collection, and Railway bills the resulting RSS high-water mark although the live data is ~0.5 GB. When the JS heap passes HEAP_GC_MB (default 800; 0 turns this off) a full
+// collection runs, at most once per 20 s; if the heap is still above the line afterwards (a genuinely big job such as the nightly book rebuild) the line moves up to 300 MB above that so it does not collect in a loop.
+// Needs no startup flag: --expose-gc is switched on at runtime. Stats in /api/services -> memory.heapGc. ──
+const _heapGc = { thresholdMB: Number(process.env.HEAP_GC_MB ?? 800), line: 0, runs: 0, freedMB: 0, lastAt: null, lastMs: 0, state: 'off' };
+if (_heapGc.thresholdMB > 0) {
+  try {
+    const v8 = await import('node:v8'), vm = await import('node:vm');
+    v8.setFlagsFromString('--expose-gc');
+    const gcFn = vm.runInNewContext('gc');
+    if (typeof gcFn === 'function') {
+      _heapGc.state = 'on'; _heapGc.line = _heapGc.thresholdMB; let last = 0;
+      const t = setInterval(() => {
+        const used = process.memoryUsage().heapUsed / 1048576;
+        if (used < _heapGc.line) { if (_heapGc.line > _heapGc.thresholdMB && used < _heapGc.thresholdMB) _heapGc.line = _heapGc.thresholdMB; return; }
+        if (Date.now() - last < 20_000) return;
+        const t0 = Date.now(); gcFn(); last = Date.now();
+        const after = process.memoryUsage().heapUsed / 1048576;
+        _heapGc.runs++; _heapGc.freedMB += Math.max(0, Math.round(used - after)); _heapGc.lastAt = new Date().toISOString().slice(11, 19); _heapGc.lastMs = last - t0;
+        _heapGc.line = after > _heapGc.thresholdMB ? Math.round(after + 300) : _heapGc.thresholdMB;
+      }, 3000); t.unref?.();
+    } else _heapGc.state = 'gc unavailable';
+  } catch (e) { _heapGc.state = 'error: ' + e.message; }
+}
+
 // ── Heap allocation sample (2026-11-23, diagnostic): from 15 min after boot, 150 s of V8 sampling-heap-profiler data (counting objects the GC has already freed too) names which functions allocate the ~1 GB/minute
 // that makes the JS heap sawtooth 0.7-2 GB and sets Railway's memory high-water mark. Answer in /api/services -> memory.heapAlloc ({state, totalMB, top[{mb, fn, chain}]}). Runs once per boot; BOOT_PROFILE=0 skips. ──
 const _heapAlloc = { state: 'off', totalMB: 0, top: [] };
