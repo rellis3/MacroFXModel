@@ -3355,6 +3355,8 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/calendarDrillsCore.js",
      "js/terminal/calendarDrillsView.js",
+     "js/terminal/dayAheadCore.js",
+     "js/terminal/jarvisViewDayAhead.js",
      "js/terminal/releasesBoardView.js",
      "js/terminal/tabGroupsCore.js",
      "js/terminal/tabRegistry.js",
@@ -5524,5 +5526,5 @@ export const DERIVED = {
  "unclassified": [],
  "rootPageCount": 263,
  "packFeeds": 115,
- "generatedAt": "2026-11-22"
+ "generatedAt": "2026-11-23"
 };
