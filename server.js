@@ -44700,12 +44700,12 @@ async function _hedgeTodayBuild() {
   const bySym = {}, syms = [...CORR_PAIRS];
   for (let i = 0; i < syms.length; i += 4) {
     await Promise.all(syms.slice(i, i + 4).map(async sym => {
-      try { bySym[sym] = (await fetchOandaRecentH1(sym, 5000)).map(c => ({ t: c.t, c: c.c })); } catch (e) { console.warn('[hedge-today]', sym, e.message); }
+      try { bySym[sym] = (await fetchOandaRecentH1(_h4OandaSym(sym) ?? sym, 5000)).map(c => ({ t: c.t, c: c.c })); } catch (e) { console.warn('[hedge-today]', sym, e.message); }
     }));
   }
   const panel = HT.buildTodayPanel(bySym);
   if (!panel) throw new Error('no H1 data returned');
-  _hedgeTodayMem = { body: JSON.stringify(panel), last: panel.sessions.at(-1) ?? null };
+  _hedgeTodayMem = { body: JSON.stringify(panel), last: panel.sessions.at(-1) ?? null, n: panel.syms.length };
   try { await kv.put(HEDGE_TODAY_KV, _hedgeTodayMem.body, { expirationTtl: 86400 * 4 }); } catch (e) { console.warn('[hedge-today] kv', e.message); }
   console.log(`[hedge-today] built: ${panel.syms.length} markets, ${panel.sessions.length} sessions to ${_hedgeTodayMem.last}`);
   return _hedgeTodayMem;
@@ -44713,8 +44713,8 @@ async function _hedgeTodayBuild() {
 app.get('/api/hedge-today', async (_req, res) => {
   try {
     const HT = await import('./js/hedgeTodayCore.js'), want = HT.lastCompletedSession();
-    if (!_hedgeTodayMem) { try { const raw = await kv.get(HEDGE_TODAY_KV); if (raw) _hedgeTodayMem = { body: raw, last: JSON.parse(raw).sessions?.at(-1) ?? null }; } catch { /* rebuild below */ } }
-    const fresh = _hedgeTodayMem && _hedgeTodayMem.last >= want;
+    if (!_hedgeTodayMem) { try { const raw = await kv.get(HEDGE_TODAY_KV); if (raw) { const j = JSON.parse(raw); _hedgeTodayMem = { body: raw, last: j.sessions?.at(-1) ?? null, n: j.syms?.length ?? 0 }; } } catch { /* rebuild below */ } }
+    const fresh = _hedgeTodayMem && _hedgeTodayMem.last >= want && _hedgeTodayMem.n >= CORR_PAIRS.length * 0.6;   // a panel missing most markets (an OANDA naming or access fault) is rebuilt
     if (!fresh && !_hedgeTodayBuilding && Date.now() - _hedgeTodayTried > 10 * 60_000) {
       _hedgeTodayTried = Date.now();
       _hedgeTodayBuilding = _hedgeTodayBuild().catch(e => { console.warn('[hedge-today] build', e.message); return null; }).finally(() => { _hedgeTodayBuilding = null; });
