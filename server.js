@@ -30686,6 +30686,83 @@ async function _biasEngineV2Tick() {
   } finally { _bev2Issuing = false; }
 }
 svcInterval('biasEngineV2', () => _biasEngineV2Tick().catch(e => console.error('[bias-engine-v2]', e.message)), 2 * 60_000);
+// ── Bias Engine through the day (owner 2026-11-23; js/biasIntraday.js) ──────────────────────────────────────────────────────────────
+// The morning issue stays the record. Hourly 07:00-21:00 London (weekdays) the same shadow machinery re-runs on fresh data (V1's logic
+// = "v1r", and V2) and a compact copy is written once per slot into KV bias_engine_v2_intraday_<date>. A missed window is a gap, never
+// back-filled. Nothing in production reads it. GET /api/bias-engine-v2/intraday?date=D serves the morning issue, the slots, each market's
+// calls in time order with the time of every change of direction, and the day's schedule. Owner only (not in the desk login's routes).
+const _BEVI_KEY = date => `bias_engine_v2_intraday_${date}`;
+const _BEVI_DKEY = (date, slot) => `bias_engine_v2_intraday_${date}_${slot.replace(':', '')}`;   // the drivers behind each call (js/biasIntraday.js detail)
+const _FBI_KEY = date => `fundabias_log_intraday_${date}`;   // FundaBias readings logged through the day with their published time (not scored)
+const _BEVI_ALIAS = { XAUUSD: 'GOLD', XAU: 'GOLD', NAS100: 'NQ', NAS100USD: 'NQ', US100: 'NQ', USTEC: 'NQ', SPX: 'SPX500', US500: 'SPX500', SPX500USD: 'SPX500', DJI: 'US30', DOW: 'US30', GER40: 'DE30', DE40: 'DE30', DAX: 'DE30', XAGUSD: 'SILVER', USOIL: 'WTI', WTICOUSD: 'WTI', UK100: 'UK100', FTSE: 'UK100', XCUUSD: 'COPPER', COPPER: 'COPPER' };
+let _bevIBusy = false;
+async function _bevIntradayTick() {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (!_bsIsWeekday(date) || _bevIBusy) return;
+  const BI = await import('./js/biasIntraday.js'), slot = BI.dueSlot(now, date, _bsLondonMs);
+  if (!slot) return;
+  _bevIBusy = true;
+  try {
+    const raw = await kv.get(_BEVI_KEY(date)).catch(() => null), day = raw ? JSON.parse(raw) : { date, slots: {} };
+    if (day.slots?.[slot]) return;                                           // write-once per slot
+    const v1raw = await kv.get(_BE_KEY(date)).catch(() => null);
+    const { rec } = await _bev2Compute(Date.now(), v1raw ? JSON.parse(v1raw) : null);
+    const [h, m] = slot.split(':').map(Number);
+    if (Date.now() >= _bsLondonMs(date, h, m) + BI.WINDOW_MS) { console.warn(`[bias-intraday] ${date} ${slot}: finished after its window, not stored`); return; }
+    const fresh = await kv.get(_BEVI_KEY(date)).catch(() => null), cur = fresh ? JSON.parse(fresh) : day;
+    cur.slots = { ...(cur.slots ?? {}), [slot]: { at: rec.issuedAt, ...BI.compact(rec) } };
+    await kv.put(_BEVI_KEY(date), JSON.stringify(cur), { expirationTtl: 120 * 86400 });
+    await kv.put(_BEVI_DKEY(date, slot), JSON.stringify(BI.detail(rec)), { expirationTtl: 120 * 86400 }).catch(e => console.warn('[bias-intraday] detail', e.message));
+    console.log(`[bias-intraday] ${date} ${slot} stored`);
+  } finally { _bevIBusy = false; }
+}
+// POST /api/fundabias-log/intraday { market, dir, score10, at: 'HH:MM' London as published, note? }  or { market, undo: true } (removes that
+// market's last row today). Owner only, today's London date only. Several rows per market per day: FundaBias re-issues through the day.
+// Shown on the Through the day view beside the engines' calls; NOT scored (the scored FundaBias record stays the once-a-day log above).
+let _fbiChain = Promise.resolve();
+app.post('/api/fundabias-log/intraday', (req, res, next) => (_srIsOwner(req) ? next() : res.status(403).json({ ok: false, error: 'Owner only.' })), async (req, res) => {
+  try {
+    const BI = await import('./js/biasIntraday.js'), b = req.body ?? {}, date = _dpLondonDate(Date.now());
+    const names = new Set(); try { const mr = await kv.get(_BEV2_KEY(date)); for (const m of Object.keys(JSON.parse(mr || '{}').variants?.v2?.markets ?? {})) names.add(m); } catch { /* names from the alias map only */ }
+    const markets = { ..._BEVI_ALIAS }; for (const m of names) markets[m] = m;
+    const out = await (_fbiChain = _fbiChain.catch(() => {}).then(async () => {
+      const log = JSON.parse((await kv.get(_FBI_KEY(date))) || 'null') ?? { date, rows: [] };
+      if (b.undo) {
+        const raw = String(b.market ?? '').toUpperCase().replace(/[^A-Z0-9]/g, ''), m = markets[raw];
+        const i = log.rows.map(r => r.market).lastIndexOf(m); if (i < 0) return { status: 404, body: { ok: false, error: `nothing logged for ${b.market} today` } };
+        const [gone] = log.rows.splice(i, 1); await kv.put(_FBI_KEY(date), JSON.stringify(log), { expirationTtl: 400 * 86400 }); return { status: 200, body: { ok: true, removed: gone, rows: log.rows } };
+      }
+      const v = BI.fbRow(b, markets); if (v.error) return { status: 400, body: { ok: false, error: v.error } };
+      log.rows.push({ ...v.row, loggedAt: new Date().toISOString() }); log.rows.sort((x, y) => (x.at < y.at ? -1 : x.at > y.at ? 1 : 0));
+      await kv.put(_FBI_KEY(date), JSON.stringify(log), { expirationTtl: 400 * 86400 });
+      return { status: 200, body: { ok: true, rows: log.rows } };
+    }));
+    res.status(out.status).json(out.body);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('biasEngineIntraday', () => _bevIntradayTick().catch(e => console.error('[bias-intraday]', e.message)), 2 * 60_000);
+app.get('/api/bias-engine-v2/intraday', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const BI = await import('./js/biasIntraday.js');
+    const today = _dpLondonDate(Date.now()), date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : today;
+    const [mr, ir] = await Promise.all([kv.get(_BEV2_KEY(date)).catch(() => null), kv.get(_BEVI_KEY(date)).catch(() => null)]);
+    const morning = mr ? JSON.parse(mr) : null, intra = ir ? JSON.parse(ir) : { slots: {} };
+    if (req.query.market) {   // one market: the drivers at every point, and what moved at each point against the one before
+      const raw = String(req.query.market).toUpperCase().replace(/[^A-Z0-9]/g, ''), m = _BEVI_ALIAS[raw] ?? raw;
+      const pts = [];
+      if (morning) { const d = BI.detail(morning); pts.push({ point: 'issue', at: morning.issuedAt, v2: d.v2[m] ?? null, v1r: d.v1r[m] ?? null }); }
+      for (const sl of BI.SLOTS) { if (!intra.slots?.[sl]) continue; let d = null; try { d = JSON.parse((await kv.get(_BEVI_DKEY(date, sl))) || 'null'); } catch { d = null; } pts.push({ point: sl, at: intra.slots[sl].at ?? null, v2: d?.v2?.[m] ?? null, v1r: d?.v1r?.[m] ?? null }); }
+      for (let i = 1; i < pts.length; i++) for (const e of BI.ENGINES) pts[i][`moved_${e}`] = pts[i - 1][e] && pts[i][e] ? BI.whatMoved(pts[i - 1][e], pts[i][e]) : null;
+      return res.json({ ok: true, date, market: m, points: pts });
+    }
+    let fb = []; try { fb = JSON.parse((await kv.get(_FBI_KEY(date))) || '{"rows":[]}').rows ?? []; } catch { fb = []; }
+    const day = { issue: morning ? { at: morning.issuedAt, ...BI.compact(morning) } : null, slots: intra.slots ?? {} };
+    res.json({ ok: true, date, issueAt: morning?.issuedAt ?? null, slotTimes: Object.fromEntries(Object.entries(day.slots).map(([k, v]) => [k, v.at ?? null])),
+      ...BI.timeline(day), fundabias: fb, schedule: date === today ? BI.schedule(day, Date.now(), date, _bsLondonMs) : null,
+      note: 'The morning issue (05:30-06:00 London) is the record of the day. Each hourly slot re-runs the same shadow engines on the data available then; v1r = V1\'s logic, v2 = V2. Not a production signal.' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 const _bev2Slim = m => (m ? { dir: m.dir, score: m.score, strength: m.strength, coverage: m.coverage, dataQuality: m.dataQuality, agreement: m.agreement, support: m.support, confidence: m.confidence } : null);
 // GET /api/bias-engine-v2                 today's stored V2 record (variants v2 and v1r only unless ?variant=all), or 404 before the issue
 // GET /api/bias-engine-v2?date=D          a stored day;  ?variant=<id>|all;  ?market=X one market from each served variant;  ?index=1 the index
@@ -44687,6 +44764,43 @@ app.get('/api/corr-terminal', async (_req, res) => {
   const ageH = (Date.now() - Date.parse(p.generated)) / 3600_000;
   res.setHeader('Content-Type', 'application/json');
   res.send(`{"ok":true,"refreshEveryH":${CORR_STALE_MS / 3600_000},"ageH":${Number.isFinite(ageH) ? +ageH.toFixed(2) : null},"stale":${ageH > CORR_STALE_MS / 3600_000 * 2},"building":${corrRunning},"src":"${p.src}","panel":${p.body}}`);
+});
+
+// Hedge for today (Desk Terminal Hedges tab, "Today" card; js/hedgeTodayCore.js; evidence forge/HEDGE_TODAY_PREREG.md):
+// the 08:00-17:00 London price at each hour for the last 200 completed sessions of the correlation build's markets, from
+// OANDA H1 (one request per market, count 5000). Built on demand, at most once per completed session, kept in memory and KV.
+// Owner-only for the desk login through the '/api/hedge-' deny prefix (js/deskAccess.js). Read-only: no positions, no orders.
+const HEDGE_TODAY_KV = 'hedge_today_v1';
+let _hedgeTodayMem = null, _hedgeTodayBuilding = null, _hedgeTodayTried = 0;
+async function _hedgeTodayBuild() {
+  const HT = await import('./js/hedgeTodayCore.js');
+  const bySym = {}, syms = [...CORR_PAIRS];
+  for (let i = 0; i < syms.length; i += 4) {
+    await Promise.all(syms.slice(i, i + 4).map(async sym => {
+      try { bySym[sym] = (await fetchOandaRecentH1(_h4OandaSym(sym) ?? sym, 5000)).map(c => ({ t: c.t, c: c.c })); } catch (e) { console.warn('[hedge-today]', sym, e.message); }
+    }));
+  }
+  const panel = HT.buildTodayPanel(bySym);
+  if (!panel) throw new Error('no H1 data returned');
+  _hedgeTodayMem = { body: JSON.stringify(panel), last: panel.sessions.at(-1) ?? null, n: panel.syms.length };
+  try { await kv.put(HEDGE_TODAY_KV, _hedgeTodayMem.body, { expirationTtl: 86400 * 4 }); } catch (e) { console.warn('[hedge-today] kv', e.message); }
+  console.log(`[hedge-today] built: ${panel.syms.length} markets, ${panel.sessions.length} sessions to ${_hedgeTodayMem.last}`);
+  return _hedgeTodayMem;
+}
+app.get('/api/hedge-today', async (_req, res) => {
+  try {
+    const HT = await import('./js/hedgeTodayCore.js'), want = HT.lastCompletedSession();
+    if (!_hedgeTodayMem) { try { const raw = await kv.get(HEDGE_TODAY_KV); if (raw) { const j = JSON.parse(raw); _hedgeTodayMem = { body: raw, last: j.sessions?.at(-1) ?? null, n: j.syms?.length ?? 0 }; } } catch { /* rebuild below */ } }
+    const fresh = _hedgeTodayMem && _hedgeTodayMem.last >= want && _hedgeTodayMem.n >= CORR_PAIRS.length * 0.6;   // a panel missing most markets (an OANDA naming or access fault) is rebuilt
+    if (!fresh && !_hedgeTodayBuilding && Date.now() - _hedgeTodayTried > 10 * 60_000) {
+      _hedgeTodayTried = Date.now();
+      _hedgeTodayBuilding = _hedgeTodayBuild().catch(e => { console.warn('[hedge-today] build', e.message); return null; }).finally(() => { _hedgeTodayBuilding = null; });
+    }
+    if (!_hedgeTodayMem && _hedgeTodayBuilding) await _hedgeTodayBuilding;
+    if (!_hedgeTodayMem) return res.json({ ok: false, building: !!_hedgeTodayBuilding, error: 'The session panel is not built yet (about 30 seconds of OANDA H1 requests).' });
+    res.setHeader('Content-Type', 'application/json');
+    res.send(`{"ok":true,"stale":${_hedgeTodayMem.last < want},"building":${!!_hedgeTodayBuilding},"panel":${_hedgeTodayMem.body}}`);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // Hedge alerts — compact summary for the dashboard beta panel.

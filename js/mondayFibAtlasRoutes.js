@@ -7,7 +7,7 @@
  * real second ladder to switch to. Same async-job + R2-persist pattern as every
  * other reference engine here (`/run`, `/status`, `/vote-trades`, `/live`).
  */
-import { loadM1ForPair } from './volBacktestM1Engine.js';
+import { loadM1ForPair, loadM1WindowForPair } from './volBacktestM1Engine.js';
 import { mondayFibAtlasWalk, mondayFibAtlasLiveLadder } from './mondayFibAtlasEngine.js';
 import { buildAsiaFibAtlasBook, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext, splitAt } from './levelAtlasReport.js';
@@ -398,7 +398,7 @@ async function coldStartLiveCache(pair) {
       }
     } catch (e) { console.warn(`[monday-fib-atlas-live] ${sym}: snapshot load failed — ${e.message}`); }
 
-    if (!packed) packed = await loadM1ForPair(pair);
+    if (!packed) packed = (await loadM1WindowForPair(pair, LIVE_WINDOW_DAYS)) ?? (await loadM1ForPair(pair));   // window read first: keeps boot memory low (see loadM1WindowForPair)
     if (!packed?.n) throw new Error(`no M1 data for ${sym}`);
     if (process.env.OANDA_KEY) {
       try { packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), minGapSec: 55 }); }

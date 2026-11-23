@@ -23,6 +23,7 @@
 #corr .ct-frow{display:grid;grid-template-columns:40px 46px 58px 1fr;white-space:nowrap;gap:6px;align-items:center;font-size:12px;padding:2px 0}
 #corr .ct-frow span:first-child{font:600 10px var(--mono);letter-spacing:.08em}
 #corr .ct-frow svg{justify-self:end;max-width:100%}
+#corr .ct-today{margin-bottom:14px}#corr .ct-cut{margin-top:6px}#corr .ct-cut summary{cursor:pointer;font-size:12px;padding:4px 0}
 #corr .ct-hlist{display:grid;gap:2px}
 #corr .ct-hrow{display:grid;grid-template-columns:172px auto minmax(0,1fr);gap:6px 12px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
 #corr .ct-hms{display:flex;flex-wrap:wrap;gap:2px 10px;min-width:0}

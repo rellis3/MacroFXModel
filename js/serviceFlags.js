@@ -199,6 +199,9 @@ export const SERVICES = [
   { id: 'biasEngineV2', where: 'server', label: 'Bias Engine V2, shadow: twelve variants (V1 replay, V2, and each switch on and off) from one point-in-time snapshot beside V1 (plans/BIAS_ENGINE_V2_SPEC.md); read by nothing in production',
     cadence: 'every 2 min on weekdays 05:30-06:00 London; issues once after the V1 issue exists (V1\'s gather, called unchanged, plus the policy-rate table, the futures strips, the 2y yields, the risk series, the scorecard dimensions and one SPX500 D pull)', cost: 'low', lean: true, on: true,
     feeds: '/api/bias-engine-v2 (?date=, ?variant=, ?market=, ?live=1, ?index=1) and /api/bias-engine-v2/compare (the owner-only Macro panel panel.macro.bev2). Writes write-once KV bias_engine_v2_<date>, bias_engine_v2_snap_<date> and bias_engine_v2_index. Off = no V2 shadow record that day (V1 is unaffected).' },
+  { id: 'biasEngineIntraday', where: 'server', label: 'Bias Engine through the day: hourly re-runs of the V2 shadow machinery (V1 logic and V2) on fresh data, beside the morning issue, so the owner sees whether and when a call shifts (js/biasIntraday.js); read by nothing in production',
+    cadence: 'every 2 min on weekdays; runs once inside each [slot, slot + 30 min) window, slots hourly 07:00-21:00 London (15 a day), the same gather as the V2 morning issue', cost: 'low', lean: true, on: true,
+    feeds: '/api/bias-engine-v2/intraday (?date=) and the Through the day view of the owner-only Macro panel panel.macro.bev2. Writes write-once-per-slot KV bias_engine_v2_intraday_<date> (120-day TTL). Off = no intraday slots (the morning issue is unaffected).' },
   { id: 'deskBiasProcess', where: 'server', label: 'Desk Bias Process: one rule-based daily bias per market, reviewed by an AI analyst that may accept or override it (plans/DESK_BIAS_PROCESS_SPEC.md; no forward record yet, not a trade signal)',
     cadence: 'every 5 min; issues once per London weekday between 06:00 and 06:30, after the bias engine issue (52 OANDA candle pulls, the week calendar, 13 model calls on task desk-analyst)', cost: 'med', lean: true, on: true,
     feeds: '/api/desk-bias-process (?date=, ?market=, ?live=1 system-only, ?index=1, ?dump=1), /api/desk-bias-process/h2h (the head to head and weekly review, computed on demand, cached 30 min; the Desk Terminal Bias process tab) and the bias scoreboard forecasters process-ai and process-system (<D>_process.json). Reads KV bias_engine_<date>, vol_forecast_<date>, the ForexFactory week and OANDA W/D/H4/H1. Writes write-once KV desk_bias_process_<date> and desk_bias_process_index. Off = no stored issue (the route still gives a live system-only read) and the head-to-head record has gaps that are never back-filled.' },
@@ -432,7 +435,8 @@ export const SERVICES = [
 
   // ── Paper-bot plan producers ─────────────────────────────────────────────
   { id: 'volatilityV2Plan', where: 'server', label: 'Vote Atlas (volatility v2) plan producer',
-    cadence: 'every 45s', legacyEnv: ['VOLATILITY_V2_PLAN_REFRESH'], cost: 'high', lean: false, on: true,
+    cadence: 'every 45s', legacyEnv: ['VOLATILITY_V2_PLAN_REFRESH'], cost: 'high', lean: false, on: false,
+    note: 'OFF since 2026-11-23 (owner: the bot is not trading). Each tick cold-warmed the live cache of every enabled pair (a ~15 MB R2 snapshot parse per pair, ~1.5 GB of memory churn Railway kept billing). While off, volatility_bot_v2 gets no fresh plan from the server. Set SVC_VOLATILITY_V2_PLAN=1 to turn it back on.',
     feeds: 'KV plan read by volatility_bot_v2 — 80 wake-ups/hour against the live ladder cache' },
   { id: 'fibAtlasPlan', where: 'server', label: 'Fib Atlas plan producer',
     cadence: 'every 45s', legacyEnv: ['FIB_ATLAS_PLAN_REFRESH'], cost: 'high', lean: false, on: true,

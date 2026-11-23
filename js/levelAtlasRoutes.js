@@ -24,14 +24,14 @@
  * called periodically (a scheduled job) to keep this current through the day;
  * this route itself never re-walks M1, so it stays fast regardless.
  */
-import { loadM1ForPair } from './volBacktestM1Engine.js';
+import { loadM1ForPair, loadM1WindowForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext, splitAt } from './levelAtlasReport.js';
 import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, causalInverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, DEFAULT_GRADED_THROTTLE_TIERS, applyFadeStopTightening, applyCurrencyLossGate, computeIntradayMAE, priceAtTighterStop, applyMaeStopGate, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
-import { putJSON, getJSON, listKeys } from './r2Store.js';
+import { putJSON, getJSON, putBuffer, getBuffer, listKeys } from './r2Store.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
 import { instrument as instrumentMeta, oandaSymbol, resolveKey } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
@@ -306,6 +306,7 @@ const liveWarming = new Set(); // pairs currently doing their one-time cold load
 const liveColdStartFailedAt = new Map(); // pair -> Date.now() of its last failed cold start
 const COLD_START_FAIL_COOLDOWN_MS = 30 * 60_000;
 
+const MAX_LIVE_COLD_STARTS = Math.max(1, parseInt(process.env.LIVE_COLD_STARTS ?? '3', 10) || 3);   // concurrent cold starts of the live cache (see getFastLive)
 const LIVE_WINDOW_DAYS = 180;   // comfortable margin over the widest context lookback (60 trading days)
 
 function boundPacked(packed, days) {
@@ -394,6 +395,30 @@ function packFromJSON(obj) {
   };
 }
 
+// Binary snapshot (2026-11-23): the JSON form was ~15 MB per pair (every bar as text), and each restore turned that into a 15 MB string, six double arrays and then typed arrays: ~30 MB of churn per pair,
+// 50 pairs when a page asks for every line. The same window as raw typed-array bytes is ~4.4 MB, is read straight into the arrays (no string, no JSON.parse) and costs a third of the R2 egress.
+// Layout: [u32 magic 'LSN2'][u32 n][f64 savedAt ms][i32 times x n][f32 opens x n][f32 highs x n][f32 lows x n][f32 closes x n][f32 volumes x n]. Old .json snapshots are still read as a fallback.
+const SNAP_MAGIC = 0x4c534e32, SNAP_HEAD = 16;
+export function packToBuffer(packed, savedAtMs) {
+  const n = packed.n, ab = new ArrayBuffer(SNAP_HEAD + n * 24), dv = new DataView(ab);
+  dv.setUint32(0, SNAP_MAGIC, true); dv.setUint32(4, n, true); dv.setFloat64(8, savedAtMs, true);
+  const cols = [packed.times, packed.opens, packed.highs, packed.lows, packed.closes, packed.volumes];
+  cols.forEach((c, k) => {
+    const dst = k === 0 ? new Int32Array(ab, SNAP_HEAD, n) : new Float32Array(ab, SNAP_HEAD + k * n * 4, n);
+    if (c && c.length) dst.set(c.length === n ? c : Array.prototype.slice.call(c, 0, n));
+  });
+  return Buffer.from(ab);
+}
+export function packFromBuffer(buf) {
+  if (!buf || buf.byteLength < SNAP_HEAD) return null;
+  const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), dv = new DataView(ab);   // own, 4-byte-aligned copy
+  if (dv.getUint32(0, true) !== SNAP_MAGIC) return null;
+  const n = dv.getUint32(4, true);
+  if (!n || ab.byteLength !== SNAP_HEAD + n * 24) return null;
+  const f = k => new Float32Array(ab, SNAP_HEAD + k * n * 4, n);
+  return { packed: { n, times: new Int32Array(ab, SNAP_HEAD, n), opens: f(1), highs: f(2), lows: f(3), closes: f(4), volumes: f(5) }, savedAtMs: dv.getFloat64(8, true) };
+}
+
 async function _saveLiveSnapshot(pair) {
   const entry = liveCache.get(pair);
   if (!entry?.packed?.n) return false;
@@ -405,7 +430,7 @@ async function _saveLiveSnapshot(pair) {
   const lastT = entry.packed.times[entry.packed.n - 1];
   if (entry.snapshotLastT === lastT) return false;
   try {
-    await putJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`, { ...packToJSON(entry.packed), savedAt: new Date().toISOString() });
+    await putBuffer(`${LIVE_SNAPSHOT_PREFIX}/${pair}.bin`, packToBuffer(entry.packed, Date.now()));
     entry.snapshotLastT = lastT;
     entry.snapshotSavedAt = Date.now();
     return true;
@@ -443,15 +468,19 @@ async function coldStartLiveCache(pair) {
   try {
     let packed = null, fromSnapshot = false, snapshotSavedAt = 0;
     try {
-      const snap = await getJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`);
-      const ageH = snap?.savedAt ? (Date.now() - Date.parse(snap.savedAt)) / 3600_000 : Infinity;
-      if (ageH <= MAX_SNAPSHOT_AGE_HOURS) {
-        const restored = packFromJSON(snap);
-        if (restored?.n) { packed = restored; fromSnapshot = true; snapshotSavedAt = Date.parse(snap.savedAt) || 0; }
+      const bin = packFromBuffer(await getBuffer(`${LIVE_SNAPSHOT_PREFIX}/${pair}.bin`));
+      if (bin?.packed.n && (Date.now() - bin.savedAtMs) / 3600_000 <= MAX_SNAPSHOT_AGE_HOURS) { packed = bin.packed; fromSnapshot = true; snapshotSavedAt = bin.savedAtMs || 0; }
+      else if (!bin) {   // no binary snapshot yet (first run after this change): fall back to the old JSON one
+        const snap = await getJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`);
+        const ageH = snap?.savedAt ? (Date.now() - Date.parse(snap.savedAt)) / 3600_000 : Infinity;
+        if (ageH <= MAX_SNAPSHOT_AGE_HOURS) {
+          const restored = packFromJSON(snap);
+          if (restored?.n) { packed = restored; fromSnapshot = true; snapshotSavedAt = Date.parse(snap.savedAt) || 0; }
+        }
       }
     } catch (e) { console.warn(`[level-atlas-live] ${sym}: snapshot load failed — ${e.message}`); }
 
-    if (!packed) packed = await loadM1ForPair(pair);
+    if (!packed) packed = (await loadM1WindowForPair(pair, LIVE_WINDOW_DAYS)) ?? (await loadM1ForPair(pair));   // window read first: keeps boot memory low (see loadM1WindowForPair)
     if (!packed?.n) throw new Error(`no M1 data for ${sym}`);
     if (process.env.OANDA_KEY) {
       try { packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), minGapSec: 55 }); }
@@ -492,7 +521,14 @@ async function getFastLive(pair) {
       // unchanged.
       return { warming: false, date: null, touches: [], pending: [] };
     }
-    if (!liveWarming.has(pair)) coldStartLiveCache(pair).catch(() => {});
+    // Cap (2026-11-23): a page asking for every instrument in one call (vote-preview) used to start ~50 cold starts at once: each parses a ~15 MB snapshot, and that churn took the server from 1.2 to 3-4 GB, which
+    // Railway keeps billing. Only MAX_LIVE_COLD_STARTS run at a time; the rest answer "warming" and are picked up by the page's next poll, so every pair still warms, just a few at a time.
+    if (!liveWarming.has(pair) && liveWarming.size >= MAX_LIVE_COLD_STARTS) return { warming: true, date: null, touches: [], pending: [] };
+    if (!liveWarming.has(pair)) {
+      // Diagnostic (2026-11-23): name whoever asked for this cold start (the synchronous part of the call stack), so a boot-time warm of every pair can be traced to its job.
+      try { console.log(`[level-atlas-live] ${sym}: cold start requested by ` + (new Error().stack || '').split('\n').slice(2, 7).map(l => l.trim().replace(/^at /, '').replace(/file:.*\//, '')).join(' < ')); } catch {}
+      coldStartLiveCache(pair).catch(() => {});
+    }
     return { warming: true, date: null, touches: [], pending: [] };
   }
   if (process.env.OANDA_KEY) {
