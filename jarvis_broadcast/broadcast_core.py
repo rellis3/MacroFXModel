@@ -60,7 +60,7 @@ def title_for(d: date) -> str:
 
 def description_for(d: date, voice: str | None = None, seconds: float | None = None) -> str:
     parts = [
-        f"The desk's morning briefing for {d.strftime('%A')} {d.day} {d.strftime('%B %Y')}, narrated by H.E.L.I.X. (Holographic Economic Links & Intermarket eXplorer) over the desk's own hologram views.",
+        f"The desk's morning briefing for {d.strftime('%A')} {d.day} {d.strftime('%B %Y')}, narrated by H.E.L.I.X. (Holistic Economic Links & Intermarket Xplorer) over the desk's own hologram views.",
         '',
         'Description only: what markets did and how things stand. Not a forecast, not advice, not a trade.',
     ]

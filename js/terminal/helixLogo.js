@@ -1,4 +1,4 @@
-// js/terminal/helixLogo.js: the H.E.L.I.X. mark, a turning double helix drawn on a small 2D canvas (start-up screen and the broadcast's title card).
+// js/terminal/helixLogo.js: the H.E.L.I.X. mark (Holistic Economic Links & Intermarket Xplorer), a turning double helix drawn on a small 2D canvas (start-up screen and the broadcast's title card).
 // Two glowing strands (the accent and gold), the rungs between them, and beads on each strand that brighten as they swing to the front: the
 // "linked strands" of the macro chain. Colours come from the theme tokens (--jva, --gold) read off the host element, so it follows every theme.
 // Reduced motion: one still frame. Returns stop(); it also stops by itself when the canvas leaves the page.
