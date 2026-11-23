@@ -807,3 +807,4 @@ analysis/output/reversal-zones/**/*.parquet
 analysis/output/trade-at-lines/**/*.parquet
 analysis/output/turn-at-lines/**/*.parquet
 analysis/output/futures-bars/
+analysis/output/futures-*/**/*.parquet
