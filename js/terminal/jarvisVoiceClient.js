@@ -128,9 +128,19 @@ export function makeNeuralVoice(win, opts = {}) {
     try { audio?.pause(); } catch (e) { /* idle */ }
     const a = new win.Audio(c.u); audio = a; a.playbackRate = Math.max(0.5, Math.min(2, rate || 1)); a.preservesPitch = true;
     const unfx = await robot(a);
-    let ended = false; const end = () => { if (!ended) { ended = true; unfx(); onEnd(); } };
+    let ended = false, dog = 0; const end = () => { if (!ended) { ended = true; win.clearInterval(dog); unfx(); onEnd(); } };
     a.onended = end; a.onerror = end;
     try { await a.play(); } catch (e) { return null; }
+    // stall guard: on a loaded machine the element can stop advancing mid-clip without 'ended' (the 23 Nov 21:00 recording sat 28 s silent mid-line). After 3 s still, nudge it;
+    // after 7 s still, give the line up so the programme moves on (a lost half-sentence beats a silent picture). A user pause is not a stall.
+    let last = -1, still = 0;
+    dog = win.setInterval(() => {
+      if (ended) return win.clearInterval(dog); if (a.paused) { still = 0; return; }
+      if (Math.abs(a.currentTime - last) > 1e-3) { last = a.currentTime; still = 0; return; }
+      still++;
+      if (still === 3) { try { a.currentTime = a.currentTime + 0.05; a.play().catch(() => {}); } catch (e) { /* nudge only */ } }
+      if (still >= 7 || (Number.isFinite(a.duration) && a.currentTime >= a.duration - 0.05)) end();
+    }, 1000);
     // progress(): how far through the clip the audio really is (0..1, from the element's own clock), or null while the duration is not known yet; subtitles and the scene camera follow it
     return { by: c.by, stop() { try { a.pause(); } catch (e) { /* idle */ } end(); }, pause(on) { try { on ? a.pause() : a.play(); } catch (e) { /* idle */ } }, setRate(r) { a.playbackRate = Math.max(0.5, Math.min(2, r || 1)); },
       progress() { const d = a.duration; return ended ? 1 : Number.isFinite(d) && d > 0 ? Math.max(0, Math.min(1, a.currentTime / d)) : null; } };
