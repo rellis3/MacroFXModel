@@ -107,4 +107,10 @@ Only the panel build had run (counts below); no weight or outcome had been compu
 - **B2 in the first weeks of 2017:** the daily history starts 2016-01-04, so B2 uses the available daily returns (at least 200) when fewer than 250 exist. B1 (60) is unaffected.
 - **Hourly prices:** the close of the last M1 bar opening in [h:00 − 5 min, h:00) London, as §3.1; London time from the BST rule (last Sunday of March / October, 01:00 UTC).
 
+### A2 — 2026-11-23 — POST-HOC (results seen), describe only
+The H1 placebo clause ("the method pooled VR above the placebo pooled VR") failed for every method, the benchmark B1 included: the median random partner sized with S2 removed 27.4% pooled against 21.2% (B1) to 26.2% (S3). The 12 fixed problems include deliberately weak partners (NQ on gold and yen, US2000 on gold, US30 on gold and yen); for those a random draw from the pool (for example US30 for NQ) is a far better hedge. So the clause measures the problem list, not the sizing method, and could not have been passed by any method on this list. The verdicts stay as registered (UNDERPOWERED). Described, not promoted: every other H1 clause holds for S2, S3 and C1, and for B2. A clause that tests a method should compare it with the same method on random partners, or the method with a random ratio on the same partners.
+Also described: for EURUSD and GBPUSD both H2 pipelines pick DXY almost every session (DXY is 58% EUR), which removes most of the position rather than hedging around a view.
+
 ## RESULTS
+
+See `analysis/output/hedge-today/RESULTS.md`. hedge-today UNDERPOWERED (S3 +5.03pp [+3.29, +6.67], 12/12, both halves; failed the placebo clause, A2); hedge-today-pick VALIDATED (+2.20pp [+1.10, +3.50], 7/8); hedge-today-daytype UNDERPOWERED (−0.71pp [−1.57, +0.13]).
