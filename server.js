@@ -128,6 +128,7 @@ import { mountPaperBoards } from './js/paperBoardsRoutes.js';                  /
 import { fetchCiStatus, githubGetter } from './js/ciStatusCore.js';       // GET /api/ci-status: is main's Tests workflow green (owner only, cached 10 minutes)
 import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the Desk Terminal's newer Macro boards (credit & liquidity, curve, regime, releases, strength, vol)
 import { mountLadderV2Shadow } from './js/ladderV2ShadowRoutes.js';   // ladder-v2 shadow forecast + exhaustion exports (v3 page)
+import { mountFuturesBars } from './js/futuresBarsRoutes.js';   // stored NT8 futures 1-min bars for the reversion page (R2 futures-bars/v1)
 import { mountReplay as _mountReplay } from './js/replayRoutes.js';                  // the Desk Terminal REPLAY (time machine, stage 1): a session as minutes, the option levels as known then, strength every 15 min (/api/replay/*)
 import { mountGhostWalk as _mountGhostWalk } from './js/ghostWalkRoutes.js';       // the ghost walk (preview): one market's days in units of the forecast median range, the OI levels in force, touches against a mirrored placebo (/api/replay/ghosts)
 import { mountOiTime as _mountOiTime } from './js/oiTimeRoutes.js';                 // OI over time (preview): the stored option-OI captures day by day with the daily candles (/api/replay/oi-days)
@@ -31968,6 +31969,7 @@ app.get('/api/vol-forecast/persist-ladder/export', async (req, res) => {
 });
 // ladder-v2 shadow (forecast + exhaustion, CFD + futures): js/ladderV2ShadowRoutes.js
 mountLadderV2Shadow(app);
+mountFuturesBars(app);
 app.get('/api/vol-forecast/persist-ladder/json', async (_req, res) => {
   if (!forecastState.latest) return res.status(202).json({ ok: false, error: 'forecast not ready' });
   try {
