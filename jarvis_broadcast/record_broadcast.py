@@ -95,7 +95,7 @@ def do_login(base: str) -> None:
     print('Saved. The daily run will reuse this login.')
 
 
-def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, rate: float = 1.15) -> dict:
+def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, rate: float = 1.1) -> dict:
     from playwright.sync_api import sync_playwright
     stamp = datetime.now().strftime('%Y-%m-%d_%H%M')
     work = out_dir / stamp
@@ -192,7 +192,7 @@ def main() -> None:
     ap.add_argument('--show', action='store_true', help='keep the browser window on screen')
     ap.add_argument('--len', choices=['short', 'quick', 'full'], default='short', help='short (default: kept under 3 min so YouTube files it as a Short), quick or full')
     ap.add_argument('--voice', choices=['server', 'kokoro'], default='server', help='server (steady) or kokoro (open-source, needs a fast machine)')
-    ap.add_argument('--rate', type=float, choices=[0.9, 1.0, 1.15, 1.3], default=1.15, help='voice speed: 0.9 calm, 1 normal, 1.15 brisk (default), 1.3 fast')
+    ap.add_argument('--rate', type=float, choices=[0.9, 1.0, 1.1, 1.15, 1.3], default=1.1, help='voice speed: 0.9 calm, 1 normal, 1.1 steady (default), 1.15 brisk, 1.3 fast')
     ap.add_argument('--base', default=os.environ.get('JARVIS_SITE', BASE))
     ap.add_argument('--out', default=str(OUT))
     a = ap.parse_args()
