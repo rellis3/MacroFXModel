@@ -1,0 +1,61 @@
+NQ: control 1 yz_20 match 100.0% of 2196 sessions
+NQ: control 2 OLD vs ladder-qlike-per-line QL +0.000%   control 3 oracle picked 3/3 lines every year
+GOLD: control 1 yz_20 match 100.0% of 2165 sessions
+GOLD: control 2 OLD vs ladder-qlike-per-line QL +0.000%   control 3 oracle picked 3/3 lines every year
+EURUSD: control 1 yz_20 match 100.0% of 2181 sessions
+EURUSD: control 2 OLD vs ladder-qlike-per-line QL +0.000%   control 3 oracle picked 3/3 lines every year
+USDJPY: control 1 yz_20 match 100.0% of 2181 sessions
+USDJPY: control 2 OLD vs ladder-qlike-per-line QL +0.000%   control 3 oracle picked 3/3 lines every year
+
+== H1: WIDE pick vs OLD pick (summed QLIKE, % change, negative = WIDE better)
+  all      -0.06% [-0.89, +0.29]
+  2020-22  -0.64% [-1.51, +0.08]
+  2023-26  +0.42% [-0.77, +0.87]
+  line hl  -0.96% [-3.98, +1.15]
+  line oh  -0.08% [-0.66, +0.38]
+  line ol  +0.05% [-0.93, +0.40]
+  NQ      -1.99% [-3.40, -0.54]
+  GOLD    +0.02% [-0.18, +0.31]
+  EURUSD  -0.63% [-1.26, +0.04]
+  USDJPY  +2.36% [-0.38, +3.08]
+  VERDICT: UNDERPOWERED
+
+== Picks by year (old -> wide)
+  NQ      hl: 2020:G_egarch->W_rvewma_50  2021:B_har_iv->W_rvewma_50  2022:B_har_iv->W_rvewma_50  2023:B_har_iv->W_combo5  2024:B_har_iv->W_combo5  2025:B_har_iv->W_combo5  2026:B_har_iv->W_combo5
+  NQ      oh: 2020:G_egarch->W_har_lev  2021:G_gjr->W_combo5  2022:SHAR->W_combo5  2023:SHAR->W_combo5  2024:SHAR->W_combo5  2025:SHAR->W_combo5  2026:SHAR->W_combo5
+  NQ      ol: 2020:B_har_iv->W_rvewma_70  2021:B_har_iv->W_combo3  2022:B_har_iv->W_combo3  2023:B_har_iv->W_combo5  2024:B_har_iv->W_combo5  2025:B_har_iv->W_combo5  2026:B_har_iv->W_combo5
+  GOLD    hl: 2020:SHAR->W_har_dow  2021:V3->V3  2022:V4->V4  2023:V3->V3  2024:V3->V3  2025:V3->V3  2026:V3->V3
+  GOLD    oh: 2020:SHAR->W_har_dow  2021:SHAR->SHAR  2022:SHAR->W_har_dow  2023:SHAR->W_har_dow  2024:SHAR->W_har_dow  2025:SHAR->W_har_dow  2026:SHAR->W_har_dow
+  GOLD    ol: 2020:V3->V3  2021:V3->V3  2022:V4->V4  2023:V4->V4  2024:V4->V4  2025:V4->V4  2026:V4->V4
+  EURUSD  hl: 2020:HARCJ->W_har_all  2021:HARCJ->W_har_all  2022:HARCJ->W_har_all  2023:HARCJ->W_har_all  2024:HARCJ->W_har_all  2025:HARCJ->W_har_all  2026:HARCJ->W_har_all
+  EURUSD  oh: 2020:HARCJ->W_combo3  2021:HARCJ->HARCJ  2022:HARCJ->HARCJ  2023:SHAR->W_rvewma_70  2024:SHAR->W_rvewma_70  2025:SHAR->W_har_all  2026:SHAR->W_ar22
+  EURUSD  ol: 2020:H8->W_har_all  2021:HARCJ->W_har_all  2022:SHAR->W_har_dow  2023:HARCJ->W_har_all  2024:HARCJ->W_har_all  2025:HARCJ->W_har_all  2026:HARCJ->W_har_all
+  USDJPY  hl: 2020:SHAR->W_har_all  2021:HARCJ->HARCJ  2022:HARCJ->W_har_lev  2023:HARCJ->W_rvewma_70  2024:SHAR->W_har_all  2025:SHAR->W_rvewma_70  2026:SHAR->W_rvewma_85
+  USDJPY  oh: 2020:HARCJ->W_ar22  2021:HARCJ->HARCJ  2022:HARCJ->W_rv_5  2023:HARCJ->W_rv_5  2024:SHAR->W_rvewma_70  2025:SHAR->W_arfima  2026:SHAR->W_arfima
+  USDJPY  ol: 2020:SHAR->W_ar1  2021:HARCJ->W_combo5  2022:SHAR->W_har_lev  2023:E_yz_10->W_gkewma_80  2024:SHAR->W_har_all  2025:R5->W_rvewma_70  2026:R5->W_rvewma_85
+
+== Top 8 per cell (out of sample 2020-2026.08; hindsight, descriptive)
+  NQ      hl: W_combo5 0.3356  W_combo3 0.3374  W_har_lev 0.3387  W_har_all 0.3479  W_rvewma_50 0.3502  B_har_iv 0.3509  SHAR 0.3513  W_rvewma_70 0.3545
+      Jordan-like ranks: {'W_rv_1': 54, 'W_park_1': 55} of 55
+  NQ      oh: W_har_lev 1.2079  W_combo3 1.2086  W_combo5 1.2100  SHAR 1.2184  W_har_mix 1.2200  W_rvewma_50 1.2260  R5 1.2265  HARCJ 1.2277
+      Jordan-like ranks: {'W_rv_1': 50, 'W_park_1': 54} of 55
+  NQ      ol: W_combo5 1.5565  W_combo3 1.5658  B_har_iv 1.5708  V3 1.5743  V4 1.5750  W_har_all 1.5920  W_har_lev 1.5943  W_rvewma_50 1.5964
+      Jordan-like ranks: {'W_rv_1': 55, 'W_park_1': 54} of 55
+  GOLD    hl: W_har_iv 0.3252  W_har_all 0.3258  V3 0.3346  V4 0.3355  W_combo3 0.3368  W_combo5 0.3369  B_har_iv 0.3463  W_rvewma_70 0.3474
+      Jordan-like ranks: {'W_rv_1': 52, 'W_park_1': 54} of 55
+  GOLD    oh: W_har_dow 1.2864  W_combo5 1.2891  W_har_all 1.2894  W_combo3 1.2896  HARCJ 1.2898  B_har_iv 1.2901  SHAR 1.2903  R5 1.2912
+      Jordan-like ranks: {'W_rv_1': 52, 'W_park_1': 55} of 55
+  GOLD    ol: W_har_iv 1.5380  W_har_all 1.5480  V4 1.5581  V3 1.5595  W_rvewma_50 1.5646  W_rvewma_70 1.5720  W_combo5 1.5734  W_combo3 1.5783
+      Jordan-like ranks: {'W_rv_1': 53, 'W_park_1': 54} of 55
+  EURUSD  hl: W_har_all 0.2940  W_combo3 0.2952  W_combo5 0.2959  W_har_dow 0.2974  HARCJ 0.2992  SHAR 0.3016  W_ar22 0.3019  R15 0.3025
+      Jordan-like ranks: {'W_rv_1': 46, 'W_park_1': 50} of 51
+  EURUSD  oh: W_ar22 1.3655  HARCJ 1.3701  SHAR 1.3703  R15 1.3712  W_har_lev 1.3721  W_rvewma_70 1.3721  W_har_all 1.3722  R5 1.3730
+      Jordan-like ranks: {'W_rv_1': 43, 'W_park_1': 50} of 51
+  EURUSD  ol: W_har_all 1.2728  W_har_dow 1.2773  W_combo3 1.2802  W_combo5 1.2850  HARCJ 1.2886  W_har_mix 1.2911  W_arma11 1.2926  SHAR 1.2927
+      Jordan-like ranks: {'W_rv_1': 46, 'W_park_1': 50} of 51
+  USDJPY  hl: W_har_lev 0.5018  SHAR 0.5046  R5 0.5047  W_har_dow 0.5065  W_har_mix 0.5069  W_rvewma_70 0.5074  W_arfima 0.5079  W_combo5 0.5085
+      Jordan-like ranks: {'W_rv_1': 48, 'W_park_1': 49} of 51
+  USDJPY  oh: W_arfima 1.4194  W_rgarch 1.4230  SHAR 1.4231  W_har_lev 1.4233  R15 1.4239  HARCJ 1.4240  R5 1.4240  W_arma11 1.4245
+      Jordan-like ranks: {'W_rv_1': 48, 'W_park_1': 51} of 51
+  USDJPY  ol: W_har_dow 1.7154  W_har_lev 1.7158  R5 1.7190  SHAR 1.7205  W_har_mix 1.7221  R15 1.7241  W_rvewma_94 1.7245  W_har_all 1.7250
+      Jordan-like ranks: {'W_rv_1': 48, 'W_park_1': 49} of 51

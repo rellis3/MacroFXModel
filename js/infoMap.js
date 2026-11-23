@@ -147,6 +147,7 @@ export const FAMILIES = [
 // automatically). Each needs a reason; js/infoMap.test.mjs fails when a page is in neither place.
 export const EXCLUDED_PAGES = {
   'futures-research.html': 'research view: NQ/6E/GC line touches and races on futures (futures-line research)',
+  'oi-profile-lines.html': 'research view: do the OI Profile lines hold or break (oi-profile-lines, own nightly capture vs shifted placebo lines)',
   'noise-area-fx-book.html': 'research view: the noise-area momentum FX book (study result, not an information feed)',
   'paper-synthesis.html': 'research view: paper cross-analysis of the library (Library/Research, not a feed)',
   'tpo-research.html': 'research view: TPO / initial-balance study (tpo-initial-balance)',
