@@ -46012,6 +46012,7 @@ app.get('/api/services', (req, res) => {
       trace: _memTrace,
       kvBig: kv.kvBigReads(),
       bootProfile: _bootProfile,
+      heapAlloc: _heapAlloc,
       intlCache: intlCacheStats,
       liveAtlas: { warmPairs: _laLiveCache.size, warming: _laLiveWarming.size, walks: _laWalkStats.walks, walkSec: +(_laWalkStats.ms / 1000).toFixed(1), sinceMin: +((Date.now() - _laWalkStats.since) / 60000).toFixed(1), top: Object.entries(_laWalkStats.byPair).sort((a, b) => b[1].ms - a[1].ms).slice(0, 8).map(([p, v]) => `${p}:${v.n}/${(v.ms / 1000).toFixed(1)}s`) },
       mappings: _memShots.list,
@@ -47740,6 +47741,35 @@ if (process.platform === 'linux' && process.env.BOOT_PROFILE !== '0') {
       }, 240_000); stop.unref?.();
     }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
   }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
+}
+// ── Heap allocation sample (2026-11-23, diagnostic): from 15 min after boot, 150 s of V8 sampling-heap-profiler data (counting objects the GC has already freed too) names which functions allocate the ~1 GB/minute
+// that makes the JS heap sawtooth 0.7-2 GB and sets Railway's memory high-water mark. Answer in /api/services -> memory.heapAlloc ({state, totalMB, top[{mb, fn, chain}]}). Runs once per boot; BOOT_PROFILE=0 skips. ──
+const _heapAlloc = { state: 'off', totalMB: 0, top: [] };
+if (process.platform === 'linux' && process.env.BOOT_PROFILE !== '0') {
+  const startAt = setTimeout(() => import('node:inspector').then(({ default: insp }) => {
+    const ses = new insp.Session(); ses.connect();
+    const post = (m, p) => new Promise((res, rej) => ses.post(m, p ?? {}, (e, r) => e ? rej(e) : res(r)));
+    post('HeapProfiler.startSampling', { samplingInterval: 32768, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true }).then(() => {
+      _heapAlloc.state = 'running since ' + new Date().toISOString().slice(11, 19);
+      const stop = setTimeout(async () => {
+        try {
+          const { profile } = await post('HeapProfiler.stopSampling');
+          const rows = [], walk = (n, chain) => {
+            const f = n.callFrame, lab = `${f.functionName || '(anon)'} ${String(f.url).split('/').slice(-2).join('/')}:${f.lineNumber + 1}`;
+            if (n.selfSize > 0) rows.push({ b: n.selfSize, fn: lab, chain: chain.slice(-5).reverse() });
+            for (const c of n.children ?? []) walk(c, [...chain, lab]);
+          };
+          walk(profile.head, []);
+          const total = rows.reduce((a, r) => a + r.b, 0);
+          // roll the leaf allocator up by function, keeping the busiest call chain for it
+          const by = new Map(); for (const r of rows) { const e = by.get(r.fn) ?? { b: 0, best: 0, chain: [] }; e.b += r.b; if (r.b > e.best) { e.best = r.b; e.chain = r.chain; } by.set(r.fn, e); }
+          _heapAlloc.totalMB = Math.round(total / 1048576);
+          _heapAlloc.top = [...by.entries()].sort((a, b) => b[1].b - a[1].b).slice(0, 25).map(([fn, e]) => ({ mb: Math.round(e.b / 1048576), fn, chain: e.chain }));
+          _heapAlloc.state = 'done'; ses.disconnect();
+        } catch (e) { _heapAlloc.state = 'error: ' + e.message; }
+      }, 150_000); stop.unref?.();
+    }).catch(e => { _heapAlloc.state = 'error: ' + e.message; });
+  }).catch(e => { _heapAlloc.state = 'error: ' + e.message; }), 900_000); startAt.unref?.();
 }
 // every second for the first 90 s (where the boot jump happens, so it can be matched to the jobs running at that second), every 5 s after, until 10 min
 { let n = 0; const fast = setInterval(() => { const up = Date.now() - _serverBootedAt; if (up > 600_000) { clearInterval(fast); return; } if (up < 90_000 || ++n % 5 === 0) _memTracePush(); }, 1000); fast.unref?.(); }
