@@ -18,6 +18,10 @@ import pandas as pd
 
 D = Path(sys.argv[1])
 OUTCOMES = "--outcomes" in sys.argv
+# positive control (prereg §3): --synthetic P replaces each session's bars by a Gaussian random walk from the real start price,
+# same bar count, per-bar sd = U / sqrt(1320); at REAL sites only, a crossing step is reflected with probability P.
+SYNTH = float(sys.argv[sys.argv.index("--synthetic") + 1]) if "--synthetic" in sys.argv else None
+RNG = np.random.default_rng(20261123)
 A = 0.25          # arm distance and race barrier, in U
 SITE_MERGE = 0.05  # lines closer than this (U) are one site
 CONF_R = 0.10     # confluence radius (U)
@@ -151,13 +155,40 @@ def main():
             continue
         hi, lo, cl = bars["high"].to_numpy(), bars["low"].to_numpy(), bars["close"].to_numpy()
         times = bars.index
+        site_list = sites_of(r)
+        if SYNTH is not None:
+            # A1 (PRE-RESULTS): 10 sub-steps per bar (OHLC from the sub-path), and the plant is "touch, then 30 bars of forced drift back"
+            real_px = np.array([x["price"] for x in site_list if x["kind"] == "real"])
+            NB, SUB, FORCE = len(cl), 10, 6
+            sd = U / np.sqrt(1320 * SUB)
+            hi, lo, cl = np.empty(NB), np.empty(NB), np.empty(NB)
+            px, forced, fdir = float(bars["close"].iloc[0]), 0, 0.0
+            for k in range(NB):
+                e = RNG.normal(0, sd, SUB)
+                if forced > 0:
+                    e = fdir * np.abs(e); forced -= 1
+                path = px + np.cumsum(e)
+                if SYNTH > 0 and forced == 0:
+                    prev = np.concatenate([[px], path[:-1]])
+                    cross = (prev[:, None] - real_px[None, :]) * (path[:, None] - real_px[None, :]) <= 0
+                    if cross.any():
+                        j, s_ = np.argwhere(cross)[0]
+                        if RNG.random() < SYNTH:
+                            L = real_px[s_]
+                            fdir = -1.0 if prev[j] < L else 1.0   # came from below -> back is down
+                            path[j] = L
+                            tail = path[j] + np.cumsum(fdir * np.abs(RNG.normal(0, sd, SUB - 1 - j))) if j < SUB - 1 else np.array([])
+                            path = np.concatenate([path[: j + 1], tail])
+                            forced = FORCE
+                hi[k], lo[k], cl[k] = max(px, path.max()), min(px, path.min()), path[-1]
+                px = path[-1]
         ldn_open = m1[fk].loc[pd.Timestamp(r["date"] + " 00:00", tz=LDN).tz_convert("UTC"):].iloc[0]["open"]
         inst_fc = (fcj.get("instruments") or {}).get(fk, {})
         day = {"date": r["date"], "fk": fk, "U": U, "spot": r["spot"], "regime": r["regime"], "hedgeRegime": r.get("hedgeRegime"),
                "book": r["book"]["label"], "vol_pct": inst_fc.get("vol_pct"), "news": (fcj.get("meta") or {}).get("news_flag"),
                "event_tag": (inst_fc.get("ladder") or {}).get("event_tag"), "atm_iv": (r.get("iv") or {}).get("atm"),
                "start_ldn": t0.tz_convert(LDN).strftime("%H:%M")}
-        for s in sites_of(r):
+        for s in site_list:
             dist0 = (s["price"] - cl[0]) / U
             for e in scan(s, hi, lo, cl, times, U, OUTCOMES):
                 i = e.pop("i")
@@ -168,7 +199,7 @@ def main():
                              "t": t, "ldn_hour": t.tz_convert(LDN).hour, "range_sofar": (sofar_hi - sofar_lo) / U,
                              "from_open": (s["price"] - ldn_open) / U, **e})
     df = pd.DataFrame(rows)
-    out = D / ("touches_outcomes.parquet" if OUTCOMES else "touches.parquet")
+    out = D / (("synthetic_%g.parquet" % SYNTH) if SYNTH is not None else ("touches_outcomes.parquet" if OUTCOMES else "touches.parquet"))
     df.to_parquet(out)
     real = df[df.kind == "real"]
     print(f"sessions {df.groupby(['date','fk']).ngroups}, days {df.date.nunique()}, real touches {len(real)}, placebo {len(df)-len(real)} -> {out.name}")
