@@ -1,0 +1,28 @@
+NQ: 1681 sessions; OC picks {2020: 'G_egarch', 2021: 'SHAR', 2022: 'SHAR', 2023: 'SHAR', 2024: 'SHAR', 2025: 'SHAR', 2026: 'SHAR'}; QL picks 2026 {'oh': 'SHAR', 'ol': 'B_har_iv'}
+GOLD: 1659 sessions; OC picks {2020: 'SHAR', 2021: 'V3', 2022: 'V3', 2023: 'V3', 2024: 'V3', 2025: 'V3', 2026: 'V3'}; QL picks 2026 {'oh': 'SHAR', 'ol': 'V4'}
+EURUSD: 1656 sessions; OC picks {2020: 'HARCJ', 2021: 'HARCJ', 2022: 'R15', 2023: 'SHAR', 2024: 'SHAR', 2025: 'HARCJ', 2026: 'R15'}; QL picks 2026 {'oh': 'SHAR', 'ol': 'HARCJ'}
+USDJPY: 1641 sessions; OC picks {2020: 'HARCJ', 2021: 'HARCJ', 2022: 'SHAR', 2023: 'HARCJ', 2024: 'SHAR', 2025: 'SHAR', 2026: 'R5'}; QL picks 2026 {'oh': 'SHAR', 'ol': 'R5'}
+
+== positive controls ==
+  mechanics: TP-first minus driftless benchmark over real + placebo barrier trades -1.88pp (|x| <= 3 to pass)
+  planted 0.25 sigma toward the open: net +0.398R [+0.379, +0.416] (CI lower > 0 to pass)
+
+== p75 fade -> OC p50 TP (primary) ==
+  trades 3377 (skipped 3); exits tp 39.3%, sl 32.0%, time 28.7%
+  net -0.065R [-0.082, -0.043]; halves 2020-22 -0.077R, 2023-26 -0.054R; gross -0.047R [-0.065, -0.026]
+  TP first (barrier trades) 55.1% vs driftless 56.9%: diff -1.8pp [-3.1, -0.3]
+  per instrument: EURUSD n813 net -0.017 gross +0.009 TP 41%; GOLD n845 net -0.054 gross -0.046 TP 39%; NQ n933 net -0.067 gross -0.064 TP 41%; USDJPY n786 net -0.122 gross -0.088 TP 36%
+  per side: oh n1718 net -0.073; ol n1659 net -0.056
+  per London bucket: 00-07 n303 net -0.003 gross +0.014; 07-12 n644 net -0.098 gross -0.078; 12-16 n1588 net -0.066 gross -0.048; 16-22 n842 net -0.059 gross -0.044
+  -> NULL (weight: Against)
+  real TP minus placebo TP at 0.7x distance: -0.013R per trade (n 3377)
+  real TP minus placebo TP at 1.3x distance: +0.011R per trade (n 3377)
+
+== p90 fade -> OC p50 TP ==
+  trades 1364 (skipped 0); exits time 51.6%, sl 37.1%, tp 11.3%
+  net -0.100R [-0.144, -0.064]; halves 2020-22 -0.083R, 2023-26 -0.114R; gross -0.076R [-0.123, -0.040]
+  TP first (barrier trades) 23.3% vs driftless 35.1%: diff -11.8pp [-14.7, -9.4]
+  per instrument: EURUSD n305 net -0.173 gross -0.138 TP 11%; GOLD n357 net -0.026 gross -0.015 TP 10%; NQ n376 net -0.049 gross -0.044 TP 13%; USDJPY n326 net -0.169 gross -0.124 TP 12%
+  per side: oh n695 net -0.138; ol n669 net -0.060
+  per London bucket: 00-07 n64 net -0.059 gross -0.032; 07-12 n173 net -0.121 gross -0.092; 12-16 n597 net -0.121 gross -0.096; 16-22 n530 net -0.073 gross -0.054
+  -> NULL (weight: Against)
