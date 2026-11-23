@@ -1,6 +1,6 @@
 // node js/biasIntraday.test.mjs — the Bias Engine's through-the-day timeline (js/biasIntraday.js).
 import assert from 'node:assert/strict';
-import { SLOTS, dueSlot, compact, timeline, schedule } from './biasIntraday.js';
+import { SLOTS, dueSlot, compact, timeline, schedule, detail, whatMoved, fbRow } from './biasIntraday.js';
 
 let pass = 0; const t = (name, fn) => { fn(); pass++; console.log('  ✓', name); };
 // a GMT day: London wall time = UTC
@@ -38,5 +38,19 @@ t('timeline: shifts carry the slot time, from and to; shifted markets first; a m
 t('schedule marks done, missed, due and later', () => {
   const day = { slots: { '07:00': {} } }, s = schedule(day, londonMs(D, 9, 10), D, londonMs);
   assert.equal(s[0].state, 'done'); assert.equal(s[1].state, 'missed'); assert.equal(s[2].state, 'due'); assert.equal(s[3].state, 'later');
+});
+t('detail and whatMoved: drivers keyed with their leg; the biggest change first; tiny changes dropped', () => {
+  const rec = { variants: { v2: { markets: { GOLD: { drivers: [{ key: 'trend', contrib: -0.3333, reading: 'D1 down' }, { key: 'rates', leg: 'USD', contrib: 0.1, reading: 'x' }] } } }, v1r: { markets: {} } } };
+  assert.deepEqual(detail(rec).v2.GOLD, [['trend', -0.333, 'D1 down'], ['USD rates', 0.1, 'x']]);
+  const mv = whatMoved([['trend', -0.333, 'D1 down'], ['usd', -0.25, 'a'], ['risk', 0.1, 'r']], [['trend', 0.1, 'H4 up'], ['usd', -0.252, 'a'], ['risk', 0.2, 'r2']]);
+  assert.deepEqual(mv.map(x => x.driver), ['trend', 'risk']); assert.equal(mv[0].now, 'H4 up');
+});
+t('fbRow validates the FundaBias reading and maps aliases', () => {
+  const M = { XAUUSD: 'GOLD', GOLD: 'GOLD' };
+  assert.deepEqual(fbRow({ market: 'xauusd', dir: 'bullish', score10: 7, at: '16:06' }, M).row, { market: 'GOLD', dir: 'BULLISH', score10: 7, at: '16:06', note: null });
+  assert.match(fbRow({ market: 'XAUUSD', dir: 'UP', score10: 7, at: '16:06' }, M).error, /dir/);
+  assert.match(fbRow({ market: 'XAUUSD', dir: 'BEARISH', score10: 11, at: '07:38' }, M).error, /score10/);
+  assert.match(fbRow({ market: 'XAUUSD', dir: 'BEARISH', score10: 8, at: '7:38' }, M).error, /HH:MM/);
+  assert.match(fbRow({ market: 'FOO', dir: 'BEARISH', score10: 8, at: '07:38' }, M).error, /unknown/);
 });
 console.log(`\n${pass} passed`);
