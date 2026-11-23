@@ -52,6 +52,32 @@ export function tableHtml(P, { open = null, only = 'all' } = {}) {
 <table class="bev2-t"><thead><tr><th>Market</th><th>V1 (production)</th><th>V1 replay</th><th>V2</th><th class="n">Quality</th><th class="n">Agreement</th><th>Evidence for / against</th></tr></thead>
 <tbody>${rows.map(r => rowHtml(r) + (open === r.market ? `<tr class="bev2-open"><td colspan="7">${driversHtml(r)}</td></tr>` : '')).join('') || '<tr><td colspan="7" class="muted">No market here.</td></tr>'}</tbody></table>`;
 }
+// ── Through the day (owner 2026-11-23; js/biasIntraday.js, GET /api/bias-engine-v2/intraday) ──
+const ARROW = { BULLISH: ['▲', 'up'], BEARISH: ['▼', 'dn'], NEUTRAL: ['–', 'muted'] };
+const word = d => ({ BULLISH: 'Bullish', BEARISH: 'Bearish', NEUTRAL: 'Neutral' }[d] ?? d);
+const hhmm = iso => { const d = new Date(iso ?? ''); return Number.isFinite(d.getTime()) ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : ''; };
+/** The day's timeline table for one engine ('v2' or 'v1r'); only = 'all' | 'shifted'. */
+export function intradayHtml(T, { engine = 'v2', only = 'all' } = {}) {
+  if (!T) return '<p class="muted">Loading the day…</p>';
+  if (T.ok === false) return `<p class="muted">${esc(T.error ?? 'Did not load.')}</p>`;
+  const pts = T.points ?? [];
+  const sched = T.schedule ? `<div class="bevi-sched"><span class="muted">Re-runs today</span> ${T.schedule.map(s => `<span class="chip ${s.state === 'done' ? 'up' : s.state === 'missed' ? 'dn' : s.state === 'due' ? 'gold' : ''}" title="${esc(s.state)}">${esc(s.slot)}</span>`).join(' ')}</div>` : '';
+  const tools = `<div class="bev2-tools"><button type="button" class="bev2-pill" data-ieng="v2" aria-pressed="${engine === 'v2'}">V2</button><button type="button" class="bev2-pill" data-ieng="v1r" aria-pressed="${engine === 'v1r'}">V1 logic</button><span style="width:.6rem"></span><button type="button" class="bev2-pill" data-ionly="all" aria-pressed="${only === 'all'}">All</button><button type="button" class="bev2-pill" data-ionly="shifted" aria-pressed="${only === 'shifted'}">Only shifts</button></div>`;
+  if (!pts.length) return `${tools}${sched}<p class="muted">Nothing stored for ${esc(T.date)} yet: the morning issue is written 05:30-06:00 London and the re-runs hourly from 07:00.</p>`;
+  const rows = (T.markets ?? []).filter(m => only === 'all' || (m.shifts?.[engine]?.length > 0));
+  const head = pts.map(p => `<th class="n" title="${esc(p === 'issue' ? `morning issue ${hhmm(T.issueAt)}` : `re-run at ${hhmm(T.slotTimes?.[p]) || p}`)}">${esc(p === 'issue' ? `Issue ${hhmm(T.issueAt)}` : p)}</th>`).join('');
+  const body = rows.map(m => {
+    const byPt = Object.fromEntries((m.calls?.[engine] ?? []).map(c => [c[0], c]));
+    const shiftAt = new Set((m.shifts?.[engine] ?? []).map(s => s.at));
+    const cells = pts.map(p => { const c = byPt[p]; if (!c) return '<td class="n muted">·</td>'; const [a, cls] = ARROW[c[1]] ?? ARROW.NEUTRAL;
+      return `<td class="n${shiftAt.has(p) ? ' bevi-shift' : ''}" title="${esc(word(c[1]))}${c[1] !== 'NEUTRAL' && c[3] != null ? ` ${esc(c[3])}/10` : ''}, score ${sgn(c[2])}"><span class="${cls}">${a}</span></td>`; }).join('');
+    const sh = (m.shifts?.[engine] ?? []).map(s => `<b>${esc(s.at)}</b> ${esc(word(s.from))} → ${esc(word(s.to))}`).join('; ');
+    return `<tr><th>${esc(m.market)}</th>${cells}<td class="bevi-sh">${sh || '<span class="muted">held all day</span>'}</td></tr>`;
+  }).join('');
+  const n = (T.markets ?? []).filter(m => m.shifts?.[engine]?.length).length;
+  return `${tools}${sched}<p class="muted">${esc(n)} of ${esc((T.markets ?? []).length)} markets changed direction since the morning issue (${engine === 'v2' ? 'V2' : 'V1 logic'}). A boxed cell is the re-run where it changed. Most inputs are daily or slower, so a change usually follows a data release or a move in the faster price and risk readings.</p>
+<div class="bevi-wrap"><table class="bev2-t bevi-t"><thead><tr><th>Market</th>${head}<th>Changes (London time)</th></tr></thead><tbody>${body || `<tr><td colspan="${pts.length + 2}" class="muted">No market changed direction today.</td></tr>`}</tbody></table></div>`;
+}
 export const CSS = `
 .bev2-head{display:flex;flex-wrap:wrap;gap:.3rem;align-items:center;margin-bottom:.3rem}
 .bev2-t,.bev2-drv,.bev2-att{width:100%;border-collapse:collapse;font-size:.82rem}
@@ -62,6 +88,8 @@ export const CSS = `
 .bev2-tools{display:flex;gap:.3rem;margin:.4rem 0}
 .bev2-pill{font:inherit;font-size:.78rem;padding:.15rem .55rem;border-radius:999px;border:1px solid var(--line);background:transparent;color:inherit;cursor:pointer}
 .bev2-pill[aria-pressed="true"]{background:var(--pur);color:var(--bg)}
+.bevi-wrap{overflow-x:auto}.bevi-t td,.bevi-t th{white-space:nowrap}.bevi-t td.bevi-sh{white-space:normal;min-width:12rem}
+.bevi-shift{outline:1px solid var(--gold);outline-offset:-2px;border-radius:3px}.bevi-sched{display:flex;flex-wrap:wrap;gap:.25rem;align-items:center;margin:.2rem 0 .4rem}
 @media (max-width:640px){.bev2-t th:nth-child(3),.bev2-t td:nth-child(3),.bev2-t th:nth-child(6),.bev2-t td:nth-child(6){display:none}.bev2-bw{width:30%}}
 `;
 /** Mount into `el` (owner only: the caller checks the surface). Idempotent. */
@@ -69,10 +97,15 @@ export function mount(el, { getJson, win = globalThis, doc = globalThis.document
   if (!el) return null;
   if (typeof win.deskSurfaceOn === 'function' && !win.deskSurfaceOn('panel.macro.bev2')) return null;
   if (!doc.getElementById('bev2-css')) { const st = doc.createElement('style'); st.id = 'bev2-css'; st.textContent = CSS; doc.head.appendChild(st); }
-  const S = { P: null, open: null, only: 'all' };
-  const draw = () => { el.innerHTML = `<div class="ch"><span class="lbl">Bias Engine V2 · shadow</span><span class="r muted">owner only · V1 stays the production control</span></div>${headHtml(S.P)}${tableHtml(S.P, S)}`; };
+  const S = { P: null, open: null, only: 'all', mode: 'issue', T: null, engine: 'v2', ionly: 'all' };
+  const modes = () => `<div class="bev2-tools"><button type="button" class="bev2-pill" data-mode="issue" aria-pressed="${S.mode === 'issue'}">Morning issue</button><button type="button" class="bev2-pill" data-mode="day" aria-pressed="${S.mode === 'day'}">Through the day</button></div>`;
+  const draw = () => { el.innerHTML = `<div class="ch"><span class="lbl">Bias Engine V2 · shadow</span><span class="r muted">owner only · V1 stays the production control</span></div>${headHtml(S.P)}${modes()}${S.mode === 'day' ? intradayHtml(S.T, { engine: S.engine, only: S.ionly }) : tableHtml(S.P, S)}`; };
+  const loadDay = async () => { try { S.T = await getJson('/api/bias-engine-v2/intraday'); } catch (e) { S.T = { ok: false, error: `Did not load: ${e.message}` }; } draw(); };
   el.innerHTML = '<div class="ch"><span class="lbl">Bias Engine V2 · shadow</span></div><p class="muted">Loading…</p>';
   el.addEventListener('click', e => {
+    const md = e.target.closest?.('button[data-mode]'); if (md) { S.mode = md.dataset.mode; draw(); if (S.mode === 'day') loadDay(); return; }
+    const ie = e.target.closest?.('button[data-ieng]'); if (ie) { S.engine = ie.dataset.ieng; draw(); return; }
+    const io = e.target.closest?.('button[data-ionly]'); if (io) { S.ionly = io.dataset.ionly; draw(); return; }
     const b = e.target.closest?.('button[data-only]'); if (b) { S.only = b.dataset.only; draw(); return; }
     const tr = e.target.closest?.('tr[data-m]'); if (tr) { S.open = S.open === tr.dataset.m ? null : tr.dataset.m; draw(); }
   });

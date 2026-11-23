@@ -30686,6 +30686,46 @@ async function _biasEngineV2Tick() {
   } finally { _bev2Issuing = false; }
 }
 svcInterval('biasEngineV2', () => _biasEngineV2Tick().catch(e => console.error('[bias-engine-v2]', e.message)), 2 * 60_000);
+// ── Bias Engine through the day (owner 2026-11-23; js/biasIntraday.js) ──────────────────────────────────────────────────────────────
+// The morning issue stays the record. Hourly 07:00-21:00 London (weekdays) the same shadow machinery re-runs on fresh data (V1's logic
+// = "v1r", and V2) and a compact copy is written once per slot into KV bias_engine_v2_intraday_<date>. A missed window is a gap, never
+// back-filled. Nothing in production reads it. GET /api/bias-engine-v2/intraday?date=D serves the morning issue, the slots, each market's
+// calls in time order with the time of every change of direction, and the day's schedule. Owner only (not in the desk login's routes).
+const _BEVI_KEY = date => `bias_engine_v2_intraday_${date}`;
+let _bevIBusy = false;
+async function _bevIntradayTick() {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (!_bsIsWeekday(date) || _bevIBusy) return;
+  const BI = await import('./js/biasIntraday.js'), slot = BI.dueSlot(now, date, _bsLondonMs);
+  if (!slot) return;
+  _bevIBusy = true;
+  try {
+    const raw = await kv.get(_BEVI_KEY(date)).catch(() => null), day = raw ? JSON.parse(raw) : { date, slots: {} };
+    if (day.slots?.[slot]) return;                                           // write-once per slot
+    const v1raw = await kv.get(_BE_KEY(date)).catch(() => null);
+    const { rec } = await _bev2Compute(Date.now(), v1raw ? JSON.parse(v1raw) : null);
+    const [h, m] = slot.split(':').map(Number);
+    if (Date.now() >= _bsLondonMs(date, h, m) + BI.WINDOW_MS) { console.warn(`[bias-intraday] ${date} ${slot}: finished after its window, not stored`); return; }
+    const fresh = await kv.get(_BEVI_KEY(date)).catch(() => null), cur = fresh ? JSON.parse(fresh) : day;
+    cur.slots = { ...(cur.slots ?? {}), [slot]: { at: rec.issuedAt, ...BI.compact(rec) } };
+    await kv.put(_BEVI_KEY(date), JSON.stringify(cur), { expirationTtl: 120 * 86400 });
+    console.log(`[bias-intraday] ${date} ${slot} stored`);
+  } finally { _bevIBusy = false; }
+}
+svcInterval('biasEngineIntraday', () => _bevIntradayTick().catch(e => console.error('[bias-intraday]', e.message)), 2 * 60_000);
+app.get('/api/bias-engine-v2/intraday', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const BI = await import('./js/biasIntraday.js');
+    const today = _dpLondonDate(Date.now()), date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date ?? '')) ? String(req.query.date) : today;
+    const [mr, ir] = await Promise.all([kv.get(_BEV2_KEY(date)).catch(() => null), kv.get(_BEVI_KEY(date)).catch(() => null)]);
+    const morning = mr ? JSON.parse(mr) : null, intra = ir ? JSON.parse(ir) : { slots: {} };
+    const day = { issue: morning ? { at: morning.issuedAt, ...BI.compact(morning) } : null, slots: intra.slots ?? {} };
+    res.json({ ok: true, date, issueAt: morning?.issuedAt ?? null, slotTimes: Object.fromEntries(Object.entries(day.slots).map(([k, v]) => [k, v.at ?? null])),
+      ...BI.timeline(day), schedule: date === today ? BI.schedule(day, Date.now(), date, _bsLondonMs) : null,
+      note: 'The morning issue (05:30-06:00 London) is the record of the day. Each hourly slot re-runs the same shadow engines on the data available then; v1r = V1\'s logic, v2 = V2. Not a production signal.' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 const _bev2Slim = m => (m ? { dir: m.dir, score: m.score, strength: m.strength, coverage: m.coverage, dataQuality: m.dataQuality, agreement: m.agreement, support: m.support, confidence: m.confidence } : null);
 // GET /api/bias-engine-v2                 today's stored V2 record (variants v2 and v1r only unless ?variant=all), or 404 before the issue
 // GET /api/bias-engine-v2?date=D          a stored day;  ?variant=<id>|all;  ?market=X one market from each served variant;  ?index=1 the index
