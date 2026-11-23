@@ -432,7 +432,8 @@ export const SERVICES = [
 
   // ── Paper-bot plan producers ─────────────────────────────────────────────
   { id: 'volatilityV2Plan', where: 'server', label: 'Vote Atlas (volatility v2) plan producer',
-    cadence: 'every 45s', legacyEnv: ['VOLATILITY_V2_PLAN_REFRESH'], cost: 'high', lean: false, on: true,
+    cadence: 'every 45s', legacyEnv: ['VOLATILITY_V2_PLAN_REFRESH'], cost: 'high', lean: false, on: false,
+    note: 'OFF since 2026-11-23 (owner: the bot is not trading). Each tick cold-warmed the live cache of every enabled pair (a ~15 MB R2 snapshot parse per pair, ~1.5 GB of memory churn Railway kept billing). While off, volatility_bot_v2 gets no fresh plan from the server. Set SVC_VOLATILITY_V2_PLAN=1 to turn it back on.',
     feeds: 'KV plan read by volatility_bot_v2 — 80 wake-ups/hour against the live ladder cache' },
   { id: 'fibAtlasPlan', where: 'server', label: 'Fib Atlas plan producer',
     cadence: 'every 45s', legacyEnv: ['FIB_ATLAS_PLAN_REFRESH'], cost: 'high', lean: false, on: true,
