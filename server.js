@@ -142,7 +142,7 @@ import { createFeed } from './js/feedRoutes.js';
 import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
-  getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
+  getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, liveWalkStats as _laWalkStats, PREFIX as _LA_PREFIX,
   DEFAULT_REARM as _LA_DEFAULT_REARM, loadLocalVoteTrades as _laLoadLocalVoteTrades, loadLocalP90VoteTrades as _laLoadLocalP90VoteTrades, pickFresher as _laPickFresher,
   saveAllLiveSnapshots as _laSaveAllLiveSnapshots,
 } from './js/levelAtlasRoutes.js';
@@ -46013,6 +46013,7 @@ app.get('/api/services', (req, res) => {
       kvBig: kv.kvBigReads(),
       bootProfile: _bootProfile,
       intlCache: intlCacheStats,
+      liveAtlas: { warmPairs: _laLiveCache.size, warming: _laLiveWarming.size, walks: _laWalkStats.walks, walkSec: +(_laWalkStats.ms / 1000).toFixed(1), sinceMin: +((Date.now() - _laWalkStats.since) / 60000).toFixed(1), top: Object.entries(_laWalkStats.byPair).sort((a, b) => b[1].ms - a[1].ms).slice(0, 8).map(([p, v]) => `${p}:${v.n}/${(v.ms / 1000).toFixed(1)}s`) },
       mappings: _memShots.list,
       sampledAt: new Date().toISOString(),
       note: 'This process only, not the container total (start.sh bots run as separate OS processes with their own RSS Railway meters separately). '
