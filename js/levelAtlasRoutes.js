@@ -492,7 +492,11 @@ async function getFastLive(pair) {
       // unchanged.
       return { warming: false, date: null, touches: [], pending: [] };
     }
-    if (!liveWarming.has(pair)) coldStartLiveCache(pair).catch(() => {});
+    if (!liveWarming.has(pair)) {
+      // Diagnostic (2026-11-23): name whoever asked for this cold start (the synchronous part of the call stack), so a boot-time warm of every pair can be traced to its job.
+      try { console.log(`[level-atlas-live] ${sym}: cold start requested by ` + (new Error().stack || '').split('\n').slice(2, 7).map(l => l.trim().replace(/^at /, '').replace(/file:.*\//, '')).join(' < ')); } catch {}
+      coldStartLiveCache(pair).catch(() => {});
+    }
     return { warming: true, date: null, touches: [], pending: [] };
   }
   if (process.env.OANDA_KEY) {
