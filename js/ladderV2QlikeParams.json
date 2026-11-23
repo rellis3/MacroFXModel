@@ -2,7 +2,7 @@
  "banked": "ladder-qlike-per-line",
  "track": "fut",
  "research_window_end": "2026-08-21",
- "note": "QLIKE-best site-computable sigma per line (futures, OOS 2020-2026.08); OC uses the OH model",
+ "note": "QLIKE-best site-computable sigma per line (futures, OOS 2020-2026.08); OC has its own calc from the OC QLIKE race",
  "instruments": {
   "NQ": {
    "oanda": "NAS100_USD",
@@ -56,12 +56,13 @@
     },
     "oc": {
      "arm": "SHAR",
-     "qlike": 1.2184,
+     "qlike": 1.4372,
      "rank": 1,
      "of": 20,
      "best_overall": "SHAR",
-     "best_qlike": 1.2184,
-     "live_qlike": 1.3098,
+     "best_qlike": 1.4372,
+     "live_qlike": 1.5186,
+     "oh_model": "SHAR",
      "hits_2020_26": [
       52.1,
       26.0,
@@ -203,12 +204,13 @@
     },
     "oc": {
      "arm": "HARCJ",
-     "qlike": 1.2898,
-     "rank": 1,
+     "qlike": 1.4777,
+     "rank": 4,
      "of": 20,
-     "best_overall": "HARCJ",
-     "best_qlike": 1.2898,
-     "live_qlike": 1.3304,
+     "best_overall": "V3",
+     "best_qlike": 1.4557,
+     "live_qlike": 1.5156,
+     "oh_model": "HARCJ",
      "hits_2020_26": [
       50.9,
       25.9,
@@ -330,12 +332,13 @@
     },
     "oc": {
      "arm": "HARCJ",
-     "qlike": 1.3701,
+     "qlike": 1.352,
      "rank": 1,
      "of": 17,
      "best_overall": "HARCJ",
-     "best_qlike": 1.3701,
-     "live_qlike": 1.3937,
+     "best_qlike": 1.352,
+     "live_qlike": 1.3771,
+     "oh_model": "HARCJ",
      "hits_2020_26": [
       50.9,
       25.1,
@@ -410,6 +413,7 @@
    "d1_start": "2016-01-04",
    "needs": [
     "d1",
+    "m15",
     "m5"
    ],
    "lines": {
@@ -456,17 +460,18 @@
      ]
     },
     "oc": {
-     "arm": "SHAR",
-     "qlike": 1.4231,
+     "arm": "R15",
+     "qlike": 1.5291,
      "rank": 1,
      "of": 17,
-     "best_overall": "SHAR",
-     "best_qlike": 1.4231,
-     "live_qlike": 1.4883,
+     "best_overall": "R15",
+     "best_qlike": 1.5291,
+     "live_qlike": 1.5988,
+     "oh_model": "SHAR",
      "hits_2020_26": [
-      50.9,
+      50.8,
       25.5,
-      11.0
+      10.9
      ]
     }
    },
@@ -493,6 +498,17 @@
       0.1709545854300412
      ],
      "s2": 0.3553720942677303
+    },
+    "R15": {
+     "type": "reg",
+     "arm": "R15",
+     "coef": [
+      -1.684639115656095,
+      0.3793508654414262,
+      0.2781289996698116,
+      0.19544609080270706
+     ],
+     "s2": 0.41850254424677075
     }
    },
    "widths": {
@@ -512,9 +528,9 @@
      "90": 1.6873727713012998
     },
     "oc": {
-     "50": 0.597691762505357,
-     "75": 1.06680796677493,
-     "90": 1.6441259387591876
+     "50": 0.6022026314694983,
+     "75": 1.0882567947920352,
+     "90": 1.6606322463931968
     }
    },
    "zone_sigma": [
