@@ -195,7 +195,7 @@ def main():
                 t = e.pop("t")
                 sofar_hi, sofar_lo = hi[: i + 1].max(), lo[: i + 1].min()
                 rows.append({**day, "kind": s["kind"], "shift": s["shift"], "price": s["price"], "types": "|".join(s["types"]), "n_types": len(s["types"]),
-                             "conf_types": s["conf_types"], "gAt": s["gAt"], "vAt": s["vAt"], "strength": s["strength"], "dist0": dist0,
+                             "conf_types": s["conf_types"], "gAt": s["gAt"], "vAt": s["vAt"], "strength": s["strength"], "dist0": dist0, "parent": s.get("parent", round(s["price"], 8)),
                              "t": t, "ldn_hour": t.tz_convert(LDN).hour, "range_sofar": (sofar_hi - sofar_lo) / U,
                              "from_open": (s["price"] - ldn_open) / U, **e})
     df = pd.DataFrame(rows)

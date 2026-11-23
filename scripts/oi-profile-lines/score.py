@@ -170,7 +170,7 @@ for a, p in zip(atlas, pass_):
 res["atlas_bh_passes"] = int(pass_.sum())
 
 # chance baseline: permute which member of each (date, fk, family) is "real", rerun the atlas BH count
-fam = np.where(df.kind == "real", df.price.round(8), df.get("parent", pd.Series(np.nan, index=df.index)))
+fam = df["parent"].round(8)
 df["fam"] = pd.Series(fam, index=df.index).astype(str) + "|" + df.date + "|" + df.fk
 df["member"] = df["shift"].astype(str)
 true_kind = df.kind.copy()
@@ -178,7 +178,7 @@ chance = []
 prng = np.random.default_rng(SEED + 1)
 fam_members = df.groupby("fam")["member"].unique()
 for _ in range(PERMS):
-    pick = {f: prng.choice(ms) for f, ms in fam_members.items()}
+    pick = {f: prng.choice(["0.0", "-0.25", "0.25", "-0.5", "0.5"]) for f in fam_members.index}  # A3: any of the 5 slots, touched or not
     df["kind"] = np.where(df.member.values == df.fam.map(pick).values, "real", "placebo")
     ps = [summ(cell(m))["p"] for _, m in atlas_cells()]
     chance.append(int(bh(ps).sum()))

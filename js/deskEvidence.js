@@ -4657,6 +4657,34 @@ export const DESK_EVIDENCE = [
     use: 'Do not cite the pre-FOMC drift as a live ~50bp effect: at that size it is gone here since 2014. A +10-15bp lean may remain, concentrated in 2018-2024 (mostly 2022). Reopen with 1994-2013 dates as a confirmation.',
     instruments: ['NQ', 'SPX500'],
   },
+  {
+    id: 'oi-profile-lines-s1', domain: 'positioning', verdict: 'null', date: '2026-11-23', doc: 'forge/OI_PROFILE_LINES_PREREG.md', also: ['analysis/output/oi-profile-lines/RESULTS.md', 'analysis/output/oi-profile-lines/results.json'],
+    claim: 'The OI Profile lines (walls, gamma peak, zero gamma, GEX flip, max pain, vanna/charm flip, volume, nodes, expected-move edges) hold on a first touch more or less often than the same lines shifted by 0.25-0.5 sigma',
+    result: 'Real lines held 48.7% vs placebo 48.5%: +0.2pp [-2.7, +3.1] on 1,706 resolved first touches (bar 5pp, MDE 5.5pp), halves +1.8 / -1.5; +-0.5 sigma placebos only +1.2pp [-2.0, +4.6]; mirror -1.0pp. Positive control: random-walk zero case +1.25pp, planted bounce +10.9pp. method: our nightly QuikStrike capture 2026-08-20 to 2026-11-23 replayed through the live OI Profile build (66 dates, 707 instrument-sessions, 11 instruments), first-touch 0.25 sigma race back vs through, placebo = the same lines shifted +-0.25/0.5 sigma, date-clustered bootstrap B 2000.',
+    use: 'Do not label profile lines as places price holds or breaks: pooled, they react like any nearby price. Per-type cells are atlas only (MDE 11-29pp), shown on OI Lab 2. Re-score at 132 dates (about 2027-03).',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'oi-profile-lines-s2', domain: 'positioning', verdict: 'null', date: '2026-11-23', doc: 'forge/OI_PROFILE_LINES_PREREG.md', also: ['analysis/output/oi-profile-lines/RESULTS.md', 'analysis/output/oi-profile-lines/results.json'],
+    claim: 'Profile lines hold better (relative to placebo) on PIN days (dealers long gamma at spot) than on BREAKOUT days',
+    result: 'Excess PIN +0.6pp [-3.2, +4.6] (lines 47.0% vs placebo 46.3%, 722 touches), BREAKOUT -0.0pp (50.0% vs 50.0%, 984); difference +0.65pp [-5.8, +7.2] against an 8pp bar. Atlas candidate only: the gamma peak on PIN days held 70.3% vs 48.5% (+21.7pp [13.6, 29.6], 74 first touches, 45 dates, both halves), the one BH survivor of about 150 atlas cells against a label-permutation chance baseline of median 0 / max 4. method: our nightly QuikStrike capture 2026-08-20 to 2026-11-23 replayed through the live OI Profile build (66 dates, 707 instrument-sessions, 11 instruments), first-touch 0.25 sigma race back vs through, placebo = the same lines shifted +-0.25/0.5 sigma, date-clustered bootstrap B 2000.',
+    use: 'No regime switch for line reads as a whole. The gamma-peak-on-PIN cell is a candidate for its own prereg on forward data, not a result; do not trade or label it.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'oi-profile-lines-s3', domain: 'positioning', verdict: 'null', date: '2026-11-23', doc: 'forge/OI_PROFILE_LINES_PREREG.md', also: ['analysis/output/oi-profile-lines/RESULTS.md', 'analysis/output/oi-profile-lines/results.json'],
+    claim: 'A return visit (touch 2 or later in the session, re-armed 0.25 sigma away) to a profile line reacts differently from the first touch, relative to placebo lines',
+    result: 'Touch 2+ excess +0.0pp (49.2% vs 49.2%, 1,759) vs touch 1 +0.2pp; difference -0.15pp [-4.6, +4.1] against a 5pp bar. No retest-after-break effect in the atlas. method: our nightly QuikStrike capture 2026-08-20 to 2026-11-23 replayed through the live OI Profile build (66 dates, 707 instrument-sessions, 11 instruments), first-touch 0.25 sigma race back vs through, placebo = the same lines shifted +-0.25/0.5 sigma, date-clustered bootstrap B 2000.',
+    use: 'Touch count does not change how a profile line behaves on this sample; do not show "second touch holds" or similar as a rule.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'oi-profile-lines-s4', domain: 'positioning', verdict: 'underpowered', date: '2026-11-23', doc: 'forge/OI_PROFILE_LINES_PREREG.md', also: ['analysis/output/oi-profile-lines/RESULTS.md', 'analysis/output/oi-profile-lines/results.json'],
+    claim: 'Stacked profile lines (2+ line types within 0.1 sigma) hold better relative to placebo than single lines',
+    result: 'Stacked excess -2.1pp (47.4% vs 49.5%, 784) vs single +2.1pp (49.8% vs 47.7%, 922); difference -4.15pp [-9.6, +1.3] against a 5pp bar (MDE about 11pp); halves -0.9 / -7.3. If anything stacked lines hold less. method: our nightly QuikStrike capture 2026-08-20 to 2026-11-23 replayed through the live OI Profile build (66 dates, 707 instrument-sessions, 11 instruments), first-touch 0.25 sigma race back vs through, placebo = the same lines shifted +-0.25/0.5 sigma, date-clustered bootstrap B 2000.',
+    use: 'Do not rank lines by how many types stack on them; the sign so far runs the wrong way for that claim. Judge again at 132 dates.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -4722,6 +4750,10 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'oi-profile-lines-s1': { n: '66 London dates (date-cluster bootstrap), 707 instrument-sessions, 1,706 resolved first touches', note: 'MDE 5.5pp against a 5pp bar (coin-flip Monte Carlo with a date random effect)' },
+  'oi-profile-lines-s2': { n: '66 dates; 722 PIN and 984 BREAKOUT first touches', note: 'MDE about 11pp against an 8pp bar; CI inside the bar, so null' },
+  'oi-profile-lines-s3': { n: '66 dates; 1,759 later and 1,706 first touches', note: 'MDE about 7.7pp against a 5pp bar; CI inside the bar, so null' },
+  'oi-profile-lines-s4': { n: '66 dates; 784 stacked and 922 single first touches', note: 'MDE about 11pp against a 5pp bar' },
   'ladder-v2-nq': { n: '2,229 sessions in 112 20-session blocks (block bootstrap, winner re-selected per draw)', note: 'MDE ~0.5pp on the 30-cell miss; observed -0.91pp' },
   'ladder-v2-nq-fut': { n: '2,196 sessions in 110 20-session blocks', note: 'MDE ~0.5pp; observed -0.68pp' },
   'ladder-v2-nq-cvf': { n: '2,706 common London dates, 20-session blocks', note: 'registered band +/-5% on the ratio; CIs within +/-1.7%' },
