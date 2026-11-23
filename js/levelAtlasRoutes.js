@@ -24,7 +24,7 @@
  * called periodically (a scheduled job) to keep this current through the day;
  * this route itself never re-walks M1, so it stays fast regardless.
  */
-import { loadM1ForPair } from './volBacktestM1Engine.js';
+import { loadM1ForPair, loadM1WindowForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext, splitAt } from './levelAtlasReport.js';
 import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, causalInverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, DEFAULT_GRADED_THROTTLE_TIERS, applyFadeStopTightening, applyCurrencyLossGate, computeIntradayMAE, priceAtTighterStop, applyMaeStopGate, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
@@ -451,7 +451,7 @@ async function coldStartLiveCache(pair) {
       }
     } catch (e) { console.warn(`[level-atlas-live] ${sym}: snapshot load failed — ${e.message}`); }
 
-    if (!packed) packed = await loadM1ForPair(pair);
+    if (!packed) packed = (await loadM1WindowForPair(pair, LIVE_WINDOW_DAYS)) ?? (await loadM1ForPair(pair));   // window read first: keeps boot memory low (see loadM1WindowForPair)
     if (!packed?.n) throw new Error(`no M1 data for ${sym}`);
     if (process.env.OANDA_KEY) {
       try { packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), minGapSec: 55 }); }

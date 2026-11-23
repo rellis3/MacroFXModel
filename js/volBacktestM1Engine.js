@@ -1552,6 +1552,36 @@ async function _m1Gate(fn) {
   finally { const next = _m1Queue.shift(); if (next) next(); else _m1Active--; }
 }
 export function loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) { return _m1Gate(() => _loadM1ForPair(pairKey, m1Dir)); }
+
+// ── Window loader (2026-11-23): the three live atlases keep only the last 180 days of each pair, but loaded the WHOLE decoded history (3-4M bars, ~95 MB, copied 3-4 times on the way) for ~45 pairs each, 14 minutes
+// after every boot. That churn is what put the server at 4-5 GB (external buffers 5.8 GB, never returned by the allocator). The decoded snapshot is columnar (times, then each price column), so the last N rows of
+// every column are a few small range reads (~20 MB total, no whole-file copy). Same checks as the full path (source etag + decode version) and the same nightly tail merge; returns null on any mismatch so the
+// caller falls back to loadM1ForPair. ──
+export function loadM1WindowForPair(pairKey, days) { return _m1Gate(() => _loadM1WindowForPair(pairKey, days)); }
+export async function _loadM1WindowForPair(pairKey, days, client = makeR2Client()) {   // client is injectable for js/m1Window.test.mjs
+  try {
+    if (!client) return null;
+    const currentEtag = await headR2Etag(client, `${R2_KEY_PREFIX}/${pairKey}_m1.parquet`); if (!currentEtag) return null;
+    const key = `${M1_DECODED_PREFIX}/${pairKey}.bin`;
+    const range = async (a, b) => {
+      const r = await client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key, Range: `bytes=${a}-${b}` }));
+      const u8 = await r.Body.transformToByteArray(); const ab = new ArrayBuffer(u8.byteLength); new Uint8Array(ab).set(u8); return ab;
+    };
+    const head = Buffer.from(await range(0, 255));
+    const n = head.readUInt32LE(0), ver = head.readUInt32LE(4), etagLen = head.readUInt32LE(8);
+    if (!n || ver !== M1_DECODE_VERSION || head.toString('utf8', 12, 12 + etagLen) !== currentEtag) return null;
+    const base = 12 + Math.ceil(etagLen / 4) * 4;
+    const rows = Math.min(n, days * 1440 + 5000), from = n - rows;                       // an M1 day never holds more than 1440 bars
+    const col = async (c, Ctor) => new Ctor(await range(base + (c * n + from) * 4, base + (c * n + n) * 4 - 1));
+    const times = await col(0, Int32Array);
+    if (rows < n && times[0] > times[rows - 1] - days * 86400) return null;               // denser than 1440/day: not safe, use the full load
+    let packed = { n: rows, times, opens: await col(1, Float32Array), highs: await col(2, Float32Array), lows: await col(3, Float32Array), closes: await col(4, Float32Array), volumes: await col(5, Float32Array) };
+    console.log(`[M1] decoded-snapshot WINDOW for ${pairKey} (${rows.toLocaleString()} of ${n.toLocaleString()} bars) — range read, source unchanged`);
+    try { const tail = await _r2GetTailJSON(`${M1_TAIL_PREFIX}/${pairKey}.json`); if (tail?.bars?.length) packed = _mergeM1Tail(packed, tail.bars); }
+    catch (e) { console.warn(`[M1] tail merge failed for ${pairKey}: ${e.message} — using base archive only`); }
+    return packed;
+  } catch { return null; }
+}
 async function _loadM1ForPair(pairKey, m1Dir = BT_M1_DIR) {
   // Real incident, 2026-09-16: this only ever handled a Date instance or a
   // date/datetime STRING -- assumed every parquet's timestamp column is one
