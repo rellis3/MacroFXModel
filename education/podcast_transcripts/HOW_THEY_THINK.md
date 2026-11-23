@@ -630,6 +630,152 @@ around inside that band all week), and 2027 is still priced for more hikes. Only
 
 ---
 
+## 3e. Episode 06 decoded (~20-21 Nov 2026): a brutal market, the 2018 template, the correlation nobody is pricing
+
+*Recording date not stated. Clues: Thanksgiving is next week (BD is away for it); the December FOMC is still ahead; the
+January meeting (27 Jan) is "two months away".*
+
+### The setup
+"Nowhere to hide." The S&P is ~8% off the top (dip-buyers stepped in at 7,600, 7,500, 7,400, 7,300) and the Nasdaq
+~14%. **Bonds are selling off again at the same time**, so the usual hedge failed. A 25bp December hike is fully priced
+(the 50bp talk has gone). Commodities look recessionary: China-heavy ones (iron ore, rebar) "horrendous", and AP
+expects a negative November CPI month on month. Gold has fallen from ~5,400 to ~3,500; silver is heading for $33. The
+dollar rallied (EUR sold from ~1.12). AP's three kinds of fund manager: fired, hiding under the desk, and those still able
+to talk about their book.
+
+### Pattern AD: Know your conditioning (BD)
+- "Read about Pavlov's dogs." Every dip bought in the last decade was rewarded, so "when you see stocks down 3, 4, 5%
+  you start salivating". The reflex is learned, not reasoned.
+- **The trap is that the reflex also fires in bad years:** 2000 and 2007 had "epic rallies" inside them, so even then
+  dip-buying was reinforced for a while.
+- **The skill:** notice when the urge to act is a habit from a different regime. Ask whether this is the regime that
+  rewarded it. (It continues Pattern U from E05: put a gap between seeing the move and acting.)
+
+### Pattern AE: Don't let disbelief in a policymaker set your timing (BD's self-critique)
+- BD faded the hawkish move early because he doesn't find the Fed's guidance credible (hawkish in June, dovish in July,
+  hawkish at Jackson Hole, dovish in October) and thinks a hawkish governor's method is wrong.
+- **His diagnosis of the method:** there are three ways to set policy, from real-time data, from forecasts, or from
+  lagging official data. Reacting to the lagging print (".3 is fine, .4 means hike 50") is the weakest, especially with
+  commodities collapsing.
+- **His error, in his words:** "I've made fun of people before for playing the *too much is priced in* game, but that's
+  exactly the game I've been playing." The market had to price the hawkish move *fully* first, whatever he thought of it.
+- **What he does now:** he believes his view even more, so the view isn't the problem; sizing and survival are. "It's
+  just more about risk management and sizing, or staying alive."
+- **The skill:** a correct view of what a central bank *should* do tells you little about *when* the market stops pricing
+  what it *says* it will do. Knowing which method it uses (here, lagging data) tells you its reaction will be late in
+  both directions: late to stop hiking, then late and fast to cut.
+
+### Pattern AF: Use a historical template, box by box, then distrust it because everyone does (AP + BD)
+- **The 2018 template, ticked off by AP:** about two years of easy gains (2017 was "the most boring year I've ever
+  traded", very high equity Sharpe ratios, EM carry "a licence to print money"); tax cuts feeding growth; inflation a bit
+  above target; a hawkish Fed ("a long way from neutral" in October 2018); a sell-off people blame on nothing ("the
+  fundamentals are fine"); a December hike into falling stocks and wider credit; **credit issuance frozen for three
+  months**; then mayhem until the chair reverses on 3 January 2019 and the market goes straight up.
+- **BD adds the boxes it shares with today:** a new Fed chair, midterms that went to the other party, and a Thanksgiving
+  week that's usually one of the best of the year but was *down* in 2018.
+- **BD's base rate:** "If you just back-test *stocks down 20%, will the Fed cut?*, the answer is yes."
+- **Then BD's counter, which is the real lesson:** "If the analogy is so obvious that everybody in the market is talking
+  about it… a lot of times that does get people sucked into a false confidence… markets are probabilistic." One sentence
+  from the chair (that the hawkish governor doesn't speak for the committee) and "Nasdaq will be up 5%".
+- **The skill:** a template gives you the *shape* (what tends to happen in what order, and what turns it). It doesn't give
+  you the dates or the certainty. The more popular the analogue, the less of an edge it is.
+
+### Pattern AG: Measure the pain on the crowd's portfolio, not on your index (AP)
+- **AP's yardstick for "enough deleveraging":** "the market likes to inflict the broadest amount of pain", and the
+  broadest pain is on the most common portfolio, the **60/40** (60% stocks, 40% bonds).
+- In 2018 the 60/40 was up 3-4% for the year in September and **finished down ~8%**. Today it's still green for the year,
+  and other strategies are still beating cash by 5-6%. So, by this yardstick, the pain isn't done.
+- **BD asks the right follow-up:** which barometer? The S&P is −8% but the Nasdaq −14%, so "we're not as far as the S&P
+  makes it sound". In 2018 the last 10% came in four weeks.
+- **The skill:** "how much pain is enough" is a question about *who holds what*. Pick the portfolio most people actually
+  own and ask whether it has hurt yet.
+
+### Pattern AH: Capex is a function of whether you can fund it, so the sell-off feeds back into growth (AP + BD)
+- **AP:** "Capex is a function of the availability to deliver the spending, which is a function of whether you can borrow
+  to do it." Credit spreads wider → can't issue bonds; "try to issue stocks when the market is down 10%" → can't issue
+  equity. So capex slows *because* markets fell, and growth with it. This is E04's Pattern N turned into the forecast.
+- **BD's chain to a 2027 slowdown:** AI capex is the one leg of the stool (E01) and "it isn't a flex any more to say we're
+  doing more capex than the other guy, it's actually bad" → the rate of change slows even if the level stays huge →
+  housing is already weak → the wealth effect fades → consumer spending slows. Jobs: break-even is ~30k a month after
+  the immigration crackdown but payrolls print ~150k, so "zeros or small negatives" can arrive quickly. → **long bonds**.
+- **The RBA as the live template:** it hiked into a supply shock (you can only hit the demand side: "rate hikes won't open
+  the Strait of Hormuz"), then jobs cracked, the AI story turned, the biggest IPO in Australian history failed, and the
+  market went from pricing hikes to pricing **cuts in March**. "That can easily happen in the US as well."
+- **And AP's reflexive point about the Fed:** the chair *asked* for tighter financial conditions a few meetings ago. "The
+  market is now giving him what he wants. Next it's going to tell him that hiking is wrong."
+- **The skill:** follow the second-order effects of a price move back into the economy (who can't fund, who stops
+  spending), and find the nearest place where the same story already played out (the RBA) to see the turn.
+
+### Pattern AI: The dollar's two-step (BD)
+- **Step one:** equities fall → hedgers and real money **mechanically** rebalance and buy dollars ("they don't have a
+  choice"), a hawkish Fed adds to it, and US companies keep buying dollars. The dollar rallies.
+- **Step two:** less demand for US assets overall, and a forward worry about how the US funds its huge negative net
+  international investment position. The dollar then "probably sells off a lot". **Template: 2000**, when the dollar
+  stayed strong while stocks fell, then collapsed.
+- **Why it matters now:** the world is overweight the US (MSCI World ~75% USA; managers who don't hug the benchmark get
+  fired). US exceptionalism unwinding is a slow flow out of the dollar.
+- **The trade problem:** "timing the hand-off from dollar buying to dollar selling, that's the challenge." This is E05's
+  Pattern W (two clocks) with a known *order*: the short clock first, the long clock second.
+
+### Pattern AJ: Trade the correlation the market isn't pricing (AP, with BD's translation)
+- **The idea:** AP's base case is Q4 2018 (another ~10% down is possible). Buying S&P puts now is overpaying for vol; put
+  spreads are expensive because skew is too. So look for a cheaper way to get paid in the same scenario.
+- **The link:** if capital flowed *into* the US for AI, it has to flow *back* to the exporters of capital, and the one with
+  no AI exposure is Switzerland. So in the bad scenario, **the S&P falls and USD/CHF falls together**.
+- **Why it's cheap:** each outcome on its own (S&P down ~3-4% by year end; USD/CHF down a vol-adjusted equivalent) prices at
+  ~16-20%, about a one-standard-deviation event. A **dual digital** (pays only if *both* happen) is priced off the recent
+  rolling correlation, which is about **zero**. If AP is right, in that scenario the two move together, so you're paying
+  for independence you don't expect to get. That gap is the convexity.
+- **Regime evidence:** before the tariffs, euro-up / S&P-down combos were "given to you for free" because the S&P falling
+  usually came with the euro falling. Now the S&P falling comes with the dollar falling. The old correlation is the wrong
+  price for the new world.
+- **BD's translation:** a sports parlay, "Alabama and the over", where one result makes the other likelier but the
+  bookmaker prices them separately.
+- **BD's progression of a trader:** direction first, then the path, then volatility, then correlation. "If you have skill,
+  you can sometimes realise the market is completely on drugs": the backward-looking correlation makes no sense after a
+  regime change, and that's the bet. (Easier for an institution than an individual.)
+- **The skill:** when you have a scenario, ask what *else* moves in it, and whether the market prices those moves as
+  linked. A backward-looking correlation is a guess about the old regime.
+
+### Pattern AK: Liquidity barometers aren't hedges (AP + BD)
+- Gold, silver and Bitcoin "are not hedges against anything. They're mostly liquidity barometers until you get to the
+  crisis moment" (BD). They yield nothing, they're in the book, and they're what gets sold to meet margin (AP).
+- The fiscal story that drove gold in January is "probably worse now, and nobody cares": the narrative didn't change,
+  the need for cash did.
+- **The post-parabola hangover (BD):** after a bubble cracks, buyers are scarce because so many got burned. 5,400 to 3,500
+  "is not nothing". In the short run AP expects them to trade with stocks.
+- **AP on memory:** he remembers $33 in silver because he made money there. "Your brain is set up to forget very bad
+  experiences" and overweight good ones. Notice which levels you remember, and why.
+
+### Pattern AL: Not as bearish as it sounds; survive the path (BD + AP)
+- BD: "70 to 80% of this move is done." He's trying to buy what he likes "without getting your face ripped off": tactical,
+  stops out when wrong, tries again. "So far it's not working."
+- **The path line:** "Things purchased now will be worth more in six months. But that means nothing if they go down 10 and
+  up 25. You've got to survive the down 10 first." AP: "Watch for path dependencies."
+- **What could rescue it (AP):** a soft inflation print that makes the chair sound less hawkish in December; the drawdown
+  ends even if stocks don't rally much.
+- **Closing rule (AP):** "We don't call directions, just discuss frameworks." The 2018 template is a scenario to keep in
+  mind, not a forecast.
+
+### How their views moved since E05
+| Then (E05, ~7 Nov) | Now (E06, ~21 Nov) | What it teaches |
+|---|---|---|
+| AP: "macro implications close to zero", a technical liquidation; FX and rates barely moved | Bonds selling off too, commodities "recessionary", a 2027 slowdown chain (capex funding, jobs break-even). Both now talk macro | The follow-through check (Pattern V) changed its answer: once rates and the dollar joined, it stopped being "just" a liquidation. Re-run the check; don't keep the old answer |
+| AP: gold holding ~4,000 on relative strength; metals "pretty interesting" for 2027. BD: maybe long gold, stop below the lows (3,900 support) | Gold ~3,500 from a ~5,400 peak; "not hedges, liquidity barometers" | **Relative strength failed within two weeks.** In a liquidation the asset that held up can be the last one sold. BD's stop below the lows is exactly what would have saved the trade (Pattern AC) |
+| BD: no December hike if equities fall another ~8% | Equities fell; a 25bp December hike is fully priced. BD's base case: they hike "because they said they would", then cut around June | He changed the call openly and named his error (Pattern AE) |
+| BD: dollar agnostic; two clocks cancel (W) | The dollar rallied (step one), BD expects it to fall a lot later (step two, AI) | Same two clocks, now with an order and a template (2000) |
+| AP: Anthropic IPO goes ahead as a clearing event | Not mentioned | Unscored from the transcript |
+| BD (E04): Nasdaq buyer at ~29,000 | Nasdaq ~14% off the high; BD "tactical, stops out if wrong" | He didn't say where he stopped. His rule now: survive the down 10 first |
+
+### Questions to practise on this episode
+1. Write the 2018 template as eight boxes. Tick the ones that are true today with a number from the site (S&P drawdown,
+   credit spread, Fed path pricing). Which box would have to break for the analogue to be wrong?
+2. AP's yardstick is the 60/40 year-to-date. Estimate it: what S&P and 10-year moves from here would take it below zero?
+3. AP's dual digital: write the two legs, why each alone is ~16-20%, and what correlation the price assumes. What would you
+   watch to know the correlation is changing (the Correlations & hedges tab on the Desk Terminal)?
+
+---
+
 ## 4. Glossary: words they assume you know
 
 | Term | Plain meaning |
@@ -703,6 +849,25 @@ around inside that band all week), and 2027 is still priced for more hikes. Only
 | **Delta-one (D1)** | A plain position in the underlying (spot or futures), with no option optionality; moves one-for-one with price |
 | **Put spread / call spread** | Buy one option and sell a further-out one to cut the cost; "sell put spreads to buy call spreads" = long-delta structure with roughly flat vol |
 | **R² (with momentum)** | How much of an asset's moves another series explains. High R² of metals on momentum = they usually fall together |
+| **Pavlovian conditioning** | A reflex learned from repeated reward. Ten years of rewarded dip-buys train you to buy every dip, including in years when it fails |
+| **"Too much is priced in" game** | Fading a move because you think the market has gone too far, before it has finished pricing what the central bank says |
+| **Forward guidance credibility** | Whether the market believes what a central bank says it will do. Flip-flopping guidance loses it |
+| **Lagging official data** | Published statistics (CPI, payrolls) describing last month. Policy set on them reacts late in both directions |
+| **"A long way from neutral"** | The Fed chair's October 2018 phrase implying more hikes; the turn came three months later |
+| **Supply shock** | Prices up because supply is cut (a war, a blockade). Rate hikes can only hit demand, so they cure it by slowing the economy |
+| **US exceptionalism / TINA** | The belief that US assets beat everything else ("there is no alternative"), which pulled global money into US stocks |
+| **Benchmark hugging** | Managers holding close to their index (MSCI World ~75% US) because straying and losing gets them fired |
+| **Net international investment position (NIIP)** | What a country owns abroad minus what foreigners own of it. The US is deeply negative, so it relies on inflows |
+| **Mechanical rebalancing** | Selling or buying to restore fixed weights or hedge ratios after a big move, whatever the view. It buys dollars when foreign holders' US stocks fall |
+| **60/40 portfolio** | 60% stocks, 40% bonds: the most widely held portfolio, used by AP as the gauge of how much pain the market has caused |
+| **Digital option** | Pays a fixed amount if a price is beyond a level at expiry, nothing otherwise. Its price is roughly the market's probability |
+| **Dual digital** | Pays only if two conditions both happen. Its price depends on the correlation the dealer assumes between them |
+| **Correlation trading** | Betting on how two markets move together rather than on either's direction |
+| **Parlay** | A sports bet on two results at once ("Alabama and the over"); pays if both happen |
+| **Liquidity barometer** | An asset sold to raise cash in a squeeze (gold, silver, BTC), so it falls with stocks until the crisis peaks |
+| **Post-parabola hangover** | The long quiet after a bubble cracks, when burned buyers stay away |
+| **Path dependency** | When the route matters as much as the destination: a trade right in six months still fails if it falls 10% first and stops you out |
+| **Credit issuance freeze** | Companies unable to sell new bonds at all (as in Q4 2018): the sharpest sign that funding has shut |
 
 ---
 
@@ -733,6 +898,7 @@ comparing**.
 ## Episode index
 | Ep | Recorded | Main reasoning lessons |
 |---|---|---|
+| E06 | ~20-21 Nov 2026 | Know your conditioning, Pavlov (AD); don't let disbelief in a policymaker set your timing, three ways to set policy (AE); a template box by box, then distrust it (AF); pain measured on the 60/40 (AG); capex depends on funding, the RBA template (AH); the dollar's two-step, 2000 (AI); trade the unpriced correlation, dual digital (AJ); liquidity barometers aren't hedges (AK); survive the path (AL); views moved since E05 |
 | E05 | ~6-9 Nov 2026 | Think slow (U); no cross-asset follow-through = liquidation, not macro (V); two time frames + no position to unwind (W); bad news, good price, broken equities-FX transmission (X); binary years, P/E traps, "not the same company" (Y); can the market wait, IPO as clearing event (Z); right in 12 months isn't a trade, yen (AA); relative strength in gold (AB); simplest expression first (AC); views moved since E04 |
 | E04 | Fri 2026-10-23 | Correlation flip = story change (M); credit availability > price (N); two schools + uncertainty width (O); base rates for ordinary corrections (P); reaction functions + asymmetry (Q); decompose a price into its drivers, agnostic is valid (R); options/barriers/Polymarket (S); survive (T); scorecard of E01-E03 |
 | E03 | ~early Sept 2026 | Horizon filter (Q0); 3 scenarios incl. "nothing happens"; starting conditions > news size (F); size in risk units/DV01 (G); credibility (H); release valves + EM medicine (I); tail variable + 2nd derivative (J); idiosyncratic bets, NZ, Czech vs Poland (K); fade tariffs (L); scored against what happened next |
