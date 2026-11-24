@@ -224,8 +224,12 @@ export const wantedSceneIds = () => [...new Set(SEGMENTS.flatMap(s => s.tiers.fl
 /** In the QUICK broadcast a scene's line is cut to whole sentences of about this many words (eight segments, a little over two minutes). */
 export const QUICK_WORDS = 34;
 /** The SHORT broadcast (mode 'short', for a YouTube Short, which must stay under 3 minutes): shorter lines, a two-item lead, and if the estimate still runs long the
- *  least essential segments go first, in this order. Markets, The Chain and The Day Ahead always stay. The budget is an ESTIMATE: a real run took about 1.2x it (transitions, the voice's own pace), so 120 s lands near 2.5 minutes. */
-export const SHORT_WORDS = 24, SHORT_BUDGET_SEC = 120, SHORT_DROP = ['vol', 'pos', 'ccy', 'macro', 'rates'];
+ *  least essential segments go first, in this order. Markets, The Chain and The Day Ahead always stay. The budget is an ESTIMATE: a real run took about 1.2x it (transitions, the voice's own pace), so 120 s lands near 2.5 minutes.
+ *  The laptop's FRAME-BY-FRAME recording has no waits between lines, so it asks for more (budgetSec 145, about 2 min 45 s). */
+export const SHORT_WORDS = 24, SHORT_BUDGET_SEC = 120, SHORT_DROP = ['macro', 'ccy', 'rates', 'pos', 'vol'];
+// The drop order follows what is USEFUL for the day (24 Nov 2026): the slow-moving macro picture goes first, then currencies (the board and volatility already say which
+// markets are moving), then rates; positioning (where the options sit: the gamma range read has evidence behind it) and volatility (implied and expected ranges, the
+// desk's best-calibrated forecast) stay longest.
 /** The evening's order of drops: the snapshots go before the look-back (The Day, The Releases and Tomorrow always stay; Markets repeats The Day, so it goes last). */
 export const SHORT_DROP_EVENING = ['vol', 'pos', 'ccy', 'macro', 'rates', 'chain', 'markets'];
 /** The one spoken disclaimer of the programme. */
@@ -262,7 +266,7 @@ export function keyFigure(text) {
  *   { kind: 'open'|'lead'|'bumper'|'scene'|'close', text, view, cam, title, hold (seconds the card holds with no voice), ...kind fields }.
  * Never throws because of a hook. A segment with no available scene is skipped and the numbering closes up.
  */
-export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick', rate = 1 } = {}) {
+export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick', rate = 1, budgetSec = SHORT_BUDGET_SEC } = {}) {
   const quick = mode !== 'full', short = mode === 'short', words = short ? SHORT_WORDS : QUICK_WORDS, date = dateWords(inp.now ?? new Date()), viewOk = v => !have || have.has(v) || CORE_VIEWS.has(v);
   const built = {}, sceneFor = id => {
     if (id in built) return built[id];
@@ -314,7 +318,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     return { items, total, totalSec: Math.round(items.reduce((a, x) => a + (x.text ? readSeconds(x.text) : 0) + (x.hold ?? 0), 0)) };
   };
   let segsUsed = segs, P = build(segsUsed.map(x => ({ ...x })));
-  const budget = SHORT_BUDGET_SEC * Math.max(0.75, Math.min(1.5, +rate || 1));      // the budget is in seconds at normal speed: a faster voice fits more of the programme in the same 2.5 minutes
+  const budget = Math.max(60, Math.min(170, +budgetSec || SHORT_BUDGET_SEC)) * Math.max(0.75, Math.min(1.5, +rate || 1));      // the budget is in seconds at normal speed: a faster voice fits more of the programme in the same 2.5 minutes
   if (short) for (const id of (pod === 'evening' ? SHORT_DROP_EVENING : SHORT_DROP)) { if (P.totalSec <= budget) break; if (segsUsed.some(x => x.id === id)) { segsUsed = segsUsed.filter(x => x.id !== id); P = build(segsUsed.map(x => ({ ...x }))); } }
   const { items, total, totalSec } = P;
   return { date, lead, segments: segsUsed.map((s, i) => ({ id: s.id, name: s.name, num: i + 1, total, scenes: s.scenes.map(x => x.id) })), items, ticker: tickerItems(inp.rows ?? inp.movers ?? []), totalSec };

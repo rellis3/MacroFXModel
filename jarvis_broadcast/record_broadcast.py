@@ -45,6 +45,7 @@ BASE = 'https://macrofxmodel-production.up.railway.app'
 PROFILE = Path(os.environ.get('JARVIS_PROFILE', HERE / '.profile'))                     # the saved, logged-in browser profile (git-ignored)
 OUT = HERE / 'out'                              # recordings and logs (git-ignored)
 W, H, DPR = 540, 960, 2                         # a phone-shaped page (Jarvis's portrait layout) at 2x = 1080 x 1920
+FRAMES_SHORT_SEC = 145                          # frame by frame has no waits between lines (the live way loses ~20 s to them), so the short cut asks for more: ~2 min 45 s
 VCLOCK = HERE / 'vclock.js'                     # the virtual clock for frame-by-frame recording
 
 
@@ -142,7 +143,7 @@ def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: P
         page.evaluate('() => window.__vclock.freeze()')
         page.evaluate("""o => { window.__vcRes = null; window.__vcOnAir = 0;
             window.__jarvisBroadcastAuto(o).then(r => { window.__vcRes = r; }, e => { window.__vcRes = { ok: false, error: String(e && e.message || e) }; }); }""",
-                      {'len': length, 'engine': engine, 'rate': rate})
+                      {'len': length, 'engine': engine, 'rate': rate, 'budgetSec': FRAMES_SHORT_SEC})
         log(f'recording the {length} broadcast frame by frame at {fps} fps (voice: {engine}, speed {rate}x)')
         started, last_note, n = time.time(), time.time(), 0
         while True:

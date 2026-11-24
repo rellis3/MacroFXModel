@@ -251,6 +251,15 @@ test('SHORT (YouTube Short): shorter lead, and long programmes drop the least es
   const brisk = planBroadcast(inp, { hooks, have, mode: 'short', rate: 1.15 });
   assert.ok(brisk.segments.length >= short.segments.length && brisk.totalSec <= SHORT_BUDGET_SEC * 1.15 + 1e-9 || brisk.segments.length === 3, `brisk ${brisk.totalSec}s with ${brisk.segments.length} segments`);
   assert.deepEqual(planBroadcast(inp, { hooks, have, mode: 'short', rate: 1 }).segments.map(s => s.id), short.segments.map(s => s.id));
+  // the drop order keeps the useful, forward-looking data longest: when anything is cut, the macro goes before volatility and positioning
+  const cut = short.segments.map(s => s.id);
+  if (!cut.includes('vol')) assert.ok(!cut.includes('macro') && !cut.includes('pos'), cut.join());
+  if (cut.includes('macro')) assert.ok(cut.includes('vol') && cut.includes('pos') && cut.includes('rates'), cut.join());
+  // the frame-by-frame recorder asks for a bigger budget (budgetSec): at least as many segments, within it; out-of-range budgets are clamped
+  const roomy = planBroadcast(inp, { hooks, have, mode: 'short', rate: 1.1, budgetSec: 145 });
+  assert.ok(roomy.segments.length >= planBroadcast(inp, { hooks, have, mode: 'short', rate: 1.1 }).segments.length);
+  assert.ok(roomy.totalSec <= 145 * 1.1 + 1e-9 || roomy.segments.length === 3, `roomy ${roomy.totalSec}s`);
+  assert.deepEqual(planBroadcast(inp, { hooks, have, mode: 'short', budgetSec: 9999 }).segments.length, planBroadcast(inp, { hooks, have, mode: 'short', budgetSec: 170 }).segments.length);
   // numbering closes up after drops
   assert.deepEqual(short.segments.map(s => s.num), short.segments.map((_, i) => i + 1));
   // a programme already inside the budget is not cut

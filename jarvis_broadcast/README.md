@@ -26,10 +26,10 @@ It runs at 07:15 so it comes **after the 06:30 OI pull** (`oi_recon\run_daily.ba
 - timers, animations and the audio clock all follow it, so every frame is complete however slow the laptop is;
 - the sound is rendered at the end, in step with the frames, and the server voice is asked for at the broadcast's speed (pitch unchanged).
 
-It takes about 13 minutes to capture plus 4 to encode, so the 07:15 video is up by about 07:35. `--live` records the old way; `--frames` forces the new way (the evening run stays live until the morning one has been judged).
+It takes about 13-27 minutes to capture plus about 5 to encode, so the 07:15 video is up by about 07:50. Frame by frame asks for a fuller short (about 2 min 45 s), since it has no waits between lines. `--live` records the old way; `--frames` forces the new way (the evening run stays live until the morning one has been judged).
 
 **SHORT length.** The broadcast keeps its lines short and drops the least essential segments, so the video stays under YouTube's 3-minute Shorts limit:
-- drop order: volatility, then positioning, currencies, the macro, rates;
+- drop order (least useful first): the macro, currencies, rates, positioning, volatility;
 - Markets, The Chain and The Day Ahead always stay.
 
 A test run came out at 2 min 56 s before the budget was tightened; it now aims for about 2.5 minutes. If a video ever runs over 3 minutes, it still uploads, but YouTube files it as a normal video rather than a Short.
