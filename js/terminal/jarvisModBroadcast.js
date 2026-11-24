@@ -83,7 +83,7 @@ const css = R => `
 #${R} .bc-lead.on .bc-lw>*{animation:bc-in .7s cubic-bezier(.2,.7,.2,1) both}#${R} .bc-lead.on .bc-lw>:nth-child(2){animation-delay:.1s}#${R} .bc-lead.on .bc-lw>:nth-child(3){animation-delay:.18s}#${R} .bc-lead.on .bc-lw>:nth-child(4){animation-delay:.28s}#${R} .bc-lead.on .bc-lw>:nth-child(5){animation-delay:.36s}
 @keyframes bc-in{from{opacity:0;transform:translateX(-26px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
 /* THE HEADLINE: the newsletter's one-line story as a front page, the named market's daily chart showing through the lower half */
-#${R} .bc-head{background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 96%,transparent) 0%,color-mix(in srgb,var(--bg) 90%,transparent) 46%,color-mix(in srgb,var(--bg) 35%,transparent) 72%,transparent 100%)}
+#${R} .bc-head{background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 96%,transparent) 0%,color-mix(in srgb,var(--bg) 90%,transparent) 36%,color-mix(in srgb,var(--bg) 25%,transparent) 50%,transparent 62%)}
 #${R} .bc-hw{position:absolute;left:clamp(22px,7vw,110px);top:clamp(70px,12vh,140px);width:min(980px,86vw)}
 #${R} .bc-hk{font:600 13px/1 var(--mono,monospace);letter-spacing:.32em;color:var(--tx2);padding-bottom:14px;margin-bottom:20px;border-bottom:1px solid color-mix(in srgb,var(--bca) 45%,transparent)}
 #${R} .bc-hh{margin-top:18px;font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:clamp(30px,4.6vw,64px);line-height:1.12;color:var(--tx);text-shadow:0 0 22px color-mix(in srgb,var(--bca) 35%,transparent)}
@@ -309,7 +309,7 @@ registerJarvisModule({
           if (cut) { ov.veil(true); await Promise.race([Promise.all([sleep(300), glWarm(it.view, api)]), sleep(2500)]); }   // the cut lands on a finished hologram, never on loading text
           if (my !== token) break;
           const chart = it.cam?.chart;      // THE HEADLINE: the market it names, on its daily chart
-          enterScene(api, it.kind === 'scene' ? it.scene : chart ? { view: it.view, cam: null, enter: a => { chartCommand(`mk:${chart}`, a); chartCommand(`tf:${it.cam.tf ?? '1d'}`, a); a.st.spin = false; } } : { view: it.view, cam: it.cam });
+          enterScene(api, it.kind === 'scene' ? it.scene : chart ? { view: it.view, cam: null, enter: a => { chartCommand(`mk:${chart}`, a); chartCommand(`tf:${it.cam.tf ?? '1h'}`, a); for (let k = 0; k < (it.cam.back ?? 0); k++) chartCommand('back', a); a.st.spin = false; } } : { view: it.view, cam: it.cam });
           if (cut) api.win.setTimeout(() => ov?.veil(false), 120);
         }
         prevView = it.view;

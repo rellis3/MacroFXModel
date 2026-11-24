@@ -74,7 +74,7 @@ export function headlineCard(op, assets = []) {
   const sentence = firstSentence(op.lede), x = bigLead ? bigRow.day.mult : null;
   const means = bigLead ? `For the ${bigRow.label} that is ${x >= 2.95 && x < 3.05 ? 'three times' : x >= 1.95 && x < 2.05 ? 'twice' : `${x.toFixed(1)} times`} a normal day's move.`
     : sentence.length > 12 && sentence.split(/\s+/).length <= 32 ? sentence : '';
-  return { kicker, headline: head, figure, tone: sign > 0 ? 'up' : sign < 0 ? 'dn' : 'tx', key: hit?.key ?? null, keys: named.map(a => a.key), means, say: `The headline: ${sayHead(head)}.` };
+  return { kicker, headline: head, figure, tone: sign > 0 ? 'up' : sign < 0 ? 'dn' : 'tx', key: hit?.key ?? null, keys: named.map(a => a.key), day: bigLead ? bigRow.day.date ?? null : null, means, say: `The headline: ${sayHead(head)}.` };
 }
 
 /** Everything in one call: the opening (the newsletter's todayOpening) and its card. feeds = { drill, brief, sess, fc, mc, asia, events }. */

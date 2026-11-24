@@ -306,8 +306,8 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     for (const x of sentences(headText)) said.add(norm(x));
     list.forEach((s, i) => { s.num = i + 1; s.total = total; });
     items.push({ kind: 'open', title: `THE ${part.toUpperCase()} BRIEFING`, view: 'globe', cam: { region: 'world' }, hold: short ? 3 : 4.2, text: `${greeting(date.hour)}. This is Helix, with the ${part} briefing for ${date.spoken}.` });
-    // THE HEADLINE (the newsletter's one-line story), straight after the title: the market it names on its daily chart behind the card
-    if (head) items.push({ kind: 'headline', head, title: 'The Headline', view: head.key ? 'session' : 'globe', cam: head.key ? { chart: head.key, tf: '1d' } : { region: 'world' }, hold: 0.9, text: headText });
+    // THE HEADLINE (the newsletter's one-line story), straight after the title: the market it names on its hourly chart behind the card (the daily feed runs a day behind, so yesterday's big day would be missing)
+    if (head) items.push({ kind: 'headline', head, title: 'The Headline', view: head.key ? 'session' : 'globe', cam: head.key ? { chart: head.key, tf: '1h', back: head.day && pod !== 'evening' ? 1 : 0 } : { region: 'world' }, hold: 0.9, text: headText });
     lead.forEach((x, i) => items.push({ kind: 'lead', idx: i, n: lead.length, lead: x, title: 'The Lead', view: 'globe', cam: x.key ? { focus: x.key } : { region: 'world' }, hold: 0.6, text: lines[i] }));
     for (const s of list) {
       const seg = { id: s.id, name: s.name, num: s.num, total }, def = SEGMENTS.find(x => x.id === s.id);

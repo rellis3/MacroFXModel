@@ -55,7 +55,7 @@ test('the programme: THE HEADLINE follows the title, on the named market\'s dail
   const movers = [{ key: 'DE30', ratio: -1.9, oc: -1.4, tone: 'dn' }, { key: 'GOLD', ratio: 2.4, oc: 2.1, tone: 'up' }];
   const P = planBroadcast({ now: new Date(NOW), movers, headline: head }, { hooks: [] });
   assert.deepEqual(P.items.slice(0, 2).map(x => x.kind), ['open', 'headline']);
-  const it = P.items[1]; assert.equal(it.view, 'session'); assert.deepEqual(it.cam, { chart: 'DE30', tf: '1d' });
+  const it = P.items[1]; assert.equal(it.view, 'session'); assert.deepEqual(it.cam, { chart: 'DE30', tf: '1h', back: 1 }, "yesterday's big day: the chart flies back one day");
   assert.match(it.text, /^The headline: Monday's 3\.3 percent DAX jump|^The headline: Monday's 3\.3% DAX jump/);
   assert.ok(!P.lead.some(x => x.key === 'DE30'), 'the DAX is in the headline, so not in the lead');
   assert.ok(P.lead.some(x => x.key === 'GOLD'));
