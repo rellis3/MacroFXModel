@@ -808,3 +808,8 @@ analysis/output/trade-at-lines/**/*.parquet
 analysis/output/turn-at-lines/**/*.parquet
 analysis/output/futures-bars/
 analysis/output/futures-*/**/*.parquet
+
+# per-touch caches (regenerate with the scripts)
+analysis/output/level-touch-excursions/touches/
+analysis/output/level-stack-stop/touches/
+analysis/output/close-level-reversal/touches/

@@ -192,9 +192,16 @@ async function qlikeExportText(track = 'fut') {
   // Layer 2 (event days, CFD only): extra 'EV2' rows on decision days; the base rows above them are unchanged.
   const extra = track === 'cfd' ? Object.fromEntries(Object.keys(lv).map(s => [s, eventLayerRows(s, lv[s], session)])) : {};
   const partial = qlikeInstruments(track).some(s => !lv[s]);
-  qExport[track] = { session, text: qlikeText(lv, session, track, extra) };
+  qExport[track] = { session, lv, text: qlikeText(lv, session, track, extra) };
   qExportAt[track] = Date.now() - (partial ? TTL_MS - 60e3 : 0);   // partial: expires after ~1 min instead of 10
   return qExport[track].text;
+}
+
+// Today's per-line levels for every instrument (the vol-forecast-v3 charts overlay them); same cached board as the export.
+async function qlikeTodayLevels(track = 'fut') {
+  await qlikeExportText(track);
+  const c = qExport[track];
+  return { ok: true, track, session: c.session, levels: c.lv ?? {} };
 }
 
 export function mountLadderV2Shadow(app) {
@@ -204,6 +211,9 @@ export function mountLadderV2Shadow(app) {
     res.json({ ok: true, cfd: pick('cfd'), fut: pick('fut'), off_site: PARAMS.rollout?.off_site ?? [],
                qlike: { fut: qlikeInstruments().map(s => s.toLowerCase()), lines: Object.fromEntries(qlikeInstruments().map(s => [s.toLowerCase(), qlikeParams(s).lines])),
                         cfd: qlikeInstruments('cfd').map(s => s.toLowerCase()), cfd_lines: Object.fromEntries(qlikeInstruments('cfd').map(s => [s.toLowerCase(), qlikeParams(s, 'cfd').lines])) } });
+  });
+  app.get('/api/vol-forecast/ladder-v2/qlike-today', async (req, res) => {
+    try { res.json(await qlikeTodayLevels(req.query.track === 'fut' ? 'fut' : 'cfd')); } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
   app.get('/api/vol-forecast/ladder-v2/levels', async (req, res) => {
     try {

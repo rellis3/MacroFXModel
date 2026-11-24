@@ -50,7 +50,9 @@ def issue_dates():
 
 
 def issue_ms(d: pd.Timestamp) -> int:
-    t = pd.Timestamp(d.year, d.month, d.day, 7, 0, tz=LON)
+    # issue time, London wall clock; BEB_ISSUE_HHMM (e.g. 0000) is the bias-day-trade replay; default 07:00 (banked)
+    hh, mm = divmod(int(os.environ.get('BEB_ISSUE_HHMM', '0700')), 100)
+    t = pd.Timestamp(d.year, d.month, d.day, hh, mm, tz=LON)
     return int(t.tz_convert('UTC').value // 10**6)
 
 

@@ -905,6 +905,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
         <button class="v2-tool-btn" data-mode="forecast" onclick="setChartLevelMode('forecast')"><span class="v3-tick"></span>Forecast <span class="v3-sub">fitted ladder</span></button>
         <button class="v2-tool-btn" data-mode="forecast_ivadj" onclick="setChartLevelMode('forecast_ivadj')" title="Same lines as the 'Forecast · IV-adjusted' export: σ blended toward implied vol (VIX/VXN, CME 30-day ATM, GVZ, crosses from their legs; US indices add the VIX-curve/breadth terms). Pairs with no implied vol draw the plain Forecast."><span class="v3-tick"></span>Forecast · IV-adjusted <span class="v3-sub">σ blended toward IV</span></button>
         <button class="v2-tool-btn" data-mode="forecast_persist" onclick="setChartLevelMode('forecast_persist')" title="Shadow candidate (not the production calc): the Forecast's own σ nudged each morning for regime (σ vs its usual level), recent range misses and weekday. Fixes the over-reaction found point-in-time: after calm the plain lines run tight, after busy spells wide. Walk-forward 2020-2026 on these exact live inputs: 2% better than the control, calm-vs-busy miss 6.8 → 2.4 pp (forge/FORECAST_FIX_PREREG.md)."><span class="v3-tick"></span>Forecast · chosen ★ <span class="v3-sub">persistence + IV</span></button>
+        <button class="v2-tool-btn" data-mode="qlike" onclick="setChartLevelMode('qlike')" title="QLIKE per-line levels (Jordan&#39;s method; the same numbers as the &#39;QLIKE per-line · CFD&#39; export): each line uses the σ model with the best QLIKE for that line on that instrument. O-H / O-L p50 / p75 / p90, Close+ / Close- (where the close lands on up / down days, lime) p50 / p75, and the projected high / low from the QLIKE High-to-Low range. Instruments without a QLIKE ladder draw the plain Forecast."><span class="v3-tick"></span>QLIKE per-line <span class="v3-sub">each line its own calc</span></button>
         <button class="v2-tool-btn" data-mode="cog" onclick="setChartLevelMode('cog')"><span class="v3-tick"></span>COG <span class="v3-sub">reverse-eng</span></button>
         <button class="v2-tool-btn" data-mode="bot" onclick="setChartLevelMode('bot')" title="The Volatility Bot's ACTUAL frozen plan lines."><span class="v3-tick"></span>Bot <span class="v3-sub">frozen plan</span></button>
         <div class="v3-menu-sep"></div>
@@ -1702,6 +1703,7 @@ function loadForecast(date) {
       if (!date) liveForecast = data;
       loadCogHv().then(() => { if (_modeCtx().cog) _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
       if (_modeCtx().bot) loadBotPlan().then(_redrawCogCharts);   // prime the bot plan if Bot level-mode is active
+      if (_modeCtx().qlike) loadQlikeToday().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });   // prime the QLIKE per-line levels if that view is active
       { const _k = _modeCtx().kind; if (_k) loadFrozen(_k).then(() => { _syncChartLevelBtn(); _redrawCogCharts(); }); }   // prime the frozen period-start forecast for weekly/monthly modes
       if (_modeCtx().ivadj) loadIvAdj().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });   // prime the IV-adjusted ladders if that view is active if (_modeCtx().persist) loadPersist().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
 
@@ -1870,6 +1872,7 @@ function _reloadForecastView(date) {
     if (!date) liveForecast = forecast;
     loadCogHv().then(() => { if (_modeCtx().cog) _redrawCogCharts(); });   // prime COG cc-HV σ early so the export button is instant (cache-hit on the warmed key)
       if (_modeCtx().bot) loadBotPlan().then(_redrawCogCharts);   // prime the bot plan if Bot level-mode is active
+      if (_modeCtx().qlike) loadQlikeToday().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });   // prime the QLIKE per-line levels if that view is active
     { const _k = _modeCtx().kind; if (_k) loadFrozen(_k).then(() => { _syncChartLevelBtn(); _redrawCogCharts(); }); }   // prime the frozen period-start forecast for weekly/monthly modes
       if (_modeCtx().ivadj) loadIvAdj().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });   // prime the IV-adjusted ladders if that view is active if (_modeCtx().persist) loadPersist().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
     currentSession  = session;
@@ -4264,14 +4267,14 @@ const _d1Cache = {};
 // Unlike the live daily bands, they are point-in-time forecasts: σ is taken from the
 // forecast in effect as the period opened and held constant, so the envelope is issued
 // once (Monday / month start) and you watch price travel through it.
-const _LEVEL_MODES = ['forecast', 'forecast_ivadj', 'forecast_persist', 'cog', 'bot', 'forecast_weekly', 'forecast_weekly_rev', 'cog_weekly',
+const _LEVEL_MODES = ['forecast', 'forecast_ivadj', 'forecast_persist', 'qlike', 'cog', 'bot', 'forecast_weekly', 'forecast_weekly_rev', 'cog_weekly',
                       'forecast_monthly', 'forecast_monthly_rev', 'cog_monthly'];
 const _MODE_LABEL  = {
   forecast: 'Forecast', cog: 'COG', bot: 'Bot',
   forecast_weekly: 'Forecast Weekly', cog_weekly: 'COG Weekly',
   forecast_monthly: 'Forecast Monthly', cog_monthly: 'COG Monthly',
   // 2026-10-05 exports: same lines the matching Export item prints.
-  forecast_ivadj: 'Forecast · IV-adjusted', forecast_persist: 'Forecast · chosen ★',
+  forecast_ivadj: 'Forecast · IV-adjusted', forecast_persist: 'Forecast · chosen ★', qlike: 'QLIKE per-line',
   forecast_weekly_rev: 'Forecast Weekly · Reverting', forecast_monthly_rev: 'Forecast Monthly · Reverting',
 };
 // The stored preference may still name the pre-collapse modes; map them forward so a
@@ -4297,6 +4300,7 @@ function _modeCtx() {
     weekly, monthly, cog, bot,
     ivadj: _levelMode === 'forecast_ivadj',
     persist: _levelMode === 'forecast_persist',
+    qlike: _levelMode === 'qlike',
     rev:   _levelMode === 'forecast_weekly_rev' || _levelMode === 'forecast_monthly_rev',
     mult:  monthly ? _SQRT20 : weekly ? _SQRT5 : 1,
     gran:  monthly ? 'D' : 'M5',
@@ -4427,6 +4431,17 @@ function loadIvAdj() {
 // the chosen forecast (persistence + IV), as in the backtest (forecast-line-backtest.html).
 const _RULE_A_KEY = { EURUSD: 'eurusd', GBPUSD: 'gbpusd', AUDUSD: 'audusd', USDCAD: 'usdcad', USDCHF: 'usdchf', USDJPY: 'usdjpy',
   GOLD: 'gold', NQ: 'nq', SPX500: 'spx', US30: 'dow', US2000: 'us2000' };
+// ── QLIKE per-line chart view (Chart menu → 'QLIKE per-line'; same numbers as the 'QLIKE per-line · CFD' export) ──
+let _qlikeToday = null;   // { session, levels: { SYM: { oh_p50, ... , arms } } } from /api/vol-forecast/ladder-v2/qlike-today
+async function loadQlikeToday() {
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
+  if (_qlikeToday && _qlikeToday.session === today && Date.now() - _qlikeToday.at < 10 * 60e3) return _qlikeToday;
+  try {
+    const r = await fetch('/api/vol-forecast/ladder-v2/qlike-today?track=cfd').then(x => x.json());
+    if (r?.ok) _qlikeToday = { session: r.session, levels: r.levels || {}, at: Date.now() };
+  } catch (_) {}
+  return _qlikeToday;
+}
 let _ruleAOn = (() => { try { return localStorage.getItem('vf_rule_a') === '1'; } catch { return false; } })();
 let _ruleAFlags = null, _ruleAAt = 0;
 const _ldnFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -4535,6 +4550,11 @@ function _forecastLineDefs(L, LS) {
     { pct: L.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C p50 ↓', axis: true },
     { pct: L.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C p75 ↑', axis: true },
     { pct: L.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C p75 ↓', axis: true },
+    // QLIKE view: Close+ (up-close days) / Close- (down-close days), each from its own calc
+    ...(L._cup ? [{ pct: L._cup[0], side:  1, color: '#a3e635', style: LS.Dotted, title: 'C+ p50', axis: true },
+                  { pct: L._cup[1], side:  1, color: '#a3e635', style: LS.LargeDashed, title: 'C+ p75', axis: true },
+                  { pct: L._cdn[0], side: -1, color: '#a3e635', style: LS.Dotted, title: 'C- p50', axis: true },
+                  { pct: L._cdn[1], side: -1, color: '#a3e635', style: LS.LargeDashed, title: 'C- p75', axis: true }] : []),
   ].filter(d => d.pct != null);
 }
 
@@ -4557,6 +4577,12 @@ function _chartLevels(name, f) {
   // exist (a week's range is narrower than five independent days imply).
   if (!cog) {
     const { weekly: wk, monthly: mo, ivadj, persist, rev } = _modeCtx();
+    const q = _modeCtx().qlike ? _qlikeToday?.levels?.[String(name).toUpperCase()] : null;
+    if (q?.oh_p50 != null) return {
+      hl_median: q.hl_p50 ?? null, hl_75: q.hl_p75 ?? null, oc_median: null, oc_75: null,
+      oh_p50: q.oh_p50, oh_p75: q.oh_p75, oh_p90: q.oh_p90, ol_p50: q.ol_p50, ol_p75: q.ol_p75, ol_p90: q.ol_p90,
+      _cup: [q.cup_p50, q.cup_p75], _cdn: [q.cdn_p50, q.cdn_p75],
+    };
     // New views: IV-adjusted daily, reverting weekly/monthly. A missing ladder falls back
     // to the plain one (never a guess) and is counted so the button can say so.
     const pick = rev ? (wk ? src?.ladder_weekly_rev : src?.ladder_monthly_rev)
@@ -4598,6 +4624,7 @@ function _syncChartLevelBtn() {
   let miss = 0;
   if (ivadj && _ivadj) miss = names.filter(n => !_ivadj.instruments?.[n]?.oh).length;
   if (persist && _persist) miss = names.filter(n => !_persist.instruments?.[n]?.oh).length;
+  if (_modeCtx().qlike && _qlikeToday) miss = names.filter(n => !_qlikeToday.levels?.[n.toUpperCase()]).length;
   if (rev && kind && _frozen[kind].forecast) {
     const key = weekly ? 'ladder_weekly_rev' : 'ladder_monthly_rev';
     miss = names.filter(n => !_frozen[kind].forecast.instruments?.[n]?.[key]?.oh).length;
@@ -4629,6 +4656,7 @@ function setChartLevelMode(mode) {
   _levelMode = mode;
   try { localStorage.setItem('vf_chart_level_mode', _levelMode); } catch (_) {}
   if (_modeCtx().ivadj) loadIvAdj().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
+  if (_modeCtx().qlike) loadQlikeToday().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
   if (_modeCtx().persist) loadPersist().then(() => { _syncChartLevelBtn(); _redrawCogCharts(); });
   _syncChartLevelBtn();
   _redrawCogCharts();

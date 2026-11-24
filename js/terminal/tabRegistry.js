@@ -142,10 +142,8 @@ export const SURFACES = [
   mk('strip.prices', 'strip', 'Ticker: live prices', 'Ticker', null, 'the price tape above the headlines: every market the live layer prices, change since the open in % and u (js/terminal/liveLayer.js)'),
   mk('strip.events', 'strip', 'Ticker: high-impact releases', 'Ticker', null, 'the next 36 hours of high-impact events'),
   mk('strip.gpr', 'strip', 'Ticker: geopolitical risk', 'Ticker', null, 'GPR level and trend'),
-  mk('strip.zone', 'strip', 'Ticker: zone / target / invalid', 'Ticker', T, 'the trade watcher: "in zone", "target", "invalid" at a price'),
   mk('strip.regime', 'strip', 'Ticker: regime tone', 'Ticker', null, 'risk-on / risk-off tone of the day'),
   mk('strip.update', 'strip', 'Ticker: session updates', 'Ticker', null, 'the intraday update headlines (what changed in the read)'),
-  mk('strip.risk', 'strip', 'Ticker: risk warnings', 'Ticker', null, 'the risks to the day\'s read'),
   // ── Overview panels ──
   mk('panel.ov.hero', 'panel', 'Overview: the globe and map', 'Overview', null, 'rate cycle, bank credit, fair value and the desk\'s currency bias layers'),
   mk('panel.ov.book', 'panel', 'Overview: today\'s headline', 'Overview', null, 'the one-sentence read of the day'),

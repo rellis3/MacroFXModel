@@ -82,6 +82,11 @@ openSource  = input.string("London Midnight (00:00)", "Session Open Source",
      tooltip="Midnight: standard FX day open at 00:00 London time.\nPre-Session 23:00: day/open resets at 23:00 London (post-market session open — recommended for indices like SPX500, DE30, UK100, US30, US2000).\nChanging this option redraws all levels from the new open time.")
 show_table  = input.bool(true,  "Show Live Stats Panel")
 show_labels = input.bool(true,  "Show Line Labels")
+// 2026-11-24: one switch for all the Close+/Close- and High-to-Low lines, plus one per family (lines AND labels).
+show_level_lines = input.bool(true, "Show Close± + High-to-Low lines (all)", group="Show / hide lines",
+     tooltip="Untick to hide every Close+ / Close- line and every High-to-Low projected line (Proj H / Proj L) with their labels. The two boxes below hide one family at a time.")
+show_close_lines = input.bool(true, "  Close+ / Close- lines", group="Show / hide lines")
+show_hl_lines    = input.bool(true, "  High-to-Low projected lines (Proj H / Proj L)", group="Show / hide lines")
 
 // =====================================================
 // STYLE INPUTS — SESSION LINES
@@ -366,6 +371,15 @@ f_lastNumBefore(src, keyword) =>
                 if not na(val) and na(result)
                     result := val
     result
+
+// True when price p sits within thr of any other labelled level (labels would print on top of each other)
+f_clash(float p, array<float> others, float thr) =>
+    bool hit = false
+    if not na(p) and not na(thr)
+        for x in others
+            if not na(x) and math.abs(p - x) < thr
+                hit := true
+    hit
 
 f_pct(price, ref) =>
     math.round((price - ref) / ref * 100, 2)
@@ -759,6 +773,20 @@ oc_dn_75  = closeSplit ? (not na(vol_cdn_75) ? dayOpen * (1 - vol_cdn_75 / 100) 
 oc_up_90  = closeSplit and show_close_90 and not na(vol_cup_90) ? dayOpen * (1 + vol_cup_90 / 100) : na
 oc_dn_90  = closeSplit and show_close_90 and not na(vol_cdn_90) ? dayOpen * (1 - vol_cdn_90 / 100) : na
 
+// Show / hide (lines and labels): a hidden family is set to na, so nothing draws for it
+if not (show_level_lines and show_hl_lines)
+    pH_med := na
+    pH_75  := na
+    pL_med := na
+    pL_75  := na
+if not (show_level_lines and show_close_lines)
+    oc_up_med := na
+    oc_dn_med := na
+    oc_up_75  := na
+    oc_dn_75  := na
+    oc_up_90  := na
+    oc_dn_90  := na
+
 // =====================================================
 // PRICE LEVELS — OH / OL (anchored at day open, asymmetric)
 // =====================================================
@@ -982,6 +1010,11 @@ if barstate.islast
              textcolor=col_day_hl, size=size.small)
 
     // ── Standard projected H/L (unchanged from v1) ───────────────────────────
+    // Labels of other levels at the same x; a Proj label that would land on one flips to the LEFT of the line
+    clashOthers = array.from(oc_up_med, oc_dn_med, oc_up_75, oc_dn_75, oc_up_90, oc_dn_90, dayHigh, dayLow, dayOpen)
+    if show_oh_ol_drift
+        array.concat(clashOthers, array.from(oh_up_med, oh_up_75, oh_up_90, ol_dn_med, ol_dn_75, ol_dn_90))
+    clashThr = math.max(dayOpen * 0.0012, (dayHigh - dayLow) * 0.04)
     if not na(pH_75)
         ln_pH_75 := line.new(x1, pH_75, x2, pH_75,
              color=col_75, width=2, xloc=xloc.bar_time, extend=extend.none)
@@ -989,18 +1022,20 @@ if barstate.islast
             hPct  = f_pctStr(f_pct(pH_75, dayLow))
             dMed  = f_pctStr(math.round(vol_hl_med - liveHL_pct, 2))
             d75   = f_pctStr(math.round(vol_hl_75  - liveHL_pct, 2))
-            lb_pH_75 := label.new(bar_index + 2, pH_75,
+            cl_pH_75 = f_clash(pH_75, clashOthers, clashThr)
+            lb_pH_75 := label.new(cl_pH_75 ? bar_index - 2 : bar_index + 2, pH_75,
                  "Proj H 75p  " + hPct + "\nΔMed " + dMed + "  Δ75p " + d75,
-                 style=label.style_label_left, color=color.new(col_75, 70),
+                 style=cl_pH_75 ? label.style_label_right : label.style_label_left, color=color.new(col_75, 70),
                  textcolor=color.white, size=size.small)
 
     if not na(pH_med)
         ln_pH_med := line.new(x1, pH_med, x2, pH_med,
              color=col_med, width=1, xloc=xloc.bar_time, extend=extend.none)
         if show_labels
-            lb_pH_med := label.new(bar_index + 2, pH_med,
+            cl_pH_med = f_clash(pH_med, clashOthers, clashThr)
+            lb_pH_med := label.new(cl_pH_med ? bar_index - 2 : bar_index + 2, pH_med,
                  "Proj H med  " + f_pctStr(f_pct(pH_med, dayLow)),
-                 style=label.style_label_left, color=color.new(col_med, 70),
+                 style=cl_pH_med ? label.style_label_right : label.style_label_left, color=color.new(col_med, 70),
                  textcolor=color.white, size=size.small)
 
     if not na(pL_75)
@@ -1010,18 +1045,20 @@ if barstate.islast
             lPct  = f_pctStr(f_pct(pL_75, dayHigh))
             dMed  = f_pctStr(math.round(vol_hl_med - liveHL_pct, 2))
             d75   = f_pctStr(math.round(vol_hl_75  - liveHL_pct, 2))
-            lb_pL_75 := label.new(bar_index + 2, pL_75,
+            cl_pL_75 = f_clash(pL_75, clashOthers, clashThr)
+            lb_pL_75 := label.new(cl_pL_75 ? bar_index - 2 : bar_index + 2, pL_75,
                  "Proj L 75p  " + lPct + "\nΔMed " + dMed + "  Δ75p " + d75,
-                 style=label.style_label_left, color=color.new(col_75, 70),
+                 style=cl_pL_75 ? label.style_label_right : label.style_label_left, color=color.new(col_75, 70),
                  textcolor=color.white, size=size.small)
 
     if not na(pL_med)
         ln_pL_med := line.new(x1, pL_med, x2, pL_med,
              color=col_med, width=1, xloc=xloc.bar_time, extend=extend.none)
         if show_labels
-            lb_pL_med := label.new(bar_index + 2, pL_med,
+            cl_pL_med = f_clash(pL_med, clashOthers, clashThr)
+            lb_pL_med := label.new(cl_pL_med ? bar_index - 2 : bar_index + 2, pL_med,
                  "Proj L med  " + f_pctStr(f_pct(pL_med, dayHigh)),
-                 style=label.style_label_left, color=color.new(col_med, 70),
+                 style=cl_pL_med ? label.style_label_right : label.style_label_left, color=color.new(col_med, 70),
                  textcolor=color.white, size=size.small)
 
     if show_labels
