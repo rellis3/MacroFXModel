@@ -27,10 +27,23 @@ def authorise(interactive: bool = False):
         raise RuntimeError('Google client libraries missing: pip install -r requirements.txt') from e
     creds = Credentials.from_authorized_user_file(str(TOKEN), SCOPES) if TOKEN.exists() else None
     if creds and creds.expired and creds.refresh_token:
-        try:
-            creds.refresh(Request())
-        except Exception:
-            creds = None
+        # a passing network fault (24 Nov 2026, 09:02) used to read as "expired": retry, and only a refused refresh token means sign in again
+        import time
+        from google.auth.exceptions import RefreshError
+        for attempt in range(4):
+            try:
+                creds.refresh(Request())
+                break
+            except RefreshError as e:
+                if 'invalid_grant' in str(e) or attempt == 3:
+                    if 'invalid_grant' not in str(e):
+                        raise RuntimeError(f'YouTube sign-in could not refresh (not expired, likely the network): {e}') from e
+                    creds = None
+                    break
+            except Exception as e:
+                if attempt == 3:
+                    raise RuntimeError(f'YouTube sign-in could not refresh (network?): {e}') from e
+            time.sleep(15 * (attempt + 1))
     if not creds or not creds.valid:
         if not interactive:
             raise RuntimeError('YouTube sign-in missing or expired: run  python record_broadcast.py --youtube-auth  (see README: "In production" stops the 7-day expiry)')
