@@ -266,7 +266,7 @@ export async function openJarvis(win = window) {
       if (!aloud) { arm(est); return; }
       arm(est * (st.neural && neural.slow() ? 8 : 2.5) + (st.neural && neural.slow() ? 60000 : 12000));       // a safety net: the show never hangs on a voice that never ends (longer while Kokoro renders in the browser)
       const fallback = () => { waiting = false; if (done) return; try { if (!win.speechSynthesis) { arm(est); return; } win.speechSynthesis.cancel(); builtIn(t, r, fin, ch => { bChar = ch; }); } catch (e) { arm(est); } };
-      if (st.neural) { waiting = true; win.speechSynthesis?.cancel(); neural.play(t, r, fin).then(c => { waiting = false; if (done) { c?.stop(); return; } if (c) { nctl = c; if (c.setRate && r !== rate) c.setRate(r); arm(est * 2.5 + 8000); if (paused) c.pause(true); } else fallback(); }); }
+      if (st.neural) { waiting = true; win.speechSynthesis?.cancel(); neural.play(t, r, fin).then(c => { waiting = false; if (done) { c?.stop(); return; } if (c) { nctl = c; if (c.setRate && r !== rate) c.setRate(r); arm(Math.max(est * 2.5 + 8000, (c.seconds ?? 0) * 1000 + 3000)); if (paused) c.pause(true); } else fallback(); }); }
       else fallback();
     });
   }

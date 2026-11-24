@@ -7,6 +7,7 @@
 import { todayOpening, bigDayHeadline } from '../newsletterToday.js';
 import { closeMove } from '../closeBasis.js';
 import { changesRows, aheadEvents } from '../atlasPosition.js';
+import { spokenName } from './jarvisNames.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 /** The markets the newsletter's opening reads (atlas.html NL_RANGE_KEYS) and their daily close series in /api/drill-series (atlas.html MK_SERIES). */
@@ -53,12 +54,16 @@ export const headlineEvents = (events, nowMs = Date.now()) => aheadEvents(Array.
 const BP = /(\d)\s*bp\b/g;
 /** Spoken: "13bp" -> "13 basis points" (the broadcast's clean() does the rest: % and &). */
 export const sayHead = t => String(t ?? '').replace(BP, '$1 basis points');
+// the numbers in a line (0.6%, 13bp): a second sentence that only repeats the headline's own numbers is dropped (24 Nov evening: "USD/CAD slides 0.6% and USD/CHF slips 0.7%.
+// Since yesterday's close: USD/CAD fell 0.6%; USD/CHF fell 0.7%..." sounded like the line playing twice)
+const nums = t => new Set(String(t ?? '').match(/\d+(?:\.\d+)?(?=\s*(?:%|bp\b| points\b))/g) ?? []);
 const firstSentence = t => (String(t ?? '').match(/^.*?[.!?](?=\s|$)/)?.[0] ?? String(t ?? '')).trim();
 
 /**
  * The headline card: { kicker, headline, figure: { value, label }, tone 'up'|'dn'|'tx', key (the market to chart, or null), say (the spoken line), means (one sentence or '') } or null.
  * figure: the headline's first number (a percent, basis points or VIX points); key: the market the headline names first. Every word is the newsletter's.
  */
+const repeats = (s, head) => { const a = nums(s), h = nums(head); let k = 0; for (const x of a) if (h.has(x)) k++; return k >= 2 || (k >= 1 && k === a.size); };
 export function headlineCard(op, assets = []) {
   const head = String(op?.headline ?? '').trim(); if (!head) return null;
   const named = assets.filter(a => a?.label && head.includes(a.label)).sort((a, b) => head.indexOf(a.label) - head.indexOf(b.label)), hit = named[0] ?? null;
@@ -73,8 +78,10 @@ export function headlineCard(op, assets = []) {
   const bigLead = bigRow && head.startsWith(big.headline('').slice(0, 12));
   const sentence = firstSentence(op.lede), x = bigLead ? bigRow.day.mult : null;
   const means = bigLead ? `For the ${bigRow.label} that is ${x >= 2.95 && x < 3.05 ? 'three times' : x >= 1.95 && x < 2.05 ? 'twice' : `${x.toFixed(1)} times`} a normal day's move.`
-    : sentence.length > 12 && sentence.split(/\s+/).length <= 32 ? sentence : '';
-  return { kicker, headline: head, figure, tone: sign > 0 ? 'up' : sign < 0 ? 'dn' : 'tx', key: hit?.key ?? null, keys: named.map(a => a.key), day: bigLead ? bigRow.day.date ?? null : null, means, say: `The headline: ${sayHead(head)}.` };
+    : sentence.length > 12 && sentence.split(/\s+/).length <= 32 && !repeats(sentence, head) ? sentence : '';
+  // spoken, a currency pair is its desk name ("Dollar Loonie"), not letters and a slash
+  const spoken = named.filter(a => a.label.includes('/')).reduce((t, a) => t.split(a.label).join(spokenName(a.key)), head);
+  return { kicker, headline: head, figure, tone: sign > 0 ? 'up' : sign < 0 ? 'dn' : 'tx', key: hit?.key ?? null, keys: named.map(a => a.key), day: bigLead ? bigRow.day.date ?? null : null, means, say: `The headline: ${sayHead(spoken)}.` };
 }
 
 /** Everything in one call: the opening (the newsletter's todayOpening) and its card. feeds = { drill, brief, sess, fc, mc, asia, events }. */

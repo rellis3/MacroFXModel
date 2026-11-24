@@ -17,6 +17,8 @@ assert.equal(pickProvider({ ELEVENLABS_API_KEY: 'k', JARVIS_ELEVEN_DAILY_CHARS: 
 // cleaning
 assert.equal(cleanForSpeech('  <b>Hello</b>\n world  '), 'Hello world');
 assert.equal(cleanForSpeech('**bold** `code` # head'), 'bold code head');
+assert.equal(cleanForSpeech('This is Helix, with H.E.L.I.X. tonight'), 'This is Heelix, with Heelix tonight', 'said HEE-lix');
+assert.equal(cleanForSpeech('This is Helix. Next.'), 'This is Heelix. Next.', 'the full stop stays');
 assert.equal(cleanForSpeech(null), '');
 const long = 'This is a sentence. '.repeat(200);
 const c = cleanForSpeech(long);

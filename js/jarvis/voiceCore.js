@@ -24,7 +24,8 @@ export function pickProvider(env = {}) {
 
 /** Text made safe and short for speech: markup and control characters gone, whitespace folded, cut at a sentence end before MAX_CHARS. '' when nothing is left. */
 export function cleanForSpeech(text, max = MAX_CHARS) {
-  let t = String(text ?? '').replace(/<[^>]*>/g, ' ').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[*_`#>|~]/g, ' ').replace(/\s+/g, ' ').trim();
+  // the name is said HEE-lix, not HELL-ix (owner, 24 Nov 2026): every voice is handed the spelling that sounds right
+  let t = String(text ?? '').replace(/\bH\.E\.L\.I\.X\.(?=\s|$)|\bH\.E\.L\.I\.X\b|\bHelix\b/gi, 'Heelix').replace(/<[^>]*>/g, ' ').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[*_`#>|~]/g, ' ').replace(/\s+/g, ' ').trim();
   if (t.length <= max) return t;
   t = t.slice(0, max); const cut = Math.max(t.lastIndexOf('. '), t.lastIndexOf('! '), t.lastIndexOf('? '));
   return (cut > max * 0.5 ? t.slice(0, cut + 1) : t).trim();

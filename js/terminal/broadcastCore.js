@@ -230,7 +230,7 @@ export const wantedSceneIds = () => [...new Set(SEGMENTS.flatMap(s => s.tiers.fl
 export const QUICK_WORDS = 34;
 /** The SHORT broadcast (mode 'short', for a YouTube Short, which must stay under 3 minutes): shorter lines, a two-item lead, and if the estimate still runs long the
  *  least essential segments go first, in this order. Markets, The Chain and The Day Ahead always stay. The budget is an ESTIMATE: a real run took about 1.2x it (transitions, the voice's own pace), so 120 s lands near 2.5 minutes.
- *  The laptop's FRAME-BY-FRAME recording has no waits between lines, so it asks for more (budgetSec 145, about 2 min 45 s). */
+ *  The laptop's FRAME-BY-FRAME recording has no waits between lines, so it asks for more (budgetSec 125, about 2 min 45 s; 145 ran to 3 min 14 s on 24 Nov). */
 export const SHORT_WORDS = 24, SHORT_BUDGET_SEC = 120, SHORT_DROP = ['chain', 'macro', 'ccy', 'rates', 'pos', 'vol'];
 // The drop order follows what is USEFUL for the day (24 Nov 2026): the slow-moving macro picture goes first, then currencies (the board and volatility already say which
 // markets are moving), then rates; positioning (where the options sit: the gamma range read has evidence behind it) and volatility (implied and expected ranges, the

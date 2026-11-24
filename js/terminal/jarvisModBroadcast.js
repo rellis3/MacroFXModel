@@ -327,7 +327,9 @@ registerJarvisModule({
         if (it.text) {
           const chunks = subtitleChunks(it.text, st.compact ? 8 : 14), dur = itemSeconds({ text: it.text }, ctl.rate);
           const subs = it.kind !== 'headline';        // the headline card already carries its words on screen
-          stopMotion(); stopMotion = sceneMotion(api, it.kind === 'scene' ? it.scene : { cam: null }, dur, () => my === token, ctl, p => ov?.sub(subs ? chunkAt(chunks, p)?.text : null));
+          // THE HEADLINE's chart: a slow turn and push-in while the headline is read (it sat dead still for 18 s in the 24 Nov evening video and looked frozen)
+          const headMove = it.kind === 'headline' && it.cam?.chart ? { cam: { drift: true }, motion: (a, p) => { a.st.yaw = 0.16 + 0.26 * p; } } : null;
+          stopMotion(); stopMotion = sceneMotion(api, it.kind === 'scene' ? it.scene : headMove ?? { cam: null }, dur, () => my === token, ctl, p => ov?.sub(subs ? chunkAt(chunks, p)?.text : null));
           await api.speak(it.text, ctl.rate);       // the voice leads: nothing moves on until he has finished the line, or you skip it
           stopMotion(); stopMotion = () => {};
         }

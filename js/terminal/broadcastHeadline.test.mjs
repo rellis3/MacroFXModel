@@ -44,6 +44,16 @@ test('in the evening the day just traded is the story, and stale macro rows do n
   assert.match(h.headline, /DAX/, h.headline);
 });
 
+test("a second line that only repeats the headline's numbers is dropped, and pairs are said by name", () => {
+  const assets = [{ key: 'USDCAD', label: 'USD/CAD', d1: -0.6 }, { key: 'USDCHF', label: 'USD/CHF', d1: -0.7 }];
+  const c = headlineCard({ headline: 'USD/CAD slides 0.6% and USD/CHF slips 0.7%', kicker: 'Quiet day', lede: "Since yesterday's close: USD/CAD fell 0.6%; USD/CHF fell 0.7%; GBP/USD rose 0.6%." }, assets);
+  assert.equal(c.means, '', c.means);
+  assert.equal(c.say, 'The headline: Dollar Loonie slides 0.6% and Dollar Franc slips 0.7%.');
+  assert.equal(c.headline, 'USD/CAD slides 0.6% and USD/CHF slips 0.7%', 'the card still prints the pair');
+  const d = headlineCard({ headline: 'USD/CAD slides 0.6%', lede: 'Oil fell 3% as stocks built up. Next.' }, assets);
+  assert.equal(d.means, 'Oil fell 3% as stocks built up.');
+});
+
 test('no story, no card; a card with no number has no figure', () => {
   assert.equal(headlineCard(null), null); assert.equal(headlineCard({ headline: '' }), null);
   const c = headlineCard({ headline: 'A quiet calendar: today is about the tape, not the releases', kicker: 'Quiet day · Tuesday 24 November', lede: '' }, []);

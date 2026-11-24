@@ -45,7 +45,7 @@ BASE = 'https://macrofxmodel-production.up.railway.app'
 PROFILE = Path(os.environ.get('JARVIS_PROFILE', HERE / '.profile'))                     # the saved, logged-in browser profile (git-ignored)
 OUT = HERE / 'out'                              # recordings and logs (git-ignored)
 W, H, DPR = 540, 960, 2                         # a phone-shaped page (Jarvis's portrait layout) at 2x = 1080 x 1920
-FRAMES_SHORT_SEC = 145                          # frame by frame has no waits between lines (the live way loses ~20 s to them), so the short cut asks for more: ~2 min 45 s
+FRAMES_SHORT_SEC = 125                          # frame by frame has no waits between lines, but a real run still lands ~1.2x the estimate at speed 1.1: 145 gave 3 min 14 s on 24 Nov (over the 3-min Shorts limit); 125 aims for ~2 min 45 s
 VCLOCK = HERE / 'vclock.js'                     # the virtual clock for frame-by-frame recording
 
 

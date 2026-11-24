@@ -26,13 +26,16 @@ function clipCache(win) {
     set(k, p) { m.set(k, p); if (m.size > MAX_CLIPS) { const [ok, op] = m.entries().next().value; m.delete(ok); op.then(u => { if (u) win.URL.revokeObjectURL(u); }); } } };
 }
 
+// the name is said HEE-lix, not HELL-ix (owner, 24 Nov 2026); the server does the same (js/jarvis/voiceCore.js cleanForSpeech)
+export const sayName = t => String(t ?? '').replace(/\bH\.E\.L\.I\.X\.(?=\s|$)|\bH\.E\.L\.I\.X\b|\bHelix\b/gi, 'Heelix');
+
 function serverEngine(win) {
   const clips = clipCache(win); let failures = 0, disabledUntil = 0, provider = null, bake = 1;
   const byUrl = new Map();                           // clip url -> the provider that made it and the speed asked for (Edge bakes the speed in; ElevenLabs is always normal speed)
   return {
     name: 'server',
     fetch(text) {
-      const t = String(text ?? '').trim(); if (!t || Date.now() < disabledUntil) return Promise.resolve(null);
+      const t = sayName(text).trim(); if (!t || Date.now() < disabledUntil) return Promise.resolve(null);
       const key = bake === 1 ? t : `${bake}|${t}`;
       if (clips.has(key)) return clips.get(key);
       const p = (async () => {
@@ -79,7 +82,7 @@ function kokoroEngine(win) {
     name: 'kokoro',
     warm() { ensure()?.postMessage({ warm: true }); },
     fetch(text) {
-      const t = String(text ?? '').trim(); if (!t || broken) return Promise.resolve(null);
+      const t = sayName(text).trim(); if (!t || broken) return Promise.resolve(null);
       const k = `${voice()}|${t}`; if (clips.has(k)) return clips.get(k);
       const w = ensure(); if (!w) return Promise.resolve(null);
       const id = ++seq, p = new Promise(res => { pending.set(id, res); w.postMessage({ id, text: t, voice: voice() }); }).then(u => { if (!u) clips.del(k); return u; });
@@ -150,7 +153,7 @@ export function makeNeuralVoice(win, opts = {}) {
     src.start(at);
     let ended = false, tid = 0; const end = () => { if (!ended) { ended = true; win.clearTimeout(tid); unfx(); onEnd(); } };
     tid = win.setTimeout(end, dur * 1000);
-    return { by: c.by, stop() { if (!ended) { try { src.stop(ac.currentTime); } catch (e) { /* done */ } } end(); }, pause() { /* a recording is never paused */ }, setRate() { /* fixed for the recording */ },
+    return { by: c.by, seconds: dur, stop() { if (!ended) { try { src.stop(ac.currentTime); } catch (e) { /* done */ } } end(); }, pause() { /* a recording is never paused */ }, setRate() { /* fixed for the recording */ },
       progress: () => (ended ? 1 : Math.max(0, Math.min(1, (ac.currentTime - at) / dur))) };
   }
   async function play(text, rate = 1, onEnd = () => {}) {
