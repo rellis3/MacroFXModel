@@ -3558,6 +3558,13 @@ export const DESK_EVIDENCE = [
     instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'BRENT', 'CADCHF', 'CADJPY', 'CHFJPY', 'COPPER', 'DE30', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'GOLD', 'NQ', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'PALLADIUM', 'PLATINUM', 'SILVER', 'SPX500', 'UK100', 'US2000', 'US30', 'USDCAD', 'USDCHF', 'USDJPY', 'WTI'],
   },
   {
+    id: 'ladder-event-layer-cb-fomc', domain: 'volatility', verdict: 'null', date: '2026-11-24', doc: 'forge/LADDER_EVENT_LAYER_CB_FOMC_PREREG.md', also: ['analysis/output/ladder-event-layer-cb-fomc/RESULTS.md'],
+    claim: 'Layer 2 on the CFD QLIKE per-line base (wider levels on own-central-bank and FOMC decision days only) improves the exhaustion levels forward, on sessions no part of it had seen',
+    result: 'Pre-registered, one forward look 2026-08-24 to 2026-11-23, 40 CFDs, base = the site levels, 12 decision dates. Mean of instrument-line cell ratios +3.36% [-0.20, +15.05]: NULL. Descriptive: pooled loss on event days -7.3%; central-bank days -13.6% (HL -22.6%; base p90 beaten 27% vs layer 18%, target 10%); FOMC days +3.5% (base already wide enough, close lines over-widened). Helped on lively decisions (BoC/RBNZ 2 Sep, BoJ 18 Sep), hurt on quiet ones (BoJ 30 Oct, RBA 3 Nov). Graded weight: weak, mixed.',
+    use: 'Layer 2 stays switchable on the CFD export (EV2 rows, Pine tick box), default OFF; base unchanged. Next candidate only: central-bank-only layer judged on future decision dates.',
+    instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'BRENT', 'CADCHF', 'CADJPY', 'CHFJPY', 'COPPER', 'DE30', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'GOLD', 'NQ', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'PALLADIUM', 'PLATINUM', 'SILVER', 'SPX500', 'UK100', 'US2000', 'US30', 'USDCAD', 'USDCHF', 'USDJPY', 'WTI'],
+  },
+  {
     id: 'ladder-pinball-per-line-cfd', domain: 'volatility', verdict: 'null', date: '2026-11-24', doc: 'forge/LADDER_EXHAUSTION_EVENTS_PREREG.md', also: ['analysis/output/ladder-exhaustion-events/RESULTS.md'],
     claim: 'Picking each line calc (HL, OH, OL, Close+, Close-) by exhaustion score (pinball of its p50/p75/p90 levels vs the actual high/low/close) beats picking it by QLIKE, on the 40 OANDA CFDs',
     result: 'Pre-registered, walk-forward, test 2020-2026.08, date-aligned bootstrap. Pinball pick vs QLIKE pick -0.12% [-0.20, -0.05]; 2020-22 -0.18%, 2023-26 -0.05%: under the 0.5% bar. The two rules pick different calcs on 40% of line-years but those calcs land the levels almost equally. No line or instrument better by more than 1.5%.',
@@ -4853,6 +4860,7 @@ const POWER = {
   'fqt-nam-lines-tp': { n: '1,417 NQ trades', note: 'NULL bar +1 bp; CI upper -2.04 bp' },
   'futures-oc-tp-fade-p75': { n: '3,377 trades on ~6,600 sessions (4 futures)', note: 'NULL bar +0.05R; CI upper -0.043R' },
   'futures-oc-tp-fade-p90': { n: '1,364 trades', note: 'NULL bar +0.05R; CI upper -0.064R' },
+  'ladder-event-layer-cb-fomc': { n: '632 event rows (190 instrument x line cells) on 12 decision dates, 2026-08-24 to 2026-11-23; date-resampling bootstrap', note: 'observed +3.36% [-0.20, +15.05]; 12 dates, very wide' },
   'ladder-pinball-per-line-cfd': { n: '~1,700 test sessions per instrument x 40 CFDs x 5 lines, date-aligned 63-session blocks', note: 'observed -0.12% [-0.20, -0.05] vs 0.5% NULL bar' },
   'ladder-event-layer-per-line-cfd': { n: '~1,700 test sessions per instrument x 40 CFDs x 5 lines (unknown-calendar sessions excluded), date-aligned 63-session blocks', note: 'observed -0.45% [-0.65, -0.24]; 2020-22 CI [-0.37, +0.01] crosses 0' },
   'ladder-qlike-per-line-cfd': { n: '~1,700 test sessions per instrument x 40 CFDs, date-aligned 63-session blocks', note: 'observed -2.48% [-3.90, -0.82]; 2020-22 half CI [-2.87, +2.37] crosses 0' },

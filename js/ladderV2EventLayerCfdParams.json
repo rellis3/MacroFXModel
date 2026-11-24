@@ -10,7 +10,7 @@
  "shrink": 10,
  "fit": "2018 -> 2026-08-21, each line's site calc",
  "rule": "level = base level x mult on an FOMC day or a decision day of one of the instrument's own central banks (CB wins if both); x1 every other day",
- "verdict": "pending",
+ "verdict": "null",
  "instruments": {
   "AUDCAD": {
    "lines": {
@@ -4141,5 +4141,6 @@
     "USD"
    ]
   }
- }
+ },
+ "verdict_note": "forward 2026-08-24..11-23: pre-registered mean-of-cells +3.36% [-0.20, +15.05]; pooled CB days -13.6%, FOMC +3.5% (descriptive); default OFF"
 }
