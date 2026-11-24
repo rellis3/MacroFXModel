@@ -10,16 +10,16 @@ Generated 2026-11-24.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **596** |
-| validated | 198 |
-| null | 228 |
-| underpowered | 170 |
+| claims tested (validated + null + underpowered) | **599** |
+| validated | 199 |
+| null | 229 |
+| underpowered | 171 |
 | context (base rates, descriptions: not counted as tests) | 85 |
-| pre-registrations with no banked verdict (below) | 88 |
+| pre-registrations with no banked verdict (below) | 92 |
 
-**What the count says (Lesson 02 §05).** If none of the 596 claims were real, tests at the usual 5% size would still pass
-about **29.8** of them by luck. 198 passed, so most passes are unlikely to be luck alone, but
-**roughly 30 of the 198 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 599 claims were real, tests at the usual 5% size would still pass
+about **30** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
+**roughly 30 of the 199 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -707,6 +707,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-23 | oi-profile-lines-s2 | positioning | null | forge/OI_PROFILE_LINES_PREREG.md |
 | 2026-11-23 | oi-profile-lines-s3 | positioning | null | forge/OI_PROFILE_LINES_PREREG.md |
 | 2026-11-23 | oi-profile-lines-s4 | positioning | underpowered | forge/OI_PROFILE_LINES_PREREG.md |
+| 2026-11-24 | bias-fast-lag | macro | validated | forge/BIAS_FAST_LAYER_PREREG.md |
+| 2026-11-24 | bias-fast-layer | macro | underpowered | forge/BIAS_FAST_LAYER_PREREG.md |
+| 2026-11-24 | bias-fast-vs-momentum | macro | null | forge/BIAS_FAST_LAYER_PREREG.md |
 | 2026-11-24 | ladder-close-split | volatility | null | forge/LADDER_CLOSE_SPLIT_PREREG.md |
 
 ## Pre-registered, but no banked verdict
@@ -718,7 +721,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/ASIA_DAY_BIAS_PREREG.md`: asia-day-bias — Does the Asia session (00:00–07:00 London) tell you which way the London/New York day (07:00–2
 - `forge/ASYMMETRIC_TRADES_PREREG.md`: Tight stop, far target at the forecast levels — pre-registration
 - `forge/ATLAS_HONEST_GONOGO_PREREG.md`: atlas-honest-gonogo — With the known leaks removed, real bid/ask fills and the production settings, do the Vot
-- `forge/BIAS_FAST_LAYER_PREREG.md`: bias-fast-layer — Does today's dollar and Fed-pricing move, mapped through each market's own sensitivity, call
 - `forge/BIAS_SCOREBOARD_PREREG.md`: bias-scoreboard — whose morning bias beats the shared public base on the same rows?
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
 - `forge/CB_TONE_REACTION_PREREG.md`: cb-tone-reaction — does the ECB / BoE / BoJ statement's hawkish shift line up with the first-30-minute move in
@@ -772,6 +774,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/LINE_TOUCH_WIDE_SCAN_PREREG.md`: Pre-registration: wide scan of candle shape / position / time / regime at the forecast lines
 - `forge/MACRO_TREND_WEEKDAY_PREREG.md`: Macro state, H1/H4 trend state and weekday at the vol lines — pre-registration
 - `forge/NEWS_TOUCH_PREREG.md`: News at the vol lines — pre-registration
+- `forge/OI_GAMMA_PEAK_PIN_PREREG.md`: oi-gamma-peak-pin — On sessions after 2026-11-23, does the OI Profile's gamma peak, on a PIN day, hold on its 
 - `forge/OI_WALL_BUILDING_FORWARD_PREREG.md`: oi-wall-building-forward — does a wall where open interest is being built bounce price more than a flat wall, 
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
@@ -801,3 +804,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
+- `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
+- `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
+- `oi_research_book/OI_TOUCH_ORDER_PREREG.md`: oi-touch-order — Does the reaction at an OI level depend on how many times it has already been tested today, b
+- `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot

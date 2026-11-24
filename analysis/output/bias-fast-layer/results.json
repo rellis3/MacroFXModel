@@ -1,0 +1,1053 @@
+{
+ "study": "bias-fast-layer",
+ "seed": 20261124,
+ "B": 1000,
+ "block": 21,
+ "bar": 0.03,
+ "sample": [
+  "2016-03-29",
+  "2026-08-20"
+ ],
+ "half": "2021-07-01",
+ "calls": 274111,
+ "fastCalls": 81499,
+ "momentumCalls": 137777,
+ "skipped": {
+  "noFit": 733,
+  "noDrivers": 50292,
+  "noFwd": 1147
+ },
+ "positiveControl": {
+  "planted": 0.1,
+  "recovered": 0.10549290990411407,
+  "lo": 0.09450671264646646,
+  "hi": 0.11806862755290959,
+  "pass": true
+ },
+ "placebo": {
+  "median": -0.0002,
+  "lo": -0.0064,
+  "hi": 0.0059
+ },
+ "H1": {
+  "name": "H1 fast call, next 3 h",
+  "edge": -0.1311,
+  "lo": -0.1504,
+  "hi": -0.1127,
+  "halfWidth": 0.0188,
+  "p": 0,
+  "sessions": 2200,
+  "calls": 81499,
+  "halves": [
+   -0.1151,
+   -0.1441
+  ],
+  "marketsPositive": 11,
+  "perMarket": {
+   "GOLD": {
+    "calls": 5866,
+    "edge": 0.0244
+   },
+   "NQ": {
+    "calls": 3114,
+    "edge": 0.0013
+   },
+   "SPX500": {
+    "calls": 3861,
+    "edge": 0.0123
+   },
+   "US30": {
+    "calls": 3765,
+    "edge": 0.0117
+   },
+   "DE30": {
+    "calls": 2518,
+    "edge": 0.0237
+   },
+   "EURUSD": {
+    "calls": 10347,
+    "edge": 0.0237
+   },
+   "GBPUSD": {
+    "calls": 8526,
+    "edge": 0.0241
+   },
+   "AUDUSD": {
+    "calls": 9421,
+    "edge": 0.0102
+   },
+   "NZDUSD": {
+    "calls": 10607,
+    "edge": 0.0137
+   },
+   "USDJPY": {
+    "calls": 6899,
+    "edge": 0.0413
+   },
+   "USDCAD": {
+    "calls": 7659,
+    "edge": -0.0094
+   },
+   "USDCHF": {
+    "calls": 8916,
+    "edge": 0.037
+   }
+  },
+  "mirror": true,
+  "verdict": "UNDERPOWERED",
+  "bh": true
+ },
+ "H2": {
+  "name": "H2 fast minus momentum, next 3 h",
+  "edge": -0.1067,
+  "lo": -0.1202,
+  "hi": -0.0932,
+  "halfWidth": 0.0135,
+  "p": 0,
+  "sessions": 2200,
+  "calls": 2200,
+  "halves": [
+   -0.0956,
+   -0.1156
+  ],
+  "marketsPositive": 8,
+  "perMarket": {
+   "GOLD": {
+    "edge": -0.0057,
+    "fast": 0.0244,
+    "momentum": 0.0301
+   },
+   "NQ": {
+    "edge": -0.0039,
+    "fast": 0.0013,
+    "momentum": 0.0052
+   },
+   "SPX500": {
+    "edge": 0.0094,
+    "fast": 0.0123,
+    "momentum": 0.0029
+   },
+   "US30": {
+    "edge": -0.0022,
+    "fast": 0.0117,
+    "momentum": 0.0139
+   },
+   "DE30": {
+    "edge": -0.0021,
+    "fast": 0.0237,
+    "momentum": 0.0258
+   },
+   "EURUSD": {
+    "edge": 0.0135,
+    "fast": 0.0237,
+    "momentum": 0.0102
+   },
+   "GBPUSD": {
+    "edge": 0.0153,
+    "fast": 0.0241,
+    "momentum": 0.0088
+   },
+   "AUDUSD": {
+    "edge": 0.0052,
+    "fast": 0.0102,
+    "momentum": 0.005
+   },
+   "NZDUSD": {
+    "edge": 0.0142,
+    "fast": 0.0137,
+    "momentum": -0.0005
+   },
+   "USDJPY": {
+    "edge": 0.0027,
+    "fast": 0.0413,
+    "momentum": 0.0386
+   },
+   "USDCAD": {
+    "edge": 0.0233,
+    "fast": -0.0094,
+    "momentum": -0.0327
+   },
+   "USDCHF": {
+    "edge": 0.0248,
+    "fast": 0.037,
+    "momentum": 0.0122
+   }
+  },
+  "mirror": true,
+  "verdict": "UNDERPOWERED",
+  "bh": true
+ },
+ "H3": {
+  "name": "H3 drivers and market disagree, fast call, next 3 h",
+  "edge": 0.0842,
+  "lo": 0.0236,
+  "hi": 0.1414,
+  "halfWidth": 0.0589,
+  "p": 0.008,
+  "sessions": 939,
+  "calls": 3824,
+  "halves": [
+   0.0492,
+   0.1104
+  ],
+  "marketsPositive": 8,
+  "perMarket": {
+   "GOLD": {
+    "calls": 334,
+    "edge": -0.0551
+   },
+   "NQ": {
+    "calls": 302,
+    "edge": -0.0207
+   },
+   "SPX500": {
+    "calls": 326,
+    "edge": 0.0022
+   },
+   "US30": {
+    "calls": 335,
+    "edge": -0.0058
+   },
+   "DE30": {
+    "calls": 314,
+    "edge": -0.014
+   },
+   "EURUSD": {
+    "calls": 236,
+    "edge": 0.15
+   },
+   "GBPUSD": {
+    "calls": 385,
+    "edge": 0.0644
+   },
+   "AUDUSD": {
+    "calls": 424,
+    "edge": 0.2334
+   },
+   "NZDUSD": {
+    "calls": 217,
+    "edge": 0.2434
+   },
+   "USDJPY": {
+    "calls": 301,
+    "edge": 0.0185
+   },
+   "USDCAD": {
+    "calls": 329,
+    "edge": 0.2267
+   },
+   "USDCHF": {
+    "calls": 321,
+    "edge": 0.0846
+   }
+  },
+  "mirror": false,
+  "verdict": "VALIDATED",
+  "bh": true
+ },
+ "descriptive": {
+  "momentum3h": {
+   "name": "momentum alone, next 3 h",
+   "edge": -0.0283,
+   "lo": -0.0429,
+   "hi": -0.0137,
+   "halfWidth": 0.0146,
+   "p": 0,
+   "sessions": 2323,
+   "calls": 137777,
+   "halves": [
+    -0.0246,
+    -0.0312
+   ],
+   "marketsPositive": 10,
+   "perMarket": {
+    "GOLD": {
+     "calls": 11550,
+     "edge": 0.0301
+    },
+    "NQ": {
+     "calls": 8968,
+     "edge": 0.0052
+    },
+    "SPX500": {
+     "calls": 8827,
+     "edge": 0.0029
+    },
+    "US30": {
+     "calls": 9021,
+     "edge": 0.0139
+    },
+    "DE30": {
+     "calls": 10488,
+     "edge": 0.0258
+    },
+    "EURUSD": {
+     "calls": 13077,
+     "edge": 0.0102
+    },
+    "GBPUSD": {
+     "calls": 13492,
+     "edge": 0.0088
+    },
+    "AUDUSD": {
+     "calls": 12871,
+     "edge": 0.005
+    },
+    "NZDUSD": {
+     "calls": 13082,
+     "edge": -0.0005
+    },
+    "USDJPY": {
+     "calls": 11924,
+     "edge": 0.0386
+    },
+    "USDCAD": {
+     "calls": 11515,
+     "edge": -0.0327
+    },
+    "USDCHF": {
+     "calls": 12962,
+     "edge": 0.0122
+    }
+   },
+   "mirror": true
+  },
+  "fastTo21": {
+   "name": "fast call, to 21:00",
+   "edge": -0.0951,
+   "lo": -0.1186,
+   "hi": -0.0693,
+   "halfWidth": 0.0247,
+   "p": 0,
+   "sessions": 2200,
+   "calls": 81337,
+   "halves": [
+    -0.0926,
+    -0.0971
+   ],
+   "marketsPositive": 11,
+   "perMarket": {
+    "GOLD": {
+     "calls": 5811,
+     "edge": 0.0492
+    },
+    "NQ": {
+     "calls": 3086,
+     "edge": 0.0236
+    },
+    "SPX500": {
+     "calls": 3821,
+     "edge": 0.0255
+    },
+    "US30": {
+     "calls": 3726,
+     "edge": 0.01
+    },
+    "DE30": {
+     "calls": 2518,
+     "edge": 0.0577
+    },
+    "EURUSD": {
+     "calls": 10347,
+     "edge": 0.0193
+    },
+    "GBPUSD": {
+     "calls": 8526,
+     "edge": 0.0265
+    },
+    "AUDUSD": {
+     "calls": 9421,
+     "edge": 0.0169
+    },
+    "NZDUSD": {
+     "calls": 10607,
+     "edge": 0.0063
+    },
+    "USDJPY": {
+     "calls": 6899,
+     "edge": 0.0411
+    },
+    "USDCAD": {
+     "calls": 7659,
+     "edge": -0.0222
+    },
+    "USDCHF": {
+     "calls": 8916,
+     "edge": 0.0397
+    }
+   },
+   "mirror": true
+  },
+  "momentumTo21": {
+   "name": "momentum, to 21:00",
+   "edge": -0.0199,
+   "lo": -0.0423,
+   "hi": 0.0025,
+   "halfWidth": 0.0224,
+   "p": 0.076,
+   "sessions": 2323,
+   "calls": 137395,
+   "halves": [
+    -0.0176,
+    -0.0218
+   ],
+   "marketsPositive": 8,
+   "perMarket": {
+    "GOLD": {
+     "calls": 11439,
+     "edge": 0.0338
+    },
+    "NQ": {
+     "calls": 8889,
+     "edge": 0.0519
+    },
+    "SPX500": {
+     "calls": 8739,
+     "edge": 0.0368
+    },
+    "US30": {
+     "calls": 8917,
+     "edge": 0.0375
+    },
+    "DE30": {
+     "calls": 10488,
+     "edge": 0.0517
+    },
+    "EURUSD": {
+     "calls": 13077,
+     "edge": 0.0102
+    },
+    "GBPUSD": {
+     "calls": 13492,
+     "edge": 0.0184
+    },
+    "AUDUSD": {
+     "calls": 12871,
+     "edge": -0.0027
+    },
+    "NZDUSD": {
+     "calls": 13082,
+     "edge": -0.0148
+    },
+    "USDJPY": {
+     "calls": 11924,
+     "edge": 0.0323
+    },
+    "USDCAD": {
+     "calls": 11515,
+     "edge": -0.0414
+    },
+    "USDCHF": {
+     "calls": 12962,
+     "edge": -0.009
+    }
+   },
+   "mirror": false
+  },
+  "dollarOnly": {
+   "name": "dollar part only, next 3 h",
+   "edge": -0.1582,
+   "lo": -0.1788,
+   "hi": -0.1372,
+   "halfWidth": 0.0208,
+   "p": 0,
+   "sessions": 2138,
+   "calls": 71734,
+   "halves": [
+    -0.1438,
+    -0.1696
+   ],
+   "marketsPositive": 8,
+   "perMarket": {
+    "GOLD": {
+     "calls": 4207,
+     "edge": 0.0372
+    },
+    "NQ": {
+     "calls": 2277,
+     "edge": -0.0112
+    },
+    "SPX500": {
+     "calls": 2914,
+     "edge": -0.0093
+    },
+    "US30": {
+     "calls": 2765,
+     "edge": -0.0189
+    },
+    "DE30": {
+     "calls": 1673,
+     "edge": 0.0197
+    },
+    "EURUSD": {
+     "calls": 10377,
+     "edge": 0.0236
+    },
+    "GBPUSD": {
+     "calls": 8699,
+     "edge": 0.0249
+    },
+    "AUDUSD": {
+     "calls": 9434,
+     "edge": 0.0146
+    },
+    "NZDUSD": {
+     "calls": 10465,
+     "edge": 0.0122
+    },
+    "USDJPY": {
+     "calls": 2683,
+     "edge": 0.0368
+    },
+    "USDCAD": {
+     "calls": 7919,
+     "edge": -0.0025
+    },
+    "USDCHF": {
+     "calls": 8321,
+     "edge": 0.0366
+    }
+   },
+   "mirror": true
+  },
+  "ratesOnly": {
+   "name": "2y part only, next 3 h",
+   "edge": -0.1015,
+   "lo": -0.1598,
+   "hi": -0.0462,
+   "halfWidth": 0.0568,
+   "p": 0,
+   "sessions": 959,
+   "calls": 9630,
+   "halves": [
+    -0.0372,
+    -0.1608
+   ],
+   "marketsPositive": 9,
+   "perMarket": {
+    "GOLD": {
+     "calls": 964,
+     "edge": -0.0458
+    },
+    "NQ": {
+     "calls": 977,
+     "edge": 0.0432
+    },
+    "SPX500": {
+     "calls": 1178,
+     "edge": 0.0974
+    },
+    "US30": {
+     "calls": 1189,
+     "edge": 0.0958
+    },
+    "DE30": {
+     "calls": 1006,
+     "edge": 0.0264
+    },
+    "EURUSD": {
+     "calls": 31,
+     "edge": 0.0286
+    },
+    "GBPUSD": {
+     "calls": 68,
+     "edge": -0.0499
+    },
+    "AUDUSD": {
+     "calls": 115,
+     "edge": -0.1138
+    },
+    "NZDUSD": {
+     "calls": 8,
+     "edge": 0.606
+    },
+    "USDJPY": {
+     "calls": 3591,
+     "edge": 0.04
+    },
+    "USDCAD": {
+     "calls": 196,
+     "edge": 0.0853
+    },
+    "USDCHF": {
+     "calls": 307,
+     "edge": 0.0677
+    }
+   },
+   "mirror": true
+  },
+  "agree": {
+   "name": "fast and momentum agree, next 3 h",
+   "edge": -0.1544,
+   "lo": -0.1791,
+   "hi": -0.1322,
+   "halfWidth": 0.0234,
+   "p": 0,
+   "sessions": 2043,
+   "calls": 53970,
+   "halves": [
+    -0.1303,
+    -0.1737
+   ],
+   "marketsPositive": 11,
+   "perMarket": {
+    "GOLD": {
+     "calls": 3768,
+     "edge": 0.0406
+    },
+    "NQ": {
+     "calls": 1489,
+     "edge": 0.0414
+    },
+    "SPX500": {
+     "calls": 1918,
+     "edge": 0.0526
+    },
+    "US30": {
+     "calls": 1830,
+     "edge": 0.0462
+    },
+    "DE30": {
+     "calls": 1311,
+     "edge": 0.0779
+    },
+    "EURUSD": {
+     "calls": 7568,
+     "edge": 0.0172
+    },
+    "GBPUSD": {
+     "calls": 5971,
+     "edge": 0.0269
+    },
+    "AUDUSD": {
+     "calls": 6382,
+     "edge": 0.0054
+    },
+    "NZDUSD": {
+     "calls": 8004,
+     "edge": 0.0077
+    },
+    "USDJPY": {
+     "calls": 4687,
+     "edge": 0.0703
+    },
+    "USDCAD": {
+     "calls": 4795,
+     "edge": -0.01
+    },
+    "USDCHF": {
+     "calls": 6247,
+     "edge": 0.0507
+    }
+   },
+   "mirror": true
+  },
+  "bySlot": {
+   "9": {
+    "calls": 7752,
+    "edge": 0.0482
+   },
+   "10": {
+    "calls": 7429,
+    "edge": 0.005
+   },
+   "11": {
+    "calls": 7052,
+    "edge": -0.0019
+   },
+   "12": {
+    "calls": 6728,
+    "edge": 0.0158
+   },
+   "13": {
+    "calls": 6805,
+    "edge": 0.0315
+   },
+   "14": {
+    "calls": 8470,
+    "edge": 0.0369
+   },
+   "15": {
+    "calls": 8839,
+    "edge": 0.0214
+   },
+   "16": {
+    "calls": 9653,
+    "edge": 0.0048
+   },
+   "17": {
+    "calls": 9441,
+    "edge": 0.0359
+   },
+   "18": {
+    "calls": 9330,
+    "edge": -0.0076
+   }
+  },
+  "strong": {
+   "name": "fast call |z| >= 1, next 3 h",
+   "edge": -0.2057,
+   "lo": -0.2407,
+   "hi": -0.1676,
+   "halfWidth": 0.0366,
+   "p": 0,
+   "sessions": 1245,
+   "calls": 23020,
+   "halves": [
+    -0.178,
+    -0.2247
+   ],
+   "marketsPositive": 11,
+   "perMarket": {
+    "GOLD": {
+     "calls": 1301,
+     "edge": -0.0054
+    },
+    "NQ": {
+     "calls": 507,
+     "edge": 0.0318
+    },
+    "SPX500": {
+     "calls": 685,
+     "edge": 0.0934
+    },
+    "US30": {
+     "calls": 663,
+     "edge": 0.1243
+    },
+    "DE30": {
+     "calls": 382,
+     "edge": 0.0788
+    },
+    "EURUSD": {
+     "calls": 3606,
+     "edge": 0.0464
+    },
+    "GBPUSD": {
+     "calls": 2701,
+     "edge": 0.0387
+    },
+    "AUDUSD": {
+     "calls": 2975,
+     "edge": 0.0767
+    },
+    "NZDUSD": {
+     "calls": 3832,
+     "edge": 0.0481
+    },
+    "USDJPY": {
+     "calls": 1665,
+     "edge": 0.0722
+    },
+    "USDCAD": {
+     "calls": 2044,
+     "edge": 0.0184
+    },
+    "USDCHF": {
+     "calls": 2659,
+     "edge": 0.0895
+    }
+   },
+   "mirror": true
+  }
+ },
+ "A2_callWeighted": {
+  "H1": {
+   "edge": 0.0188,
+   "lo": -0.0044,
+   "hi": 0.0385,
+   "p": 0.094,
+   "halves": [
+    0.0309,
+    0.011
+   ],
+   "perMarket": {
+    "GOLD": 0.0244,
+    "NQ": 0.0013,
+    "SPX500": 0.0123,
+    "US30": 0.0117,
+    "DE30": 0.0237,
+    "EURUSD": 0.0237,
+    "GBPUSD": 0.0241,
+    "AUDUSD": 0.0102,
+    "NZDUSD": 0.0137,
+    "USDJPY": 0.0413,
+    "USDCAD": -0.0094,
+    "USDCHF": 0.037
+   },
+   "marketsPositive": 11,
+   "calls": 81499,
+   "wouldBe": "neither"
+  },
+  "H2": {
+   "edge": 0.0089,
+   "lo": -0.0047,
+   "hi": 0.0234,
+   "p": 0.218,
+   "halves": [
+    0.0161,
+    0.0046
+   ],
+   "perMarket": {
+    "GOLD": -0.0057,
+    "NQ": -0.0039,
+    "SPX500": 0.0094,
+    "US30": -0.0022,
+    "DE30": -0.0021,
+    "EURUSD": 0.0135,
+    "GBPUSD": 0.0153,
+    "AUDUSD": 0.0052,
+    "NZDUSD": 0.0142,
+    "USDJPY": 0.0027,
+    "USDCAD": 0.0233,
+    "USDCHF": 0.0248
+   },
+   "marketsPositive": 8,
+   "calls": 81499,
+   "wouldBe": "inside the null band"
+  },
+  "H3": {
+   "edge": 0.0756,
+   "lo": 0.0051,
+   "hi": 0.1434,
+   "p": 0.04,
+   "halves": [
+    0.0844,
+    0.0696
+   ],
+   "perMarket": {
+    "GOLD": -0.0551,
+    "NQ": -0.0207,
+    "SPX500": 0.0022,
+    "US30": -0.0058,
+    "DE30": -0.014,
+    "EURUSD": 0.15,
+    "GBPUSD": 0.0644,
+    "AUDUSD": 0.2334,
+    "NZDUSD": 0.2434,
+    "USDJPY": 0.0185,
+    "USDCAD": 0.2267,
+    "USDCHF": 0.0846
+   },
+   "marketsPositive": 8,
+   "calls": 3824,
+   "wouldBe": "clears the gate"
+  },
+  "momentum3h": {
+   "edge": 0.0099,
+   "lo": -0.0065,
+   "hi": 0.0255,
+   "p": 0.224,
+   "halves": [
+    0.0148,
+    0.0063
+   ],
+   "perMarket": {
+    "GOLD": 0.0301,
+    "NQ": 0.0052,
+    "SPX500": 0.0029,
+    "US30": 0.0139,
+    "DE30": 0.0258,
+    "EURUSD": 0.0102,
+    "GBPUSD": 0.0088,
+    "AUDUSD": 0.005,
+    "NZDUSD": -0.0005,
+    "USDJPY": 0.0386,
+    "USDCAD": -0.0327,
+    "USDCHF": 0.0122
+   },
+   "marketsPositive": 10,
+   "calls": 137777,
+   "wouldBe": "inside the null band"
+  },
+  "agree": {
+   "edge": 0.0276,
+   "lo": -0.0005,
+   "hi": 0.0538,
+   "p": 0.054,
+   "halves": [
+    0.0433,
+    0.0176
+   ],
+   "perMarket": {
+    "GOLD": 0.0406,
+    "NQ": 0.0414,
+    "SPX500": 0.0526,
+    "US30": 0.0462,
+    "DE30": 0.0779,
+    "EURUSD": 0.0172,
+    "GBPUSD": 0.0269,
+    "AUDUSD": 0.0054,
+    "NZDUSD": 0.0077,
+    "USDJPY": 0.0703,
+    "USDCAD": -0.01,
+    "USDCHF": 0.0507
+   },
+   "marketsPositive": 11,
+   "calls": 53970,
+   "wouldBe": "neither"
+  },
+  "noMomCall": {
+   "edge": -0.0102,
+   "lo": -0.0336,
+   "hi": 0.0132,
+   "p": 0.396,
+   "halves": [
+    -0.0044,
+    -0.0143
+   ],
+   "perMarket": {
+    "GOLD": 0.0047,
+    "NQ": -0.0388,
+    "SPX500": -0.0335,
+    "US30": -0.0241,
+    "DE30": -0.0425,
+    "EURUSD": 0.0312,
+    "GBPUSD": 0.0093,
+    "AUDUSD": -0.0143,
+    "NZDUSD": 0.0129,
+    "USDJPY": -0.026,
+    "USDCAD": -0.0388,
+    "USDCHF": -0.006
+   },
+   "marketsPositive": 4,
+   "calls": 23705,
+   "wouldBe": "neither"
+  },
+  "fastTo21": {
+   "edge": 0.0216,
+   "lo": -0.0124,
+   "hi": 0.0557,
+   "p": 0.198,
+   "halves": [
+    0.0435,
+    0.0074
+   ],
+   "perMarket": {
+    "GOLD": 0.0492,
+    "NQ": 0.0236,
+    "SPX500": 0.0255,
+    "US30": 0.01,
+    "DE30": 0.0577,
+    "EURUSD": 0.0193,
+    "GBPUSD": 0.0265,
+    "AUDUSD": 0.0169,
+    "NZDUSD": 0.0063,
+    "USDJPY": 0.0411,
+    "USDCAD": -0.0222,
+    "USDCHF": 0.0397
+   },
+   "marketsPositive": 11,
+   "calls": 81337,
+   "wouldBe": "neither"
+  },
+  "strong": {
+   "edge": 0.055,
+   "lo": -0.0034,
+   "hi": 0.1184,
+   "p": 0.066,
+   "halves": [
+    0.0906,
+    0.0363
+   ],
+   "perMarket": {
+    "GOLD": -0.0054,
+    "NQ": 0.0318,
+    "SPX500": 0.0934,
+    "US30": 0.1243,
+    "DE30": 0.0788,
+    "EURUSD": 0.0464,
+    "GBPUSD": 0.0387,
+    "AUDUSD": 0.0767,
+    "NZDUSD": 0.0481,
+    "USDJPY": 0.0722,
+    "USDCAD": 0.0184,
+    "USDCHF": 0.0895
+   },
+   "marketsPositive": 11,
+   "calls": 23020,
+   "wouldBe": "neither"
+  },
+  "dollarOnly": {
+   "edge": 0.0167,
+   "lo": -0.0108,
+   "hi": 0.0443,
+   "p": 0.236,
+   "halves": [
+    0.034,
+    0.007
+   ],
+   "perMarket": {
+    "GOLD": 0.0372,
+    "NQ": -0.0112,
+    "SPX500": -0.0093,
+    "US30": -0.0189,
+    "DE30": 0.0197,
+    "EURUSD": 0.0236,
+    "GBPUSD": 0.0249,
+    "AUDUSD": 0.0146,
+    "NZDUSD": 0.0122,
+    "USDJPY": 0.0368,
+    "USDCAD": -0.0025,
+    "USDCHF": 0.0366
+   },
+   "marketsPositive": 8,
+   "calls": 71734,
+   "wouldBe": "neither"
+  },
+  "ratesOnly": {
+   "edge": 0.044,
+   "lo": -0.0309,
+   "hi": 0.11,
+   "p": 0.234,
+   "halves": [
+    0.05,
+    0.0338
+   ],
+   "perMarket": {
+    "GOLD": -0.0458,
+    "NQ": 0.0432,
+    "SPX500": 0.0974,
+    "US30": 0.0958,
+    "DE30": 0.0264,
+    "EURUSD": 0.0286,
+    "GBPUSD": -0.0499,
+    "AUDUSD": -0.1138,
+    "NZDUSD": 0.606,
+    "USDJPY": 0.04,
+    "USDCAD": 0.0853,
+    "USDCHF": 0.0677
+   },
+   "marketsPositive": 9,
+   "calls": 9630,
+   "wouldBe": "neither"
+  },
+  "disagreeStrong": {
+   "edge": 0.3483,
+   "lo": 0.0965,
+   "hi": 0.5834,
+   "p": 0.008,
+   "halves": [
+    0.4936,
+    0.2622
+   ],
+   "perMarket": {
+    "GOLD": -0.3199,
+    "NQ": 0.5851,
+    "SPX500": 0.2804,
+    "US30": 0.4215,
+    "DE30": -0.1627,
+    "EURUSD": 0.5222,
+    "GBPUSD": 0.0592,
+    "AUDUSD": 0.7418,
+    "NZDUSD": 0.9244,
+    "USDJPY": 0.1422,
+    "USDCAD": 0.5435,
+    "USDCHF": 0.3497
+   },
+   "marketsPositive": 10,
+   "calls": 640,
+   "wouldBe": "clears the gate"
+  }
+ }
+}
