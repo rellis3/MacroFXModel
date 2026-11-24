@@ -64,7 +64,8 @@ export function intradayHtml(T, { engine = 'v2', only = 'all', open = null, D = 
   const sched = T.schedule ? `<div class="bevi-sched"><span class="muted">Re-runs today</span> ${T.schedule.map(s => `<span class="chip ${s.state === 'done' ? 'up' : s.state === 'missed' ? 'dn' : s.state === 'due' ? 'gold' : ''}" title="${esc(s.state)}">${esc(s.slot)}</span>`).join(' ')}</div>` : '';
   const tools = `<div class="bev2-tools"><button type="button" class="bev2-pill" data-ieng="v2" aria-pressed="${engine === 'v2'}">V2</button><button type="button" class="bev2-pill" data-ieng="v1r" aria-pressed="${engine === 'v1r'}">V1 logic</button><span style="width:.6rem"></span><button type="button" class="bev2-pill" data-ionly="all" aria-pressed="${only === 'all'}">All</button><button type="button" class="bev2-pill" data-ionly="shifted" aria-pressed="${only === 'shifted'}">Only shifts</button></div>`;
   const form = fbFormHtml((T.markets ?? []).map(m => m.market), msg);
-  if (!pts.length) return `${tools}${sched}<p class="muted">Nothing stored for ${esc(T.date)} yet: the morning issue is written 05:30-06:00 London and the re-runs hourly from 07:00.</p>${form}`;
+  const fastBox = fastHtml(T.fast);
+  if (!pts.length) return `${tools}${sched}${fastBox}<p class="muted">Nothing stored for ${esc(T.date)} yet: the morning issue is written 05:30-06:00 London and the re-runs hourly from 07:00.</p>${form}`;
   const fbBy = {}; for (const r of T.fundabias ?? []) (fbBy[r.market] ??= []).push(r);
   const rows = (T.markets ?? []).filter(m => only === 'all' || (m.shifts?.[engine]?.length > 0) || fbBy[m.market]?.length > 1);
   const head = pts.map(p => `<th class="n" title="${esc(p === 'issue' ? `morning issue ${hhmm(T.issueAt)}` : `re-run at ${hhmm(T.slotTimes?.[p]) || p}`)}">${esc(p === 'issue' ? `Issue ${hhmm(T.issueAt)}` : p)}</th>`).join('');
@@ -77,8 +78,23 @@ export function intradayHtml(T, { engine = 'v2', only = 'all', open = null, D = 
     return `<tr data-im="${esc(m.market)}"><th>${esc(m.market)}</th>${cells}<td class="bevi-sh">${sh || '<span class="muted">held all day</span>'}${fbTrail(fbBy[m.market])}</td></tr>` + (open === m.market ? `<tr class="bev2-open"><td colspan="${pts.length + 2}">${detailHtml(D, engine)}</td></tr>` : '');
   }).join('');
   const n = (T.markets ?? []).filter(m => m.shifts?.[engine]?.length).length;
-  return `${tools}${sched}<p class="muted">${esc(n)} of ${esc((T.markets ?? []).length)} markets changed direction since the morning issue (${engine === 'v2' ? 'V2' : 'V1 logic'}). A boxed cell is the re-run where it changed; tap a market for what moved. Most inputs are daily or slower, so a change usually follows a data release or a move in the faster price and risk readings.</p>
+  return `${tools}${sched}${fastBox}<p class="muted">${esc(n)} of ${esc((T.markets ?? []).length)} markets changed direction since the morning issue (${engine === 'v2' ? 'V2' : 'V1 logic'}). A boxed cell is the re-run where it changed; tap a market for what moved. Most inputs are daily or slower, so a change usually follows a data release or a move in the faster price and risk readings.</p>
 <div class="bevi-wrap"><table class="bev2-t bevi-t"><thead><tr><th>Market</th>${head}<th>Changes (London time)</th></tr></thead><tbody>${body || `<tr><td colspan="${pts.length + 2}" class="muted">No market changed direction today.</td></tr>`}</tbody></table></div>${form}`;
+}
+/** The fast layer (js/biasFastCore.js; GET .../intraday fast: { 'HH:MM': { at, calls: { MARKET: {z, dir, partU, partY, ownZ, flag} } } }). */
+export function fastHtml(fast) {
+  const slots = Object.keys(fast ?? {}).sort();
+  if (!slots.length) return '<details class="bevi-fast"><summary><b>Fast layer</b> <span class="muted">· the dollar and US 2-year since 07:00 London, per market. First reading at 08:00.</span></summary></details>';
+  const last = slots.at(-1), C = fast[last].calls ?? {}, z = x => (x == null ? '·' : `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(2)}`);
+  const ar = d => (d > 0 ? '<span class="up">▲</span>' : d < 0 ? '<span class="dn">▼</span>' : '<span class="muted">·</span>');
+  const order = Object.keys(C).filter(m => C[m].z != null).sort((a, b) => (C[b].flag - C[a].flag) || Math.abs(C[b].z) - Math.abs(C[a].z));
+  const rows = order.map(m => { const c = C[m];
+    const trail = slots.map(sl => `<span title="${esc(sl)}">${ar(fast[sl].calls?.[m]?.dir ?? 0)}</span>`).join('');
+    return `<tr><th>${esc(m)}</th><td class="n mono">${ar(c.dir)} ${z(c.z)}</td><td class="n mono muted">${z(c.partU)}</td><td class="n mono muted">${z(c.partY)}</td><td class="n mono">${z(c.ownZ)}</td><td class="bevi-tr">${trail}</td><td>${c.flag ? '<span class="chip gold" title="validated for the dollar pairs: about +0.08σ over the next 3 hours toward the drivers, more on big gaps">lagging its drivers</span>' : ''}</td></tr>`; }).join('');
+  const missing = Object.keys(C).filter(m => C[m].z == null);
+  return `<details class="bevi-fast" open><summary><b>Fast layer at ${esc(last)}</b> <span class="muted">· the dollar and US 2-year since 07:00 London, mapped through each market's hourly sensitivity (last 120 sessions)</span></summary>
+<div class="bevi-wrap"><table class="bev2-t"><thead><tr><th>Market</th><th class="n" title="implied move since 07:00 in units of a typical move over that time; a call at 0.5 or more">Implied</th><th class="n">from dollar</th><th class="n">from 2y</th><th class="n" title="the market's own move since 07:00, same units">Market itself</th><th>Hourly calls 08:00 →</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+<p class="muted" style="margin:.3rem 0 0">Tested 2016-2026 (bias-fast-layer): the implied call alone leans right by about 2% of a 3-hour move, no better than following the market's own move, so it is context, not a call. The one part that held: a <b>dollar pair</b> that has gone against the rest of the dollar and the 2-year tends to catch up over the next 3 hours (flagged). Not gold or indices. Logged hourly for a forward record.${missing.length ? ` No reading: ${esc(missing.join(', '))}.` : ''}</p></details>`;
 }
 /** FundaBias rows for one market as a short trail: "07:38 ▼8 → 16:06 ▲7". */
 export function fbTrail(rows) {
@@ -125,6 +141,7 @@ export const CSS = `
 .bevi-shift{outline:1px solid var(--gold);outline-offset:-2px;border-radius:3px}.bevi-sched{display:flex;flex-wrap:wrap;gap:.25rem;align-items:center;margin:.2rem 0 .4rem}
 .bevi-t tr[data-im]{cursor:pointer}.bevi-t tr[data-im]:hover{background:var(--bg2)}.bevi-fb{font-size:.76rem;margin-top:.15rem}.bevi-mv{margin:.2rem 0 .3rem 1rem;padding:0;font-size:.8rem}
 .bevi-form{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;margin-top:.7rem;padding-top:.5rem;border-top:1px solid var(--line);font-size:.8rem}.bevi-form input,.bevi-form select{font:inherit;background:var(--bg2);color:inherit;border:1px solid var(--line);border-radius:6px;padding:.15rem .35rem}.bevi-form p{flex-basis:100%}
+.bevi-fast{margin:.5rem 0;font-size:.82rem}.bevi-fast summary{cursor:pointer}.bevi-tr{letter-spacing:.05rem;white-space:nowrap}
 @media (max-width:640px){.bev2-t th:nth-child(3),.bev2-t td:nth-child(3),.bev2-t th:nth-child(6),.bev2-t td:nth-child(6){display:none}.bev2-bw{width:30%}}
 `;
 /** Mount into `el` (owner only: the caller checks the surface). Idempotent. */

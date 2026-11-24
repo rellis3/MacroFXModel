@@ -8402,6 +8402,11 @@ async function _mlBook(date) {
   }
   return null;
 }
+async function _mlRefs(ML, cards, date) {   // yesterday's high / low / close and the week open, once a day, 4 at a time
+  const list = Object.keys(cards).filter(n => _dsOanda[n]); let next = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => { while (next < list.length) { const n = list[next++];
+    try { cards[n].ref = ML.refLevels(await _btFetchD1(_dsOanda[n], 8), date); } catch (e) { console.warn(`[market-live] ref ${n}: ${e.message}`); } } }));
+}
 async function _mlExtraUnits(cards) {   // half the median daily range of 20 days, for the markets the book has no lines for
   await Promise.all(Object.entries(cards).filter(([, c]) => c.extra && !(c.unit > 0)).map(async ([n, c]) => {
     try { const r = (await _btFetchD1(_dsOanda[n], 21)).map(b => (b.high - b.low) / 2).filter(v => v > 0).sort((x, y) => x - y); if (r.length >= 5) c.unit = r[Math.floor(r.length / 2)]; }
@@ -8446,6 +8451,7 @@ async function _mlTick() {
       const keep = _ml.date === date ? { tapeHist: _ml.tapeHist, fired: _ml.fired, saved: _ml.saved } : {};
       _ml = { date, runKey, cards, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: b.runDate, tapeHist: [], fired: new Set(), saved: false, retail: null, retailAt: 0, reactions: [], tiltAt: 0, ...keep };
       await _mlExtraUnits(_ml.cards);
+      await _mlRefs(ML, _ml.cards, date);
     }
     const names = Object.keys(_ml.cards).filter(n => _dsOanda[n]);
     if (!_ml.state || (names.some(n => !_ml.state.markets[n]) && now - _ml.seededAt > 15 * 60_000)) {
@@ -8492,6 +8498,29 @@ app.get('/api/market-live', async (req, res) => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d !== _ml.date) { const raw = await kv.get(_ML_DAY_KEY(d)).catch(() => null); return res.json(raw ? { ...JSON.parse(raw), stored: true } : { ok: false, date: d, error: 'no stored record for that day (written at 21:05 London on days the live layer ran)' }); }
     if (!_ml.at) await _mlTick().catch(() => {});
     res.json({ ..._mlPayload(), ...(_ml.at ? {} : { error: 'the live layer has not run yet (the FX week is shut, or no desk book)' }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/terminal-bundle?u=<path>,<path>,...  (owner 2026-11-24: the Desk Terminal's first load in one request)
+// Each path is fetched from this same server with the caller's own cookie, so every route's login, desk-login rules and viewer copies apply
+// exactly as if the page had asked for it. Only the terminal's own load routes are accepted, at most 25, and never this route itself.
+const _TB_ALLOWED = new Set(['/api/desk-run', '/api/desk-score/record', '/api/desk-update', '/api/desk-quality', '/api/macro-scorecard', '/api/rate-diff', '/api/real-yield',
+  '/api/rates', '/api/cot-state', '/api/oanda-book/history', '/api/gpr', '/api/events', '/api/trade-watch', '/api/desk-weekly', '/api/desk-news', '/api/policy-rates',
+  '/api/cb-expectations', '/api/desk-dayfc', '/api/pair-select', '/api/market-live', '/api/bias-engine']);
+app.get('/api/terminal-bundle', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const list = [...new Set(String(req.query.u ?? '').split(',').map(x => x.trim()).filter(Boolean))].slice(0, 25);
+    const results = {};
+    await Promise.all(list.map(async u => {
+      const path = u.split('?')[0];
+      if (!u.startsWith('/api/') || !_TB_ALLOWED.has(path)) { results[u] = { ok: false, error: 'not a terminal load route' }; return; }
+      try {
+        const r = await fetch(`http://127.0.0.1:${PORT}${u}`, { headers: { cookie: req.headers.cookie ?? '', accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(45_000) });
+        const txt = await r.text();
+        try { results[u] = JSON.parse(txt); } catch { results[u] = { ok: false, error: `HTTP ${r.status}` }; }
+      } catch (e) { results[u] = { ok: false, error: e.message }; }
+    }));
+    res.json({ ok: true, results });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/policy-rates: each central bank's policy rate from its own published series (js/policyRates.js), with its as-of
@@ -30856,7 +30885,42 @@ app.post('/api/fundabias-log/intraday', (req, res, next) => (_srIsOwner(req) ? n
     res.status(out.status).json(out.body);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-svcInterval('biasEngineIntraday', () => _bevIntradayTick().catch(e => console.error('[bias-intraday]', e.message)), 2 * 60_000);
+// The fast layer (js/biasFastCore.js; forge/BIAS_FAST_LAYER_PREREG.md, banked 2026-11-24): at each hourly slot from 08:00, the dollar and the
+// US 2-year move since 07:00 London mapped onto each market through its hourly betas over the previous 120 sessions (OANDA H1, the same
+// instruments as the study). Written once per slot into KV bias_engine_fast_<date> (CF KV, kept 400 days: the forward record). Context only:
+// the fast call alone was UNDERPOWERED and no better than the market's own move; the lag flag (a dollar pair gone against its drivers) was
+// VALIDATED for the dollar pairs only. Nothing in production reads it.
+const _BEVF_KEY = date => `bias_engine_fast_${date}`;
+let _bevFBusy = false;
+async function _bevFastTick() {
+  const now = Date.now(), date = _dpLondonDate(now);
+  if (!_bsIsWeekday(date) || _bevFBusy) return;
+  const BI = await import('./js/biasIntraday.js'), slot = BI.dueSlot(now, date, _bsLondonMs);
+  if (!slot || Number(slot.slice(0, 2)) < 8) return;
+  _bevFBusy = true;
+  try {
+    const raw = await kv.get(_BEVF_KEY(date)).catch(() => null), day = raw ? JSON.parse(raw) : { date, slots: {} };
+    if (day.slots?.[slot]) return;
+    const F = await import('./js/biasFastCore.js'), bars = {};
+    const keys = Object.keys(F.OANDA);
+    for (let i = 0; i < keys.length; i += 4) await Promise.all(keys.slice(i, i + 4).map(async k => { try { bars[k] = await fetchOandaRecentH1(F.OANDA[k], 4500); } catch (e) { console.warn('[bias-fast]', k, e.message); } }));
+    const panel = F.panelFromH1(bars, Date.now() / 1000);
+    if (panel.sessions.at(-1) !== date) { console.warn(`[bias-fast] ${date} ${slot}: no bars for today yet`); return; }
+    const live = F.liveCalls(panel, Number(slot.slice(0, 2))), calls = {};
+    const r = (x, n = 3) => (Number.isFinite(x) ? +x.toFixed(n) : null), H = F.HOURS.indexOf(Number(slot.slice(0, 2))), si = panel.sessions.length - 1;
+    for (const [m, c] of Object.entries(live.calls)) calls[m] = c.ok ? { z: r(c.z), dir: c.dir, momDir: c.momDir, partU: r(c.partU), partY: r(c.partY), ownZ: r(c.ownZ), U: r(c.U, 5), Y: r(c.Y, 5), bU: r(c.bU), bY: r(c.bY), sigma: r(c.sigma, 6), px: panel.px[m]?.[si]?.[H] ?? null, lagging: c.lagging, flag: c.lagging && F.LAG_FLAG.has(m) } : { why: c.why };
+    const [h, mm] = slot.split(':').map(Number);
+    if (Date.now() >= _bsLondonMs(date, h, mm) + BI.WINDOW_MS) { console.warn(`[bias-fast] ${date} ${slot}: finished after its window, not stored`); return; }
+    const fresh = await kv.get(_BEVF_KEY(date)).catch(() => null), cur = fresh ? JSON.parse(fresh) : day;
+    cur.slots = { ...(cur.slots ?? {}), [slot]: { at: new Date().toISOString(), calls } };
+    await kv.put(_BEVF_KEY(date), JSON.stringify(cur), { expirationTtl: 400 * 86400 });
+    console.log(`[bias-fast] ${date} ${slot} stored (${Object.values(calls).filter(c => c.dir != null).length} markets)`);
+  } finally { _bevFBusy = false; }
+}
+svcInterval('biasEngineIntraday', () => Promise.all([
+  _bevIntradayTick().catch(e => console.error('[bias-intraday]', e.message)),
+  _bevFastTick().catch(e => console.error('[bias-fast]', e.message)),
+]), 2 * 60_000);
 app.get('/api/bias-engine-v2/intraday', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
@@ -30873,9 +30937,10 @@ app.get('/api/bias-engine-v2/intraday', async (req, res) => {
       return res.json({ ok: true, date, market: m, points: pts });
     }
     let fb = []; try { fb = JSON.parse((await kv.get(_FBI_KEY(date))) || '{"rows":[]}').rows ?? []; } catch { fb = []; }
+    let fast = null; try { fast = JSON.parse((await kv.get(_BEVF_KEY(date))) || 'null'); } catch { fast = null; }
     const day = { issue: morning ? { at: morning.issuedAt, ...BI.compact(morning) } : null, slots: intra.slots ?? {} };
     res.json({ ok: true, date, issueAt: morning?.issuedAt ?? null, slotTimes: Object.fromEntries(Object.entries(day.slots).map(([k, v]) => [k, v.at ?? null])),
-      ...BI.timeline(day), fundabias: fb, schedule: date === today ? BI.schedule(day, Date.now(), date, _bsLondonMs) : null,
+      ...BI.timeline(day), fundabias: fb, fast: fast?.slots ?? null, schedule: date === today ? BI.schedule(day, Date.now(), date, _bsLondonMs) : null,
       note: 'The morning issue (05:30-06:00 London) is the record of the day. Each hourly slot re-runs the same shadow engines on the data available then; v1r = V1\'s logic, v2 = V2. Not a production signal.' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

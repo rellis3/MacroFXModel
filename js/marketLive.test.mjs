@@ -107,3 +107,18 @@ test('nudges: new p75/p90 lines, a new strongest or weakest, a tape turn; each o
   assert.equal(nudges(prev, cur, fired).length, 0);
   assert.equal(nudges(null, cur, fired).length, 0);
 });
+
+import { refLevels } from './marketLive.js';
+test('refLevels: yesterday and the week open', () => {
+  const d1 = [{ date: '2026-11-20', open: 1, high: 2, low: 0.5, close: 1.5 }, { date: '2026-11-23', open: 1.5, high: 2.5, low: 1.2, close: 2.2 }, { date: '2026-11-24', open: 2.2, high: 3, low: 2, close: 2.9 }];
+  assert.deepEqual(refLevels(d1, '2026-11-25'), { pdh: 3, pdl: 2, pdc: 2.9, pdDate: '2026-11-24', wo: 1.5 });
+  assert.equal(refLevels(d1, '2026-11-23').wo, null);      // a Monday: no completed bar this week yet
+  assert.equal(refLevels(d1, '2026-11-23').pdh, 2);
+  assert.equal(refLevels([], '2026-11-23'), null);
+});
+test('view: unit, span used, path times', () => {
+  const v = view({ markets: { X: { open: 100, hi: 101, lo: 99.5, last: 100.5, path: [[0, 100], [300000, 100.5]] } } }, { X: { levels: { open: 100, up: { p50: 101 }, down: { p50: 99 } } } });
+  assert.equal(v.X.u, 1);
+  assert.equal(v.X.spanUsed, 0.75);
+  assert.deepEqual(v.X.pathT, [0, 300000]);
+});

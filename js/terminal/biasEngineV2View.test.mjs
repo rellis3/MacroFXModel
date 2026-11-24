@@ -54,3 +54,12 @@ test('intradayHtml: loading, empty day, and the shift marked with its slot time'
   const D = { ok: true, points: [{ point: 'issue', v2: [['trend', -0.333, 'D1 down']] }, { point: '16:00', v2: [['trend', 0.1, 'H4 up']], moved_v2: [{ driver: 'trend', from: -0.333, to: 0.1, d: 0.433, now: 'H4 up' }] }] };
   assert.match(V.detailHtml(D, 'v2'), /<b>16:00<\/b> trend −0.33 → \+0.10 <span class="muted">\(H4 up\)/);
 });
+
+test('fastHtml: empty before 08:00; the latest slot per market with parts, the hourly trail and the lag flag', () => {
+  assert.match(V.fastHtml(null), /First reading at 08:00/);
+  const fast = { '08:00': { calls: { EURUSD: { z: 0.2, dir: 0, partU: 0.2, partY: 0, ownZ: 0.1 } } }, '09:00': { calls: { EURUSD: { z: -0.8, dir: -1, partU: -0.7, partY: -0.1, ownZ: 0.6, flag: true }, GOLD: { z: 0.6, dir: 1, partU: 0.5, partY: 0.1, ownZ: -0.7, flag: false }, DE30: { why: 'no prices' } } } };
+  const h = V.fastHtml(fast);
+  assert.match(h, /Fast layer at 09:00/); assert.match(h, /lagging its drivers/); assert.match(h, /No reading: DE30/);
+  assert.ok(h.indexOf('EURUSD') < h.indexOf('GOLD'), 'flagged first');
+  assert.equal((h.match(/lagging its drivers/g) ?? []).length, 1, 'gold never flagged');
+});
