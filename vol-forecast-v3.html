@@ -956,6 +956,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
         <button class="vf-exp-item" id="vfL2ExCfdBtn" onclick="closeExpDropdown();exportLadderV2('exhaustion','cfd')" title="Shadow exhaustion zones (not live): per OH/OL line, how far price typically runs past it before its first 0.25σ pullback, and the chance a touch in each London time bucket goes on to the next line. Paste into pine/exhaustion_zones.pine.">⬇ v2 Exhaustion · CFD <span style="font-size:9px;opacity:.55">zones + next-line odds</span></button>
         <button class="vf-exp-item" id="vfL2ExFutBtn" onclick="closeExpDropdown();exportLadderV2('exhaustion','fut')" title="Shadow exhaustion zones (not live): per OH/OL line, how far price typically runs past it before its first 0.25σ pullback, and the chance a touch in each London time bucket goes on to the next line. Paste into pine/exhaustion_zones.pine.">⬇ v2 Exhaustion · Futures <span style="font-size:9px;opacity:.55">zones + next-line odds</span></button>
         <button class="vf-exp-item" id="vfL2QlFutBtn" onclick="closeExpDropdown();exportLadderV2('qlike','fut')" title="Shadow QLIKE per-line ladder (not live; ladder-qlike-per-line 2026-11-22). Jordan&#39;s method: each line (HL / OH / OL) uses the σ model with the best QLIKE for that line on the futures, out of sample 2020-2026.08. NQ: HL+OH SHAR, OL HAR+GARCH-t; gold and EURUSD: HAR-CJ (widths refitted on futures ranges); USDJPY: HL+OH SHAR, OL R5. OC, Close+ (days closing above the open) and Close- (days closing below) each have their own QLIKE-best model. Each line shows its model. Compare on the Forecast Reversion page (Calc QLIKE, +v2).">⬇ QLIKE per-line · Futures <span style="font-size:9px;opacity:.55">NQ GC 6E 6J</span></button>
+        <button class="vf-exp-item" id="vfL2QlCfdBtn" onclick="closeExpDropdown();exportLadderV2('qlike','cfd')" title="Shadow QLIKE per-line ladder for the CFDs (not live; ladder-qlike-per-line-cfd 2026-11-24). Jordan&#39;s method on each OANDA CFD: every line (HL, OH, OL, OC, Close+ on days closing above the open, Close- on days closing below) uses the σ model with the best QLIKE for that line on that CFD, out of sample 2020-2026.08, among the models the site can compute. Widths fitted on the CFD&#39;s own sessions. Each line shows its model. Paste into the C.og Volatility Overlay v3.">⬇ QLIKE per-line · CFD <span style="font-size:9px;opacity:.55">40 instruments</span></button>
         <div class="vf-exp-sep"></div>
         <button class="vf-exp-item" id="vfCogBtn"        onclick="closeExpDropdown();exportCog()"                    disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
         <button class="vf-exp-item" id="vfCogWkBtn"      onclick="closeExpDropdown();exportCogWeekly()"              disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">√5 + √20 in one</span></button>
@@ -2728,11 +2729,11 @@ async function exportPersist(withSession = false) {
 
 // ladder-v2 shadow exports (js/ladderV2ShadowRoutes.js): forecast or exhaustion, CFD or futures paste.
 async function exportLadderV2(kind, track) {
-  const id = { 'forecast|cfd': 'vfL2FcCfdBtn', 'forecast|fut': 'vfL2FcFutBtn', 'exhaustion|cfd': 'vfL2ExCfdBtn', 'exhaustion|fut': 'vfL2ExFutBtn', 'qlike|fut': 'vfL2QlFutBtn' }[`${kind}|${track}`];
+  const id = { 'forecast|cfd': 'vfL2FcCfdBtn', 'forecast|fut': 'vfL2FcFutBtn', 'exhaustion|cfd': 'vfL2ExCfdBtn', 'exhaustion|fut': 'vfL2ExFutBtn', 'qlike|fut': 'vfL2QlFutBtn', 'qlike|cfd': 'vfL2QlCfdBtn' }[`${kind}|${track}`];
   const btn = document.getElementById(id);
   _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;
   try {
-    const r = await fetch(kind === 'qlike' ? `/api/vol-forecast/ladder-v2/export?calc=qlike&track=fut`
+    const r = await fetch(kind === 'qlike' ? `/api/vol-forecast/ladder-v2/export?calc=qlike&track=${track}`
                                            : `/api/vol-forecast/ladder-v2/export?kind=${kind}&track=${track}`);
     const text = await r.text();
     if (!r.ok) { btn.textContent = '✗ failed'; setTimeout(() => _btnRestore(btn), 2600); return; }

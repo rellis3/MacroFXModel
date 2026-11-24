@@ -3551,6 +3551,13 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
   },
   {
+    id: 'ladder-qlike-per-line-cfd', domain: 'volatility', verdict: 'underpowered', date: '2026-11-24', doc: 'forge/LADDER_QLIKE_PER_LINE_CFD_PREREG.md', also: ['analysis/output/ladder-qlike-per-line-cfd/RESULTS.md'],
+    claim: 'On the OANDA CFDs, giving each line (HL, OH, OL, OC, Close+, Close-) its own QLIKE-best site-computable sigma beats each CFD\'s live sigma (Jordan\'s per-line method, 40 instruments)',
+    result: 'Pre-registered, 40 CFDs (28 FX, 6 indices, 6 metals/energy), walk-forward per-line picks, test 2020-2026.08, date-aligned bootstrap. HL+OH+OL -2.48% [-3.90, -0.82]; 2020-22 -0.65% (CI crosses 0), 2023-26 -3.99% [-5.39, -2.64]. HL -10.05% [-12.72, -7.23] in both halves. 34/40 better (indices most, SPX500 -9.7%); worse WTI +6.7%, PALLADIUM +6.0%, AUDCAD, NZDCAD. HAR-CJ wins most lines; IV models best on gold/WTI/US2000 but not on the site. Graded weight: leaning (strong on HL).',
+    use: 'Shadow CFD export, each line its own calc (vol-forecast-v3). An IV feed would help gold and WTI most.',
+    instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'BRENT', 'CADCHF', 'CADJPY', 'CHFJPY', 'COPPER', 'DE30', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'GOLD', 'NQ', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'PALLADIUM', 'PLATINUM', 'SILVER', 'SPX500', 'UK100', 'US2000', 'US30', 'USDCAD', 'USDCHF', 'USDJPY', 'WTI'],
+  },
+  {
     id: 'ladder-close-split', domain: 'volatility', verdict: 'null', date: '2026-11-24', doc: 'forge/LADDER_CLOSE_SPLIT_PREREG.md', also: ['analysis/output/ladder-close-split/RESULTS.md'],
     claim: 'Forecasting Close+ (close on up-close days) and Close- (close on down-close days) as separate lines, each with its own walk-forward model race and multipliers (Jordan\'s format), lands nearer the actual close than one symmetric OC line',
     result: 'Pre-registered, NQ/GC/6E/6J futures, ~55 models per side, abs error of p50 vs actual close, test 2020-2026.08. +0.21% [-0.16, +0.57] (2020-22 +0.06%, 2023-26 +0.45%); old field only +0.40%. NQ -0.9% [-1.9, +0.2] leans better (fixes NQ close line sitting low: 55% -> 49% beaten); others +0.2 to +0.9%. Each side picks its own calc (e.g. NQ Close- RV EWMA 0.5, gold Close- implied vol), but up/down medians differ by only 0-0.1% of price. Graded weight: against, faint lean on NQ.',
@@ -4800,6 +4807,7 @@ const POWER = {
   'fqt-nam-lines-tp': { n: '1,417 NQ trades', note: 'NULL bar +1 bp; CI upper -2.04 bp' },
   'futures-oc-tp-fade-p75': { n: '3,377 trades on ~6,600 sessions (4 futures)', note: 'NULL bar +0.05R; CI upper -0.043R' },
   'futures-oc-tp-fade-p90': { n: '1,364 trades', note: 'NULL bar +0.05R; CI upper -0.064R' },
+  'ladder-qlike-per-line-cfd': { n: '~1,700 test sessions per instrument x 40 CFDs, date-aligned 63-session blocks', note: 'observed -2.48% [-3.90, -0.82]; 2020-22 half CI [-2.87, +2.37] crosses 0' },
   'ladder-close-split': { n: '~1,650 test sessions per instrument split ~55/45 up/down, 63-session blocks', note: 'observed +0.21%, CI [-0.16, +0.57]; NULL bar CI lower > -0.5% met' },
   'ladder-exhaustion-accuracy': { n: '~1,650 test sessions per instrument (4 futures, HL and close), 63-session blocks', note: 'observed HL +13.0%, CI [+11.6, +14.8]' },
   'ladder-jordan-recipe': { n: '~1,650 test sessions per instrument (4 futures x 3 lines), 63-session blocks', note: 'observed +1.85%, CI [+0.66, +2.31]; NULL bar CI lower > -0.5% met' },

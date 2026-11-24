@@ -1,0 +1,101 @@
+AUDCAD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup HARCJ, cdn HARCJ
+AUDCHF: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol SHAR, oc SHAR, cup HARCJ, cdn SHAR
+AUDJPY: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl SHAR, oh HARCJ, ol SHAR, oc HARCJ, cup HARCJ, cdn HARCJ
+AUDNZD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl E_har_rv_log, oh B_har_garcht, ol R15, oc B_har_garcht, cup B_har_garcht, cdn B_har_garcht
+AUDUSD: 2238 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh R15, ol HARCJ, oc SHAR, cup HARCJ, cdn SHAR
+BRENT: 2230 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup HARCJ, cdn HARCJ
+CADCHF: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol R15, oc HARCJ, cup HARCJ, cdn R15
+CADJPY: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol B_har_garcht, oc HARCJ, cup HARCJ, cdn G_gjr
+CHFJPY: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh E_har_rv_log, ol HARCJ, oc B_har_garcht, cup B_har_garcht, cdn HARCJ
+COPPER: 2229 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl SHAR, oh R15, ol SHAR, oc SHAR, cup SHAR, cdn SHAR
+DE30: 2195 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl SHAR, oh SHAR, ol HARCJ, oc HARCJ, cup SHAR, cdn HARCJ
+EURAUD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup HARCJ, cdn HARCJ
+EURCAD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup HARCJ, cdn HARCJ
+EURCHF: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl R15, oh SHAR, ol B_har_garcht, oc B_har_garcht, cup SHAR, cdn A0
+EURGBP: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup HARCJ, cdn HARCJ
+EURJPY: 2239 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol R5, oc R5, cup HARCJ, cdn B_har_garcht
+EURNZD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup R15, cdn HARCJ
+EURUSD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup HARCJ, cdn HARCJ
+GBPAUD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl R15, oh R15, ol HARCJ, oc R15, cup R15, cdn HARCJ
+GBPCAD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh R15, ol HARCJ, oc R15, cup R15, cdn SHAR
+GBPCHF: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup R15, cdn HARCJ
+GBPJPY: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl R5, oh HARCJ, ol R5, oc HARCJ, cup R15, cdn HARCJ
+GBPNZD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh R15, ol HARCJ, oc R15, cup B_har_garcht, cdn E_har_rv_log
+GBPUSD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup HARCJ, cdn HARCJ
+GOLD: 2229 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh R15, ol HARCJ, oc HARCJ, cup R15, cdn HARCJ
+NQ: 2229 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl SHAR, oh SHAR, ol HARCJ, oc SHAR, cup SHAR, cdn HARCJ
+NZDCAD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup E_har_rv_log, cdn HARCJ
+NZDJPY: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol SHAR, oc R15, cup HARCJ, cdn R15
+NZDUSD: 2239 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh R15, ol A0, oc E_har_rv_log, cup E_har_rv_log, cdn HARCJ
+PALLADIUM: 2185 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl R5, oh R5, ol R5, oc R5, cup HARCJ, cdn R5
+PLATINUM: 2206 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup B_har_garcht, cdn HARCJ
+SILVER: 2225 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup HARCJ, cdn HARCJ
+SPX500: 2218 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl SHAR, oh SHAR, ol SHAR, oc SHAR, cup SHAR, cdn SHAR
+UK100: 2168 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup HARCJ, cdn HARCJ
+US2000: 2225 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl SHAR, oh HARCJ, ol SHAR, oc HARCJ, cup HARCJ, cdn SHAR
+US30: 2229 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl SHAR, oh HARCJ, ol SHAR, oc SHAR, cup R15, cdn SHAR
+USDCAD: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol HARCJ, oc HARCJ, cup R5, cdn HARCJ
+USDCHF: 2237 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh HARCJ, ol R15, oc R15, cup R15, cdn R15
+USDJPY: 2240 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl SHAR, oh R15, ol R15, oc R15, cup R15, cdn R15
+WTI: 2229 sessions, control 1 100.00%, control 2 A0 max diff 0.00e+00; hl HARCJ, oh SHAR, ol HARCJ, oc R15, cup SHAR, cdn R15
+
+controls: 40 pass, dropped (control 1 < 99%): []
+
+H1: SITE per-line picks vs live A0, summed QLIKE HL+OH+OL (% change, negative = per-line better), date-aligned bootstrap
+  all|all        -2.48% [-3.90, -0.82]
+  all|2020-22    -0.65% [-2.87, +2.37]
+  all|2023-26    -3.99% [-5.39, -2.64]
+  hl|all         -10.05% [-12.72, -7.23]
+  hl|2020-22     -7.49% [-10.60, -3.99]
+  hl|2023-26     -12.02% [-15.47, -8.30]
+  oh|all         -2.08% [-2.99, -1.05]
+  oh|2020-22     -0.58% [-1.99, +1.13]
+  oh|2023-26     -3.35% [-4.27, -2.48]
+  ol|all         -0.98% [-2.69, +1.15]
+  ol|2020-22     +1.05% [-2.11, +5.19]
+  ol|2023-26     -2.64% [-3.85, -1.43]
+  VERDICT: UNDERPOWERED
+
+per instrument (HL+OH+OL vs A0): SPX500 -9.7%  NQ -7.0%  US30 -6.9%  DE30 -6.6%  US2000 -5.7%  GBPCHF -5.2%  UK100 -5.0%  AUDJPY -4.5%  GBPJPY -4.5%  NZDJPY -4.4%  CADCHF -4.3%  CADJPY -4.3%  AUDCHF -4.3%  GBPAUD -4.2%  GBPCAD -4.0%  GOLD -3.9%  EURAUD -3.9%  EURGBP -3.8%  GBPUSD -3.8%  BRENT -2.8%  USDJPY -2.7%  COPPER -2.5%  SILVER -2.2%  EURJPY -2.1%  GBPNZD -1.9%  EURCAD -1.9%  USDCHF -1.8%  USDCAD -1.8%  AUDNZD -1.2%  CHFJPY -0.9%  EURCHF -0.8%  EURNZD -0.5%  EURUSD -0.3%  PLATINUM -0.1%  NZDUSD +0.2%  AUDUSD +0.5%  NZDCAD +3.4%  AUDCAD +3.7%  PALLADIUM +6.0%  WTI +6.7%
+
+site picks per line (final, best site-computable 2020-2026.08):
+  AUDCAD    hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:HARCJ  cdn:HARCJ
+  AUDCHF    hl:HARCJ  oh:HARCJ  ol:SHAR  oc:SHAR  cup:HARCJ  cdn:SHAR
+  AUDJPY    hl:SHAR  oh:HARCJ  ol:SHAR  oc:HARCJ  cup:HARCJ  cdn:HARCJ
+  AUDNZD    hl:E_har_rv_log  oh:B_har_garcht  ol:R15  oc:B_har_garcht  cup:B_har_garcht  cdn:B_har_garcht
+  AUDUSD    hl:HARCJ  oh:R15  ol:HARCJ  oc:SHAR  cup:HARCJ  cdn:SHAR
+  BRENT     hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:HARCJ  cdn:HARCJ
+  CADCHF    hl:HARCJ  oh:HARCJ  ol:R15  oc:HARCJ  cup:HARCJ  cdn:R15
+  CADJPY    hl:HARCJ  oh:HARCJ  ol:B_har_garcht  oc:HARCJ  cup:HARCJ  cdn:G_gjr
+  CHFJPY    hl:HARCJ  oh:E_har_rv_log  ol:HARCJ  oc:B_har_garcht  cup:B_har_garcht  cdn:HARCJ
+  COPPER    hl:SHAR  oh:R15  ol:SHAR  oc:SHAR  cup:SHAR  cdn:SHAR
+  DE30      hl:SHAR  oh:SHAR  ol:HARCJ  oc:HARCJ  cup:SHAR  cdn:HARCJ
+  EURAUD    hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:HARCJ  cdn:HARCJ
+  EURCAD    hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:HARCJ  cdn:HARCJ
+  EURCHF    hl:R15  oh:SHAR  ol:B_har_garcht  oc:B_har_garcht  cup:SHAR  cdn:A0
+  EURGBP    hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:HARCJ  cdn:HARCJ
+  EURJPY    hl:HARCJ  oh:HARCJ  ol:R5  oc:R5  cup:HARCJ  cdn:B_har_garcht
+  EURNZD    hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:R15  cdn:HARCJ
+  EURUSD    hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:HARCJ  cdn:HARCJ
+  GBPAUD    hl:R15  oh:R15  ol:HARCJ  oc:R15  cup:R15  cdn:HARCJ
+  GBPCAD    hl:HARCJ  oh:R15  ol:HARCJ  oc:R15  cup:R15  cdn:SHAR
+  GBPCHF    hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:R15  cdn:HARCJ
+  GBPJPY    hl:R5  oh:HARCJ  ol:R5  oc:HARCJ  cup:R15  cdn:HARCJ
+  GBPNZD    hl:HARCJ  oh:R15  ol:HARCJ  oc:R15  cup:B_har_garcht  cdn:E_har_rv_log
+  GBPUSD    hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:HARCJ  cdn:HARCJ
+  GOLD      hl:HARCJ  oh:R15  ol:HARCJ  oc:HARCJ  cup:R15  cdn:HARCJ
+  NQ        hl:SHAR  oh:SHAR  ol:HARCJ  oc:SHAR  cup:SHAR  cdn:HARCJ
+  NZDCAD    hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:E_har_rv_log  cdn:HARCJ
+  NZDJPY    hl:HARCJ  oh:HARCJ  ol:SHAR  oc:R15  cup:HARCJ  cdn:R15
+  NZDUSD    hl:HARCJ  oh:R15  ol:A0  oc:E_har_rv_log  cup:E_har_rv_log  cdn:HARCJ
+  PALLADIUM hl:R5  oh:R5  ol:R5  oc:R5  cup:HARCJ  cdn:R5
+  PLATINUM  hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:B_har_garcht  cdn:HARCJ
+  SILVER    hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:HARCJ  cdn:HARCJ
+  SPX500    hl:SHAR  oh:SHAR  ol:SHAR  oc:SHAR  cup:SHAR  cdn:SHAR
+  UK100     hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:HARCJ  cdn:HARCJ
+  US2000    hl:SHAR  oh:HARCJ  ol:SHAR  oc:HARCJ  cup:HARCJ  cdn:SHAR
+  US30      hl:SHAR  oh:HARCJ  ol:SHAR  oc:SHAR  cup:R15  cdn:SHAR
+  USDCAD    hl:HARCJ  oh:HARCJ  ol:HARCJ  oc:HARCJ  cup:R5  cdn:HARCJ
+  USDCHF    hl:HARCJ  oh:HARCJ  ol:R15  oc:R15  cup:R15  cdn:R15
+  USDJPY    hl:SHAR  oh:R15  ol:R15  oc:R15  cup:R15  cdn:R15
+  WTI       hl:HARCJ  oh:SHAR  ol:HARCJ  oc:R15  cup:SHAR  cdn:R15
