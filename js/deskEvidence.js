@@ -842,7 +842,28 @@ export const DESK_EVIDENCE = [
     claim: 'On US, euro-area or UK tier-1 release days a session hedge ratio sized only from past release days (and on quiet days from quiet days) removes more session variance than one sized from all recent sessions',
     result: 'UNDERPOWERED, leaning worse: -0.71pp [-1.57, +0.13] against the unconditioned 20-session hourly ratio, worse on 10 of 12 sets, both halves negative. Halving the sample costs more than the conditioning gains. Calendar covers USD, EUR and GBP only (A1).',
     use: 'Do not switch to event-day hedge ratios on release days. A release can be shown as context only.',
+  },  {
+    id: 'bias-fast-layer', domain: 'macro', verdict: 'underpowered', date: '2026-11-24', doc: 'forge/BIAS_FAST_LAYER_PREREG.md', also: ['analysis/output/bias-fast-layer/RESULTS.md'],
+    instruments: ['GOLD', 'NQ', 'SPX500', 'US30', 'DE30', 'EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+    claim: 'The dollar move and the US 2-year move since 07:00 London, mapped onto each market through its own hourly betas over the previous 120 sessions, call the next 3 hours (the Bias Engine fast layer)',
+    result: 'UNDERPOWERED. Call-weighted (A2): +0.019 of a 3-hour sigma [-0.004, +0.039], halves +0.031 / +0.011, positive on 11 of 12 markets, 81,499 calls 2016-03 to 2026-08. Below the 0.03 bar, about one spread on the majors. The prereg session-mean statistic read -0.131 because its weights carried lookahead (A2). Positive control 0.105 vs planted 0.10.',
+    use: 'Show the fast layer as context (what the dollar and the 2-year imply now, with its parts), not as a direction call. Not a reason to change the morning bias.',
   },
+  {
+    id: 'bias-fast-vs-momentum', domain: 'macro', verdict: 'null', date: '2026-11-24', doc: 'forge/BIAS_FAST_LAYER_PREREG.md', also: ['analysis/output/bias-fast-layer/RESULTS.md'],
+    instruments: ['GOLD', 'NQ', 'SPX500', 'US30', 'DE30', 'EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+    claim: 'The fast layer calls the next 3 hours better than following the market\x27s own move since 07:00 London',
+    result: 'NULL. Call-weighted (A2): fast minus momentum +0.009 [-0.005, +0.023], inside the +/-0.03 band; halves +0.016 / +0.005; 8 of 12. Momentum alone +0.010 [-0.007, +0.026].',
+    use: 'Do not present the fast layer as knowing more than the chart since the morning: on its own it adds nothing over the market\x27s own move.',
+  },
+  {
+    id: 'bias-fast-lag', domain: 'macro', verdict: 'validated', date: '2026-11-24', doc: 'forge/BIAS_FAST_LAYER_PREREG.md', also: ['analysis/output/bias-fast-layer/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+    claim: 'When the dollar and the 2-year since 07:00 imply one direction for a market and the market has gone the other way, the market moves toward its drivers over the next 3 hours',
+    result: 'VALIDATED for the dollar pairs: +0.076 of a 3-hour sigma [+0.005, +0.143] call-weighted (prereg statistic +0.084 [+0.024, +0.141], BH pass), halves +0.084 / +0.070, 8 of 12, 3,824 calls. By market EURUSD +0.15, AUDUSD +0.23, NZDUSD +0.24, USDCAD +0.23, USDCHF +0.08, GBPUSD +0.06, USDJPY +0.02. Gold -0.055 and the indices about 0, so not those. Strong gaps (|z| >= 1, n 640) +0.35 [+0.10, +0.58], descriptive.',
+    use: 'Research-only. Through the day may flag a dollar pair that has gone against the rest of the dollar and the 2-year since 07:00, as likely to catch up over the next 3 hours (about 0.08 sigma, more on big gaps), with a forward record. Never for gold or indices: a dollar move gold has not followed is not a reason to expect gold to follow within hours.',
+  },
+
   {
     id: 'hedge-downside-beta', domain: 'execution', verdict: 'context', date: '2026-11-20', doc: 'forge/HEDGE_METHOD_COMPARISON_PREREG.md', also: ['analysis/output/hedge-method-comparison/RESULTS.md'],
     instruments: ['GOLD', 'NQ', 'US30', 'US2000', 'DE30', 'EURUSD', 'GBPUSD', 'AUDUSD', 'USDJPY', 'USDCHF'],
@@ -5162,6 +5183,9 @@ const POWER = {
   'hedge-today': { n: '~2,440 walk-forward sessions per set (~115 21-session blocks), 12 sets sharing sessions and markets', note: 'paired interval half-width 0.6-1.9pp vs a 1.0pp bar; S3 interval [+3.29, +6.67] is far from zero; the verdict is set by the placebo clause (A2), not by power' },
   'hedge-today-pick': { n: '~2,440 sessions per target, 8 targets', note: 'half-width 1.2pp' },
   'hedge-today-daytype': { n: '~2,440 sessions, ~900 release sessions per set', note: 'half-width 0.85pp, interval [-1.57, +0.13] crosses the -1pp band' },
+  'bias-fast-layer': { n: '81,499 calls, ~2,700 sessions (~128 21-session blocks), 12 markets sharing sessions', note: 'call-weighted half-width 0.022 vs a 0.03 bar; interval reaches past the bar so not NULL' },
+  'bias-fast-vs-momentum': { n: 'same calls, paired against 137,777 momentum calls', note: 'half-width 0.014; interval inside +/-0.03' },
+  'bias-fast-lag': { n: '3,824 disagreement calls over the same blocks', note: 'half-width 0.069; lower bound +0.005, effect carried by 6 dollar pairs' },
   'hedge-method-comparison': { n: '2,451 walk-forward days (~117 21-day blocks), 12 sets that share dates and markets', note: 'paired interval half-width 0.5-1.2pp for the estimators that matter vs a 1.0pp bar; naive/min-ES/downside intervals wider (1.5-15pp) but far from zero' },
   'hedge-downside-beta':     { n: '117 rolling windows per pair, 10 pairs, one 10-year path', note: 'descriptive; the registered form is a selection artefact (A2), the corrected form has no gate' },
   'hedge-residual-mr':       { n: '2,436 sessions (~116 21-session blocks), 9.4 years; 9,353 trades', note: 'Sharpe SE 0.31 (synthetic MC), MDE 1.01 vs a 0.5 bar; CI [-1.76, -0.60] excludes the bar (null reachable by design)' },

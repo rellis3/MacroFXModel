@@ -113,9 +113,36 @@ const desc = {
 };
 for (const d of Object.values(desc)) if (d?.verdict) delete d.verdict;
 
+// ── A2 (POST-HOC, describe only): call-weighted statistic. The prereg's session-mean statistic weights each call by
+// 1 / (calls that session), and the number of calls depends on later slots (whether the driver move persisted): lookahead
+// in the weights. Here every call weighs the same; its inclusion uses only what was known at its slot. Same blocks and draws.
+function cw(rowsA, valA, rowsB = null, valB = null) {
+  const sums = (rows, val) => { const s1 = new Float64Array(nBlocks), n = new Float64Array(nBlocks); for (const r of rows) { const v = val(r); if (v == null || !Number.isFinite(v)) continue; const b = blockOf(r.si); s1[b] += v; n[b]++; } return { s1, n }; };
+  const A = sums(rowsA, valA), Bs = rowsB ? sums(rowsB, valB) : null;
+  const ratio = (S, d) => { let a = 0, c = 0; for (const b of d) { a += S.s1[b]; c += S.n[b]; } return a / c; };
+  const all = Array.from({ length: nBlocks }, (_, i) => i);
+  const point = ratio(A, all) - (Bs ? ratio(Bs, all) : 0);
+  const bs = draws.map(d => ratio(A, d) - (Bs ? ratio(Bs, d) : 0)).filter(Number.isFinite).sort((x, y) => x - y);
+  const q = p => bs[Math.floor(p * bs.length)];
+  const hv = second => { const pick = r => (panel.sessions[r.si] >= HALF) === second; const m = (rows, val) => { const x = rows.filter(pick).map(val); return x.reduce((s, y) => s + y, 0) / x.length; }; return r3(m(rowsA, valA) - (Bs ? m(rowsB, valB) : 0)); };
+  const per = Object.fromEntries(TARGETS.map(m => { const mu = (rows, val) => { const x = rows.filter(r => r.m === m).map(val); return x.length ? x.reduce((s, y) => s + y, 0) / x.length : 0; }; return [m, r3(mu(rowsA, valA) - (Bs ? mu(rowsB, valB) : 0))]; }));
+  const st = { edge: r3(point), lo: r3(q(0.025)), hi: r3(q(0.975)), p: Math.min(1, 2 * Math.min(bs.filter(x => x <= 0).length, bs.filter(x => x >= 0).length) / bs.length), halves: [hv(false), hv(true)], perMarket: per, marketsPositive: Object.values(per).filter(x => x > 0).length, calls: rowsA.length };
+  st.wouldBe = st.edge > BAR && st.lo > 0 && st.halves.every(x => x > 0) && st.marketsPositive >= 8 ? 'clears the gate' : st.lo > -BAR && st.hi < BAR ? 'inside the null band' : 'neither';
+  return st;
+}
+const disagree = fastCalls.filter(c => c.momDir !== 0 && c.momDir !== c.dir);
+const A2 = {
+  H1: cw(fastCalls, c => c.dir * c.f3), H2: cw(fastCalls, c => c.dir * c.f3, momCalls, c => c.momDir * c.f3), H3: cw(disagree, c => c.dir * c.f3),
+  momentum3h: cw(momCalls, c => c.momDir * c.f3), agree: cw(fastCalls.filter(c => c.momDir === c.dir), c => c.dir * c.f3),
+  noMomCall: cw(fastCalls.filter(c => c.momDir === 0), c => c.dir * c.f3),
+  fastTo21: cw(fastCalls.filter(c => c.f21 != null), c => c.dir * c.f21), strong: cw(fastCalls.filter(c => Math.abs(c.z) >= 1), c => c.dir * c.f3),
+  dollarOnly: cw(calls.filter(c => Math.abs(c.partU) >= CFG.callZ), c => Math.sign(c.partU) * c.f3), ratesOnly: cw(calls.filter(c => Math.abs(c.partY) >= CFG.callZ), c => Math.sign(c.partY) * c.f3),
+  disagreeStrong: cw(disagree.filter(c => Math.abs(c.z) >= 1), c => c.dir * c.f3),
+};
 const res = { study: 'bias-fast-layer', seed: SEED, B, block: BLOCK, bar: BAR, sample: [panel.sessions[evalStart], panel.sessions.at(-1)], half: HALF,
-  calls: calls.length, fastCalls: fastCalls.length, momentumCalls: momCalls.length, skipped, positiveControl: PC, placebo, H1, H2, H3, descriptive: desc };
+  calls: calls.length, fastCalls: fastCalls.length, momentumCalls: momCalls.length, skipped, positiveControl: PC, placebo, H1, H2, H3, descriptive: desc, A2_callWeighted: A2 };
 fs.writeFileSync(new URL('results.json', OUT), JSON.stringify(res, null, 1));
 for (const h of [H1, H2, H3]) console.log(h.name, h.edge, `[${h.lo}, ${h.hi}]`, 'halves', h.halves, 'markets+', h.marketsPositive, 'p', h.p, 'BH', h.bh, '->', h.verdict);
 console.log('placebo', placebo);
 for (const [k, d] of Object.entries(desc)) if (d.edge !== undefined) console.log(k, d.edge, `[${d.lo}, ${d.hi}]`, d.halves); else console.log(k, JSON.stringify(d));
+for (const [k, d] of Object.entries(A2)) console.log('A2', k, d.edge, '[' + d.lo + ', ' + d.hi + ']', 'halves', d.halves, 'mk+', d.marketsPositive, 'n', d.calls, d.wouldBe);

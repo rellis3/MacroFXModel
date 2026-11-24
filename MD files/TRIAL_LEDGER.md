@@ -10,16 +10,16 @@ Generated 2026-11-24.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **592** |
-| validated | 198 |
-| null | 225 |
-| underpowered | 169 |
+| claims tested (validated + null + underpowered) | **595** |
+| validated | 199 |
+| null | 226 |
+| underpowered | 170 |
 | context (base rates, descriptions: not counted as tests) | 85 |
-| pre-registrations with no banked verdict (below) | 92 |
+| pre-registrations with no banked verdict (below) | 91 |
 
-**What the count says (Lesson 02 §05).** If none of the 592 claims were real, tests at the usual 5% size would still pass
-about **29.6** of them by luck. 198 passed, so most passes are unlikely to be luck alone, but
-**roughly 30 of the 198 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 595 claims were real, tests at the usual 5% size would still pass
+about **29.8** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
+**roughly 30 of the 199 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -703,6 +703,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-23 | ladder-jordan-recipe | volatility | null | forge/LADDER_JORDAN_RECIPE_PREREG.md |
 | 2026-11-23 | ladder-jordan-recipe-published | volatility | null | forge/LADDER_JORDAN_RECIPE_PREREG.md |
 | 2026-11-23 | ladder-wide-race | volatility | underpowered | forge/LADDER_WIDE_RACE_PREREG.md |
+| 2026-11-24 | bias-fast-lag | macro | validated | forge/BIAS_FAST_LAYER_PREREG.md |
+| 2026-11-24 | bias-fast-layer | macro | underpowered | forge/BIAS_FAST_LAYER_PREREG.md |
+| 2026-11-24 | bias-fast-vs-momentum | macro | null | forge/BIAS_FAST_LAYER_PREREG.md |
 | 2026-11-24 | ladder-close-split | volatility | null | forge/LADDER_CLOSE_SPLIT_PREREG.md |
 
 ## Pre-registered, but no banked verdict
@@ -714,7 +717,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/ASIA_DAY_BIAS_PREREG.md`: asia-day-bias — Does the Asia session (00:00–07:00 London) tell you which way the London/New York day (07:00–2
 - `forge/ASYMMETRIC_TRADES_PREREG.md`: Tight stop, far target at the forecast levels — pre-registration
 - `forge/ATLAS_HONEST_GONOGO_PREREG.md`: atlas-honest-gonogo — With the known leaks removed, real bid/ask fills and the production settings, do the Vot
-- `forge/BIAS_FAST_LAYER_PREREG.md`: bias-fast-layer — Does today's dollar and Fed-pricing move, mapped through each market's own sensitivity, call
 - `forge/BIAS_SCOREBOARD_PREREG.md`: bias-scoreboard — whose morning bias beats the shared public base on the same rows?
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
 - `forge/CB_TONE_REACTION_PREREG.md`: cb-tone-reaction — does the ECB / BoE / BoJ statement's hawkish shift line up with the first-30-minute move in
