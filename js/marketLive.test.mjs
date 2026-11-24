@@ -52,3 +52,58 @@ test('ccyStrength: base counts for, quote against, ranked', () => {
   assert.equal(rows.at(-1).ccy, 'JPY');
   assert.equal(by.GBP.rank, 1);
 });
+
+import { dayType, riskTape, tapeHistory, priceAt, reaction, retailSince, nudges, sessionOf } from './marketLive.js';
+
+test('dayType: the day forecaster\'s rule', () => {
+  assert.equal(dayType(0.2, 0.3), 'quiet');
+  assert.equal(dayType(0.9, 1.0), 'trend up');
+  assert.equal(dayType(-0.6, 1.0), 'trend down');
+  assert.equal(dayType(0.2, 1.0), 'range');
+  assert.equal(dayType(null, null, 5, 8), 'trend up');   // no unit: the raw move against the raw range
+});
+
+test('sessionOf: London wall hours', () => {
+  assert.equal(sessionOf(Date.parse('2026-11-23T03:00:00Z')), 'asia');
+  assert.equal(sessionOf(Date.parse('2026-11-23T09:00:00Z')), 'london');
+  assert.equal(sessionOf(Date.parse('2026-11-23T15:00:00Z')), 'ny');
+  assert.equal(sessionOf(Date.parse('2026-07-01T06:30:00Z')), 'london');   // BST: 07:30 London
+});
+
+test('riskTape: equities for, havens against, AUD/NZD for; gold shown, not scored', () => {
+  const t = riskTape({ NQ: { nowU: 0.8 }, SPX500: { nowU: 0.6 }, GOLD: { nowU: -0.3 } }, [{ ccy: 'JPY', score: -0.6 }, { ccy: 'CHF', score: -0.2 }, { ccy: 'AUD', score: 0.3 }]);
+  assert.equal(t.label, 'risk-on');
+  assert.equal(t.legs.equities, 0.7);
+  assert.equal(t.legs.havens, -0.4);
+  assert.equal(t.legs.gold, -0.3);
+  assert.equal(t.score, 0.47);                    // mean of 0.7, 0.4, 0.3
+  assert.equal(riskTape({}, []), null);
+  const h = []; tapeHistory(h, t, 1); tapeHistory(h, t, 2); tapeHistory(h, { label: 'mixed' }, 3);
+  assert.deepEqual(h.map(x => x.at), [1, 3]);
+});
+
+test('reaction: the currency\'s move over 15 minutes after a print, across its pairs', () => {
+  const t = Date.parse('2026-11-23T09:30:00Z'), P = 5 * 60_000;
+  const state = { markets: { GBPUSD: { path: [[t - P, 1.30], [t, 1.301], [t + 3 * P, 1.304]] }, EURGBP: { path: [[t - P, 0.85], [t + 3 * P, 0.848]] } } };
+  const cards = { GBPUSD: { unit: 0.004 }, EURGBP: { unit: 0.002 } };
+  assert.equal(priceAt(state.markets.GBPUSD.path, t + 60_000), 1.301);
+  assert.equal(reaction(state, cards, 'GBP', t, 15, t + 10 * 60_000), null);   // too early
+  assert.equal(reaction(state, cards, 'GBP', t, 15, t + 20 * 60_000), 1);      // GBPUSD +1u, EURGBP -1u for EUR = +1u for GBP
+});
+
+test('retailSince: now against the first row of the morning', () => {
+  const open = Date.parse('2026-11-23T07:00:00Z') / 1000;
+  const r = retailSince([[open - 600, 0, 88], [open + 60, 0, 86.2], [open + 7200, 0, 79]], open * 1000);
+  assert.deepEqual([r.longPct, r.atOpen, r.d], [79, 86.2, -7.2]);
+  assert.equal(retailSince([], 0), null);
+});
+
+test('nudges: new p75/p90 lines, a new strongest or weakest, a tape turn; each once', () => {
+  const fired = new Set();
+  const prev = { markets: { GBPJPY: { touched: ['up p50'] } }, ccy: [{ ccy: 'GBP' }, { ccy: 'JPY' }], tape: { label: 'mixed' } };
+  const cur = { markets: { GBPJPY: { touched: ['up p50', 'up p75'], nowU: 1.6 } }, ccy: [{ ccy: 'AUD' }, { ccy: 'JPY' }], tape: { label: 'risk-on', score: 0.4, legs: {} } };
+  const n = nudges(prev, cur, fired);
+  assert.deepEqual(n.map(x => x.key.split(':')[0]), ['line', 'top', 'tape']);
+  assert.equal(nudges(prev, cur, fired).length, 0);
+  assert.equal(nudges(null, cur, fired).length, 0);
+});

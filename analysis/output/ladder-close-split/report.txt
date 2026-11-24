@@ -1,0 +1,60 @@
+NQ: control 1 |signed OC| == build oc on 100.00%  control 2 ok  up 1204 down 992 flat 0
+GOLD: control 1 |signed OC| == build oc on 100.00%  control 2 ok  up 1127 down 1028 flat 10
+EURUSD: control 1 |signed OC| == build oc on 100.00%  control 2 ok  up 1047 down 1127 flat 7
+USDJPY: control 1 |signed OC| == build oc on 100.00%  control 2 ok  up 1176 down 982 flat 23
+
+== SPLIT vs CURRENT symmetric OC: total abs error of p50 vs actual close (negative = split nearer)
+  all      +0.21% [-0.16, +0.57]
+  2020-22  +0.06% [-0.63, +0.64]
+  2023-26  +0.45% [+0.15, +0.78]
+  cup      +0.29% [-0.37, +0.71]
+  cdn      +0.14% [-0.29, +0.76]
+  NQ -0.9% [-1.9,+0.2]  GOLD +0.2% [-0.1,+0.6]  EURUSD +0.6% [-0.1,+1.3]  USDJPY +0.9% [+0.3,+1.5]
+
+== SPLIT_OLD vs CURRENT symmetric OC: total abs error of p50 vs actual close (negative = split nearer)
+  all      +0.40% [+0.03, +0.77]
+  2020-22  +0.12% [-0.43, +0.77]
+  2023-26  +0.69% [+0.27, +1.05]
+  cup      +0.09% [-0.24, +0.63]
+  cdn      +0.74% [+0.21, +1.34]
+  NQ -0.0% [-1.2,+1.4]  GOLD +0.1% [-0.3,+0.5]  EURUSD +0.5% [+0.1,+1.0]  USDJPY +1.0% [+0.4,+1.4]
+
+VERDICT: NULL
+
+== Hit rates on each side's own days (beyond p50 / p75 / p90; targets 50/25/10), mean p50 line vs mean actual
+  NQ      Close+: SPLIT 49/24/9 p50 0.933 vs 1.041  |  SPLIT_OLD 51/27/12 p50 0.860 vs 1.041  |  CURRENT 55/27/9 p50 0.770 vs 1.041
+  NQ      Close-: SPLIT 52/24/9 p50 0.837 vs 1.089  |  SPLIT_OLD 51/24/8 p50 0.828 vs 1.089  |  CURRENT 54/29/13 p50 0.778 vs 1.089
+  GOLD    Close+: SPLIT 53/28/11 p50 0.596 vs 0.807  |  SPLIT_OLD 53/28/11 p50 0.597 vs 0.807  |  CURRENT 53/27/11 p50 0.583 vs 0.807
+  GOLD    Close-: SPLIT 50/27/10 p50 0.598 vs 0.828  |  SPLIT_OLD 50/26/10 p50 0.601 vs 0.828  |  CURRENT 51/27/11 p50 0.588 vs 0.828
+  EURUSD  Close+: SPLIT 54/28/12 p50 0.264 vs 0.354  |  SPLIT_OLD 54/28/12 p50 0.262 vs 0.354  |  CURRENT 52/26/10 p50 0.279 vs 0.354
+  EURUSD  Close-: SPLIT 47/23/10 p50 0.289 vs 0.337  |  SPLIT_OLD 48/25/10 p50 0.282 vs 0.337  |  CURRENT 49/24/9 p50 0.275 vs 0.337
+  USDJPY  Close+: SPLIT 50/24/11 p50 0.315 vs 0.393  |  SPLIT_OLD 52/25/11 p50 0.296 vs 0.393  |  CURRENT 51/24/11 p50 0.303 vs 0.393
+  USDJPY  Close-: SPLIT 54/29/11 p50 0.293 vs 0.426  |  SPLIT_OLD 55/29/12 p50 0.290 vs 0.426  |  CURRENT 53/29/12 p50 0.304 vs 0.426
+
+== QLIKE per side (2020-2026.08, own c)
+  NQ      SPLIT_cup 1.3445  SPLIT_OLD_cup 1.3435  SPLIT_cdn 1.5448  SPLIT_OLD_cdn 1.5565
+  GOLD    SPLIT_cup 1.3434  SPLIT_OLD_cup 1.3349  SPLIT_cdn 1.5857  SPLIT_OLD_cdn 1.5777
+  EURUSD  SPLIT_cup 1.3717  SPLIT_OLD_cup 1.3786  SPLIT_cdn 1.3699  SPLIT_OLD_cdn 1.3680
+  USDJPY  SPLIT_cup 1.4647  SPLIT_OLD_cup 1.4597  SPLIT_cdn 1.7136  SPLIT_OLD_cdn 1.7554
+
+== Picks by year
+  NQ      current        2020:G_egarch 2021:SHAR 2022:SHAR 2023:SHAR 2024:SHAR 2025:SHAR 2026:SHAR
+  NQ      SPLIT_cup      2020:W_har_lev 2021:W_rvewma_50 2022:W_rvewma_50 2023:SHAR 2024:SHAR 2025:SHAR 2026:W_rvewma_50
+  NQ      SPLIT_OLD_cup  2020:G_egarch 2021:G_gjr 2022:SHAR 2023:SHAR 2024:SHAR 2025:SHAR 2026:SHAR
+  NQ      SPLIT_cdn      2020:W_rvewma_50 2021:W_rvewma_50 2022:W_rvewma_50 2023:W_rvewma_50 2024:W_rvewma_50 2025:W_rvewma_50 2026:W_rvewma_50
+  NQ      SPLIT_OLD_cdn  2020:B_har_iv 2021:B_har_iv 2022:SHAR 2023:SHAR 2024:B_har_iv 2025:B_har_iv 2026:B_har_iv
+  GOLD    current        2020:SHAR 2021:V3 2022:V3 2023:V3 2024:V3 2025:V3 2026:V3
+  GOLD    SPLIT_cup      2020:W_har_dow 2021:W_har_lev 2022:W_har_lev 2023:SHAR 2024:W_har_dow 2025:W_har_dow 2026:SHAR
+  GOLD    SPLIT_OLD_cup  2020:SHAR 2021:SHAR 2022:SHAR 2023:SHAR 2024:SHAR 2025:SHAR 2026:SHAR
+  GOLD    SPLIT_cdn      2020:V3 2021:V3 2022:V4 2023:W_rvewma_50 2024:V4 2025:V4 2026:V4
+  GOLD    SPLIT_OLD_cdn  2020:V3 2021:V3 2022:V4 2023:V4 2024:V4 2025:V4 2026:V4
+  EURUSD  current        2020:HARCJ 2021:HARCJ 2022:R15 2023:SHAR 2024:SHAR 2025:HARCJ 2026:HARCJ
+  EURUSD  SPLIT_cup      2020:HARCJ 2021:HARCJ 2022:HARCJ 2023:W_har_all 2024:W_har_all 2025:W_har_all 2026:W_har_all
+  EURUSD  SPLIT_OLD_cup  2020:HARCJ 2021:HARCJ 2022:HARCJ 2023:SHAR 2024:SHAR 2025:SHAR 2026:SHAR
+  EURUSD  SPLIT_cdn      2020:W_rvewma_94 2021:W_har_all 2022:W_har_dow 2023:W_har_dow 2024:W_har_dow 2025:W_har_all 2026:W_har_all
+  EURUSD  SPLIT_OLD_cdn  2020:H8 2021:HARCJ 2022:SHAR 2023:HARCJ 2024:SHAR 2025:HARCJ 2026:HARCJ
+  USDJPY  current        2020:HARCJ 2021:HARCJ 2022:SHAR 2023:HARCJ 2024:SHAR 2025:SHAR 2026:R5
+  USDJPY  SPLIT_cup      2020:W_har_all 2021:HARCJ 2022:W_rv_5 2023:W_rv_5 2024:W_rvewma_50 2025:W_har_dow 2026:W_har_dow
+  USDJPY  SPLIT_OLD_cup  2020:HARCJ 2021:HARCJ 2022:HARCJ 2023:HARCJ 2024:R5 2025:R5 2026:R15
+  USDJPY  SPLIT_cdn      2020:W_ar1 2021:W_ar1 2022:W_rvewma_70 2023:W_rvewma_85 2024:W_rvewma_85 2025:W_rvewma_85 2026:W_rvewma_85
+  USDJPY  SPLIT_OLD_cdn  2020:SHAR 2021:HARCJ 2022:SHAR 2023:E_yz_10 2024:SHAR 2025:E_yz_10 2026:E_yz_10
