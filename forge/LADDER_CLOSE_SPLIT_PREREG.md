@@ -51,3 +51,7 @@ against the line for its side. Δ = Σ error(SPLIT) / Σ error(CURRENT) − 1, e
 - **Otherwise:** keep one OC line; report the asymmetry for reference.
 
 ## Amendments
+
+- **A1, 2026-11-24, PRE-RESULTS** (no result computed; the first run was stopped after NQ's controls). Parked when the
+  owner set OC aside, then reopened by the owner the same day: Close+ = where price closes on days that close above
+  the 00:00 open, Close− = where it closes on days below, each line measured on its own days only. Design unchanged.
