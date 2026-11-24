@@ -1,0 +1,6137 @@
+{
+ "seed": 20261124,
+ "verdict": "UNDERPOWERED",
+ "h1": {
+  "all|all": [
+   -2.4754801570634397,
+   [
+    -3.9000702620913534,
+    -0.8212255075838869
+   ]
+  ],
+  "all|2020-22": [
+   -0.6518574714666159,
+   [
+    -2.8666921257922597,
+    2.373865975273976
+   ]
+  ],
+  "all|2023-26": [
+   -3.9862575871370245,
+   [
+    -5.389613120909503,
+    -2.6434052161233494
+   ]
+  ],
+  "hl|all": [
+   -10.052727635285297,
+   [
+    -12.720081291917511,
+    -7.226082864109832
+   ]
+  ],
+  "hl|2020-22": [
+   -7.492470074457954,
+   [
+    -10.598273711251625,
+    -3.9859068019646138
+   ]
+  ],
+  "hl|2023-26": [
+   -12.020059758664733,
+   [
+    -15.468329633858488,
+    -8.301632911058508
+   ]
+  ],
+  "oh|all": [
+   -2.082085497566546,
+   [
+    -2.9852533834243236,
+    -1.0493422332585898
+   ]
+  ],
+  "oh|2020-22": [
+   -0.5849663186726259,
+   [
+    -1.9901312669221192,
+    1.1273231455756871
+   ]
+  ],
+  "oh|2023-26": [
+   -3.345321414096107,
+   [
+    -4.269523440180172,
+    -2.4767352485178886
+   ]
+  ],
+  "ol|all": [
+   -0.9788180994381095,
+   [
+    -2.6883625022384243,
+    1.1500661664055523
+   ]
+  ],
+  "ol|2020-22": [
+   1.0466682353363983,
+   [
+    -2.1136592902224214,
+    5.185949796436454
+   ]
+  ],
+  "ol|2023-26": [
+   -2.640473368739875,
+   [
+    -3.8498626499844972,
+    -1.4291793540556816
+   ]
+  ]
+ },
+ "per_sym": {
+  "AUDCAD": 3.6679970302747167,
+  "AUDCHF": -4.260297037521255,
+  "AUDJPY": -4.541693449651629,
+  "AUDNZD": -1.1767636268410708,
+  "AUDUSD": 0.501040818326004,
+  "BRENT": -2.8038083402903036,
+  "CADCHF": -4.3384533009909525,
+  "CADJPY": -4.297498476557293,
+  "CHFJPY": -0.9477498615425684,
+  "COPPER": -2.54128912021101,
+  "DE30": -6.637149863410608,
+  "EURAUD": -3.8552421946270066,
+  "EURCAD": -1.865283328138534,
+  "EURCHF": -0.7673463344582188,
+  "EURGBP": -3.815670523641479,
+  "EURJPY": -2.138634022082442,
+  "EURNZD": -0.46666426934035554,
+  "EURUSD": -0.28831043594949035,
+  "GBPAUD": -4.201840657874967,
+  "GBPCAD": -4.03674443125368,
+  "GBPCHF": -5.1649536746205875,
+  "GBPJPY": -4.535533844610251,
+  "GBPNZD": -1.8967981726087269,
+  "GBPUSD": -3.788146296236816,
+  "GOLD": -3.887506375117855,
+  "NQ": -6.9680113972385165,
+  "NZDCAD": 3.394267041690746,
+  "NZDJPY": -4.371417379003473,
+  "NZDUSD": 0.1921291017492388,
+  "PALLADIUM": 6.02922912624182,
+  "PLATINUM": -0.12743423609503646,
+  "SILVER": -2.1977568118610624,
+  "SPX500": -9.652203022652605,
+  "UK100": -4.98146041042965,
+  "US2000": -5.713917522327816,
+  "US30": -6.8892811777084955,
+  "USDCAD": -1.761108865603267,
+  "USDCHF": -1.8076675373500217,
+  "USDJPY": -2.7312269530153643,
+  "WTI": 6.6509935500418615
+ },
+ "dropped": [],
+ "controls": {
+  "AUDCAD": [
+   100.0,
+   0.0
+  ],
+  "AUDCHF": [
+   100.0,
+   0.0
+  ],
+  "AUDJPY": [
+   100.0,
+   0.0
+  ],
+  "AUDNZD": [
+   100.0,
+   0.0
+  ],
+  "AUDUSD": [
+   100.0,
+   0.0
+  ],
+  "BRENT": [
+   100.0,
+   0.0
+  ],
+  "CADCHF": [
+   100.0,
+   0.0
+  ],
+  "CADJPY": [
+   100.0,
+   0.0
+  ],
+  "CHFJPY": [
+   100.0,
+   0.0
+  ],
+  "COPPER": [
+   100.0,
+   0.0
+  ],
+  "DE30": [
+   100.0,
+   0.0
+  ],
+  "EURAUD": [
+   100.0,
+   0.0
+  ],
+  "EURCAD": [
+   100.0,
+   0.0
+  ],
+  "EURCHF": [
+   100.0,
+   0.0
+  ],
+  "EURGBP": [
+   100.0,
+   0.0
+  ],
+  "EURJPY": [
+   100.0,
+   0.0
+  ],
+  "EURNZD": [
+   100.0,
+   0.0
+  ],
+  "EURUSD": [
+   100.0,
+   0.0
+  ],
+  "GBPAUD": [
+   100.0,
+   0.0
+  ],
+  "GBPCAD": [
+   100.0,
+   0.0
+  ],
+  "GBPCHF": [
+   100.0,
+   0.0
+  ],
+  "GBPJPY": [
+   100.0,
+   0.0
+  ],
+  "GBPNZD": [
+   100.0,
+   0.0
+  ],
+  "GBPUSD": [
+   100.0,
+   0.0
+  ],
+  "GOLD": [
+   100.0,
+   0.0
+  ],
+  "NQ": [
+   100.0,
+   0.0
+  ],
+  "NZDCAD": [
+   100.0,
+   0.0
+  ],
+  "NZDJPY": [
+   100.0,
+   0.0
+  ],
+  "NZDUSD": [
+   100.0,
+   0.0
+  ],
+  "PALLADIUM": [
+   100.0,
+   0.0
+  ],
+  "PLATINUM": [
+   100.0,
+   0.0
+  ],
+  "SILVER": [
+   100.0,
+   0.0
+  ],
+  "SPX500": [
+   100.0,
+   0.0
+  ],
+  "UK100": [
+   100.0,
+   0.0
+  ],
+  "US2000": [
+   100.0,
+   0.0
+  ],
+  "US30": [
+   100.0,
+   0.0
+  ],
+  "USDCAD": [
+   100.0,
+   0.0
+  ],
+  "USDCHF": [
+   100.0,
+   0.0
+  ],
+  "USDJPY": [
+   100.0,
+   0.0
+  ],
+  "WTI": [
+   100.0,
+   0.0
+  ]
+ },
+ "picks": {
+  "AUDCAD": {
+   "hl": {
+    "wf_site": {
+     "2020": "B_har_garcht",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.28428808799341976,
+    "a0_qlike": 0.31053261831843093
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "B_har_garcht",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "H8",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.294861567903374,
+    "a0_qlike": 1.3133072466332663
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4021001585691222,
+    "a0_qlike": 1.4419389564285032
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3464399227555692,
+    "a0_qlike": 1.3891042143083243
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "G_gjr",
+     "2021": "G_gjr",
+     "2022": "G_gjr",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "wf_all": {
+     "2020": "G_gjr",
+     "2021": "G_gjr",
+     "2022": "G_gjr",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3219769057618689,
+    "a0_qlike": 1.341987633623701
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.373849498960363,
+    "a0_qlike": 1.439618044938559
+   }
+  },
+  "AUDCHF": {
+   "hl": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.3104195651604695,
+    "a0_qlike": 0.357823897974028
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "E_har_rv_log",
+     "2022": "E_har_rv_log",
+     "2023": "HARCJ",
+     "2024": "E_har_rv_log",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "E_har_rv_log",
+     "2022": "E_har_rv_log",
+     "2023": "HARCJ",
+     "2024": "E_har_rv_log",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.2646323584948402,
+    "a0_qlike": 1.3110005208458932
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.4683537456509168,
+    "a0_qlike": 1.527111452876311
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.3929807485356038,
+    "a0_qlike": 1.4689844948177078
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.2602488164990253,
+    "a0_qlike": 1.3148991393641982
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.512233469411123,
+    "a0_qlike": 1.607182008219329
+   }
+  },
+  "AUDJPY": {
+   "hl": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 0.36686959758826543,
+    "a0_qlike": 0.42261810585165005
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "G_egarch",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "G_egarch",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.336554375222272,
+    "a0_qlike": 1.3951180395814655
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.5962689120145084,
+    "a0_qlike": 1.6521890014888083
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4574567848438074,
+    "a0_qlike": 1.5203787136529407
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "G_egarch",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "G_egarch",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.2944146206700038,
+    "a0_qlike": 1.3688166242204767
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "SHAR",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "SHAR",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.6380450206264034,
+    "a0_qlike": 1.6888224637146632
+   }
+  },
+  "AUDNZD": {
+   "hl": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "E_har_rv_log",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "E_har_rv_log",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "HARCJ"
+    },
+    "final_site": "E_har_rv_log",
+    "best": "E_har_rv_log",
+    "final_qlike": 0.31123682122692903,
+    "a0_qlike": 0.3278528437229293
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "E_har_rv_log",
+     "2022": "E_har_rv_log",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "H8",
+     "2022": "E_har_rv_log",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.3999758944171399,
+    "a0_qlike": 1.4331723906859746
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.4101511059338805,
+    "a0_qlike": 1.421994539756696
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "E_har_rv_log",
+     "2022": "E_har_rv_log",
+     "2023": "E_har_rv_log",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "E_har_rv_log",
+     "2022": "E_har_rv_log",
+     "2023": "E_har_rv_log",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.3987524005769225,
+    "a0_qlike": 1.4315071197442997
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "E_har_rv_log",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "E_har_rv_log",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.426212047613509,
+    "a0_qlike": 1.462810296914384
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "E_har_rv_log",
+     "2022": "E_har_rv_log",
+     "2023": "R15",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "E_har_rv_log",
+     "2022": "E_har_rv_log",
+     "2023": "R15",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "R15"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.3742695144062702,
+    "a0_qlike": 1.4031946398691513
+   }
+  },
+  "AUDUSD": {
+   "hl": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "A0",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "R15",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "A0",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "R15",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.3071543541182168,
+    "a0_qlike": 0.3161101244060089
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "E_har_rv_log",
+     "2022": "HARCJ",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "H8",
+     "2022": "HARCJ",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "SHAR"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.29284850249403,
+    "a0_qlike": 1.3073750605026362
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "R15",
+     "2024": "A0",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "R15",
+     "2024": "A0",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4585537439406295,
+    "a0_qlike": 1.4637217535280918
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.3367833121274282,
+    "a0_qlike": 1.3580647229118057
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_yz_20",
+     "2021": "SHAR",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "E_yz_20",
+     "2021": "SHAR",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.2268506839556057,
+    "a0_qlike": 1.2489123270329123
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.4459469981508972,
+    "a0_qlike": 1.4674584733064187
+   }
+  },
+  "BRENT": {
+   "hl": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.3195687812581582,
+    "a0_qlike": 0.36130188566403737
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "G_gjr",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "G_gjr",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.2993557433619627,
+    "a0_qlike": 1.333336469912437
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4520717632779505,
+    "a0_qlike": 1.4908383715531672
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.2795853368990209,
+    "a0_qlike": 1.3229396212868239
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.1646261026594715,
+    "a0_qlike": 1.2007986709516694
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.396973818089407,
+    "a0_qlike": 1.4461262146492895
+   }
+  },
+  "CADCHF": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.30425534012396627,
+    "a0_qlike": 0.3486231221349022
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3243415176180686,
+    "a0_qlike": 1.3652060296006556
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "HARCJ",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "HARCJ",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.4038343672633793,
+    "a0_qlike": 1.4605213364381222
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.5262536045056934,
+    "a0_qlike": 1.5817647348121897
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "E_har_rv_log",
+     "2022": "B_har_garcht",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "E_har_rv_log",
+     "2022": "B_har_garcht",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4557547804051887,
+    "a0_qlike": 1.5086199012911707
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "R5",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "R5",
+     "2026": "HARCJ"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.5907678147769113,
+    "a0_qlike": 1.6487801050718451
+   }
+  },
+  "CADJPY": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.4166213199470729,
+    "a0_qlike": 0.4714030849165407
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4347767303235583,
+    "a0_qlike": 1.5069280985693803
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "B_har_garcht",
+     "2023": "R15",
+     "2024": "HARCJ",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "HARCJ",
+     "2022": "B_har_garcht",
+     "2023": "R15",
+     "2024": "HARCJ",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.673101008226256,
+    "a0_qlike": 1.7233803147355384
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.5096770867802618,
+    "a0_qlike": 1.5611873363793103
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3722741031153722,
+    "a0_qlike": 1.4501758144089907
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "E_har_rv_log",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "E_har_rv_log",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "final_site": "G_gjr",
+    "best": "G_gjr",
+    "final_qlike": 1.6329840789157613,
+    "a0_qlike": 1.6882882744410592
+   }
+  },
+  "CHFJPY": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.3941245272592202,
+    "a0_qlike": 0.4196048742684415
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "G_egarch",
+     "2022": "R5",
+     "2023": "HARCJ",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "E_har_rv_log"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "G_egarch",
+     "2022": "R5",
+     "2023": "HARCJ",
+     "2024": "H8",
+     "2025": "H8",
+     "2026": "E_har_rv_log"
+    },
+    "final_site": "E_har_rv_log",
+    "best": "E_har_rv_log",
+    "final_qlike": 1.4593635480360219,
+    "a0_qlike": 1.4856727882039866
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "R15",
+     "2023": "A0",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "R15",
+     "2023": "A0",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.6072963656428745,
+    "a0_qlike": 1.6348224967598324
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "G_garch",
+     "2022": "R5",
+     "2023": "B_har_garcht",
+     "2024": "HARCJ",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "G_garch",
+     "2022": "R5",
+     "2023": "B_har_garcht",
+     "2024": "H8",
+     "2025": "H8",
+     "2026": "H8"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.5213468443533593,
+    "a0_qlike": 1.5351942113291017
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "G_egarch",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "E_har_rv_log"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "G_egarch",
+     "2022": "H8",
+     "2023": "H8",
+     "2024": "H8",
+     "2025": "H8",
+     "2026": "E_har_rv_log"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.4182060664950802,
+    "a0_qlike": 1.426746552366836
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "G_garch",
+     "2022": "R5",
+     "2023": "G_garch",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "G_garch",
+     "2022": "R5",
+     "2023": "G_garch",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.643880332303392,
+    "a0_qlike": 1.6651306613850525
+   }
+  },
+  "COPPER": {
+   "hl": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 0.33939340535785784,
+    "a0_qlike": 0.38787446946058096
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.4118984790083704,
+    "a0_qlike": 1.4637195752089158
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_yz_30",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "E_yz_30",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.460638567336117,
+    "a0_qlike": 1.5121344655137008
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "SHAR",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "SHAR",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.425229362710151,
+    "a0_qlike": 1.4811098983491926
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "R15",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "H8",
+     "2022": "R15",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.3671703879619863,
+    "a0_qlike": 1.4272028889874553
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.4872424393006347,
+    "a0_qlike": 1.539869445827933
+   }
+  },
+  "DE30": {
+   "hl": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 0.31920311026308423,
+    "a0_qlike": 0.39714141838399847
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "R5",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "R5",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.2600016034264667,
+    "a0_qlike": 1.3195217125388723
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "G_egarch",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "G_egarch",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.5124953273496484,
+    "a0_qlike": 1.604039686239843
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4324039069424466,
+    "a0_qlike": 1.5098832346318474
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "HARCJ",
+     "2022": "R5",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "HARCJ",
+     "2022": "R5",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R5"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.2961371688509897,
+    "a0_qlike": 1.346719266235744
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.58157580259027,
+    "a0_qlike": 1.6857143563193848
+   }
+  },
+  "EURAUD": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "E_yz_10",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "E_yz_10",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.2990583619517393,
+    "a0_qlike": 0.3469325773568574
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "E_yz_10",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "E_yz_10",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4793702776355142,
+    "a0_qlike": 1.5449822115555458
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "E_ewma_090",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "E_ewma_090",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.305653420818775,
+    "a0_qlike": 1.343826811538285
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4573543402988054,
+    "a0_qlike": 1.5172509296372199
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.495329461314964,
+    "a0_qlike": 1.5673905007988713
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_yz_20",
+     "2021": "B_har_garcht",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_yz_20",
+     "2021": "B_har_garcht",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4108312210369383,
+    "a0_qlike": 1.456926864503361
+   }
+  },
+  "EURCAD": {
+   "hl": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.2733297772729003,
+    "a0_qlike": 0.2994053825223923
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "E_har_rv_log",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "E_har_rv_log",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4148506149630677,
+    "a0_qlike": 1.4423073158591033
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.2932747642212614,
+    "a0_qlike": 1.3176135844795143
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "E_har_rv_log",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "E_har_rv_log",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.344545921368534,
+    "a0_qlike": 1.37222321034914
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "E_har_rv_log",
+     "2023": "E_har_rv_log",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "E_har_rv_log",
+     "2023": "E_har_rv_log",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3354341878697926,
+    "a0_qlike": 1.3594272614766985
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "A0",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "A0",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3562506382179567,
+    "a0_qlike": 1.3866642606223232
+   }
+  },
+  "EURCHF": {
+   "hl": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "R15",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "R15",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 0.3309654170098179,
+    "a0_qlike": 0.3905136394747259
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "B_har_garcht",
+     "2021": "G_garch",
+     "2022": "G_garch",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "B_har_garcht",
+     "2021": "G_garch",
+     "2022": "G_garch",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.4127437064313317,
+    "a0_qlike": 1.5037076058180325
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "B_har_garcht",
+     "2022": "B_har_garcht",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "H8",
+     "2022": "B_har_garcht",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.3340701032075817,
+    "a0_qlike": 1.3621532326256502
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "B_har_garcht",
+     "2022": "B_har_garcht",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "B_har_garcht",
+     "2022": "B_har_garcht",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "R5"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.3890443715343013,
+    "a0_qlike": 1.4161609334852885
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_yz_30",
+     "2021": "G_gjr",
+     "2022": "G_garch",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "E_yz_30",
+     "2021": "G_gjr",
+     "2022": "G_garch",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.372081977985179,
+    "a0_qlike": 1.463196648642856
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "A0",
+     "2024": "A0",
+     "2025": "A0",
+     "2026": "A0"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "A0",
+     "2024": "A0",
+     "2025": "A0",
+     "2026": "A0"
+    },
+    "final_site": "A0",
+    "best": "A0",
+    "final_qlike": 1.3853057842081993,
+    "a0_qlike": 1.3853057842081993
+   }
+  },
+  "EURGBP": {
+   "hl": {
+    "wf_site": {
+     "2020": "E_yz_10",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_yz_10",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.3070202480499787,
+    "a0_qlike": 0.35466200713848933
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "E_yz_10",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_yz_10",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4435567217123007,
+    "a0_qlike": 1.5001002052798809
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.2264092345830526,
+    "a0_qlike": 1.2672965513120018
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_yz_10",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_yz_10",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4678597168215357,
+    "a0_qlike": 1.5419558594244367
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.6586727295247983,
+    "a0_qlike": 1.728683250950826
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_yz_10",
+     "2021": "E_yz_10",
+     "2022": "SHAR",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "SHAR",
+     "2026": "E_har_rv_log"
+    },
+    "wf_all": {
+     "2020": "E_yz_10",
+     "2021": "E_yz_10",
+     "2022": "SHAR",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "SHAR",
+     "2026": "E_har_rv_log"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.291863360886913,
+    "a0_qlike": 1.3635298726980922
+   }
+  },
+  "EURJPY": {
+   "hl": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.3976404020233479,
+    "a0_qlike": 0.43366676299426193
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4258949213970504,
+    "a0_qlike": 1.4778083459127007
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "R15",
+     "2022": "R15",
+     "2023": "B_har_garcht",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "R15",
+     "2022": "R15",
+     "2023": "B_har_garcht",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "R5",
+    "best": "R5",
+    "final_qlike": 1.6471256623491888,
+    "a0_qlike": 1.669086783464079
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "R15",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "R15",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "final_site": "R5",
+    "best": "R5",
+    "final_qlike": 1.458404668528677,
+    "a0_qlike": 1.4961632855175082
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3818660753229193,
+    "a0_qlike": 1.4357256922327015
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "E_naive",
+     "2022": "E_naive",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "E_naive",
+     "2022": "E_naive",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.55058105036398,
+    "a0_qlike": 1.5802014921526397
+   }
+  },
+  "EURNZD": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "A0",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "A0",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.3191548654558859,
+    "a0_qlike": 0.32906850412193134
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "E_ewma_090",
+     "2022": "A0",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "E_ewma_090",
+     "2022": "A0",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.5153909213095367,
+    "a0_qlike": 1.5230576740441826
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3593577944274624,
+    "a0_qlike": 1.3852495348208764
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.397514447392677,
+    "a0_qlike": 1.4339011764333782
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.4250571110857262,
+    "a0_qlike": 1.453742124940686
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "E_har_rv_log",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "E_har_rv_log",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3685577346040847,
+    "a0_qlike": 1.4134320637501643
+   }
+  },
+  "EURUSD": {
+   "hl": {
+    "wf_site": {
+     "2020": "E_yz_30",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_yz_30",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.28934717230932533,
+    "a0_qlike": 0.3124048189575118
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4149232996415426,
+    "a0_qlike": 1.4343823964122313
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_yz_30",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_yz_30",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.315106882301506,
+    "a0_qlike": 1.3366366680364794
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_yz_30",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_yz_30",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.389432591710561,
+    "a0_qlike": 1.4141311510270016
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4810831895759806,
+    "a0_qlike": 1.5110258189998305
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_yz_30",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_yz_30",
+     "2021": "H8",
+     "2022": "SHAR",
+     "2023": "H8",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3113456583270833,
+    "a0_qlike": 1.3321851716713295
+   }
+  },
+  "GBPAUD": {
+   "hl": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 0.29163527507324943,
+    "a0_qlike": 0.3341788324559089
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.4111174776861075,
+    "a0_qlike": 1.4598502688603407
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.309970281623046,
+    "a0_qlike": 1.3520713631005217
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "B_har_garcht",
+     "2022": "B_har_garcht",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "B_har_garcht",
+     "2022": "B_har_garcht",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.3539695940541392,
+    "a0_qlike": 1.4027807780628165
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "B_har_garcht",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "B_har_garcht",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "B_har_garcht",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "B_har_garcht",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.3705445797680837,
+    "a0_qlike": 1.4319483898653813
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3307123412380177,
+    "a0_qlike": 1.3690121897361045
+   }
+  },
+  "GBPCAD": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.27907351860974405,
+    "a0_qlike": 0.3244667781195663
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "A0",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "wf_all": {
+     "2020": "A0",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.3343476938914562,
+    "a0_qlike": 1.3607104353682773
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3940366785607117,
+    "a0_qlike": 1.466569891320102
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_yz_10",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "E_yz_10",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.344553238134884,
+    "a0_qlike": 1.4101363408565075
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_yz_10",
+     "2021": "SHAR",
+     "2022": "E_har_rv_log",
+     "2023": "E_yz_10",
+     "2024": "E_yz_10",
+     "2025": "E_yz_30",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "E_yz_10",
+     "2021": "SHAR",
+     "2022": "E_har_rv_log",
+     "2023": "E_yz_10",
+     "2024": "E_yz_10",
+     "2025": "E_yz_30",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.3808467383928291,
+    "a0_qlike": 1.4118638024805352
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.3034008205213503,
+    "a0_qlike": 1.4082373856145112
+   }
+  },
+  "GBPCHF": {
+   "hl": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.299612050657985,
+    "a0_qlike": 0.36119583295237123
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "E_yz_10",
+     "2021": "E_yz_10",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_yz_10",
+     "2021": "E_yz_10",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3171474105093846,
+    "a0_qlike": 1.359045064544235
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4394407363955986,
+    "a0_qlike": 1.5163093285155524
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_yz_10",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_yz_10",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4897354526881867,
+    "a0_qlike": 1.5633471934878842
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_yz_10",
+     "2021": "E_yz_10",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "E_yz_10",
+     "2021": "E_yz_10",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.3803322793262556,
+    "a0_qlike": 1.437277147160018
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.6032326110790662,
+    "a0_qlike": 1.6869919645147877
+   }
+  },
+  "GBPJPY": {
+   "hl": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "R5",
+    "best": "R5",
+    "final_qlike": 0.39720545547679137,
+    "a0_qlike": 0.4561031183453117
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3828518111488672,
+    "a0_qlike": 1.4300788140580813
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "R5",
+    "best": "R5",
+    "final_qlike": 1.6834650534124056,
+    "a0_qlike": 1.7506316550731744
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.458947797626534,
+    "a0_qlike": 1.5180639813254044
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.3239076549054252,
+    "a0_qlike": 1.3665204609355825
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.620242330562228,
+    "a0_qlike": 1.7015714192860376
+   }
+  },
+  "GBPNZD": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.3068901586280252,
+    "a0_qlike": 0.32891853528587445
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.4287839444704022,
+    "a0_qlike": 1.4482866378306858
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "R15",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "R15",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3486018767571337,
+    "a0_qlike": 1.373560938830885
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.3864812414233492,
+    "a0_qlike": 1.4075642010995133
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "R15",
+     "2025": "B_har_garcht",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "R15",
+     "2025": "B_har_garcht",
+     "2026": "R15"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.3682512876391983,
+    "a0_qlike": 1.4019328181765685
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "E_har_rv_log",
+    "best": "E_har_rv_log",
+    "final_qlike": 1.3980644802621898,
+    "a0_qlike": 1.411752286782637
+   }
+  },
+  "GBPUSD": {
+   "hl": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.2879968526307428,
+    "a0_qlike": 0.3289409780458495
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3424493231257444,
+    "a0_qlike": 1.3698418590657482
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "HARCJ",
+     "2023": "R15",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "R15",
+     "2021": "R15",
+     "2022": "HARCJ",
+     "2023": "R15",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4011237486479775,
+    "a0_qlike": 1.4602268289284595
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4021462042689008,
+    "a0_qlike": 1.4561608516352849
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.306797346358205,
+    "a0_qlike": 1.3448751077278003
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "R15",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "R15",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.510966858823969,
+    "a0_qlike": 1.580698143510021
+   }
+  },
+  "GOLD": {
+   "hl": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "HARCJ",
+     "2022": "R5",
+     "2023": "R5",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "HARCJ",
+     "2022": "V3",
+     "2023": "V3",
+     "2024": "V3",
+     "2025": "V3",
+     "2026": "V3"
+    },
+    "final_site": "HARCJ",
+    "best": "V3",
+    "final_qlike": 0.35088408718434816,
+    "a0_qlike": 0.40345254067553893
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "SHAR",
+     "2022": "R5",
+     "2023": "R5",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "SHAR",
+     "2022": "R5",
+     "2023": "R5",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "B_har_iv",
+    "final_qlike": 1.3054614290748379,
+    "a0_qlike": 1.3502208781843057
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "B_har_iv",
+     "2021": "V3",
+     "2022": "V3",
+     "2023": "V3",
+     "2024": "V3",
+     "2025": "V4",
+     "2026": "V3"
+    },
+    "final_site": "HARCJ",
+    "best": "V3",
+    "final_qlike": 1.6460436259358069,
+    "a0_qlike": 1.7070541495436906
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "SHAR",
+     "2022": "R5",
+     "2023": "R5",
+     "2024": "R5",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "V3",
+     "2022": "V3",
+     "2023": "V3",
+     "2024": "V3",
+     "2025": "V3",
+     "2026": "V3"
+    },
+    "final_site": "HARCJ",
+    "best": "V3",
+    "final_qlike": 1.5079172757970094,
+    "a0_qlike": 1.557836294886447
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "SHAR",
+     "2022": "R5",
+     "2023": "R5",
+     "2024": "R5",
+     "2025": "SHAR",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "SHAR",
+     "2022": "R5",
+     "2023": "R5",
+     "2024": "R5",
+     "2025": "SHAR",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "B_har_iv",
+    "final_qlike": 1.3491990188620495,
+    "a0_qlike": 1.3749156721287061
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "G_egarch",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "V4",
+     "2021": "V3",
+     "2022": "V4",
+     "2023": "V4",
+     "2024": "V4",
+     "2025": "V4",
+     "2026": "V4"
+    },
+    "final_site": "HARCJ",
+    "best": "V4",
+    "final_qlike": 1.6880869406860834,
+    "a0_qlike": 1.7644351429758027
+   }
+  },
+  "NQ": {
+   "hl": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 0.3376334218103348,
+    "a0_qlike": 0.415583749088344
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "G_gjr",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "G_gjr",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.2144737716690852,
+    "a0_qlike": 1.2989782479880856
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "B_har_iv",
+     "2026": "B_har_iv"
+    },
+    "final_site": "HARCJ",
+    "best": "B_har_iv",
+    "final_qlike": 1.6018314812639762,
+    "a0_qlike": 1.6816825718015531
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.4177841759765388,
+    "a0_qlike": 1.5031343449924528
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "G_egarch",
+     "2021": "G_gjr",
+     "2022": "G_gjr",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "G_egarch",
+     "2021": "G_gjr",
+     "2022": "G_gjr",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.2767092844743675,
+    "a0_qlike": 1.351001331584704
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.5628329277312554,
+    "a0_qlike": 1.6711424664842134
+   }
+  },
+  "NZDCAD": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.2848745072602824,
+    "a0_qlike": 0.2930650786196209
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "E_yz_20",
+     "2024": "SHAR",
+     "2025": "E_har_rv_log",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "E_yz_20",
+     "2024": "SHAR",
+     "2025": "E_har_rv_log",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3979890841845048,
+    "a0_qlike": 1.4122341791398423
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_naive",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3992823140550363,
+    "a0_qlike": 1.4037453121568615
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "B_har_garcht",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "B_har_garcht",
+     "2026": "E_har_rv_log"
+    },
+    "wf_all": {
+     "2020": "B_har_garcht",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "B_har_garcht",
+     "2026": "E_har_rv_log"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3062001599921282,
+    "a0_qlike": 1.3256064512577255
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_ewma_094",
+     "2021": "HARCJ",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "E_har_rv_log"
+    },
+    "wf_all": {
+     "2020": "E_ewma_094",
+     "2021": "HARCJ",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "E_har_rv_log"
+    },
+    "final_site": "E_har_rv_log",
+    "best": "E_har_rv_log",
+    "final_qlike": 1.267625179590279,
+    "a0_qlike": 1.290493604673423
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "E_har_rv_log",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "B_har_garcht",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_naive",
+     "2021": "E_har_rv_log",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "B_har_garcht",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3399782937682778,
+    "a0_qlike": 1.3631036407612536
+   }
+  },
+  "NZDJPY": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.3521033738879074,
+    "a0_qlike": 0.4031611300433848
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4047961267956335,
+    "a0_qlike": 1.449760224283183
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.6029151645012638,
+    "a0_qlike": 1.6662615754154493
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.4632710813886207,
+    "a0_qlike": 1.5232144474779576
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4263453053470818,
+    "a0_qlike": 1.4886005395442463
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "HARCJ",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "HARCJ",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.4971598921419103,
+    "a0_qlike": 1.557901515377018
+   }
+  },
+  "NZDUSD": {
+   "hl": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.30499401995363884,
+    "a0_qlike": 0.30864079686533263
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.3455857078640874,
+    "a0_qlike": 1.3629039891306385
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "A0",
+     "2024": "SHAR",
+     "2025": "A0",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "A0",
+     "2024": "SHAR",
+     "2025": "A0",
+     "2026": "HARCJ"
+    },
+    "final_site": "A0",
+    "best": "A0",
+    "final_qlike": 1.41223335232939,
+    "a0_qlike": 1.41223335232939
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "E_har_rv_log",
+     "2026": "E_har_rv_log"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "E_har_rv_log",
+     "2026": "E_har_rv_log"
+    },
+    "final_site": "E_har_rv_log",
+    "best": "E_har_rv_log",
+    "final_qlike": 1.375933003620222,
+    "a0_qlike": 1.3871001931425826
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_yz_30",
+     "2021": "B_har_garcht",
+     "2022": "HARCJ",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "E_har_rv_log"
+    },
+    "wf_all": {
+     "2020": "E_yz_30",
+     "2021": "B_har_garcht",
+     "2022": "HARCJ",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "E_har_rv_log"
+    },
+    "final_site": "E_har_rv_log",
+    "best": "E_har_rv_log",
+    "final_qlike": 1.3516289597840292,
+    "a0_qlike": 1.3685131108025081
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3920660017282644,
+    "a0_qlike": 1.4043289584705247
+   }
+  },
+  "PALLADIUM": {
+   "hl": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "final_site": "R5",
+    "best": "R5",
+    "final_qlike": 0.3410895511654548,
+    "a0_qlike": 0.36469267494511026
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "R5",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "E_naive",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "R5",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "final_site": "R5",
+    "best": "R5",
+    "final_qlike": 1.4451102416171002,
+    "a0_qlike": 1.467071649759148
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "A0",
+     "2022": "E_har_rv_log",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "A0",
+     "2022": "H8",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "final_site": "R5",
+    "best": "R5",
+    "final_qlike": 1.5066077675765381,
+    "a0_qlike": 1.5258316214784795
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "final_site": "R5",
+    "best": "R5",
+    "final_qlike": 1.4595166742697776,
+    "a0_qlike": 1.487885991567132
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "R5",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_naive",
+     "2021": "R5",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.486904112582979,
+    "a0_qlike": 1.5053778035113936
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "E_har_rv_log",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "E_har_rv_log",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "final_site": "R5",
+    "best": "R5",
+    "final_qlike": 1.4419240640171422,
+    "a0_qlike": 1.485260426933432
+   }
+  },
+  "PLATINUM": {
+   "hl": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.2740224028083568,
+    "a0_qlike": 0.2959755435708422
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "B_har_garcht",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "B_har_garcht"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "B_har_garcht",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "B_har_garcht"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.2906951858064324,
+    "a0_qlike": 1.327260734691327
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "E_ewma_090",
+     "2022": "A0",
+     "2023": "A0",
+     "2024": "A0",
+     "2025": "A0",
+     "2026": "A0"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "E_ewma_090",
+     "2022": "A0",
+     "2023": "A0",
+     "2024": "A0",
+     "2025": "A0",
+     "2026": "A0"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4284721207195563,
+    "a0_qlike": 1.4370402244946399
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "G_garch",
+     "2022": "G_egarch",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "G_garch",
+     "2022": "G_egarch",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3851302727925083,
+    "a0_qlike": 1.4159093267279335
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "G_egarch",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "E_har_rv_log"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "G_egarch",
+     "2022": "B_har_garcht",
+     "2023": "E_har_rv_log",
+     "2024": "E_har_rv_log",
+     "2025": "E_har_rv_log",
+     "2026": "E_har_rv_log"
+    },
+    "final_site": "B_har_garcht",
+    "best": "B_har_garcht",
+    "final_qlike": 1.315376429576907,
+    "a0_qlike": 1.3658553954877852
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_yz_30",
+     "2021": "E_ewma_090",
+     "2022": "A0",
+     "2023": "A0",
+     "2024": "A0",
+     "2025": "R15",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_yz_30",
+     "2021": "E_ewma_090",
+     "2022": "A0",
+     "2023": "A0",
+     "2024": "A0",
+     "2025": "R15",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4530687420305184,
+    "a0_qlike": 1.4729837340046736
+   }
+  },
+  "SILVER": {
+   "hl": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "V4",
+     "2021": "V4",
+     "2022": "V4",
+     "2023": "V3",
+     "2024": "V3",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.361189601003018,
+    "a0_qlike": 0.41038848353921775
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "R15",
+     "2021": "R5",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "V4",
+     "2021": "V4",
+     "2022": "V4",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4300021584012415,
+    "a0_qlike": 1.4741724760147432
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "G_gjr",
+     "2021": "E_ewma_090",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "V3",
+     "2021": "V3",
+     "2022": "V3",
+     "2023": "V3",
+     "2024": "V3",
+     "2025": "V3",
+     "2026": "V3"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.5769082912372225,
+    "a0_qlike": 1.6256292793343277
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_yz_20",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "HARCJ",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "V4",
+     "2021": "V3",
+     "2022": "V3",
+     "2023": "HARCJ",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.5524374229140214,
+    "a0_qlike": 1.6018571397357428
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_yz_20",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "R5",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "E_yz_20",
+     "2021": "V4",
+     "2022": "V4",
+     "2023": "R5",
+     "2024": "R5",
+     "2025": "R5",
+     "2026": "R5"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.5102185249893472,
+    "a0_qlike": 1.5561750651139354
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "G_gjr",
+     "2021": "A0",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "V4",
+     "2021": "A0",
+     "2022": "HARCJ",
+     "2023": "V3",
+     "2024": "V3",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.6042730176313935,
+    "a0_qlike": 1.655631267382489
+   }
+  },
+  "SPX500": {
+   "hl": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 0.360659959560853,
+    "a0_qlike": 0.47634856777260143
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "HARCJ",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "HARCJ",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.2168667293735558,
+    "a0_qlike": 1.3382410885858782
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "B_har_iv",
+     "2026": "B_har_iv"
+    },
+    "final_site": "SHAR",
+    "best": "B_har_iv",
+    "final_qlike": 1.6291979569135715,
+    "a0_qlike": 1.7404111322101168
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.3974070241135226,
+    "a0_qlike": 1.521802983989151
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.158922903035877,
+    "a0_qlike": 1.2636833299257526
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "B_har_iv",
+    "final_qlike": 1.6570107093729773,
+    "a0_qlike": 1.8026687202749767
+   }
+  },
+  "UK100": {
+   "hl": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.28901653657740495,
+    "a0_qlike": 0.35489464890958733
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.181544176701864,
+    "a0_qlike": 1.2159235097773453
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "G_egarch",
+     "2022": "G_egarch",
+     "2023": "G_egarch",
+     "2024": "HARCJ",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "G_egarch",
+     "2022": "G_egarch",
+     "2023": "G_egarch",
+     "2024": "HARCJ",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4441858079552956,
+    "a0_qlike": 1.5357262876793463
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "B_har_garcht",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "B_har_garcht",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4627756789574902,
+    "a0_qlike": 1.5306405070645126
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "B_har_garcht",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "H8",
+     "2023": "HARCJ",
+     "2024": "H8",
+     "2025": "H8",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3291968585217389,
+    "a0_qlike": 1.3642429441456083
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "G_egarch",
+     "2024": "G_gjr",
+     "2025": "G_egarch",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "G_egarch",
+     "2024": "G_gjr",
+     "2025": "G_egarch",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.6080061372897196,
+    "a0_qlike": 1.7049611916778507
+   }
+  },
+  "US2000": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "B_har_iv",
+     "2026": "B_har_iv"
+    },
+    "final_site": "SHAR",
+    "best": "B_har_iv",
+    "final_qlike": 0.30831010748704485,
+    "a0_qlike": 0.3738724438657117
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3329793631123654,
+    "a0_qlike": 1.3948550762270369
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "V4",
+     "2023": "V4",
+     "2024": "V4",
+     "2025": "V4",
+     "2026": "V4"
+    },
+    "final_site": "SHAR",
+    "best": "V4",
+    "final_qlike": 1.4362663993215117,
+    "a0_qlike": 1.5024677874816446
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "B_har_iv",
+     "2026": "B_har_iv"
+    },
+    "final_site": "HARCJ",
+    "best": "B_har_iv",
+    "final_qlike": 1.3426815383811432,
+    "a0_qlike": 1.4103316616843833
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "R5",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "SHAR",
+     "2024": "R5",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "R5",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "SHAR",
+     "2024": "R5",
+     "2025": "B_har_iv",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "B_har_iv",
+    "final_qlike": 1.3133412009998464,
+    "a0_qlike": 1.3714259638619548
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "V4",
+    "final_qlike": 1.375296820107465,
+    "a0_qlike": 1.4582743399666134
+   }
+  },
+  "US30": {
+   "hl": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 0.33490996005240037,
+    "a0_qlike": 0.4192429927137674
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.2337582366567492,
+    "a0_qlike": 1.329737492306367
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "HARCJ",
+     "2022": "B_har_iv",
+     "2023": "HARCJ",
+     "2024": "B_har_iv",
+     "2025": "B_har_iv",
+     "2026": "B_har_iv"
+    },
+    "final_site": "SHAR",
+    "best": "B_har_iv",
+    "final_qlike": 1.5571681375459725,
+    "a0_qlike": 1.6286549131097536
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.5137284352893838,
+    "a0_qlike": 1.605936140203839
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "R15",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "R15",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.3498926736140968,
+    "a0_qlike": 1.4450929179552887
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 1.6944810217747615,
+    "a0_qlike": 1.788470576319714
+   }
+  },
+  "USDCAD": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.2950631179249084,
+    "a0_qlike": 0.31897667059649776
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "A0",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "E_har_rv_log",
+     "2021": "A0",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3453002744312792,
+    "a0_qlike": 1.3668590081252745
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.3567316922049382,
+    "a0_qlike": 1.3861418548495847
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4150687873766896,
+    "a0_qlike": 1.4398504496883666
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_yz_30",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "G_egarch",
+     "2024": "G_gjr",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "wf_all": {
+     "2020": "E_yz_30",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "G_egarch",
+     "2024": "G_gjr",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "final_site": "R5",
+    "best": "R5",
+    "final_qlike": 1.411910190784143,
+    "a0_qlike": 1.4269503269522303
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.4212360664463828,
+    "a0_qlike": 1.459530546440074
+   }
+  },
+  "USDCHF": {
+   "hl": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "HARCJ"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 0.31917074003985435,
+    "a0_qlike": 0.3423405024883772
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "HARCJ",
+     "2024": "R15",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "HARCJ",
+     "2024": "R15",
+     "2025": "HARCJ",
+     "2026": "R15"
+    },
+    "final_site": "HARCJ",
+    "best": "HARCJ",
+    "final_qlike": 1.33058534862446,
+    "a0_qlike": 1.3613701050012585
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.4716700293735954,
+    "a0_qlike": 1.489542065101707
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.4307627303058938,
+    "a0_qlike": 1.4553868272471484
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "A0",
+     "2022": "A0",
+     "2023": "R5",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "A0",
+     "2022": "H8",
+     "2023": "R5",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.3278294710134018,
+    "a0_qlike": 1.3591491155976307
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "SHAR",
+     "2022": "R5",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "E_naive",
+     "2021": "SHAR",
+     "2022": "R5",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.5277048468795944,
+    "a0_qlike": 1.5460969509962497
+   }
+  },
+  "USDJPY": {
+   "hl": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "SHAR",
+    "best": "SHAR",
+    "final_qlike": 0.5090900345314557,
+    "a0_qlike": 0.5454819183771055
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.5176901988454623,
+    "a0_qlike": 1.5778832168790402
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "SHAR",
+     "2026": "R5"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "SHAR",
+     "2022": "SHAR",
+     "2023": "B_har_garcht",
+     "2024": "B_har_garcht",
+     "2025": "SHAR",
+     "2026": "R5"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.8014407677449853,
+    "a0_qlike": 1.8236136557582874
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "SHAR",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.6004093281872964,
+    "a0_qlike": 1.6564941357273433
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "E_har_rv_log",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "R5",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "H8",
+     "2021": "HARCJ",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "R5",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "final_site": "R15",
+    "best": "R15",
+    "final_qlike": 1.5106569716678533,
+    "a0_qlike": 1.5931709298289152
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "E_yz_20",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "wf_all": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "E_yz_20",
+     "2024": "B_har_garcht",
+     "2025": "B_har_garcht",
+     "2026": "B_har_garcht"
+    },
+    "final_site": "R15",
+    "best": "H8",
+    "final_qlike": 1.7173127854992403,
+    "a0_qlike": 1.7435102016041963
+   }
+  },
+  "WTI": {
+   "hl": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "HARCJ",
+     "2022": "SHAR",
+     "2023": "SHAR",
+     "2024": "SHAR",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "V4",
+     "2021": "V4",
+     "2022": "V4",
+     "2023": "V3",
+     "2024": "V4",
+     "2025": "V3",
+     "2026": "V3"
+    },
+    "final_site": "HARCJ",
+    "best": "V3",
+    "final_qlike": 0.3144624827892628,
+    "a0_qlike": 0.3592453638681233
+   },
+   "oh": {
+    "wf_site": {
+     "2020": "HARCJ",
+     "2021": "R5",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "HARCJ",
+     "2021": "V3",
+     "2022": "HARCJ",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "SHAR",
+    "best": "V3",
+    "final_qlike": 1.2945971998074053,
+    "a0_qlike": 1.3534848557722372
+   },
+   "ol": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "SHAR",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "V4",
+     "2021": "V4",
+     "2022": "V4",
+     "2023": "V4",
+     "2024": "V4",
+     "2025": "V4",
+     "2026": "V3"
+    },
+    "final_site": "HARCJ",
+    "best": "V3",
+    "final_qlike": 1.4557034400564588,
+    "a0_qlike": 1.483366187385006
+   },
+   "oc": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "HARCJ",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "SHAR",
+     "2026": "SHAR"
+    },
+    "wf_all": {
+     "2020": "V4",
+     "2021": "V4",
+     "2022": "V4",
+     "2023": "V3",
+     "2024": "V4",
+     "2025": "V3",
+     "2026": "V3"
+    },
+    "final_site": "R15",
+    "best": "V3",
+    "final_qlike": 1.3526024992545504,
+    "a0_qlike": 1.3899032422297928
+   },
+   "cup": {
+    "wf_site": {
+     "2020": "G_egarch",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "wf_all": {
+     "2020": "G_egarch",
+     "2021": "R5",
+     "2022": "R5",
+     "2023": "HARCJ",
+     "2024": "HARCJ",
+     "2025": "HARCJ",
+     "2026": "HARCJ"
+    },
+    "final_site": "SHAR",
+    "best": "V3",
+    "final_qlike": 1.2307876999149192,
+    "a0_qlike": 1.2773503306322673
+   },
+   "cdn": {
+    "wf_site": {
+     "2020": "E_naive",
+     "2021": "R15",
+     "2022": "R15",
+     "2023": "R15",
+     "2024": "R15",
+     "2025": "R15",
+     "2026": "R15"
+    },
+    "wf_all": {
+     "2020": "V4",
+     "2021": "V4",
+     "2022": "V4",
+     "2023": "V4",
+     "2024": "V4",
+     "2025": "V4",
+     "2026": "V4"
+    },
+    "final_site": "R15",
+    "best": "V4",
+    "final_qlike": 1.4629376667955254,
+    "a0_qlike": 1.5015891083984658
+   }
+  }
+ }
+}

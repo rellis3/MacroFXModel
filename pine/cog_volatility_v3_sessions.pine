@@ -475,6 +475,8 @@ if barstate.isfirst
                      str.contains(rowUp, "EURNZD") or str.contains(rowUp, "GBPAUD") or
                      str.contains(rowUp, "GBPCAD") or str.contains(rowUp, "AUDCAD") or
                      str.contains(rowUp, "NZDCAD") or str.contains(rowUp, "NZDJPY") or
+                 str.contains(rowUp, "AUDCHF") or str.contains(rowUp, "AUDNZD") or str.contains(rowUp, "CADCHF") or
+                 str.contains(rowUp, "CHFJPY") or str.contains(rowUp, "GBPNZD") or
                      str.contains(rowUp, "BTCUSD") or
                      str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
                      str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
@@ -537,6 +539,8 @@ if barstate.isfirst
                  str.contains(rowUp, "EURNZD") or str.contains(rowUp, "GBPAUD") or
                  str.contains(rowUp, "GBPCAD") or str.contains(rowUp, "AUDCAD") or
                  str.contains(rowUp, "NZDCAD") or str.contains(rowUp, "NZDJPY") or
+                 str.contains(rowUp, "AUDCHF") or str.contains(rowUp, "AUDNZD") or str.contains(rowUp, "CADCHF") or
+                 str.contains(rowUp, "CHFJPY") or str.contains(rowUp, "GBPNZD") or
                  str.contains(rowUp, "BTCUSD") or
                  str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
                  str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
