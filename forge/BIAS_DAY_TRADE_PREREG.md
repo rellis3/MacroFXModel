@@ -121,3 +121,12 @@ audit, which reads prices, not sides). Owner: "Is that v1 vs v2 vs the 4 hour tr
   agreeing / disagreeing with h4-trend, date-block bootstrap. Line part: the same WITH split by h4-trend (descriptive).
 - **V2 is not added:** its new inputs (futures policy path, data momentum, stance) have no point-in-time history
   (`plans/BIAS_ENGINE_V2_SPEC.md` §7); a proxy replay would mostly be V1. V2 stays forward-only.
+
+### A2 — 2026-11-24 — PRE-RESULTS
+
+Found in the replay's coverage check, before the scorer ran: with the 00:00 issue the risk driver was present on 2,657 of
+4,340 days (07:00 replay: 4,340). Cause: the replay stamps VIX / VIX3M at 23:59 UTC on their date, and 00:00 London in
+BST is 23:00 UTC, so the engine's own rule ("published after the issue time") rejected the previous day's close. VIX
+closes at 16:15 New York, before 00:00 London all year. Fix: with `BEB_ISSUE_HHMM` set, VIX / VIX3M are stamped at the
+CBOE close (16:15 New York) of their date (`build_inputs.py` `vix_stamp`); the 07:00 replay is unchanged. Inputs and
+engine rebuilt; coverage re-checked against the 07:00 replay before scoring.
