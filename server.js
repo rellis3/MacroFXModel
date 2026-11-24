@@ -2065,6 +2065,7 @@ const TG_SENDERS = {
   deskWeekly:        'Desk weekly strategist: the Sunday week-ahead note',
   chiefOfStaff:      'Desk chief of staff: the morning note after the book, the evening note after the score',
   allocation:        'Desk allocation committee: the weekly per-bot keep / cut / pause / raise note (advice; the owner decides)',
+  liveLayer:         'Desk Terminal live layer: a p75/p90 line reached, a new strongest or weakest currency, the risk tape turning, a macro-tilt turn at an hourly re-run (each once a day, one note a minute at most; what the day is doing, not a call)',
   tradeWatch:        'Desk trade watcher: a card reached its entry zone, first target or invalidation (context, not an order)',
   surpriseReader:    'Live surprise reader: a high-impact print, its surprise against consensus and the release playbook, within a minute (history, not a forecast)',
   forecastDrift:     'Forecast auditor: a forecast line set drifted out of its calibration band (only after opting in on the Forecast auditor card; a prompt to look, nothing is changed)',
@@ -8381,7 +8382,17 @@ app.get('/api/trade-watch', async (_req, res) => {
 // ── The live layer (js/marketLive.js; owner 2026-11-23: the terminal should move with the day) ──
 // Every minute while the FX week is open: every market on the latest desk book against OANDA mids, one batch pricing call. The day so far is
 // seeded once from M1 bars since 00:00 London (again when a new book lands, and every 15 minutes while a market is still missing). No model
-// call, nothing stored: a restart re-seeds from the bars. GET /api/market-live serves the view and the currency strength.
+// call. GET /api/market-live serves the view, the currency strength, the risk tape, the release reactions and retail positioning since the
+// morning. Round 2 (owner 2026-11-24, "do it all"):
+//   - the risk tape needs the equity indices and gold even when the book has no card for them: they are priced too, their unit is half the
+//     median daily range of the last 20 days (an approximation of the p50 distance, fetched once a day);
+//   - release reactions: each high-impact print the surprise reader logged today, the currency's move 15 and 60 minutes after it;
+//   - retail positioning since 07:00 London from the position-book store (every 20 minutes, read only);
+//   - Telegram nudges (tgMaster.liveLayer): a p75/p90 line reached, a new strongest or weakest currency, a risk-tape turn, a macro-tilt turn
+//     at an hourly re-run; each once a day, sent together, never more than one message a tick;
+//   - the day's record: at 21:05 London the whole live state is written once to market_live_day_<date>, so a day can be looked back on.
+const _ML_DAY_KEY = date => `market_live_day_${date}`;
+const _ML_EXTRA = ['NQ', 'SPX500', 'DE30', 'US30', 'GOLD'];
 let _ml = { date: null, runKey: null, cards: {}, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: null };
 let _mlBusy = false;
 async function _mlBook(date) {
@@ -8390,6 +8401,35 @@ async function _mlBook(date) {
     if (run?.head?.ok) return { run, runDate: d };
   }
   return null;
+}
+async function _mlExtraUnits(cards) {   // half the median daily range of 20 days, for the markets the book has no lines for
+  await Promise.all(Object.entries(cards).filter(([, c]) => c.extra && !(c.unit > 0)).map(async ([n, c]) => {
+    try { const r = (await _btFetchD1(_dsOanda[n], 21)).map(b => (b.high - b.low) / 2).filter(v => v > 0).sort((x, y) => x - y); if (r.length >= 5) c.unit = r[Math.floor(r.length / 2)]; }
+    catch (e) { console.warn(`[market-live] unit ${n}: ${e.message}`); }
+  }));
+}
+async function _mlReactions(ML, date, now) {
+  if (!_lsr0.loaded && !_lsr0.log.length) { const raw = await kv.get(_LSR_KV).catch(() => null); if (raw) { try { _lsr0.log = JSON.parse(raw).log ?? []; } catch { /* the reader owns it */ } } }
+  const from = _dsLondonMs(date, 0), out = [];
+  for (const r of _lsr0.log ?? []) {
+    const ms = Number(r.ms ?? Date.parse(r.at)); if (!(ms >= from && ms <= now) || !ML.CCYS.includes(r.country)) continue;
+    out.push({ ccy: r.country, event: r.event, ms, actual: r.actual ?? null, estimate: r.estimate ?? null, z: r.surprise?.z ?? null, direction: r.surprise?.direction ?? null,
+      m15: ML.reaction(_ml.state, _ml.cards, r.country, ms, 15, now), m60: ML.reaction(_ml.state, _ml.cards, r.country, ms, 60, now) });
+  }
+  return out.sort((x, y) => y.ms - x.ms).slice(0, 40);
+}
+async function _mlRetail(ML, date) {
+  const store = _bookParse(await kv.getStrict(BOOK_HISTORY_KV)); if (!store) return null;
+  const out = {}, open = _dsLondonMs(date, 7);
+  for (const [k, x] of Object.entries(store.byInstrument ?? {})) { const n = k.replace('_', '').replace('XAUUSD', 'GOLD').replace('XAGUSD', 'SILVER'), r = ML.retailSince(x.fine, open); if (r) out[n] = r; }
+  return out;
+}
+async function _mlTiltTurns(date) {   // the macro tilt's hourly re-run: markets whose v1r direction changed at the latest slot
+  const raw = await kv.get(_BEVI_KEY(date)).catch(() => null); if (!raw) return [];
+  const slots = Object.entries(JSON.parse(raw).slots ?? {}).sort(([a], [b]) => (a < b ? -1 : 1)); if (slots.length < 2) return [];
+  const [[sl, cur], [, prev]] = [slots.at(-1), slots.at(-2)], out = [];
+  for (const [m, c] of Object.entries(cur.v1r ?? {})) { const p = prev.v1r?.[m]; if (p && p[0] !== c[0] && _ml.cards[m] && !_ml.cards[m].extra) out.push({ key: `tilt:${m}:${sl}`, text: `Macro tilt on ${m} turned ${String(c[0]).toLowerCase()} at the ${sl} re-run (score ${c[1] > 0 ? '+' : ''}${c[1]}; was ${String(p[0]).toLowerCase()})` }); }
+  return out;
 }
 async function _mlTick() {
   const now = Date.now();
@@ -8402,7 +8442,10 @@ async function _mlTick() {
     if (_ml.date !== date || _ml.runKey !== runKey) {
       const { unitOf } = await import('./js/deskScore.js'), cards = {};
       for (const [n, c] of Object.entries(b.run.head.book.instruments ?? {})) cards[n] = b.runDate === date ? { levels: c.levels ?? null } : { unit: unitOf(c.levels) };   // an earlier day's lines do not apply today
-      _ml = { date, runKey, cards, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: b.runDate };
+      for (const n of _ML_EXTRA) if (!cards[n] && _dsOanda[n]) cards[n] = { unit: null, extra: true };
+      const keep = _ml.date === date ? { tapeHist: _ml.tapeHist, fired: _ml.fired, saved: _ml.saved } : {};
+      _ml = { date, runKey, cards, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: b.runDate, tapeHist: [], fired: new Set(), saved: false, retail: null, retailAt: 0, reactions: [], tiltAt: 0, ...keep };
+      await _mlExtraUnits(_ml.cards);
     }
     const names = Object.keys(_ml.cards).filter(n => _dsOanda[n]);
     if (!_ml.state || (names.some(n => !_ml.state.markets[n]) && now - _ml.seededAt > 15 * 60_000)) {
@@ -8415,18 +8458,40 @@ async function _mlTick() {
       for (const n of names) { const p = q.pairs[_dsOanda[n]]; if (p?.tradeable !== false && Number.isFinite(p?.bid) && Number.isFinite(p?.ask)) prices[n] = (p.bid + p.ask) / 2; }
       ML.step(_ml.state, prices, now);
     }
-    _ml.view = ML.view(_ml.state, _ml.cards); _ml.ccy = ML.ccyStrength(_ml.view); _ml.at = new Date(now).toISOString();
+    const prev = _ml.at ? { markets: _ml.view, ccy: _ml.ccy, tape: _ml.tape } : null;
+    _ml.view = ML.view(_ml.state, _ml.cards); _ml.ccy = ML.ccyStrength(Object.fromEntries(Object.entries(_ml.view).filter(([n]) => !_ml.cards[n]?.extra)));
+    _ml.tape = ML.riskTape(_ml.view, _ml.ccy); ML.tapeHistory(_ml.tapeHist, _ml.tape, now);
+    _ml.at = new Date(now).toISOString();
+    try { _ml.reactions = await _mlReactions(ML, date, now); } catch (e) { console.warn('[market-live] reactions', e.message); }
+    if (now - _ml.retailAt > 20 * 60_000) { _ml.retailAt = now; try { _ml.retail = await _mlRetail(ML, date); } catch (e) { console.warn('[market-live] retail', e.message); } }
+    // nudges: one message a tick at most, each key once a day
+    const msgs = ML.nudges(prev, { markets: Object.fromEntries(Object.entries(_ml.view).filter(([n]) => !_ml.cards[n]?.extra)), ccy: _ml.ccy, tape: _ml.tape }, _ml.fired);
+    if (now - _ml.tiltAt > 10 * 60_000) { _ml.tiltAt = now; for (const t of await _mlTiltTurns(date).catch(() => [])) if (!_ml.fired.has(t.key)) { _ml.fired.add(t.key); msgs.push(t); } }
+    if (msgs.length && prev && tgOn('liveLayer') && state.tg?.token && state.tg?.chatId) {
+      await sendTelegram(state.tg.token, state.tg.chatId, `📡 <b>Live layer</b> · ${new Date(now).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} London\n${msgs.slice(0, 8).map(m => `• ${m.text.replace(/[<>&]/g, '')}`).join('\n')}${msgs.length > 8 ? `\n• and ${msgs.length - 8} more` : ''}\n<i>What the day is doing, not a call.</i>`).catch(e => console.warn('[market-live] telegram', e.message));
+    }
+    // the day's record, once, after the New York close
+    if (!_ml.saved && b.runDate === date && now >= _dsLondonMs(date, 21, 5)) {
+      _ml.saved = true;
+      await kv.put(_ML_DAY_KEY(date), JSON.stringify(_mlPayload()), { expirationTtl: 400 * 86400 }).catch(e => { _ml.saved = false; console.warn('[market-live] day record', e.message); });
+    }
   } finally { _mlBusy = false; }
 }
+const _mlPayload = () => ({ ok: !!_ml.at, date: _ml.date, runDate: _ml.runDate, at: _ml.at, open: _fxWeekOpen(Date.now()), markets: _ml.view, ccy: _ml.ccy,
+  tape: _ml.tape ? { ..._ml.tape, since: _ml.tapeHist?.at(-1)?.at ? new Date(_ml.tapeHist.at(-1).at).toISOString() : null, history: (_ml.tapeHist ?? []).map(h => ({ at: new Date(h.at).toISOString(), label: h.label })) } : null,
+  reactions: _ml.reactions ?? [], retail: _ml.retail ?? null, extra: Object.keys(_ml.cards ?? {}).filter(n => _ml.cards[n]?.extra),
+  note: 'Where each market is now against the open, in u (the day\'s p50 distance; for the equity indices and gold off the book, half the median daily range). A description, not a forecast or a call.' });
 svcInterval('marketLive', () => _mlTick().catch(e => console.warn('[market-live]', e.message)), 60_000);
-// GET /api/market-live: every market on the book now (move since the open in u and %, the day's range, lines touched, a 15-minute path) and
-// the currency strength since the open. Market data, no trade levels: the desk login reads it too.
-app.get('/api/market-live', async (_req, res) => {
+// GET /api/market-live: every market on the book now (move since the open in u and %, the day's range, sessions, day type, lines touched,
+// a 15-minute path), the currency strength, the risk tape, release reactions and retail positioning since the morning. ?date=YYYY-MM-DD: a
+// stored day (written at 21:05 London). Market data, no trade levels: the desk login reads it too.
+app.get('/api/market-live', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
+    const d = String(req.query.date ?? '');
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d !== _ml.date) { const raw = await kv.get(_ML_DAY_KEY(d)).catch(() => null); return res.json(raw ? { ...JSON.parse(raw), stored: true } : { ok: false, date: d, error: 'no stored record for that day (written at 21:05 London on days the live layer ran)' }); }
     if (!_ml.at) await _mlTick().catch(() => {});
-    res.json({ ok: !!_ml.at, date: _ml.date, runDate: _ml.runDate, at: _ml.at, open: _fxWeekOpen(Date.now()), markets: _ml.view, ccy: _ml.ccy,
-      note: 'Where each market is now against the open, in u (the day\'s p50 distance). A description, not a forecast or a call.', ...(_ml.at ? {} : { error: 'the live layer has not run yet (the FX week is shut, or no desk book)' }) });
+    res.json({ ..._mlPayload(), ...(_ml.at ? {} : { error: 'the live layer has not run yet (the FX week is shut, or no desk book)' }) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/policy-rates: each central bank's policy rate from its own published series (js/policyRates.js), with its as-of
