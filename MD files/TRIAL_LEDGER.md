@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-23.
+Generated 2026-11-24.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **595** |
+| claims tested (validated + null + underpowered) | **602** |
 | validated | 198 |
-| null | 227 |
-| underpowered | 170 |
+| null | 232 |
+| underpowered | 172 |
 | context (base rates, descriptions: not counted as tests) | 85 |
-| pre-registrations with no banked verdict (below) | 86 |
+| pre-registrations with no banked verdict (below) | 90 |
 
-**What the count says (Lesson 02 §05).** If none of the 595 claims were real, tests at the usual 5% size would still pass
-about **29.8** of them by luck. 198 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 602 claims were real, tests at the usual 5% size would still pass
+about **30.1** of them by luck. 198 passed, so most passes are unlikely to be luck alone, but
 **roughly 30 of the 198 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -707,6 +707,13 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-23 | oi-profile-lines-s2 | positioning | null | forge/OI_PROFILE_LINES_PREREG.md |
 | 2026-11-23 | oi-profile-lines-s3 | positioning | null | forge/OI_PROFILE_LINES_PREREG.md |
 | 2026-11-23 | oi-profile-lines-s4 | positioning | underpowered | forge/OI_PROFILE_LINES_PREREG.md |
+| 2026-11-24 | asia-day-bias-all | price | null | forge/ASIA_DAY_BIAS_PREREG.md |
+| 2026-11-24 | asia-day-bias-crosses | price | null | forge/ASIA_DAY_BIAS_PREREG.md |
+| 2026-11-24 | asia-day-bias-gold | price | underpowered | forge/ASIA_DAY_BIAS_PREREG.md |
+| 2026-11-24 | asia-day-bias-indices | price | underpowered | forge/ASIA_DAY_BIAS_PREREG.md |
+| 2026-11-24 | asia-day-bias-jpy | price | null | forge/ASIA_DAY_BIAS_PREREG.md |
+| 2026-11-24 | asia-day-bias-oneway | price | null | forge/ASIA_DAY_BIAS_PREREG.md |
+| 2026-11-24 | asia-day-bias-usd | price | null | forge/ASIA_DAY_BIAS_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -798,3 +805,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
+- `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
+- `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
+- `oi_research_book/OI_TOUCH_ORDER_PREREG.md`: oi-touch-order — Does the reaction at an OI level depend on how many times it has already been tested today, b
+- `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot
