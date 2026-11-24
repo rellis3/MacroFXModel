@@ -58,3 +58,41 @@ test('speedsHtml: live, hourly, set times and daily, each with its time', () => 
   assert.match(h, /report of 18 Nov/);
   assert.doesNotMatch(speedsHtml(null, null, null), /HOURLY/);
 });
+
+import { shapeHtml, ccysOf, againstCall, eventHtml, retailHtml, tapeChip, againstHtml, favsHtml } from './liveLayer.js';
+test('shapeHtml: day type and session ranges', () => {
+  const h = shapeHtml({ dayType: 'trend up', sess: { asia: { loU: -0.1, hiU: 0.2 }, london: { loU: 0.1, hiU: 0.9 } } });
+  assert.match(h, /trend up so far/);
+  assert.match(h, /Asia −0\.10 to \+0\.20u · London \+0\.10 to \+0\.90u/);
+  assert.equal(shapeHtml({}), '');
+});
+test('ccysOf and againstCall', () => {
+  assert.deepEqual(ccysOf('GBPJPY'), ['GBP', 'JPY']);
+  assert.deepEqual(ccysOf('DE30'), ['EUR']);
+  assert.deepEqual(ccysOf('GOLD'), ['USD']);
+  assert.deepEqual(againstCall('SHORT', { nowU: 0.9 }, 'NEUTRAL'), ['the day is +0.90u from the open']);
+  assert.equal(againstCall('SHORT', { nowU: 0.5 }, 'BULLISH').length, 1);
+  assert.equal(againstCall('LONG', { nowU: 0.9 }, 'BULLISH').length, 0);
+  assert.equal(againstCall('FLAT', { nowU: -3 }, 'BEARISH').length, 0);
+});
+test('eventHtml: the next event and the latest print with its reaction', () => {
+  const now = Date.parse('2026-11-23T09:00:00Z');
+  const h = eventHtml('GBPJPY', [{ country: 'GBP', event: 'Flash PMI', impact: 'High', ms: now + 42 * 60_000, estimate: '52.4' }, { country: 'USD', event: 'X', impact: 'High', ms: now + 60_000 }],
+    [{ ccy: 'JPY', event: 'CPI', ms: now - 3600e3, actual: '2.1', estimate: '2.0', z: 0.8, m15: -0.3, m60: null }], now);
+  assert.match(h, /GBP Flash PMI in 42m/);
+  assert.match(h, /JPY CPI <b>2\.1<\/b> vs 2\.0/);
+  assert.match(h, /−0\.30u<\/b> at 15m/);
+  assert.equal(eventHtml('EURUSD', [], [], now), '');
+});
+test('retailHtml, tapeChip, againstHtml, favsHtml', () => {
+  assert.match(retailHtml({ longPct: 79.4, d: -7.2, at: Date.parse('2026-11-23T14:00:00Z') }), /retail long <b>79%<\/b> \(−7\.2pp since 07:00\)/);
+  const c = tapeChip({ label: 'risk-on', score: 0.47, since: '2026-11-23T10:40:00Z', legs: { equities: 0.7, havens: -0.4, commodityFx: 0.3, gold: -0.3 } }, { flags: [{ label: 'VIX elevated', on: true }] });
+  assert.equal(c.text, 'risk-on since 10:40');
+  assert.equal(c.cls, 'up');
+  assert.match(c.title, /VIX elevated/);
+  assert.equal(tapeChip(null).text, 'tape –');
+  assert.match(againstHtml([{ n: 'GBPJPY', label: 'GBPJPY short', why: ['x'] }], 41), /1 of 41/);
+  assert.match(againstHtml([], 41), /not against any of the 41/);
+  assert.match(favsHtml([{ n: 'GBPJPY', call: 'SHORT', dir: -1, m: { nowU: 0.9, dayType: 'trend up' }, against: ['x'], next: '' }]), /⚠ against/);
+  assert.equal(favsHtml([]), '');
+});

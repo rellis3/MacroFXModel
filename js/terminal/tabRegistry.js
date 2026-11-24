@@ -80,6 +80,7 @@ export const SURFACES = [
   mk('widget.bookchip', 'widget', 'Analysis date chip', 'Shell', null, 'the date and time of the morning analysis'),
   mk('widget.mktchip', 'widget', 'Market-closed chip', 'Shell', null, 'top-bar chip while the FX week is shut ("closed · as at Fri 22:00 UTC"), and a note on a US/UK/euro holiday; the live boards show the close instead of going flat'),
   mk('widget.livestamp', 'widget', 'Live-layer stamp', 'Shell', null, 'top-bar chip with the time of the last live price update (js/terminal/liveLayer.js): prices every minute, the macro tilt hourly'),
+  mk('widget.risktape', 'widget', 'Live risk tape', 'Shell', null, 'top-bar chip: risk-on / mixed / risk-off from live prices (equity indices, JPY and CHF, AUD and NZD; js/marketLive.js riskTape), with the time it last turned'),
   mk('panel.opt.terrain', 'panel', 'Options: The terrain chart', 'Options', null, 'a block on the Options tab: the terrain chart; can be moved with the Layout button'),
   mk('panel.opt.smile', 'panel', 'Options: The IV smile', 'Options', null, 'a block on the Options tab: the iv smile; can be moved with the Layout button'),
   mk('panel.opt.lines', 'panel', 'Options: Option lines', 'Options', null, 'a block on the Options tab: option lines; can be moved with the Layout button'),
