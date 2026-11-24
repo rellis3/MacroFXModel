@@ -21,6 +21,7 @@ const ALIAS = { XAUUSD: 'GOLD', NAS100: 'NQ', NAS100USD: 'NQ', US100: 'NQ', SPX5
 const DIRW = { BULLISH: ['▲', 'up', 'Bullish'], BEARISH: ['▼', 'dn', 'Bearish'], NEUTRAL: ['▬', '', 'Neutral'] };
 
 let LIVE = null, BEI = null, liveErr = null;
+const MOVED = new Map();   // market -> { at, points }: the full card's "what moved", fetched once per market every 5 minutes
 
 /** The day's path as a sparkline: the line coloured by the move, a dashed line at the open. Two points at least, '' otherwise. */
 export function sparkSvg(path, open, w = 120, h = 26) {
@@ -52,6 +53,25 @@ export function tiltHtml(bei, name) {
   return `<div class="lv-row lv-sub" title="The bias engine re-run hourly on fresh data (V1's logic). The morning issue stays the record. Back-test: no direction skill at 1, 5 or 20 days, so read it as context."><span class="lv-tag">TILT</span><span>now (${E(pt(last[0]))}) ${one(last)}</span>${last[0] !== first[0] ? `<span class="muted">· ${E(pt(first[0]))} ${one(first)}${fin(moved) ? ` · ${sg(moved)} since` : ''}</span>` : ''}${shifts.length ? `<span class="chip gold">turned ${E((DIRW[shifts.at(-1).to] ?? DIRW.NEUTRAL)[2].toLowerCase())} at ${E(shifts.at(-1).at)}</span>` : ''}</div>`;
 }
 
+/**
+ * What moved the tilt between the morning issue and the latest hourly re-run, from /api/bias-engine-v2/intraday?market=X:
+ * points[{point, v1r: [[driver, contrib, reading]]}]. The drivers whose contribution changed most, largest first.
+ */
+export function movedSince(points, n = 3) {
+  const pts = (points ?? []).filter(p => Array.isArray(p?.v1r) && p.v1r.length);
+  if (pts.length < 2) return [];
+  const A = new Map(pts[0].v1r.map(d => [d[0], d])), B = new Map(pts.at(-1).v1r.map(d => [d[0], d]));
+  return [...new Set([...A.keys(), ...B.keys()])].map(k => { const a = A.get(k)?.[1] ?? 0, b = B.get(k)?.[1] ?? 0; return { driver: k, from: a, to: b, d: b - a, now: B.get(k)?.[2] ?? null }; })
+    .filter(x => Math.abs(x.d) >= 0.005).sort((x, y) => Math.abs(y.d) - Math.abs(x.d)).slice(0, n);
+}
+export function movedHtml(points) {
+  const pts = (points ?? []).filter(p => Array.isArray(p?.v1r) && p.v1r.length);
+  if (pts.length < 2) return '';
+  const mv = movedSince(pts), from = pts[0].point === 'issue' ? 'the morning issue' : pts[0].point, to = pts.at(-1).point;
+  if (!mv.length) return `<div class="lv-row lv-sub muted"><span class="lv-tag">WHY</span>no driver of the tilt has moved since ${E(from)}</div>`;
+  return `<div class="lv-row lv-sub" style="align-items:flex-start"><span class="lv-tag">WHY</span><span>what moved the tilt from ${E(from)} to ${E(to)}: ${mv.map(x => `<b>${E(x.driver)}</b> <span class="${x.d > 0 ? 'up' : 'dn'}">${sg(x.from)} → ${sg(x.to)}</span>${x.now ? ` <span class="muted">(${E(x.now)})</span>` : ''}`).join('; ')}</span></div>`;
+}
+
 /** A currency card's line: its strength since the open and its rank of 8. */
 export function ccyHtml(row, at) {
   if (!row) return '';
@@ -67,13 +87,35 @@ export function stripHtml(rows, at) {
 <p class="muted" style="margin:6px 0 0;font-size:11.5px">What the day has done, not what it will do.</p></div>`;
 }
 
+/**
+ * "How fresh is each part of this page": one line per speed, so nothing daily looks live. info (from the page, globalThis.deskAsOf):
+ * { book: ISO the morning book finished, upd: {london|ny: ISO}, cot: 'YYYY-MM-DD' report date }. liveAt: the last live read; tiltAt: the last hourly slot.
+ */
+export function speedsHtml(info, liveAt, tiltAt) {
+  const d = iso => { const t = new Date(iso ?? ''); return Number.isFinite(t.getTime()) ? t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' }) : ''; };
+  const upd = Object.entries(info?.upd ?? {}).filter(([, v]) => v).map(([k, v]) => `${k === 'ny' ? 'New York' : 'London'} update ${hhmm(v)}`);
+  const rows = [
+    ['LIVE', 'gold', `prices, moves since the open, the day's range, lines hit, currency strength`, liveAt ? `every minute · last ${hhmm(liveAt)}` : 'waiting for the first read'],
+    ...(tiltAt ? [['HOURLY', '', 'the macro tilt (rule-based re-run)', `last ${tiltAt}`]] : []),
+    ['SET TIMES', '', `the desk call and its reasoning${upd.length ? `, then ${upd.join(', ')}` : ''}`, info?.book ? `issued ${hhmm(info.book)} ${d(info.book)}` : 'no book yet'],
+    ['DAILY / WEEKLY', '', `forecast lines (with the book), rates, central-bank pricing, macro prints as published${info?.cot ? `; COT weekly, report of ${d(info.cot)}` : '; COT weekly'}`, 'not live'],
+  ];
+  return `<details class="lv-speeds"><summary><span class="lv-tag">DATA</span> what is live and what is not · prices ${liveAt ? hhmm(liveAt) : '–'}${info?.book ? ` · desk call ${hhmm(info.book)}` : ''}</summary><table>${rows.map(([k, c, w, t]) => `<tr><td><span class="chip ${c}">${E(k)}</span></td><td>${E(w)}</td><td class="muted mono">${E(t)}</td></tr>`).join('')}</table></details>`;
+}
+
 /** Fill every placeholder on the page from the latest reads. */
 export function patch(doc = document) {
   const mk = LIVE?.markets ?? {}, at = LIVE?.at, ccy = Object.fromEntries((LIVE?.ccy ?? []).map(r => [r.ccy, r]));
   const set = (el, h) => { el.dataset.lvDone = '1'; if (el.innerHTML !== h) el.innerHTML = h; };
-  doc.querySelectorAll('[data-lv-asset]').forEach(el => { const n = el.dataset.lvAsset; set(el, assetHtml(mk[n], at) + tiltHtml(BEI, n)); });
+  doc.querySelectorAll('[data-lv-asset]').forEach(el => {
+    const n = el.dataset.lvAsset, full = !!el.closest('#modal'), t = tiltHtml(BEI, n);
+    set(el, assetHtml(mk[n], at) + t + (full && t ? movedHtml(MOVED.get(n)?.points) : ''));
+    if (full && t) loadMoved(n);
+  });
   doc.querySelectorAll('[data-lv-ccy]').forEach(el => set(el, ccyHtml(ccy[el.dataset.lvCcy], at)));
   doc.querySelectorAll('[data-lv-strip]').forEach(el => set(el, stripHtml(LIVE?.ccy, at)));
+  const tiltAt = Object.keys(BEI?.slotTimes ?? {}).sort().at(-1) ?? null;
+  doc.querySelectorAll('[data-lv-speeds]').forEach(el => { const open = el.querySelector('details')?.open; set(el, speedsHtml(globalThis.deskAsOf?.() ?? null, at, tiltAt)); if (open) el.querySelector('details')?.setAttribute('open', ''); });
   // the ladder's price marker: the live price for every card (the trade watcher only prices the cards it watches)
   doc.querySelectorAll('[data-twpx]').forEach(el => {
     const lad = el.closest('.ladder'), lo = +lad?.dataset.lo, hi = +lad?.dataset.hi, v = mk[el.dataset.twpx]?.last;
@@ -87,6 +129,13 @@ export function patch(doc = document) {
 const may = u => { const A = globalThis.deskAccessState; return !A || A.role !== 'viewer' || A.mayCall('GET', u); };
 const get = u => (may(u) ? fetch(u, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null) : Promise.resolve(null));
 async function pollLive() { const j = await get('/api/market-live'); if (j?.ok) { LIVE = j; liveErr = null; } else if (j) liveErr = j.error ?? 'no data'; patch(); dispatchEvent(new CustomEvent('marketlive', { detail: LIVE })); }
+async function loadMoved(n) {
+  const c = MOVED.get(n); if (c && (c.busy || Date.now() - c.at < 5 * 60_000)) return;
+  MOVED.set(n, { ...(c ?? {}), at: Date.now(), busy: true });
+  const j = await get(`/api/bias-engine-v2/intraday?market=${encodeURIComponent(n)}`);
+  MOVED.set(n, { at: Date.now(), busy: false, points: j?.ok ? j.points : (c?.points ?? null) });
+  if (j?.ok) patch();
+}
 async function pollTilt() { const j = await get('/api/bias-engine-v2/intraday'); if (j?.ok) BEI = j; patch(); }
 
 const CSS = `.lv{margin-top:8px;display:flex;flex-direction:column;gap:4px}
@@ -99,7 +148,11 @@ const CSS = `.lv{margin-top:8px;display:flex;flex-direction:column;gap:4px}
 .lv-rng{position:relative;display:inline-block;width:70px;height:6px;border-radius:4px;background:linear-gradient(90deg,var(--dnbg),var(--bg3),var(--upbg))}
 .lv-rng i{position:absolute;top:-3px;width:3px;height:12px;margin-left:-1px;border-radius:2px;background:var(--tx)}
 .lv-touch{color:var(--gold)}
-.lv-strip{margin-bottom:14px}
+.lv-strip{margin-bottom:10px}
+.lv-speeds{margin:0 0 14px;font-size:12px}
+.lv-speeds summary{cursor:pointer;color:var(--tx2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lv-speeds table{margin-top:6px;border-collapse:collapse;width:100%}
+.lv-speeds td{padding:4px 8px 4px 0;vertical-align:top}
 .lv-bars{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 16px;margin-top:6px}
 .lv-bar{display:grid;grid-template-columns:34px 1fr 46px;align-items:center;gap:8px;font-size:12px}
 .lv-track{position:relative;height:8px;border-radius:4px;background:var(--bg3)}
@@ -110,12 +163,12 @@ const CSS = `.lv{margin-top:8px;display:flex;flex-direction:column;gap:4px}
 
 if (typeof document !== 'undefined') {
   const st = document.createElement('style'); st.id = 'liveLayerCss'; st.textContent = CSS; document.head.appendChild(st);
-  globalThis.liveLayer = { patch, last: n => LIVE?.markets?.[n]?.last ?? null };
+  globalThis.liveLayer = { patch, last: n => LIVE?.markets?.[n]?.last ?? null, ccy: () => LIVE?.ccy ?? null, at: () => LIVE?.at ?? null, move: n => LIVE?.markets?.[n] ?? null };
   const start = () => { pollLive(); pollTilt(); setInterval(() => { if (!document.hidden) pollLive(); }, 60_000); setInterval(() => { if (!document.hidden) pollTilt(); }, 5 * 60_000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pollLive(); }); };
   // a section re-render leaves fresh, empty placeholders: fill them at once from the last reads (patch marks what it filled, so this never loops)
   let queued = false;
-  new MutationObserver(() => { if (queued || !(LIVE || BEI) || !document.querySelector('[data-lv-asset]:not([data-lv-done]),[data-lv-ccy]:not([data-lv-done]),[data-lv-strip]:not([data-lv-done])')) return;
+  new MutationObserver(() => { if (queued || !(LIVE || BEI) || !document.querySelector('[data-lv-asset]:not([data-lv-done]),[data-lv-ccy]:not([data-lv-done]),[data-lv-strip]:not([data-lv-done]),[data-lv-speeds]:not([data-lv-done])')) return;
     queued = true; requestAnimationFrame(() => { queued = false; patch(); }); }).observe(document.body, { childList: true, subtree: true });
   if (globalThis.deskAccessState) start(); else addEventListener('deskaccess', start, { once: true });
 }
