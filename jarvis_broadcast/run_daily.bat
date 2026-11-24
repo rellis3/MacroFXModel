@@ -19,5 +19,10 @@ REM  One-off setup first (README.md):  python record_broadcast.py --login
 REM                                    python record_broadcast.py --youtube-auth
 REM ============================================================================
 cd /d "%~dp0"
-python record_broadcast.py %*
+REM Task Scheduler's plain "python" is the system one (no Playwright): use a venv. Here first (a copy of this
+REM folder can hold a .venv or a junction to one), then the repo's .venv one level up, then whatever is on PATH.
+set "PY=python"
+if exist "%~dp0..\.venv\Scripts\python.exe" set "PY=%~dp0..\.venv\Scripts\python.exe"
+if exist "%~dp0.venv\Scripts\python.exe" set "PY=%~dp0.venv\Scripts\python.exe"
+"%PY%" record_broadcast.py %*
 exit /b %ERRORLEVEL%
