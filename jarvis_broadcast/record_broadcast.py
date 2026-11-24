@@ -228,7 +228,7 @@ def encode(cap: dict) -> Path:
     mp4 = work / f"jarvis-{part_of_day(datetime.now().hour)}-{work.name[:10]}.mp4"
     vf = f'scale={W * DPR}:{H * DPR}:force_original_aspect_ratio=decrease,pad={W * DPR}:{H * DPR}:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p'
     cmd = [ff, '-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', str(work / 'frames' / 'list.ffconcat'),
-           '-i', str(cap['audio']), '-map', '0:v:0', '-map', '1:a:0', '-vf', vf, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20',
+           '-i', str(cap['audio']), '-map', '0:v:0', '-map', '1:a:0', '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',   # veryfast: 2 min not 15 on the laptop (24 Nov 2026), same crf; YouTube re-encodes anyway
            '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-t', f'{secs:.3f}', '-movflags', '+faststart', str(mp4)]
     subprocess.run(cmd, check=True)
     # the voice must be on it: refuse a silent recording
