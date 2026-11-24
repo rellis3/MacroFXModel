@@ -70,3 +70,13 @@ Full atlas: `atlas.csv`. Page data: `page.json`.
 - Touch number and line stacking get no weight.
 - One open lead: **the gamma peak on PIN days, first touch.** Next step is its own prereg, scored only on sessions after 2026-11-23 (forward), with the bar set from this estimate's lower bound, plus a cost-gated trade version only if it confirms.
 - Re-score S1–S4 unchanged at ≥ 132 usable dates (about March 2027).
+
+## Exploratory follow-ups (2026-11-24, not pre-registered, not part of the verdict)
+
+Script `scripts/oi-profile-lines/sequence.py` → `sequence.json` (seed 20261124). About 20 cells looked at.
+
+**Does the last touch change the next?** No reliable sequence effect. Touch 2 after a held touch 1: 51.1% vs 50.8% at placebos (+0.3pp [−6.7, +7.1], n 470). Retest of a broken line from the other side (role reversal): 48.5% vs 50.6% (−2.1pp [−7.6, +3.1], n 462). Touch 3 by path: held→held +1.4pp, **held→broke 36.1% vs 47.4% (−11.3pp [−23.4, +0.2], n 122)**, broke→held +4.1pp, broke→broke +8.5pp [−2.3, +19.0]. Gamma peak on PIN days after its first touch held: 43.5% vs 55.8% (n 23), consistent with a first-touch-only effect.
+
+**Does the market state at the touch call hold vs break?** No. A logistic on stretch from the open (in the approach direction), approach speed, forecast-vol percentile, range so far, regime, touch number, previous result, late hour and the gamma-peak-PIN-first-touch flag, fitted on one half of the dates and scored on the other (13,471 touches, real and placebo pooled): Brier skill −0.4% [−0.8, +0.1] and −0.5% [−1.1, +0.2] against "always the base rate"; predicted fifths 44–54% all landed at 45–51% actual. The gamma-peak flag was the only coefficient with weight in both halves (+1.0, +0.65 log-odds).
+
+**Used for:** the S/R zones live read (`js/srZones.js` `zoneRead`, `pine/SR Zones.pine`): every zone reads 50/50 with its state today (untouched / held / broke, flipped side after a break), except the zone holding the OI Profile gamma peak on a PIN day before its first touch after the morning capture (★ HOLD lean, candidate). The held→broke hint and first-touch-only go forward as F3 and F2 of `forge/OI_GAMMA_PEAK_PIN_PREREG.md`.
