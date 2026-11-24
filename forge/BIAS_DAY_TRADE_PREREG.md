@@ -104,4 +104,20 @@ entry time other than 00:00.
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-24 — PRE-RESULTS
+
+No outcome had been computed (the replay was still building; the scorer had only been run on the EURUSD session-cut
+audit, which reads prices, not sides). Owner: "Is that v1 vs v2 vs the 4 hour trend backtest?"
+
+- **Added arm `h4-trend`** (the bias scoreboard's competitor, `js/biasForecasters.js` `h4Slope`, rule in
+  `forge/BIAS_SCOREBOARD_PREREG.md` A1), issued at 00:00 London: H1 mid bars built from the bid/ask M1 mid (last M1
+  close in each UTC hour, bar open t), only bars with t + 1 h ≤ 00:00 London on D, the last 320; 4h closes = the last
+  H1 close in each 4h bucket (floor(t / 4h), UTC); EMA20 seeded with the first value; slope = EMA20(all) − EMA20(all
+  but the last 3); side = its sign; no view with fewer than 24 4h closes. The Python port is checked against the JS
+  `h4Slope` on synthetic series before use.
+- **Cells M7–M12**: the same six group × exit cells, gate, placebo and power rule as M1–M6, with h4-trend's side. Own
+  Holm family (12 tests: with and against). Ledger ids `bias-day-trade-h4-<group>[-24h]` (one entry per group).
+- **Head-to-head (descriptive):** V1 − h4-trend net R on market-days where both speak, and V1's net R split by
+  agreeing / disagreeing with h4-trend, date-block bootstrap. Line part: the same WITH split by h4-trend (descriptive).
+- **V2 is not added:** its new inputs (futures policy path, data momentum, stance) have no point-in-time history
+  (`plans/BIAS_ENGINE_V2_SPEC.md` §7); a proxy replay would mostly be V1. V2 stays forward-only.
