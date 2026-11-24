@@ -21,6 +21,7 @@ Mirrors server.js _beGather field by field (shape, rounding, asOf convention) wi
     python -X utf8 -I scripts/bias-engine-backtest/build_inputs.py
 """
 import json
+import os
 import math
 import sys
 from pathlib import Path
@@ -54,6 +55,15 @@ def latest_z(values, lookback=24, min_baseline=6):
     if sd < floor:
         return 0 if abs(latest - m) < floor else (4 if latest > m else -4)
     return float(f'{(latest - m) / sd:.2f}')
+
+
+def vix_stamp(d):
+    """VIX / VIX3M asOf. Banked (07:00 issue): day_end. bias-day-trade A2: with BEB_ISSUE_HHMM set, the CBOE close
+    (16:15 New York) of that date, so a 00:00-London issue in BST (23:00 UTC) does not reject the prior day's close."""
+    if os.environ.get('BEB_ISSUE_HHMM', '0700') == '0700':
+        return day_end(d)
+    t = pd.Timestamp(pd.Timestamp(d).date()).replace(hour=16, minute=15).tz_localize('America/New_York').tz_convert('UTC')
+    return t.strftime('%Y-%m-%dT%H:%M:00.000Z')
 
 
 def day_end(d):
@@ -167,10 +177,10 @@ def main():
         v = vix[vix.index < D]
         if len(v):
             yr, last = v.iloc[-252:], v.iloc[-1]
-            rec['risk']['vix'] = {'level': float(last), 'pct1y': 100 * float((yr <= last).sum()) / len(yr), 'asOf': day_end(v.index[-1]), 'source': 'CBOE VIX (FRED VIXCLS)'}
+            rec['risk']['vix'] = {'level': float(last), 'pct1y': 100 * float((yr <= last).sum()) / len(yr), 'asOf': vix_stamp(v.index[-1]), 'source': 'CBOE VIX (FRED VIXCLS)'}
             m3 = vix3m.get(v.index[-1])
             if m3 is not None and m3 > 0:
-                rec['risk']['vixTerm'] = {'ratio': float(last / m3), 'asOf': day_end(v.index[-1]), 'source': 'VIX / VIX3M'}
+                rec['risk']['vixTerm'] = {'ratio': float(last / m3), 'asOf': vix_stamp(v.index[-1]), 'source': 'VIX / VIX3M'}
         h = hy[hy.index < prev_bd]
         if len(h) >= 21:
             rec['risk']['hy'] = {'level': float(h.iloc[-1]), 'chg20bp': int(round((h.iloc[-1] - h.iloc[-21]) * 100)), 'asOf': day_end(h.index[-1]), 'source': 'FRED BAMLH0A0HYM2'}
