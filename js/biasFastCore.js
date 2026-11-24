@@ -97,3 +97,32 @@ export function liveCalls(panel, slot, { targets = TARGETS } = {}) {
   }
   return { date: panel.sessions[si], slot, calls: out };
 }
+
+// ── live ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+/** OANDA instrument for each panel key (the local H1 history came from the same instruments). */
+export const OANDA = { GOLD: 'XAU_USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', US30: 'US30_USD', DE30: 'DE30_EUR', EURUSD: 'EUR_USD', GBPUSD: 'GBP_USD',
+  AUDUSD: 'AUD_USD', NZDUSD: 'NZD_USD', USDJPY: 'USD_JPY', USDCAD: 'USD_CAD', USDCHF: 'USD_CHF', US02Y: 'USB02Y_USD' };
+/** The markets where the lag flag was validated (bias-fast-lag): the dollar pairs. Gold and indices get no flag. */
+export const LAG_FLAG = new Set(['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF']);
+const _bst = {}, lastSun = (y, m) => { const d = new Date(Date.UTC(y, m + 1, 0)); return Date.UTC(y, m, d.getUTCDate() - d.getUTCDay(), 1) / 1000; };
+const offset = t => { const y = new Date(t * 1000).getUTCFullYear(), [a, b] = (_bst[y] ??= [lastSun(y, 2), lastSun(y, 9)]); return t >= a && t < b ? 3600 : 0; };
+
+/** OANDA H1 candles per key ({t: 'YYYY-MM-DDTHH:MM' start, c}) -> panel; only bars closed by nowSec; weekdays; today's partial session kept. */
+export function panelFromH1(barsByKey, nowSec = Date.now() / 1000) {
+  const rows = {}, dates = new Set();
+  for (const [k, bars] of Object.entries(barsByKey)) {
+    const m = new Map();
+    for (const c of bars ?? []) {
+      const t0 = typeof c.t === 'number' ? c.t / 1000 : Date.parse(String(c.t).length <= 16 ? c.t + ':00Z' : c.t) / 1000;
+      const close = +c.c, end = t0 + 3600; if (!fin(t0) || !(close > 0) || end > nowSec) continue;
+      const tl = end + offset(end), date = new Date(tl * 1000).toISOString().slice(0, 10), min = Math.floor((tl % 86400) / 60);
+      if (min % 60) continue; const j = HOURS.indexOf(min / 60); if (j < 0) continue;
+      const wd = new Date(date + 'T12:00:00Z').getUTCDay(); if (wd === 0 || wd === 6) continue;
+      let r = m.get(date); if (!r) { r = new Array(NH).fill(null); m.set(date, r); } r[j] = close; dates.add(date);
+    }
+    rows[k] = m;
+  }
+  const sessions = [...dates].sort(), px = {};
+  for (const [k, m] of Object.entries(rows)) px[k] = sessions.map(d => m.get(d) ?? null);
+  return { sessions, px };
+}
