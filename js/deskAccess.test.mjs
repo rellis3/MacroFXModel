@@ -34,14 +34,14 @@ test('a route that backs a switchable surface opens when the owner switches that
   assert.equal(viewerMayCall('GET', '/api/thesis-reality', only('panel.changed.thesis')), true);
   assert.equal(viewerMayCall('GET', '/api/thesis-reality?date=2026-11-12', only('panel.charts.ranking')), true);
   assert.equal(viewerMayCall('GET', '/api/desk-paper/history', only('panel.changed.paper')), true);
-  assert.equal(viewerMayCall('GET', '/api/trade-watch', only('strip.zone')), true);
+  assert.equal(viewerMayCall('GET', '/api/trade-watch', only('panel.ov.tradewatch')), true);
   assert.equal(viewerMayCall('GET', '/api/pair-select', only('panel.ov.bestpairs')), true);
   assert.equal(viewerMayCall('GET', '/api/desk-quality', only('widget.dqchip')), true);
   // a different surface does not open it, and ops paths and forced refreshes still lose
   assert.equal(viewerMayCall('GET', '/api/trade-watch', only('panel.ana.track')), false);
   assert.equal(viewerMayCall('GET', '/api/desk-score/run', only('panel.ana.track')), false);
   assert.equal(viewerMayCall('GET', '/api/pair-select?force=1', only('panel.ov.bestpairs')), false);
-  assert.equal(viewerMayCall('POST', '/api/trade-watch', only('strip.zone')), false);
+  assert.equal(viewerMayCall('POST', '/api/trade-watch', only('panel.ov.tradewatch')), false);
   // every surface named in the table exists in the registry
   for (const [p, ids] of VIEWER_SURFACE_ROUTES) { assert.match(p, /^\/api\/[a-z0-9_-]+(\/[a-z0-9_-]+)?$/, p); for (const id of ids) assert.ok(surfaceById(id), `${p}: unknown surface ${id}`); }
 });

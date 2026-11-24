@@ -203,7 +203,7 @@ function dropKeys(v, names, depth = 0) {
  * trade-sizing record, so it is removed everywhere (the live card's size row is its own switch); the trade-level keys and sentences go as in the morning book,
  * and the FULL snapshot loses the feeds that carry trade levels or the owner's record (OWNER_ONLY_FEEDS) unless the owner switched that surface on.
  */
-const SNAPSHOT_FEED_SURFACE = { 'trade-watch': ['strip.zone', 'panel.ov.tradewatch'], 'pair-select': ['panel.ov.bestpairs'], 'desk-alerts': ['panel.ov.alerts'],
+const SNAPSHOT_FEED_SURFACE = { 'trade-watch': ['panel.ov.tradewatch'], 'pair-select': ['panel.ov.bestpairs'], 'desk-alerts': ['panel.ov.alerts'],
   'desk-score/record': ['panel.ov.record', 'panel.ana.track', 'panel.ana.fall', 'panel.ana.days'], 'desk-quality': ['widget.dqchip'] };
 export function sanitizeSnapshot(body, on) {
   if (!body || typeof body !== 'object') return body;
