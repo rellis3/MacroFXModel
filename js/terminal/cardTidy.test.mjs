@@ -55,3 +55,8 @@ test('status strip, then and now, details', () => {
   assert.equal(details('x', ''), '');
   assert.match(details('Sum', '<p>b</p>', true), /<details class="ct-acc " open><summary>Sum<\/summary>/);
 });
+test('tidyText drops source citations in brackets and names pivots and bands', () => {
+  assert.equal(tidyText('put wall 1.10148 (trade-decision/state:EURUSD, options oi). Next.'), 'put wall 1.10148. Next.');
+  assert.match(tidyText('the 1.31 pivot_s; 1.0942 vol_band; 1.11 (round_big)'), /1\.31 pivot; 1\.0942 volatility band; 1\.11 \(big round number\)/);
+  assert.equal(tidyText('the Fed (a hike priced) holds'), 'the Fed (a hike priced) holds');
+});

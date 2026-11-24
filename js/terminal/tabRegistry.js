@@ -139,6 +139,7 @@ export const SURFACES = [
   mk('widget.ov.sections', 'widget', 'Overview: sections (pill row)', 'Terminal features (preview)', P, 'the Overview in five sections behind a pill row under the At a glance block: Today, Currencies, Risk and markets, News and events, The desk; every block keeps its own switch, a section with nothing switched on is not offered, the choice is remembered in this browser and shared as #overview/currencies; with this off the Overview is one long page as before'),
   // ── ticker segments ──
   mk('strip.news', 'strip', 'Ticker: tier-1 headlines', 'Ticker', null, 'wire headlines'),
+  mk('strip.prices', 'strip', 'Ticker: live prices', 'Ticker', null, 'the price tape above the headlines: every market the live layer prices, change since the open in % and u (js/terminal/liveLayer.js)'),
   mk('strip.events', 'strip', 'Ticker: high-impact releases', 'Ticker', null, 'the next 36 hours of high-impact events'),
   mk('strip.gpr', 'strip', 'Ticker: geopolitical risk', 'Ticker', null, 'GPR level and trend'),
   mk('strip.zone', 'strip', 'Ticker: zone / target / invalid', 'Ticker', T, 'the trade watcher: "in zone", "target", "invalid" at a price'),

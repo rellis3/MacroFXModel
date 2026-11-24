@@ -732,7 +732,7 @@ function whatDrivesHtml(n) {
   const x = cardDrivers(D.run, n, { cap: 12 }); if (!x.rating) return '';
   HDV.ensureCss();
   const mkt = typeof nice === 'function' ? nice(n) : n;
-  const body = x.analysts.length ? HDV.humanDriversHtml(x, { market: mkt, esc: h })
+  const body = x.analysts.length ? HDV.humanDriversHtml(x, { market: mkt, esc: t => h(CT.tidyText(t)) })
     : `<p class="hd-empty">No analyst named ${h(mkt)} or its currencies this morning, so the card rests on the desks' reading of the rulings and the levels.</p>`;
   return `<div class="sec"><h2>What drives this</h2><span class="lbl">how this morning's analysts read ${h(mkt)} · it explains their thinking, it is not a tested signal</span></div>
 <div class="card hd" style="padding:10px 14px">${body}
