@@ -174,6 +174,9 @@
       <button data-y="divergence" title="Regular price↔WaveTrend divergence at the touch → fade (reversal); none → follow (continuation).">Divergence</button>
       <button data-y="budget" title="Range-budget: realized session range ÷ the forecast's expected day range at the touch. Unspent (vol still to come) → fade (strong reversal); spent (range used up) → follow (break). Direction is the open question — the test is whether budget separates the outcomes.">Budget</button>
       <button data-y="timing" title="Session timing: how far through the London day the touch is (0 = open, 1 = close). EARLY touches → fade (revert); LATE → follow (continue) — the separator the Fade/Follow panel flagged as cleanest. Tcut is the early/late boundary.">Timing</button>
+      <button data-y="j_oc_fade" title="Jordan: fade the first touch of O-H/O-L p75, take profit at the OC p50 line, stop just past p90 (+0.05σ). Pre-registered on NQ/GC/6E/6J futures 2020-26 (futures-oc-tp-fade): -0.065R net, take-profit reached slightly LESS often than a random walk. Shown so you can see it on the chart.">Fade p75 → OC</button>
+      <button data-y="j_vwap_fade" title="Jordan: fade the first touch of O-H/O-L p75, take profit at the session VWAP (frozen at the bar before the touch), stop just past p90. Pre-registered (futures-qlike-trades A). Use the Futures price and the QLIKE calc for the tested version.">Fade p75 → VWAP</button>
+      <button data-y="j_p90_follow" title="Follow the p90 break: when price trades through O-H/O-L p90, go WITH it, stop back at p75, exit at the day&#39;s close. Pre-registered on NQ/GC/6E/6J futures 2020-26 (futures-qlike-trades B): +0.054R net [+0.007, +0.092], both halves positive; carried by upside breaks, so part may be market drift - needs a drift check before use.">Follow p90 break</button>
     </div>
     <span id="budInputs" style="display:none;align-items:center;gap:6px">
       <label title="Spent threshold as a % of the forecast's expected day range. A touch where LESS than this % of the day's range has printed = unspent → fade; at/above = spent → follow. 100 = the full expected range. Slide it and watch the fade/follow split in the tally change.">Bud cut %</label>
@@ -211,6 +214,8 @@
     <button class="ghost" id="ffBtn" title="Fade-vs-Follow: for every touch, race a symmetric revert-vs-continue move and bucket the outcome by candidate signals (vol-spent, line family, tier, timing) to see what — if anything — separates a fade from a follow.">⚖ Fade/Follow</button>
     <button class="ghost" id="oscBtn" title="Show the WaveTrend oscillator pane + price↔oscillator divergence lines (regular = reversal, hidden = continuation).">〰 Osc</button>
       <button class="dark-btn" id="vwapBtn" title="Overlay session VWAP and its +/-2SD bands (tick-weighted on FX — OANDA volume is tick count). Context for the stretch breakdown in Stats: is a touch that happens far from VWAP more likely to fade?">〜 VWAP</button>
+      <button class="dark-btn" id="sigBtn" title="Your 14-day VWAP sigma-band indicator: session VWAP ± 1, 1.5, 2, 2.5, 3 σv, where σv = the mean over the PRIOR 14 sessions of the RMS distance of price from its running VWAP. Futures price: computed from the stored futures history with real volume; CFD: from the loaded days (tick volume), so the first 14 days have none.">σ-bands</button>
+      <label title="Risk per trade in $ for the contract sizing line in Stats (futures point values: NQ $20, GC $100, 6E $125,000; $5 round trip per contract).">Risk $</label><input type="number" id="riskUsd" value="500" step="50" min="0" style="width:64px">
     <a class="a2" href="forecast-replay.html"><button class="ghost" title="Open the plain Replay view (forecast lines vs realized H/L, no trades)">↩ Replay</button></a>
     <span class="status" id="status"></span>
   </div>
@@ -275,12 +280,13 @@
 import { LADDER_LINES, FITTED_LINES, EXHAUSTION_LINES, linesFor, reversionTrades, tallyTrades, STYLES, ladderLevels, firstTouchIdx } from './js/reversionLadder.js?v=8';
 import { dayTurns } from './js/exhaustionLadderEngine.js?v=1';
 import { computeSessionVwap } from './js/vwapReversionEngine.js';
+import { JORDAN_STYLES, jordanTrades, contractsFor } from './js/jordanTrades.js?v=1';
 import { computeWaveTrend } from './js/vumanchuCore.js?v=1';
 import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=2';
 
 // Style labels (page-level: the brick knows fade_all/follow_med_fade_75; momentum
 // and divergence are page selectors that drive the brick's decideAction hook).
-const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', wt_stretch: 'WT-stretch MTF', divergence: 'Divergence (WT)', budget: 'Budget (vol)', timing: 'Timing (session)' };
+const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', wt_stretch: 'WT-stretch MTF', divergence: 'Divergence (WT)', budget: 'Budget (vol)', timing: 'Timing (session)', j_oc_fade: 'Fade p75 → OC (Jordan)', j_vwap_fade: 'Fade p75 → VWAP (Jordan)', j_p90_follow: 'Follow p90 break' };
 // Matched to the user's VuManChu Cipher B: WaveTrend 9/12/3, divergences read on
 // the SIGNAL line (wt2), OB/OS bands 53/−53, and divergence-zone gates 45/−65
 // (regular divergences only; hidden are ungated).
@@ -571,6 +577,12 @@ function buildChips() {
     applyOscMargins();
     scheduleDraw();
   });
+  $('sigBtn').addEventListener('click', () => {
+    state.showSig = !state.showSig;
+    $('sigBtn').classList.toggle('active', state.showSig);
+    scheduleDraw();
+  });
+  $('riskUsd').addEventListener('change', () => renderStats());
   $('vwapBtn').addEventListener('click', () => {
     state.showVwap = !state.showVwap;
     $('vwapBtn').classList.toggle('active', state.showVwap);
@@ -661,14 +673,44 @@ function scheduleDraw() { if (!_drawPending) { _drawPending = true; requestAnima
 // ── Data load ────────────────────────────────────────────────────────────────
 // CME futures 1m / 5m bars for GOLD / EURUSD / NQ from the NT8 footprint feed (UTC minute-of-day bars), in the
 // /api/ohlc-range shape. Days the capture didn't record are simply absent.
-const FUT_ROOT = { gold: 'GC', eurusd: '6E', nq: 'NQ' };
+const FUT_ROOT = { gold: 'GC', eurusd: '6E', nq: 'NQ', usdjpy: '6J' };
+// per-date sigma_v (owner's 14-day VWAP sigma-band) from /api/futures-bars, used by the sigma-band overlay
+let futSigmaV = {};
+// 1-minute stored futures bars -> the selected TF (same London day; volume summed)
+function aggBars(values, k) {
+  if (k <= 1) return values;
+  const out = []; let cur = null, key = '';
+  for (const v of values) {
+    const m = +v.datetime.slice(11, 13) * 60 + +v.datetime.slice(14, 16), b = Math.floor(m / k) * k;
+    const kk = v.datetime.slice(0, 10) + b;
+    if (kk !== key) {
+      if (cur) out.push(cur);
+      key = kk;
+      cur = { datetime: `${v.datetime.slice(0, 10)} ${String(Math.floor(b / 60)).padStart(2, '0')}:${String(b % 60).padStart(2, '0')}:00`,
+              open: v.open, high: v.high, low: v.low, close: v.close, volume: v.volume || 0 };
+    } else {
+      cur.high = Math.max(cur.high, v.high); cur.low = Math.min(cur.low, v.low); cur.close = v.close; cur.volume += v.volume || 0;
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
 async function futuresCandles(name, from, to) {
   const root = FUT_ROOT[name.toLowerCase()];
-  if (!root) return { error: 'Futures price exists for GOLD, EURUSD and NQ only' };
+  if (!root) return { error: 'Futures price exists for GOLD, EURUSD, NQ and USDJPY (6J) only' };
+  // stored NT8 history first (R2 futures-bars, 2018 -> last export; London wall clock), live footprint for later days
+  futSigmaV = {};
+  let stored = [], lastStored = '';
+  try {
+    const r = await fetch(`/api/futures-bars?sym=${root}&from=${from}&to=${to}`).then(x => x.json());
+    if (r?.ok) { stored = aggBars(r.values, { M1: 1, M5: 5, M15: 15, M30: 30, H1: 60 }[tfGran()] || 1); lastStored = r.last_day || ''; futSigmaV = r.sigma_v || {}; }
+  } catch { /* store not reachable: footprint only */ }
+  if (stored.length && lastStored >= to) return { values: stored };
   const out = [];
   for (let t = Date.parse(from + 'T12:00:00Z'); t <= Date.parse(to + 'T12:00:00Z'); t += 86400e3) {
     const day = new Date(t).toISOString().slice(0, 10);
     const dow = new Date(t).getUTCDay(); if (dow === 0 || dow === 6) continue;
+    if (lastStored && day <= lastStored) continue;            // covered by the stored history
     try {
       const r = await fetch(`/api/footprint/day?sym=${root}&day=${day}`).then(x => x.json());
       if (!r?.ok || !Array.isArray(r.bars)) continue;
@@ -678,7 +720,8 @@ async function futuresCandles(name, from, to) {
       }
     } catch { /* day not captured */ }
   }
-  return out.length ? { values: out } : { error: `no ${root} futures days captured in ${from} → ${to} (footprint feed)` };
+  const all = [...stored, ...out];
+  return all.length ? { values: all } : { error: `no ${root} futures bars in ${from} → ${to} (store or footprint feed)` };
 }
 
 async function loadData() {
@@ -747,7 +790,7 @@ function buildDays(values, fcDays) {
     d.low  = Math.min(d.low, +c.low);
     d.close = +c.close;
     d.tEnd = t;
-    d.bars.push({ time: t, open: +c.open, high: +c.high, low: +c.low, close: +c.close });
+    d.bars.push({ time: t, open: +c.open, high: +c.high, low: +c.low, close: +c.close, ...(c.volume != null ? { volume: +c.volume } : {}) });
   }
   days = [...byDate.values()].sort((a, b) => a.tStart - b.tStart).map(d => ({ ...d, f: fcDays[d.date] || null, trades: [] }));
 }
@@ -776,6 +819,7 @@ function prepIndicators() {
   prepMtfStretch();
   prepAtr();
   prepVwap();
+  prepSigmaV();
   prepPriorVol();
 }
 
@@ -791,6 +835,22 @@ function prepVwap() {
     d.barIdx = new Map();                       // bar time -> index, to price a touch
     for (let k = 0; k < d.bars.length; k++) d.barIdx.set(d.bars[k].time, k);
   }
+}
+
+// Owner's 14-day VWAP sigma band: sigma_v = mean over the prior 14 sessions of the RMS of (close - VWAP)/VWAP.
+// Futures: the server's value from the stored history (real volume); otherwise from the loaded days.
+function prepSigmaV() {
+  const dev = days.map(d => {
+    if (!d.vwap || !d.bars.length) return NaN;
+    let s = 0; for (let k = 0; k < d.bars.length; k++) s += ((d.bars[k].close - d.vwap[k]) / d.vwap[k]) ** 2;
+    return Math.sqrt(s / d.bars.length);
+  });
+  days.forEach((d, i) => {
+    const srv = state.v2Track === 'fut' ? futSigmaV[d.date] : undefined;
+    if (srv > 0) { d.sigmaV = srv; return; }
+    const w = dev.slice(Math.max(0, i - 14), i).filter(Number.isFinite);
+    d.sigmaV = i >= 14 && w.length === 14 ? w.reduce((a, b) => a + b, 0) / 14 : null;
+  });
 }
 
 // "Was yesterday hot?" — yesterday's realised range over the trailing 21-day median
@@ -934,8 +994,10 @@ function computeTrades() {
     }
     const decideAction = makeDecider(d);
     const bands = bandsFor(d.f);
-    d.trades = reversionTrades(d.open, d.bars, bands,
-      { armed: state.armed, costPct, style: state.style, sltp, forwardBars: forwardBarsFor(i), decideAction });
+    d.trades = JORDAN_STYLES[state.style]
+      ? jordanTrades(d, bands, { style: state.style, costPct, armed: state.armed })
+      : reversionTrades(d.open, d.bars, bands,
+          { armed: state.armed, costPct, style: state.style, sltp, forwardBars: forwardBarsFor(i), decideAction });
     // Tag each touch with the two conditioners under test, measured AT the touch:
     //   vwapZ    — how stretched from session VWAP, in running-SD units. A LOCATION
     //              feature, so unlike a volatility one it is not already inside the
@@ -1022,6 +1084,28 @@ function drawOverlay() {
       poly(k => d.vwap[k], '#a78bfa', [], 0.85, 1.4);                              // VWAP
       poly(k => d.vwap[k] + 2 * d.vwapSd[k], '#a78bfa', [3, 3], 0.45, 1);          // +2SD
       poly(k => d.vwap[k] - 2 * d.vwapSd[k], '#a78bfa', [3, 3], 0.45, 1);          // -2SD
+    }
+    // owner's 14-day VWAP sigma bands: VWAP x (1 +/- k sigma_v)
+    if (state.showSig && d.vwap && d.sigmaV > 0 && d.bars.length > 1) {
+      for (const [kk, al] of [[1, 0.28], [1.5, 0.24], [2, 0.5], [2.5, 0.24], [3, 0.32]]) {
+        for (const sgn of [1, -1]) {
+          octx.save(); octx.strokeStyle = '#60a5fa'; octx.lineWidth = kk === 2 ? 1.2 : 0.9; octx.setLineDash(kk === 2 ? [] : [4, 3]);
+          octx.globalAlpha = al; octx.beginPath(); let st = false;
+          for (let k = 0; k < d.bars.length; k++) {
+            const v = d.vwap[k] * (1 + sgn * kk * d.sigmaV);
+            const x = ts.timeToCoordinate(d.bars[k].time), y = series.priceToCoordinate(v);
+            if (x == null || y == null) { st = false; continue; }
+            if (!st) { octx.moveTo(x, y); st = true; } else octx.lineTo(x, y);
+          }
+          octx.stroke();
+          if (wide && kk >= 2) {
+            octx.globalAlpha = 0.8; octx.fillStyle = '#60a5fa'; octx.font = "11px 'DM Mono', monospace"; octx.textAlign = 'left';
+            const y = series.priceToCoordinate(d.vwap[d.bars.length - 1] * (1 + sgn * kk * d.sigmaV));
+            if (y != null) octx.fillText(`${sgn > 0 ? '+' : '-'}${kk}σv`, xa + 4, y - 6);
+          }
+          octx.restore();
+        }
+      }
     }
 
     const line = (price, color, dash, text, solid, alpha) => {
@@ -1338,6 +1422,28 @@ function renderExhCalibration() {
       adds a little noise to the coverage numbers here. It does not affect the fit itself.</div>`;
 }
 
+// Contract sizing (Jordan 18 Nov): contracts = floor(risk $ / (|entry - stop| x point value)), $5 round trip each.
+const FUT_PV = { NQ: 20, GC: 100, '6E': 125000 };
+function sizingLine(all) {
+  const risk = Math.max(0, +$('riskUsd')?.value || 0);
+  const root = FUT_ROOT[$('pair').value.toLowerCase()];
+  const pv = state.v2Track === 'fut' ? FUT_PV[root] : null;
+  const withStop = all.filter(t => Number.isFinite(t.stop) && Number.isFinite(t.entry) && t.stop !== t.entry);
+  if (!risk || !withStop.length) return '';
+  if (!pv) return `<div class="st-empty">Sizing: switch Price to Futures (NQ, GC, 6E) to size in contracts. ${withStop.length} trades have a stop.</div>`;
+  let n0 = 0, sumC = 0, usd = 0;
+  for (const t of withStop) {
+    const c = contractsFor(risk, t.entry, t.stop, pv);
+    if (!c) { n0++; continue; }
+    sumC += c;
+    const dir = t.side === 'BUY' ? 1 : -1;
+    usd += c * (dir * (t.exitPrice - t.entry) * pv - 5);
+  }
+  const nT = withStop.length - n0;
+  return `<div class="st-empty"><b>Sizing</b> at $${risk} risk/trade on ${root} ($${pv}/pt, $5 RT): ${nT} trades sized, avg ${nT ? (sumC / nT).toFixed(1) : 0} contracts`
+    + (n0 ? `, ${n0} skipped (stop too wide for 1 contract)` : '')
+    + ` · result <b class="${usd >= 0 ? 'pos' : 'neg'}">${usd >= 0 ? '+' : ''}$${Math.round(usd).toLocaleString()}</b> in-sample, before slippage.</div>`;
+}
 function renderStats() {
   const el = $('stats');
   if (!state.showStats) return;
@@ -1402,6 +1508,7 @@ function renderStats() {
     + `</tbody></table>`
     + splitLine
     + condHtml
+    + sizingLine(all)
     + `<div class="st-empty">N = touches (1 per line per session). ΣNet% sums per-trade % after cost — a rough cumulative for eyeballing, not compounded equity. In-sample.</div>`;
 }
 
@@ -1459,7 +1566,7 @@ function renderScan(cells, slGrid, best, u) {
   const at = (si, ti) => cells.find(c => c.si === si && c.ti === ti);
   $('scanUnit').textContent = u.label;
   const n0 = cells.length ? cells[0].n : 0;
-  $('scanSub').textContent = `${$('pair').value.toUpperCase()} · ${STYLES[state.style].label} · ${state.eod === 'run' ? 'Let run' : 'Kill@EOD'} · ${calcLabel()} · ${n0} touches`;
+  $('scanSub').textContent = `${$('pair').value.toUpperCase()} · ${(STYLES[state.style] ?? JORDAN_STYLES[state.style] ?? { label: state.style }).label} · ${state.eod === 'run' ? 'Let run' : 'Kill@EOD'} · ${calcLabel()} · ${n0} touches`;
   let html = `<table class="scan-heat"><tr><th class="rot">SL＼TP</th>` + SCAN_TP_MULTS.map(t => `<th>${t}×</th>`).join('') + '</tr>';
   for (let si = 0; si < slGrid.length; si++) {
     html += `<tr><td class="rowlab">${slGrid[si].unit} ${u.label}</td>`;

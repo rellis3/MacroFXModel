@@ -66,11 +66,12 @@ export function shortName(event, ccy) {
   if (!s) return pre || 'release';
   const sp = s.match(/([A-Za-z]+)\s+(?:speaks|testifies)\b/i);
   if (sp) return pre ? `${pre} ${sp[1]} speaks` : `${sp[1]} speaks`;
-  const sub = s.match(/\b(german|french|italian|spanish)\b/i); const pre2 = sub ? { german: 'DE', french: 'FR', italian: 'IT', spanish: 'ES' }[sub[1].toLowerCase()] : pre;
+  const sub = s.match(/\b(german|germany|french|france|italian|italy|spanish|spain)\b/i);      // Nasdaq says "HCOB Germany ...", ForexFactory "German ...": both are DE
+  const pre2 = sub ? { german: 'DE', germany: 'DE', french: 'FR', france: 'FR', italian: 'IT', italy: 'IT', spanish: 'ES', spain: 'ES' }[sub[1].toLowerCase()] : pre;
   const hit = SHORT.find(([re]) => re.test(s));
   const core = hit ? hit[1] : s.replace(/\b(m\/m|y\/y|q\/q|mom|yoy|qoq|s\.a\.|sa|prelim(inary)?|flash|final)\b/gi, '').replace(/[()]/g, '').replace(/\s+/g, ' ').trim();
   const body = core.length > 22 ? core.slice(0, 21).trimEnd() + '…' : core;
-  return pre2 ? `${pre2} ${body.replace(/^(german|french|italian|spanish)\s+/i, '')}` : body;
+  return pre2 ? `${pre2} ${body.replace(/^(german|germany|french|france|italian|italy|spanish|spain)\s+/i, '')}` : body;
 }
 /** High-impact by release TYPE (for rows with no vendor rating): the same family as the server's week-ahead list. */
 export const HIGH_TYPE = /rate decision|interest rate|cash rate|bank rate|fomc|federal funds|\bcpi\b|consumer price|inflation rate|nonfarm|non-farm|payroll|employment change|unemployment rate|\bgdp\b|retail sales|\bpmi\b|\bism\b/i;
@@ -93,7 +94,7 @@ const famMatch = (fam, name) => !!(fam && FAMILY_RE[fam]?.test(String(name ?? ''
  * released, decision, line (the desk's Release Reaction paragraph or null), src }. Duplicates across feeds (same currency, within 10 minutes, overlapping name words) are merged,
  * keeping the highest rank and every field any feed had. Missing or malformed payloads are skipped, never thrown on.
  */
-export function mergeDay({ feed = null, cal = null, evday = null, now = Date.now() } = {}) {
+export function mergeDay({ feed = null, cal = null, evday = null, week = null, now = Date.now() } = {}) {
   const today = londonParts(now).date, out = [];
   const add = e => {
     if (!fin(e.ms)) return; const lp = londonParts(+e.ms); if (lp.date !== today) return;
@@ -110,6 +111,10 @@ export function mergeDay({ feed = null, cal = null, evday = null, now = Date.now
   // 1. ForexFactory (vendor impact, forecast, previous)
   for (const d of Array.isArray(feed?.ahead) ? feed.ahead : []) for (const e of Array.isArray(d?.events) ? d.events : [])
     add({ ms: e?.ms, ccy: e?.ccy, rank: e?.rank, rankFrom: 'vendor', name: e?.event, forecast: textOf(e?.forecast), previous: textOf(e?.previous), src: 'ForexFactory' });
+  // 1b. ForexFactory's FULL week (/api/events: high, medium and low with forecast, previous and actual; holidays skipped). calendar-feed keeps only High, so the medium releases come from here
+  const IMPACT = { high: 3, medium: 2, low: 1 };
+  for (const e of Array.isArray(week) ? week : []) add({ ms: e?.ms, ccy: ccyOfCountry(e?.country), rank: IMPACT[String(e?.impact ?? '').toLowerCase()] ?? 0, rankFrom: 'vendor', name: e?.event,
+    forecast: textOf(e?.estimate), previous: textOf(e?.prev), actual: textOf(e?.actual), src: 'ForexFactory' });
   // 2. the calendar archive (vendor rank)
   for (const e of Array.isArray(cal?.events) ? cal.events : []) add({ ms: e?.ms, ccy: e?.ccy, rank: e?.rank, rankFrom: 'vendor', name: e?.event, src: 'calendar archive' });
   // 3. the desk's event-day list (rate decisions, big US data, fiscal): high by definition, carries the history paragraph
@@ -206,7 +211,8 @@ export function placeLabels(items, W, H, taken = [], pad = 3) {
 
 // ── words ──
 const NAT = { US: 'US', EZ: 'euro area', UK: 'UK', JP: 'Japanese', AU: 'Australian', NZ: 'New Zealand', CA: 'Canadian', CH: 'Swiss', CN: 'Chinese', DE: 'German', FR: 'French', IT: 'Italian', ES: 'Spanish' };
-const say = e => e.short.replace(/^[A-Z]{2} (\w+ speaks)$/, '$1').replace(/^([A-Z]{2}) /, (m, c) => `${NAT[c] ?? c} `).replace(/\bmfg\b/, 'manufacturing').replace(/\bconf\.$/, 'conference');
+export const sayRelease = e => e.short.replace(/^[A-Z]{2} (\w+ speaks)$/, '$1').replace(/^([A-Z]{2}) /, (m, c) => `${NAT[c] ?? c} `).replace(/\bmfg\b/, 'manufacturing').replace(/\bconf\.$/, 'conference');
+const say = sayRelease;
 /** A calendar figure for the voice: "0.3%" -> "0.3 percent", "-0.1%" -> "minus 0.1 percent", "245K" -> "245 thousand", "1.2M" -> "1.2 million", "4.50%" -> "4.5 percent". */
 export function sayFig(v) {
   let t = String(v ?? '').trim(); if (!t) return null;
@@ -220,20 +226,27 @@ export function reactionWords(line) {
   const sizes = m[1].split(/,\s*/).filter(x => !/\bleg\b|note future|\(price\)/.test(x)).slice(0, 3).map(x => x.replace(/S&P 500/g, 'the S and P 500').replace(/(\d) pt\b/g, '$1 points').replace(/(\d)%/g, '$1 percent').replace(/(\d)\s*bp\b/g, '$1 basis points').replace(/\bEUR\/USD\b/g, 'euro dollar').replace(/\bUSD\/JPY\b/g, 'dollar yen').replace(/\bGBP\/USD\b/g, 'sterling'));
   return { n: n ? +n : null, sizes };
 }
-/** The SHOW's OUTLOOK line for today: each high-impact release still to come with its London time, the consensus and the last print, then how big the first half hour has
- * typically been on that kind of day (the Release Reaction record). Schedule and history only: the expectations are the market consensus, not the desk's. */
+/** The SHOW's OUTLOOK line for today: the releases still to come with their London time, the consensus and the last print (high-impact first; medium-impact ones fill in when
+ * there are fewer than `max` times to name, so a day of flash PMIs is not called quiet), then how big the first half hour has typically been on that kind of day (the Release
+ * Reaction record). Releases at the same minute are read together. Schedule and history only: the expectations are the market consensus, not the desk's. */
 export function outlookScript(day, now, max = 3) {
   if (!day) return null;
-  const left = (day.events ?? []).filter(e => e.rank >= 3 && e.ms > now && !e.actual);
-  if (!left.length) return dayScript(day, now);
-  const lines = left.slice(0, max).map(e => {
-    const f = sayFig(e.forecast), p = sayFig(e.previous);
-    return `At ${e.hm}, ${say(e)}${f ? `: expected ${f}${p ? `, after ${p} last time` : ''}` : p ? `, last time ${p}` : ''}.`;
-  });
-  const more = left.length - lines.length; if (more > 0) lines.push(`Plus ${more} more high-impact release${more === 1 ? '' : 's'} later.`);
-  const h = left.map(e => ({ e, r: reactionWords(e.line) })).find(x => x.r?.sizes.length);
+  const up = (day.events ?? []).filter(e => e.ms > now && !e.actual), high = up.filter(e => e.rank >= 3), med = up.filter(e => e.rank === 2);
+  if (!high.length && !med.length) return dayScript(day, now);
+  const one = e => { const f = sayFig(e.forecast), p = sayFig(e.previous); return `${say(e)}${f ? `: expected ${f}${p ? `, after ${p} last time` : ''}` : p ? `, last time ${p}` : ''}`; };
+  const timesOf = a => new Set(a.map(e => e.hm)).size;
+  const pool = (timesOf(high) >= max ? high : [...high, ...med]).sort((a, b) => a.ms - b.ms || b.rank - a.rank);
+  const groups = []; for (const e of pool) { const g = groups.at(-1); if (g && g.hm === e.hm) g.ev.push(e); else groups.push({ hm: e.hm, ev: [e] }); }
+  const shown = groups.slice(0, max), named = new Set(shown.flatMap(g => g.ev.slice(0, 2)));
+  const lines = shown.map(g => `At ${g.hm}, ${g.ev.slice(0, 2).map(one).join(', and ')}${g.ev.length > 2 ? `, with ${g.ev.length - 2} more` : ''}.`);
+  const rest = pool.filter(e => !named.has(e) && !shown.some(g => g.ev.includes(e))), bigLater = high.find(e => !named.has(e));
+  if (rest.length) lines.push(pool === high ? `Plus ${rest.length} more high-impact release${rest.length === 1 ? '' : 's'} later.`
+    : bigLater ? `Plus ${rest.length} more later, including ${say(bigLater)} at ${bigLater.hm}.`
+    : rest.length <= 2 && new Set(rest.map(e => e.hm)).size === 1 ? `Then ${rest.map(say).join(' and ')} at ${rest[0].hm}.`
+    : `Plus ${rest.length} more later, the last at ${rest.at(-1).hm}.`);
+  const h = high.map(e => ({ e, r: reactionWords(e.line) })).find(x => x.r?.sizes.length);
   if (h) lines.push(`On past ${say(h.e)} days${h.r.n ? `, ${h.r.n} of them` : ''}, the first half hour typically moved ${h.r.sizes.length > 1 ? `${h.r.sizes.slice(0, -1).join(', ')} and ${h.r.sizes.at(-1)}` : h.r.sizes[0]}, either way.`);
-  return `On the calendar today, London time. ${lines.join(' ')}`;
+  return `${high.length ? 'On the calendar today, London time.' : 'No top-tier releases today; the medium-impact ones, London time.'} ${lines.join(' ')}`;
 }
 /** The SHOW line: the high-impact releases still to come today with their London times, in plain words (at most five named), or a quiet calendar. Never a forecast. */
 export function dayScript(day, now) {

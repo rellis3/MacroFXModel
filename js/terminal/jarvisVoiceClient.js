@@ -35,11 +35,13 @@ function serverEngine(win) {
       if (clips.has(t)) return clips.get(t);
       const p = (async () => {
         try {
-          const ac = new win.AbortController(), to = win.setTimeout(() => ac.abort(), 15000);      // never let one slow clip hold up the programme
+          // never let one slow clip hold up the programme, but give a long line time to render: the Edge voice needs ~3-4 s per 100 characters on a slow minute, and a
+          // flat 15 s cut-off made a 500-character line fail twice (prefetch, then play) = 30 s of picture with no voice in the 23 Nov recording
+          const ac = new win.AbortController(), to = win.setTimeout(() => ac.abort(), Math.min(50000, 15000 + 70 * t.length));
           const r = await win.fetch('/api/jarvis/voice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, rate: 1 }), signal: ac.signal }).finally(() => win.clearTimeout(to));
           if (!r.ok) throw new Error(String(r.status)); provider = r.headers.get('X-Jarvis-Voice') || provider;
           const blob = await r.blob(); if (!blob.size) throw new Error('empty'); failures = 0; return win.URL.createObjectURL(blob);
-        } catch (e) { clips.del(t); if (++failures >= 2) disabledUntil = Date.now() + 5 * 60_000; return null; }
+        } catch (e) { clips.del(t); if (++failures >= 3) disabledUntil = Date.now() + 5 * 60_000; return null; }     // one slow line (prefetch + play = 2) must not silence the rest of the show
       })();
       clips.set(t, p); return p;
     },
@@ -126,9 +128,19 @@ export function makeNeuralVoice(win, opts = {}) {
     try { audio?.pause(); } catch (e) { /* idle */ }
     const a = new win.Audio(c.u); audio = a; a.playbackRate = Math.max(0.5, Math.min(2, rate || 1)); a.preservesPitch = true;
     const unfx = await robot(a);
-    let ended = false; const end = () => { if (!ended) { ended = true; unfx(); onEnd(); } };
+    let ended = false, dog = 0; const end = () => { if (!ended) { ended = true; win.clearInterval(dog); unfx(); onEnd(); } };
     a.onended = end; a.onerror = end;
     try { await a.play(); } catch (e) { return null; }
+    // stall guard: on a loaded machine the element can stop advancing mid-clip without 'ended' (the 23 Nov 21:00 recording sat 28 s silent mid-line). After 3 s still, nudge it;
+    // after 7 s still, give the line up so the programme moves on (a lost half-sentence beats a silent picture). A user pause is not a stall.
+    let last = -1, still = 0;
+    dog = win.setInterval(() => {
+      if (ended) return win.clearInterval(dog); if (a.paused) { still = 0; return; }
+      if (Math.abs(a.currentTime - last) > 1e-3) { last = a.currentTime; still = 0; return; }
+      still++;
+      if (still === 3) { try { a.currentTime = a.currentTime + 0.05; a.play().catch(() => {}); } catch (e) { /* nudge only */ } }
+      if (still >= 7 || (Number.isFinite(a.duration) && a.currentTime >= a.duration - 0.05)) end();
+    }, 1000);
     // progress(): how far through the clip the audio really is (0..1, from the element's own clock), or null while the duration is not known yet; subtitles and the scene camera follow it
     return { by: c.by, stop() { try { a.pause(); } catch (e) { /* idle */ } end(); }, pause(on) { try { on ? a.pause() : a.play(); } catch (e) { /* idle */ } }, setRate(r) { a.playbackRate = Math.max(0.5, Math.min(2, r || 1)); },
       progress() { const d = a.duration; return ended ? 1 : Number.isFinite(d) && d > 0 ? Math.max(0, Math.min(1, a.currentTime / d)) : null; } };

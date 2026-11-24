@@ -58,7 +58,7 @@ export function arcPoint(a, b, t, bow = 0.35) {
 export function bootLines(sum, win) {
   const w = win === 1 ? 'one-day' : `${win}-day`;
   return [
-    'H.E.L.I.X. · holographic economic links & intermarket explorer · description only, never a trade',
+    'H.E.L.I.X. · holistic economic links & intermarket xplorer · description only, never a trade',
     `Reading the macro chain over ${w} closes…`,
     sum ? `${sum.holding} holding · ${sum.broken} broken · ${sum.quiet} quiet · ${sum.judged} judged` : 'The chain feeds are not loaded.',
     sum?.headline ?? '',

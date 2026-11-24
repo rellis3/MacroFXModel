@@ -1,0 +1,18 @@
+NQ: 1681 sessions; sigma_v median 0.299% of VWAP
+GOLD: 1659 sessions; sigma_v median 0.260% of VWAP
+EURUSD: 1656 sessions; sigma_v median 0.125% of VWAP
+USDJPY: 1641 sessions; sigma_v median 0.138% of VWAP
+
+== controls ==
+  A/C mechanics -5.05pp (|x| <= 3); planted A +0.380R [0.3590059688887469, 0.40509675808140383]; planted B +0.548R [0.49754079505145227, 0.5962433460945438]
+
+== B: follow the p90 break, stop p75, exit 22:00 (primary) ==
+  trades 1364 (skipped 0); exits time 66.8%, sl 33.2%
+  net +0.054R [+0.007, +0.092]; halves 2020-22 +0.046R, 2023-26 +0.061R; gross +0.092R [+0.042, +0.130]
+  TP first (barrier trades) 0.0% vs driftless nan%: diff +0.0pp [+0.0, +0.0]
+  per instrument: EURUSD n305 net +0.029 gross +0.087 TP 0%; GOLD n357 net +0.032 gross +0.052 TP 0%; NQ n376 net +0.111 gross +0.119 TP 0%; USDJPY n326 net +0.037 gross +0.111 TP 0%
+  per side: oh n695 net +0.115; ol n669 net -0.009
+  per London bucket: 00-07 n64 net +0.324 gross +0.374; 07-12 n173 net +0.102 gross +0.152; 12-16 n597 net +0.032 gross +0.072; 16-22 n530 net +0.032 gross +0.062
+  -> UNDERPOWERED (weight: Leaning)
+  B verdict on its own rule (no benchmark part): VALIDATED (weight: Strong)
+  variant TP at p90 + (p90 - p75): net +0.009R [-0.024478896830450392, 0.047824844249934]

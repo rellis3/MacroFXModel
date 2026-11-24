@@ -33,7 +33,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from broadcast_core import concat_list, max_volume, is_silent, title_for, description_for, short_warning  # noqa: E402
+from broadcast_core import concat_list, max_volume, is_silent, title_for, description_for, short_warning, part_of_day  # noqa: E402
 
 BASE = 'https://macrofxmodel-production.up.railway.app'
 PROFILE = Path(os.environ.get('JARVIS_PROFILE', HERE / '.profile'))                     # the saved, logged-in browser profile (git-ignored)
@@ -95,7 +95,7 @@ def do_login(base: str) -> None:
     print('Saved. The daily run will reuse this login.')
 
 
-def record(base: str, length: str, engine: str, visible: bool, out_dir: Path) -> dict:
+def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, rate: float = 1.1) -> dict:
     from playwright.sync_api import sync_playwright
     stamp = datetime.now().strftime('%Y-%m-%d_%H%M')
     work = out_dir / stamp
@@ -136,8 +136,8 @@ def record(base: str, length: str, engine: str, visible: bool, out_dir: Path) ->
 
         cdp.on('Page.screencastFrame', on_frame)
         cdp.send('Page.startScreencast', {'format': 'jpeg', 'quality': 88, 'maxWidth': W * DPR, 'maxHeight': H * DPR, 'everyNthFrame': 1})
-        log(f'recording the {length} broadcast (voice: {engine})')
-        res = page.evaluate('o => window.__jarvisBroadcastAuto(o)', {'len': length, 'engine': engine})
+        log(f'recording the {length} broadcast (voice: {engine}, speed {rate}x)')
+        res = page.evaluate('o => window.__jarvisBroadcastAuto(o)', {'len': length, 'engine': engine, 'rate': rate})
         time.sleep(0.5)
         cdp.send('Page.stopScreencast')
         ctx.close()
@@ -192,6 +192,7 @@ def main() -> None:
     ap.add_argument('--show', action='store_true', help='keep the browser window on screen')
     ap.add_argument('--len', choices=['short', 'quick', 'full'], default='short', help='short (default: kept under 3 min so YouTube files it as a Short), quick or full')
     ap.add_argument('--voice', choices=['server', 'kokoro'], default='server', help='server (steady) or kokoro (open-source, needs a fast machine)')
+    ap.add_argument('--rate', type=float, choices=[0.9, 1.0, 1.1, 1.15, 1.3], default=1.1, help='voice speed: 0.9 calm, 1 normal, 1.1 steady (default), 1.15 brisk, 1.3 fast')
     ap.add_argument('--base', default=os.environ.get('JARVIS_SITE', BASE))
     ap.add_argument('--out', default=str(OUT))
     a = ap.parse_args()
@@ -204,13 +205,14 @@ def main() -> None:
         return
     out_dir = Path(a.out)
     try:
-        cap = record(a.base, a.len, a.voice, a.show, out_dir)
+        cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate)
         mp4 = encode(cap)
         result = {'ok': True, 'file': str(mp4), 'seconds': round(cap['seconds'], 1), 'voice': cap['voice'], 'at': datetime.now().isoformat(timespec='seconds')}
         if not a.no_upload:
             from youtube_upload import upload
             today = datetime.now().date()
-            vid = upload(mp4, title_for(today), description_for(today, cap['voice'], cap['seconds']), privacy='unlisted')
+            part = part_of_day(datetime.now().hour)          # 07:15 -> the morning briefing, 21:00 -> the evening one (the page picks its programme by the same London clock)
+            vid = upload(mp4, title_for(today, part), description_for(today, cap['voice'], cap['seconds'], part), privacy='unlisted')
             result.update({'videoId': vid, 'url': f'https://youtube.com/shorts/{vid}', 'privacy': 'unlisted'})
             log(f"uploaded (unlisted): {result['url']}")
         (out_dir / 'last_run.json').write_text(json.dumps(result, indent=2), encoding='utf-8')

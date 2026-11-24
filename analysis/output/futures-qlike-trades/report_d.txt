@@ -1,0 +1,6 @@
+NAM NQ V2: 2488 trades on 2940 days
+control (TP at each trade's own best price): +43.63 bp [+38.98, +46.70] (CI lower > 0 to pass)
+trades 1417 (2020-2026.08); base net +5.33 bp/trade; with line TP +1.54 bp
+  TP exits 48.3% of trades; diff -3.80 bp [-5.34, -2.04]; halves 2020-22 -3.24, 2023-26 -4.31
+  placebo lines x0.85 diff -3.36 bp, x1.15 diff -2.95 bp
+  -> NULL (weight: Against)

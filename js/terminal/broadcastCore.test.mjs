@@ -203,9 +203,10 @@ test('speakFig and dedupeBody: key numbers said aloud; disclaimers and repeats r
 
 test('wantedSceneIds: every hook scene the programme may ask for, no built-ins', () => {
   const w = wantedSceneIds();
-  for (const id of ['reactor', 'chainfly', 'moneyglobe', 'surprise', 'cycle', 'cbpaths', 'yields', 'fxgrid', 'ccy', 'ivsurf', 'vol', 'gpillar', 'gterrain', 'cot', 'gamma', 'dayahead', 'shockwave', 'wx']) assert.ok(w.includes(id), id);
-  assert.ok(!w.includes('candles') && !w.includes('chain') && !w.includes('ahead'));
-  assert.equal(SEGMENTS.length, 8);
+  for (const id of ['reactor', 'chainfly', 'moneyglobe', 'surprise', 'cycle', 'cbpaths', 'yields', 'fxgrid', 'ccy', 'ivsurf', 'vol', 'gpillar', 'gterrain', 'cot', 'gamma', 'dayahead', 'shockwave', 'wx', 'daymove', 'dayreview', 'shocktoday', 'tomorrow']) assert.ok(w.includes(id), id);
+  assert.ok(!w.includes('candles') && !w.includes('chain') && !w.includes('ahead') && !w.includes('rangeused'));
+  assert.equal(SEGMENTS.length, 11);
+  assert.equal(SEGMENTS.filter(x => x.evening).length, 3);
 });
 
 test('the ticker: biggest against its usual move first, arrows and signs, quiet markets marked, junk dropped', () => {
@@ -246,6 +247,10 @@ test('SHORT (YouTube Short): shorter lead, and long programmes drop the least es
   assert.ok(short.totalSec < quick.totalSec);
   assert.ok(short.lead.length <= 2);
   for (const id of ['markets', 'chain', 'ahead']) assert.ok(short.segments.some(s => s.id === id), `${id} kept`);
+  // a faster voice (brisk, 1.15x) gets a bigger estimate budget, so it keeps at least as many segments; normal speed is unchanged
+  const brisk = planBroadcast(inp, { hooks, have, mode: 'short', rate: 1.15 });
+  assert.ok(brisk.segments.length >= short.segments.length && brisk.totalSec <= SHORT_BUDGET_SEC * 1.15 + 1e-9 || brisk.segments.length === 3, `brisk ${brisk.totalSec}s with ${brisk.segments.length} segments`);
+  assert.deepEqual(planBroadcast(inp, { hooks, have, mode: 'short', rate: 1 }).segments.map(s => s.id), short.segments.map(s => s.id));
   // numbering closes up after drops
   assert.deepEqual(short.segments.map(s => s.num), short.segments.map((_, i) => i + 1));
   // a programme already inside the budget is not cut
@@ -262,7 +267,14 @@ test('THE OUTLOOK: today\'s typical ranges (sizes, not direction) join the calen
   assert.equal(BUILTIN.ranges({ rows: rows.slice(0, 1) }), null, 'one market is not an outlook');
   const P = planBroadcast({ ...inp, rows, movers: topMovers(rows, 6), board: boardSummary(rows) }, { hooks: HOOKS, have: new Set(['ahead', 'vol']), mode: 'quick' });
   assert.deepEqual(P.segments[0].scenes, ['dayahead', 'ranges']);
+  const aft = planBroadcast({ ...inp, now: new Date('2026-11-20T15:00:00Z'), rows }, { hooks: HOOKS, have: new Set(['ahead', 'vol']), mode: 'quick' });
+  assert.equal(aft.segments.at(-1).id, 'ahead', 'in the afternoon it closes the programme');
+  // the EVENING looks back: no outlook; THE DAY opens (here: the range used, the only evening scene these fixtures can build), and no morning-only segment is left over
   const eve = planBroadcast({ ...inp, now: new Date('2026-11-20T19:00:00Z'), rows }, { hooks: HOOKS, have: new Set(['ahead', 'vol']), mode: 'quick' });
-  assert.equal(eve.segments.at(-1).id, 'ahead', 'in the evening it closes the programme');
+  assert.ok(!eve.segments.some(x => x.id === 'ahead'), 'no outlook in the evening');
+  assert.equal(eve.segments[0].id, 'day'); assert.deepEqual(eve.segments[0].scenes, ['rangeused']);
+  const used = eve.items.find(x => x.scene?.id === 'rangeused');
+  assert.match(used.text, /^The day, looking back\. How much of its typical day each market used: Nasdaq 50 percent, gold 58 percent|^The day, looking back\. How much of its typical day each market used: gold 58 percent/, used.text);
+  assert.equal(planBroadcast({ ...inp, now: new Date('2026-11-20T09:00:00Z'), rows }, { hooks: HOOKS, have: new Set(['ahead', 'vol']), mode: 'quick' }).segments.some(x => x.id === 'day'), false, 'the evening segments stay out of the morning');
   for (const x of P.items) assert.doesNotMatch(x.text, FORECASTY, x.text);
 });

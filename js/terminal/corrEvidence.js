@@ -34,6 +34,12 @@ export const VIEW_EVIDENCE = {
       ['hedge-residual-mr', 'Trading a row as a spread (long the market, short the top row at its ratio), fading the residual hourly: net Sharpe -1.19 [-1.76, -0.60] on 2017-2026, about 0.9bp gross per trade against 3.3bp of spreads.'],
       ['hedge-residual-mom', 'The same spread, following the residual: net Sharpe -1.78 [-2.45, -1.08]. Carry of the spread underpowered (hedge-residual-carry).']],
   },
+  today: {
+    untested: ["Costs, carry and whether hedging one session makes money: the Today card measures session variance removed, nothing else. Partners that carry the currency you are betting on are a display rule, not tested."],
+    ids: [["hedge-today", "Session size vs daily size for a hedge held 08:00-17:00 London: +5.0pp of the session variance removed [+3.3, +6.7], 12 of 12 test sets, 2017-2026; UNDERPOWERED only on a placebo clause every method failed, the daily benchmark included."],
+      ["hedge-today-pick", "Ranking partners by in-session moves beat ranking by daily moves: +2.2pp [+1.1, +3.5], 7 of 8 markets."],
+      ["hedge-today-daytype", "Sizing from past release days only did not help (-0.7pp): no event-day switch."]],
+  },
   bookHedge: {
     ids: [['hedge-finder-book-es', 'Daily 5% tail -9.2% [-11.4, -7.0] on a 26-year proxy book; nothing for USD or JPY exposures; the currency\'s own USD pair cut 16.6%.'],
       ['hedge-finder-book', 'Drawdowns and Sharpe not shown: max drawdown +0.5% [-18, +32], Sharpe -0.06 [-0.14, +0.03] after spreads.']],

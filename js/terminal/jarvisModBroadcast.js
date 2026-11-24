@@ -203,7 +203,7 @@ registerJarvisModule({
     pane.innerHTML = `<h3>THE ${part} BRIEFING</h3>
 <div class="jv-row"><button type="button" data-b="go" style="font-size:14px;letter-spacing:.2em;padding:10px 24px">▶ PLAY THIS ${part}</button><span class="jv-sub" data-b="status">Reading today's rundown...</span></div>
 <div data-b="rundown"></div>
-<div class="jv-row"><button type="button" data-b="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-b="len"><option value="quick">QUICK (about 2-3 min)</option><option value="short">SHORT (under 3 min, a YouTube Short)</option><option value="full">FULL (every view)</option></select></label><label class="jv-sub">speed <select data-b="rate"><option value="0.9">calm</option><option value="1">normal</option><option value="1.15">brisk</option><option value="1.3">fast</option></select></label><button type="button" data-b="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button></div>
+<div class="jv-row"><button type="button" data-b="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-b="len"><option value="quick">QUICK (about 2-3 min)</option><option value="short">SHORT (under 3 min, a YouTube Short)</option><option value="full">FULL (every view)</option></select></label><label class="jv-sub">speed <select data-b="rate"><option value="0.9">calm</option><option value="1">normal</option><option value="1.1">steady</option><option value="1.15">brisk</option><option value="1.3">fast</option></select></label><button type="button" data-b="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button></div>
 <details class="jv-sub"><summary>How recording works</summary><p class="jv-sub">The browser asks what to share. Choose <b>This tab</b>; Helix records its own voice and sound straight from the page, so there is no audio box to tick. The briefing plays and a video file downloads at the end (MP4 where the browser can, else WebM). On a phone it gets the briefing ready for the phone's own screen recorder. Keep the voice on so it is in the video.</p></details>
 <p class="jv-sub">A title sequence, the lead, then each segment over its hologram view, with a ticker, lower-thirds and subtitles. The voice leads; the picture follows. Esc ends it. Description only: what has moved and where things sit, never a forecast or a trade.</p>`;
     const q = s => pane.querySelector(`[data-b="${s}"]`), status = (t, bad = false) => { const e = q('status'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--gold)' : ''; } };
@@ -223,7 +223,7 @@ registerJarvisModule({
       cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra } };
       return cache;
     }
-    const plan = (inp, mode) => planBroadcast({ ...inp, now: new Date(), mode }, { hooks: SHOW_HOOKS, have: new Set([...CORE_VIEWS, ...viewsOf().map(v => v.id)]), mode });
+    const plan = (inp, mode) => planBroadcast({ ...inp, now: new Date(), mode }, { hooks: SHOW_HOOKS, have: new Set([...CORE_VIEWS, ...viewsOf().map(v => v.id)]), mode, rate: +q('rate').value || 1 });
     async function rundown() {
       const box = q('rundown'); if (!box) return;
       try {
@@ -243,7 +243,7 @@ registerJarvisModule({
       let left = ms; while (left > 0 && my === token && ctl.jump == null) { await sleep(100); if (!ctl.paused) left -= 100 * ctl.rate; }
     }
 
-    async function run() {
+    async function run(onAir = null) {
       const my = ++token; status('Gathering the morning...');
       const c = await gather(true); if (my !== token) return;
       const P = plan(c.inp, q('len').value), items = P.items; api.win.__jarvisBroadcastPlan = P;     // for the lab harness and the console
@@ -258,6 +258,7 @@ registerJarvisModule({
       }); sync(); api.caption(null);
       ov?.remove(); ov = makeOverlay(api); if (!ov) { status('The HUD is not open.', true); return; }
       ov.open(P.date); ov.ticker(P.ticker); ov.on(); api.sfx.ambient(true);
+      if (onAir) { try { await onAir(); } catch (e) { /* the recorder's hook must never stop the show */ } if (my !== token) return; }      // the daily job starts recording HERE, on the title card, not on the panel while the data loads
       status(`On air: ${P.segments.length} segments, about ${durText(items.reduce((a, x) => a + itemSeconds(x, ctl.rate), 0))}. Voice: ${api.voiceLabel?.() ?? "on"}.`);
       api.voicePrefetch?.(items[0]?.text);
       let i = Math.max(0, Math.min(items.length - 1, +(api.win.__jarvisBroadcastFrom ?? 0) || 0)), prevKind = null, prevView = null;
@@ -282,7 +283,7 @@ registerJarvisModule({
         ov.sub(null);
         if (it.kind === 'open') { sting(api); await hold(1500, my); }
         // the line: subtitles and the scene's own camera follow the voice's REAL progress (the audio clock; the reading-speed estimate when there is none)
-        api.voicePrefetch?.(items[i + 1]?.text);
+        for (const nx of items.slice(i + 1, i + 4)) api.voicePrefetch?.(nx.text);     // three lines ahead: a long line renders while the short ones before it play
         for (const nx of items.slice(i + 1, i + 4)) if (nx.view && nx.view !== st.view) { glWarm(nx.view, api).catch(() => {}); break; }   // build the next hologram while this line plays
         if (it.text) {
           const chunks = subtitleChunks(it.text, st.compact ? 8 : 14), dur = itemSeconds({ text: it.text }, ctl.rate);
@@ -308,9 +309,9 @@ registerJarvisModule({
     // ── the laptop's daily job (jarvis_broadcast/record_broadcast.py) ──
     // Plays the broadcast with no human at the controls and records ITS SOUND from the HUD's audio bus (voice + effects; a sound card is not needed), while the job records the
     // picture from Chrome's own frame feed. Returns the audio (base64) with the wall-clock start/end so the job can line the two up. engine: 'server' (default, steady) or 'kokoro'.
-    api.win.__jarvisBroadcastAuto = async ({ len = 'quick', engine = 'server', kokoroWaitMs = 180000 } = {}) => {
+    api.win.__jarvisBroadcastAuto = async ({ len = 'quick', engine = 'server', kokoroWaitMs = 180000, rate = 1 } = {}) => {
       const bus = api.audioBus?.(); if (!bus?.stream) throw new Error('the HUD has no audio bus');
-      q('len').value = ['full', 'short'].includes(len) ? len : 'quick'; lsPut({ voice: true }); st.voice = true; st.neural = true; st.sound = true;
+      q('len').value = ['full', 'short'].includes(len) ? len : 'quick'; q('rate').value = String([0.9, 1, 1.1, 1.15, 1.3].includes(+rate) ? +rate : 1);      // one of the panel's speeds (calm, normal, steady, brisk, fast); the planner's short budget scales with it lsPut({ voice: true }); st.voice = true; st.neural = true; st.sound = true;
       try { localStorage.setItem('jarvisVoice:v1', JSON.stringify({ ...(JSON.parse(localStorage.getItem('jarvisVoice:v1') || '{}') || {}), engine })); } catch (e) { /* private window */ }
       if (engine === 'kokoro') { api.voiceBegin?.(); const t0 = Date.now(); while (!api.voiceInfo?.()?.kokoro?.ready && Date.now() - t0 < kokoroWaitMs) await sleep(1000); }
       await bus.ctx.resume?.();
@@ -320,8 +321,10 @@ registerJarvisModule({
       rec.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
       const done = new Promise(r => { rec.onstop = r; });
       const root = api.doc.getElementById(api.ID); root?.classList.add('jv-rec');        // a clean picture: no playback buttons in the video
-      stop(); const t0 = Date.now(); rec.start(1000);
-      try { await run(); } finally { root?.classList.remove('jv-rec'); }
+      // recording starts once the title card is up (plus a beat for it to paint), so the video never opens on the PLAY panel while the morning's data loads
+      stop(); let t0 = 0; const onAir = async () => { await sleep(400); t0 = Date.now(); rec.start(1000); };
+      try { await run(onAir); } finally { root?.classList.remove('jv-rec'); }
+      if (!t0 || rec.state === 'inactive') throw new Error('the broadcast never went on air (is the HUD open?)');
       const t1 = Date.now(); rec.stop(); await done;
       const buf = new Uint8Array(await new Blob(chunks, { type: type.split(';')[0] }).arrayBuffer()); let bin = '';
       for (let k = 0; k < buf.length; k += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(k, k + 0x8000));

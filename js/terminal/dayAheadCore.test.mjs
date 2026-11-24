@@ -133,3 +133,15 @@ test('outlookScript: each release still to come with the consensus and the last 
   assert.equal(outlookScript(day, now), 'On the calendar today, London time. At 09:30, UK Retail Sales, last time minus 0.4 percent. At 13:30, US CPI m/m: expected 0.3 percent, after 0.2 percent last time. On past US CPI m/m days, 24 of them, the first half hour typically moved Nasdaq 0.41 percent, euro dollar 0.18 percent and 10y yield 4.2 basis points, either way.');
   assert.match(outlookScript({ events: [] }, now), /quiet calendar/);
 });
+
+test('outlookScript: a day with no high-impact release reads the medium ones from the full week (flash PMIs), same-minute releases together', () => {
+  const now = Date.UTC(2026, 10, 23, 7, 16), t = (h, m) => Date.UTC(2026, 10, 23, h, m);
+  const week = [{ country: 'JP', event: 'Bank Holiday', impact: 'holiday', ms: t(0, 0) },
+    { country: 'EU', event: 'German Flash Manufacturing PMI', impact: 'medium', ms: t(8, 30), estimate: '54.1', prev: '54.2' },
+    { country: 'EU', event: 'German Flash Services PMI', impact: 'medium', ms: t(8, 30), estimate: '52.4', prev: '51.7' },
+    { country: 'GB', event: 'MPC Member Pill Speaks', impact: 'low', ms: t(13, 0) },
+    { country: 'US', event: 'Flash Manufacturing PMI', impact: 'medium', ms: t(14, 45), estimate: '54.5', prev: '56.0' }];
+  const d = mergeDay({ week, now });
+  assert.equal(d.events.length, 4, 'the holiday is dropped, low impact kept on the clock');
+  assert.equal(outlookScript(d, now), 'No top-tier releases today; the medium-impact ones, London time. At 08:30, German manufacturing PMI: expected 54.1, after 54.2 last time, and German services PMI: expected 52.4, after 51.7 last time. At 14:45, US manufacturing PMI: expected 54.5, after 56.0 last time.');
+});

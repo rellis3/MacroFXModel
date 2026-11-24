@@ -19,7 +19,8 @@ import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView, hudOrbit, orbitPos } from './jarvisGL.js';
 import { MARKET_KEYS } from './jarvisMarkets.js';
-import { intradayAsset, dailySymbol, pickMarket, dailyBars, usualBand, sessionStats, sessionScript, loopState, rise, fmtPrice } from './jarvisSessionCore.js';
+import { intradayAsset, dailySymbol, pickMarket, dailyBars, usualBand, sessionStats, sessionScript, dayMoveScript, DAY_MOVE_KEYS, loopState, rise, fmtPrice } from './jarvisSessionCore.js';
+import { isEvening } from './eveningCore.js';
 import { TFS, TF_COUNT, ema, groupPlanes, chartScale, priceTicks, priceDecimals, timeTicks, nearestIndex, priceAtY, barChange, planeAlpha, autoDolly, stepKey, fullTime, clamp, dayOf, showFlight, spreadLabels } from './jarvisChartCore.js';
 
 const TTL = 60_000, WC = 6, HY = 3, TOP = HY * 1.03, PZ = 1.15, BAND_DZ = -0.45, FOV = 38, YAW0 = -0.22, FALLBACK = 'NQ';
@@ -407,6 +408,22 @@ registerShowScene({
     if (!data?.st) return null; const text = sessionScript(data.key, data.st, data.mode); if (!text) return null;
     return { title: 'The chart', view: 'session', cam: null, text,
       enter(api) { api.st.sel = data.key; api.st.spin = false; S.key = null; S.tf = data.mode === 'daily' ? '1d' : '15m'; S.replay = false; S.t0 = null; S.dolly = S.dollyT = 0; S.showP = 0; S.showAt = Date.now(); },
+      motion(api, p) { S.showP = clamp(p, 0, 1); S.showAt = Date.now(); } };
+  },
+});
+
+// the EVENING's move of the day: the same chart, on the biggest mover of the Nasdaq, gold and the dollar majors (intraday bars only: a daily chart is not "the day")
+registerShowScene({
+  id: 'daymove', after: 'session',
+  async prepare(api) {
+    if (!isEvening(Date.now())) return null;
+    const inst = await loadVol(api), key = pickMarket(null, inst ?? {}, DAY_MOVE_KEYS); if (!key) return null;
+    const e = await loadChart(key, '15m', api); return e?.status === 'ok' && e.tf !== '1d' ? { key, st: e.st } : null;
+  },
+  build(inp, data) {
+    if (!data?.st) return null; const text = dayMoveScript(data.key, data.st); if (!text) return null;
+    return { title: 'Move of the day', view: 'session', cam: null, text, figure: data.st.times != null ? { value: `${data.st.times.toFixed(1)}×`, label: `${marketName(data.key, { short: true })} vs usual` } : null,
+      enter(api) { api.st.sel = data.key; api.st.spin = false; S.key = null; S.tf = '15m'; S.replay = false; S.t0 = null; S.dolly = S.dollyT = 0; S.showP = 0; S.showAt = Date.now(); },
       motion(api, p) { S.showP = clamp(p, 0, 1); S.showAt = Date.now(); } };
   },
 });
