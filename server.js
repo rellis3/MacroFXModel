@@ -32967,6 +32967,19 @@ createSrZones({
     return Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder]));
   },
   cotForExport: () => _cotForExport(),
+  // the OI Profile as /api/oi-profile/export builds it (strongest book, ±3σ window, hedging map maxDte 3): gamma peak + PIN/BREAKOUT for the zone read
+  oiProfileFor: (sk, inst) => {
+    if (!inst?.spot) return null;
+    const fk = (() => { try { return _forecastKeyForPair(sk); } catch { return null; } })();
+    const sg = fk ? forecastState.latest?.instruments?.[fk]?.ladder?.sigma_daily_pct : null;
+    const dayMove = sg > 0 ? inst.spot * sg / 100 : null;
+    const rm = dayMove ?? (inst.refMove?.move > 0 ? inst.refMove.move : inst.spot * 0.01);
+    let hedge = null;
+    try { const bk = _cmeBook(sk, inst, { maxDte: 3 }); if (bk) { const half = Math.min(0.08, Math.max(0.008, 3.1 * rm / inst.spot)); hedge = hedgingScenario(bk.contracts, { spot: bk.spot, lo: bk.spot * (1 - half), hi: bk.spot * (1 + half), n: 81, shifts: [-2, 0, 2, 4], optMult: 1, futMult: 1 }); } } catch { hedge = null; }
+    const prof = buildOiProfile({ ...inst, pair: inst.pair || sk }, { sym: sk, hedge, dayMove, windowRm: 3 });
+    if (!prof) return null;
+    return { gammaPeak: prof.levels.find(l => l.type === 'gamma_peak')?.price ?? null, regime: prof.regime ?? null, dayMove };
+  },
   // today's desk book, read-only, as the trade watcher reads it: a card keeps its plan levels only while the session updates leave its direction unchanged
   deskCards: async () => {
     const date = _dpLondonDate(Date.now()), run = await _drLoad(date);

@@ -54,6 +54,7 @@ td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
 .small{font-size:13px;color:var(--muted)}
 .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:12px}
 code{font-family:var(--mono);font-size:12.5px;background:var(--chip);padding:1px 5px;border-radius:4px}
 </style>
 </head>
@@ -100,6 +101,18 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--chip);padding:1px
   <h2>Gamma at the line × volume at the line (first touch)</h2>
   <p class="small">Terciles of the profile's own gamma and volume bars at the line's price. Held % for OI lines / shifted copies, with touches.</p>
   <div class="panel scroll"><table id="tGV"></table></div>
+</section>
+
+<section>
+  <h2>Does what happened last time change the next touch?</h2>
+  <p class="small"><b>Exploratory, not pre-registered</b> (2026-11-24, about 20 cells looked at, so one or two will look interesting by chance). Held % on the next touch for OI lines / the same lines shifted, by what the line did before, with the difference and its 95% range.</p>
+  <div class="grid2">
+    <div class="panel scroll"><h3>Touch 2, by what touch 1 did</h3><table id="tSeq2"></table></div>
+    <div class="panel scroll"><h3>Touch 3, by touches 1 → 2 (H held, B broke)</h3><table id="tSeq3"></table></div>
+    <div class="panel scroll"><h3>Touch 2 after a held touch 1, by line</h3><table id="tSeqType"></table></div>
+    <div class="panel scroll"><h3>Can the market state call it? (fit on half the dates, scored on the other half)</h3><table id="tState"></table><p class="small" id="stateNote"></p></div>
+  </div>
+  <p class="small" id="seqNote"></p>
 </section>
 
 <section>
@@ -155,6 +168,17 @@ Promise.all(["analysis/output/oi-profile-lines/page.json","analysis/output/oi-pr
   document.getElementById("tScored").innerHTML=`<tr><th>Test</th><th>n</th><th>OI − shifted</th><th>95% CI</th><th>bar</th><th>verdict</th></tr>`+
     p.scored.map(c=>`<tr><td>${c.name}</td><td class="num">${c.n}</td><td class="num">${pp(c.est)}</td><td class="num">${ci(c)}</td><td class="num">${(c.bar*100).toFixed(0)}pp</td><td><span class="verdict ${c.verdict==="null"?"null":""}">${c.verdict.toUpperCase()}</span></td></tr>`).join("");
   document.getElementById("controls").textContent=`Mirror (shifted copies scored against each other): ${res.mirror.E_pp}pp [${res.mirror.ci_pp.join(", ")}]. Atlas: ${p.atlasBH} cell passes the false-discovery cut vs a chance baseline of median ${p.chance.median}, max ${p.chance.max}.`;
+  fetch("analysis/output/oi-profile-lines/sequence.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(q=>{ if(!q) return;
+    const dd=c=>c.E==null?"–":`${c.E>0?"+":""}${c.E.toFixed(1)}pp <span class="muted">[${c.ci[0]}, ${c.ci[1]}]</span>`;
+    const tab=(id,obj,lab,nm=k=>k)=>{document.getElementById(id).innerHTML=`<tr><th>${lab}</th><th>held (OI / shifted · n)</th><th>difference</th></tr>`+Object.entries(obj).map(([k,c])=>`<tr class="${c.ci&&(c.ci[0]>0||c.ci[1]<0)?"hl":""}"><td>${nm(k)}</td><td class="num">${cellTxt(c)}</td><td class="num">${dd(c)}</td></tr>`).join("")};
+    tab("tSeq2",q.touch2,"Touch 1");
+    tab("tSeq3",q.touch3,"Path",k=>({HH:"held → held",HB:"held → broke",BH:"broke → held",BB:"broke → broke"})[k]);
+    tab("tSeqType",q.touch2AfterHeldByType,"Line",k=>NAMES[k]||k);
+    const st=q.state;
+    document.getElementById("tState").innerHTML=`<tr><th>Fold</th><th>touches</th><th>Brier skill vs 50/50</th><th>predicted → actual held, by fifth</th></tr>`+st.folds.map(f=>`<tr><td>${f.fold}</td><td class="num">${f.n}</td><td class="num">${(f.brierSkill*100).toFixed(1)}% <span class="muted">[${(f.ci[0]*100).toFixed(1)}, ${(f.ci[1]*100).toFixed(1)}]</span></td><td class="num">${f.quintiles.map(x=>`${Math.round(x.pred*100)}→${Math.round(x.actual*100)}`).join(" · ")}</td></tr>`).join("");
+    document.getElementById("stateNote").textContent=`Features: stretch from the London open in the direction of approach, approach speed, forecast-vol percentile, range so far, PIN/BREAKOUT, touch number, the previous result, after 19:00 London, and the gamma-peak-PIN-first-touch flag. ${st.touches.toLocaleString()} touches (OI lines and shifted copies pooled, since they behave alike), base rate ${Math.round(st.base*100)}% held. The model did worse than "always 50/50" on the dates it had not seen: nothing in the market state at the touch tells you hold vs break at this distance. The one feature that kept its weight in both halves was the gamma-peak-PIN flag.`;
+    document.getElementById("seqNote").innerHTML=`Reading it: a line that held once is no more likely to break on the next visit than a fake line, and a broken line is not defended on the retest (role reversal ${q.touch2["after broke, retest from the other side"].real}% vs ${q.touch2["after broke, retest from the other side"].plc}%). Two hints, both carried into the forward test <code>forge/OI_GAMMA_PEAK_PIN_PREREG.md</code>: after held → broke the third touch tends to keep breaking (${q.touch3.HB.real}% held vs ${q.touch3.HB.plc}%), and the gamma peak's PIN-day edge looks like a first-touch-only effect. This is what the S/R zones export now shows live: every zone 50/50 except the gamma peak on a PIN day before its first touch (★).`;
+  });
 }).catch(e=>{document.getElementById("answers").innerHTML=`<div><b>Could not load the results</b><span>${e.message}</span></div>`});
 </script>
 </body>
