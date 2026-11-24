@@ -112,7 +112,7 @@ export function sceneMotion(api, scene, dur, alive, ctl, onP = null) {
     if (!live || !alive()) return; const nowT = performance.now(); if (!ctl.paused) el += (nowT - last) * ((ctl.rate > 0 ? ctl.rate : 1) / rate0); last = nowT;
     let real = null; try { real = st.speakCtl?.progress?.() ?? null; } catch (e) { real = null; }
     const p = pMax = Math.max(pMax, Math.min(1, Number.isFinite(real) ? real : el / (Math.max(0.5, dur) * 1000)));
-    if (scene.cam?.fly) { const k = ease(p), z = scene.cam.lean ? lerp(zMax + 0.4, zMin - 0.4, k) : lerp(zMin - 0.4, zMax + 0.4, k); api.flyTo(Math.sin(k * 5) * 0.55, z); }
+    if (scene.cam?.fly) { const k = ease(p), z = scene.cam.lean ? lerp(zMax + 0.4, zMin - 0.4, k) : lerp(zMin - 0.4, zMax + 0.4, k); api.flyTo(Math.sin(k * 5) * (api.st.compact ? 0.16 : 0.55), z); }      // a tall phone frame shows little of the field side to side: a narrow swing keeps the board in shot
     if (scene.cam?.drift) st.zoom = 1 + 0.25 * ease(p);
     try { scene.motion?.(api, p); } catch (e) { /* a scene's camera must never stop the show */ }
     try { onP?.(p); } catch (e) { /* subtitles only */ }

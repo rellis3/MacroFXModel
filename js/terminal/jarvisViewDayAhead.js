@@ -197,15 +197,30 @@ function overlay(ctx, g, api, H, camera, O) {
   }
   // centre: the countdown to the next high-impact release (floating above the middle of the clock)
   const nb = nextBig(day, now), c0 = P(ORIGIN), big = compact ? 15 : 19;
+  // the EVENING review (S.review, set by the dayreview scene): the centre lists what printed against what was expected, not the forward countdown
+  const printed = S.review ? releasedGroups(day, now).sort((a, b) => b.rank - a.rank || a.ms - b.ms).slice(0, 4).sort((a, b) => a.ms - b.ms).map(g => g.ev[0]) : [];
+  if (printed.length) {
+    const rows = printed.map(e => [`${e.hm} ${e.ccy} ${String(e.short ?? e.name ?? '').slice(0, 22)}`, `${e.actual}${e.forecast != null ? `  vs ${e.forecast} expected` : ''}`]);
+    const fz = compact ? 15 : 17, lh = fz + 22, head = "TODAY'S RELEASES";
+    ctx.font = `600 ${fz}px ${F}`; let bw = ctx.measureText(head).width; for (const [a, b] of rows) { bw = Math.max(bw, ctx.measureText(a).width); ctx.font = `${fz - 2}px ${F}`; bw = Math.max(bw, ctx.measureText(b).width); ctx.font = `600 ${fz}px ${F}`; }
+    bw += 32; const bh = 30 + rows.length * lh, top = c0.y - bh / 2;
+    panel(ctx, C, c0.x - bw / 2, top, bw, bh, fade, 0.78);
+    text(ctx, head, c0.x, top + 20, C.blue, `600 ${fz - 3}px ${F}`, fade, 'center');
+    rows.forEach(([a, b], i) => { const y = top + 30 + i * lh + fz; text(ctx, a, c0.x, y, C.tx, `600 ${fz}px ${F}`, fade, 'center'); text(ctx, b, c0.x, y + fz - 1, C.gold, `${fz - 2}px ${F}`, fade, 'center'); });
+    taken.push({ x: c0.x - bw / 2, y: top, w: bw, h: bh });
+  }
   let l1, l2, tone = C.tx;
-  if (!S.feedOk) { l1 = 'NO CALENDAR FEED'; l2 = 'the feeds did not answer: not a quiet day, just no data'; tone = C.gold; }
+  if (printed.length) { /* drawn above */ }
+  else if (!S.feedOk) { l1 = 'NO CALENDAR FEED'; l2 = 'the feeds did not answer: not a quiet day, just no data'; tone = C.gold; }
   else if (nb) { l1 = compact ? `${nb.short}` : `${nb.short} in ${countdown(nb.ms - now)}`; l2 = compact ? `in ${countdown(nb.ms - now)} · ${nb.hm} London` : `${nb.hm} London · next high-impact release`; tone = regionCss(C, nb.region); }
   else { l1 = 'NO MORE HIGH-IMPACT RELEASES TODAY'; l2 = S.later ? `next: ${S.later.dow} ${S.later.hm} ${S.later.ccy} ${S.later.event}` : 'a quiet calendar for the rest of the day'; tone = C.tx2; }
+  if (!printed.length) {
   const bigF = nb ? big : Math.max(12, big - 5);
   ctx.font = `600 ${bigF}px ${F}`; const w1 = ctx.measureText(l1).width; ctx.font = `11px ${F}`; const w2 = ctx.measureText(l2).width, bw = Math.max(w1, w2) + 28, cy = c0.y;
   panel(ctx, C, c0.x - bw / 2, cy - bigF - 14, bw, bigF + 34, fade, 0.55);
   text(ctx, l1, c0.x, cy, tone, `600 ${bigF}px ${F}`, fade, 'center'); text(ctx, l2, c0.x, cy + 15, C.tx2, `11px ${F}`, 0.9 * fade, 'center');
   taken.push({ x: c0.x - bw / 2, y: cy - bigF - 14, w: bw, h: bigF + 34 });
+  }
   // header readout (top-left) and the key (bottom)
   const hiAll = day.events.filter(e => e.rank >= 3), done = hiAll.filter(e => e.released).length;
   const dateWord = new Date(now).toLocaleDateString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short' });
@@ -270,7 +285,7 @@ function drawCard(ctx, g, e, b, now) {
 
 const view = glView({ id: 'ahead', label: 'DAY AHEAD', env: { accent: 'blue2', chrome: 'clean', scan: false }, setup,
   onEnter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); S.showP = -1; loadDay(api); },
-  onLeave: () => { S.showP = -1; } });
+  onLeave: () => { S.showP = -1; S.review = false; } });
 
 registerJarvisModule({
   id: 'dayahead', label: 'DAY AHEAD',
@@ -287,7 +302,7 @@ registerShowScene({
   prepare: api => loadDay(api).then(() => (S.day && S.feedOk ? { now: nowMs(api) } : null)).catch(() => null),
   build: (inp, data) => {
     if (!data || !S.day) return null; const text = outlookScript(S.day, data.now); if (!text) return null;
-    return { title: 'The day ahead', view: 'ahead', cam: null, text, enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); S.sel = null; S.showP = 0; S.showAt = Date.now(); },
+    return { title: 'The day ahead', view: 'ahead', cam: null, text, enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); S.sel = null; S.review = false; S.showP = 0; S.showAt = Date.now(); },
       motion: (api, p) => { S.showP = clamp(p, 0, 1); S.showAt = Date.now(); } };
   },
 });
@@ -308,7 +323,7 @@ registerShowScene({
   build: (inp, data) => {
     if (!data || !S.day) return null; const text = reviewScript(S.day, data.react, data.now, inp?.mode === 'short' ? 2 : 3); if (!text) return null;
     return { title: "Today's releases", view: 'ahead', cam: null, text, figure: reviewFigure(S.day, data.react, data.now),
-      enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: true }); S.sel = null; S.showP = -1; } };
+      enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: true }); S.sel = null; S.review = true; S.showP = -1; } };
   },
 });
 // tomorrow: the next day's calendar (Friday evening: Monday, when the week's calendar reaches it), read over the world globe

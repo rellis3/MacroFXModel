@@ -125,6 +125,10 @@ export async function openJarvis(win = window) {
   doc.body.appendChild(root);
   const dock = doc.createElement('div'); dock.id = `${ID}-dock`; dock.hidden = true; doc.body.appendChild(dock);
   const $ = s => root.querySelector(`#${ID}-${s}`), cv = $('cv'), ctx = cv.getContext('2d');
+  // a FONT FLOOR for the views' canvas labels (root.dataset.fontFloor, in CSS px): the broadcast sets it so the small grey labels can be read on a phone. Every view draws
+  // its labels on this one context, so one floor reaches them all; panels sized with measureText grow with the text. Off (no attribute) = the views' own sizes.
+  { const FD = win.CanvasRenderingContext2D && Object.getOwnPropertyDescriptor(win.CanvasRenderingContext2D.prototype, 'font');
+    if (FD?.set && FD.get) try { Object.defineProperty(ctx, 'font', { configurable: true, get() { return FD.get.call(this); }, set(v) { const m = +root.dataset.fontFloor || 0; FD.set.call(this, m ? String(v).replace(/(\d+(?:\.\d+)?)px/, (x, n) => `${Math.max(+n, m)}px`) : v); } }); } catch (e) { /* the views keep their own sizes */ } }
   const tok = (n, fb) => { try { return win.getComputedStyle(doc.documentElement).getPropertyValue('--' + n).trim() || fb; } catch (e) { return fb; } };
   let C = {};
   const readTheme = () => { C = { up: tok('up', 'green'), dn: tok('dn', 'red'), gold: tok('gold', 'orange'), blue: tok('blue2', 'dodgerblue'), tx: tok('tx', 'white'), tx2: tok('tx2', 'gray'), cy: tok('cy', 'cyan') }; };

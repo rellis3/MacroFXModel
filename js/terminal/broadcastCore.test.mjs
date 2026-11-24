@@ -43,8 +43,14 @@ test('events: the digest shape and plain strings are both read; the big ones are
   assert.equal(normEvent({ event: '' }), null); assert.equal(normEvent(null), null);
 });
 
+test('the lead: the textbook-links count no longer competes for it (24 Nov 2026); chainLead brings it back', () => {
+  assert.deepEqual(pickLead(inp).map(x => x.kind), ['mover', 'mover', 'event']);
+  assert.ok(!pickLead(inp).some(x => x.kind === 'chain'));
+  assert.ok(!pickLead({ ...inp, headKeys: ['GOLD'] }).some(x => x.key === 'GOLD'), 'a market the headline named is not repeated in the lead');
+});
+
 test('the lead: top three, best first, never three versions of one story, each with a number and a spoken line', () => {
-  const lead = pickLead(inp);
+  const lead = pickLead({ ...inp, chainLead: true });
   assert.equal(lead.length, 3);
   assert.deepEqual(lead.map(x => x.kind), ['chain', 'mover', 'mover'], 'two broken links outrank a 2.4x mover; at most two movers');
   assert.equal(lead[0].figure, '2 of 7'); assert.equal(lead[0].tone, 'gold');
@@ -52,7 +58,7 @@ test('the lead: top three, best first, never three versions of one story, each w
   assert.match(lead[1].text, /^Gold is up 2\.1 percent\. That is 2\.4 times its usual move\.$/);
   for (const x of lead) { assert.ok(x.figure && x.headline && x.text); assert.doesNotMatch(x.text, FORECASTY); }
   // no chain trouble: the CPI release takes a lead slot
-  const noChain = pickLead({ ...inp, chain: { ...sum, broken: 0 } });
+  const noChain = pickLead({ ...inp, chainLead: true, chain: { ...sum, broken: 0 } });
   assert.ok(noChain.some(x => x.kind === 'event' && x.figure === '13:30' && /US CPI month on month/.test(x.headline)), JSON.stringify(noChain.map(x => x.headline)));
   assert.equal(noChain.filter(x => x.kind === 'mover').length, 2);
 });
@@ -67,12 +73,12 @@ test('the lead on a thin morning: fewer items, a quiet card, or nothing at all, 
 });
 
 test('lead lines read like an anchor: a rotating opener, then "First, ..." "Second, ..." "And third, ...", and two movers never share a phrasing', () => {
-  const l = leadLines(pickLead(inp));
+  const inpC = { ...inp, chainLead: true }, l = leadLines(pickLead(inpC));
   assert.equal(l[0], 'Three stories lead this morning. First, in the chain, two of seven textbook links are broken, led by real yields to dollar.', 'no "That is where the story is." cliché');
   assert.match(l[1], /^Second, gold is up 2\.1 percent\. That is 2\.4 times its usual move\.$/); assert.equal(l[2], "And third, Dollar Yen, up 0.92 percent: twice a normal day's travel.");
-  const two = leadLines(pickLead(inp).slice(0, 2), 'today'); assert.match(two[0], /^Two stories lead today\. First,/); assert.match(two[1], /^And second, /);
+  const two = leadLines(pickLead(inpC).slice(0, 2), 'today'); assert.match(two[0], /^Two stories lead today\. First,/); assert.match(two[1], /^And second, /);
   assert.match(leadLines([{ say: 'gold is up.' }])[0], /^One story leads this morning\. Gold is up\.$/);
-  assert.match(leadLines(pickLead(inp), 'this morning', 1)[0], /^Here is what matters this morning\. First,/); assert.match(leadLines(pickLead(inp), 'this morning', 2)[0], /^Three things to know this morning\. First,/);
+  assert.match(leadLines(pickLead(inpC), 'this morning', 1)[0], /^Here is what matters this morning\. First,/); assert.match(leadLines(pickLead(inpC), 'this morning', 2)[0], /^Three things to know this morning\. First,/);
   assert.equal(LEAD_OPENERS.length, 3); assert.deepEqual(leadLines([]), []);
 });
 
@@ -129,7 +135,7 @@ test('planBroadcast QUICK: cold open, the lead, one scene per segment (first ava
   const close = P.items[P.items.length - 1]; assert.equal(close.text, SIGNOFF_TEXT); assert.deepEqual([close.seg.num, close.seg.total], [8, 8]); assert.equal(close.date.card, 'FRIDAY 20 NOVEMBER');
   const all = P.items.filter(x => x.kind === 'scene'), scenes = [...all.slice(1), all[0]];      // indices below as before: the outlook (played first) is last here
   assert.match(scenes[0].text, /^Starting with the markets\. Of 5 on the board, 2 are up, 2 down, 1 barely moving\. Beyond the lead, /, 'the lead already named gold and the yen');
-  assert.equal(scenes[1].text, 'The chain: 5 links holding, 18 too quiet to judge. Two of 7 links are broken.', 'the lead said the broken count, so the segue carries another number; the disclaimer sentence is gone');
+  assert.equal(scenes[1].text, 'The chain: 5 links holding, 2 broken.', 'the chain is one line: the counts, no body');
   assert.equal(scenes[2].text, 'Rates. The headline number: 65 basis points. The Fed has about 65 basis points of cuts priced.', 'QUICK drops the picture-naming opener and keeps the number');
   assert.match(scenes[3].text, /^Currencies\. All 2 pairs are on the move\. The franc/); assert.match(scenes[5].text, /^Positioning, and where the options sit: 5,813, the gamma flip\./);
   assert.match(scenes[6].text, /^The outlook for today: three high-impact releases on the clock\./);
@@ -283,7 +289,7 @@ test('THE OUTLOOK: today\'s typical ranges (sizes, not direction) join the calen
   assert.ok(!eve.segments.some(x => x.id === 'ahead'), 'no outlook in the evening');
   assert.equal(eve.segments[0].id, 'day'); assert.deepEqual(eve.segments[0].scenes, ['rangeused']);
   const used = eve.items.find(x => x.scene?.id === 'rangeused');
-  assert.match(used.text, /^The day, looking back\. How much of its typical day each market used: Nasdaq 50 percent, gold 58 percent|^The day, looking back\. How much of its typical day each market used: gold 58 percent/, used.text);
+  assert.match(used.text, /^The day, looking back\. This morning's typical ranges, against the day\. (Gold|Nasdaq): [\d.]+ percent expected, [\d.]+ percent travelled\./, used.text);
   assert.equal(planBroadcast({ ...inp, now: new Date('2026-11-20T09:00:00Z'), rows }, { hooks: HOOKS, have: new Set(['ahead', 'vol']), mode: 'quick' }).segments.some(x => x.id === 'day'), false, 'the evening segments stay out of the morning');
   for (const x of P.items) assert.doesNotMatch(x.text, FORECASTY, x.text);
 });

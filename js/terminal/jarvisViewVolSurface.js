@@ -205,7 +205,7 @@ function setup(L, H, api) {
       // camera: a 3/4 view from the front-left; during the SHOW the focus sweeps from the nearest expiry to the farthest
       const live = S.showP >= 0 && Date.now() - S.showAt < 1500, p = live ? ease(S.showP) : 0;
       const zf = live && !calm ? ZD * 0.8 - p * ZD * 1.6 : 0, drift = calm || live ? 0 : Math.sin(t * 0.09) * 0.12;
-      H.orbit(camera, st, { dist: g.compact ? 21 : 10.2, target: [0, HY * 0.42, zf * 0.55], yawAdd: -0.22 + drift + (live && !calm ? p * 0.4 : 0), elev: 0.4 });
+      H.orbit(camera, st, { dist: g.compact ? 15.5 : 10.2, target: [0, HY * 0.42, zf * 0.55], yawAdd: -0.22 + drift + (live && !calm ? p * 0.4 : 0), elev: 0.4 });
     },
     overlay(ctx, g, apiO, Hh) { overlay(ctx, g, apiO, Hh, camera, A); },
     dispose() { scene.traverse(o => { o.geometry?.dispose?.(); o.material?.dispose?.(); }); },

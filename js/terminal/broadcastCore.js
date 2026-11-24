@@ -81,14 +81,17 @@ const evName = e => (e.where && !e.event.toLowerCase().startsWith(e.where.toLowe
 export function pickLead(inp = {}, n = 3) {
   const cand = [], mv = (inp.movers ?? []).filter(m => m && fin(m.ratio) && fin(m.oc) && m.tone !== 'quiet'), ch = inp.chain, ev = (inp.events ?? []).map(normEvent).filter(Boolean);
   let nm = 0;
+  const told = new Set(inp.headKeys ?? []);          // markets THE HEADLINE already named: the lead does not repeat them
   for (const m of mv) {
-    const a = Math.abs(m.ratio); if (a < 1.2) continue; const up = m.ratio > 0, tw = timesWords(m.ratio), k = nm++;
+    const a = Math.abs(m.ratio); if (a < 1.2 || told.has(m.key)) continue; const up = m.ratio > 0, tw = timesWords(m.ratio), k = nm++;
     // two phrasings, so two movers in one lead never share a sentence
     const say = k === 0 ? `${spokenName(m.key)} is ${up ? 'up' : 'down'} ${pctWords(m.oc)}. That is ${tw === 'about' ? 'about its usual move' : `${tw} its usual move`}.`
       : `${spokenName(m.key)}, ${up ? 'up' : 'down'} ${pctWords(m.oc)}: ${tw === 'about' ? 'a normal-sized day' : `${tw} a normal day's travel`}.`;
     cand.push({ kind: 'mover', key: m.key, score: Math.min(a, 6), figure: timesFig(m.ratio), figLabel: 'its usual move', headline: `${marketName(m.key)} ${up ? 'up' : 'down'} ${pctFig(m.oc).replace(/^[+−]/, '')}`, sub: `${up ? '▲ Up' : '▼ Down'} ${pctFig(m.oc).replace(/^[+−]/, '')} so far today, against its own usual move`, tone: up ? 'up' : 'dn', say });
   }
-  if (ch && fin(ch.broken) && ch.broken > 0) {
+  // the textbook-links count no longer competes for the lead (owner, 24 Nov 2026: it led both programmes, and the desk's tests give those macro links little weight); it stays a
+  // one-line segment. inp.chainLead = true brings it back.
+  if (inp.chainLead && ch && fin(ch.broken) && ch.broken > 0) {
     const judged = fin(ch.judged) && ch.judged >= ch.broken ? ch.judged : ch.broken + (fin(ch.holding) ? ch.holding : 0), names = (ch.brokenShort ?? []).map(clean).filter(Boolean);
     cand.push({ kind: 'chain', score: Math.min(4, 1.6 + 0.5 * ch.broken), figure: `${ch.broken} of ${judged}`, figLabel: 'textbook links broken', headline: ch.broken === 1 ? 'A textbook link has broken' : 'Textbook links are breaking', sub: names.slice(0, 2).join('  ·  ') || 'in the macro chain', tone: 'gold',
       say: `in the chain, ${numWord(ch.broken)} of ${numWord(judged)} textbook links ${ch.broken === 1 ? 'is' : 'are'} broken${names.length ? `, ${ch.broken === 1 ? '' : 'led by '}${names[0]}` : ''}.` });
@@ -142,10 +145,12 @@ export const BUILTIN = {
   rangeused(inp) {
     const rows = (inp.rows ?? []).filter(r => r && fin(r.range) && r.range > 0 && fin(r.hl) && r.hl > 0), pick = RANGE_KEYS.map(k => rows.find(r => r.key === k)).filter(Boolean).slice(0, 6);
     if (pick.length < 2) return null;
-    const u = pick.map(r => ({ r, u: r.hl / r.range })).sort((a, b) => b.u - a.u), top = u.slice(0, 3), over = rows.filter(r => r.hl > r.range).length;
-    const t = [`How much of its typical day each market used: ${list(top.map(x => `${spokenName(x.r.key)} ${Math.round(x.u * 100)} percent`))} of the vol model's typical range.`];
+    const u = pick.map(r => ({ r, u: r.hl / r.range })).sort((a, b) => b.u - a.u), top = u.slice(0, 2), over = rows.filter(r => r.hl > r.range).length;
+    // the morning's number checked against the day (owner, 24 Nov 2026): what the vol model's typical range said this morning, and what the market travelled
+    const pc = v => pctWords(v);
+    const t = [`This morning's typical ranges, against the day.`, ...top.map(x => `${cap1(spokenName(x.r.key))}: ${pc(x.r.range)} expected, ${pc(x.r.hl)} travelled.`)];
     t.push(over ? `${cap1(numWord(over))} of ${rows.length} markets ran past their typical range.` : `None of the ${rows.length} markets ran past its typical range.`);
-    return { title: 'The range used', view: 'vol', cam: null, text: t.join(' '), figure: { value: `${Math.round(top[0].u * 100)}%`, label: `${marketName(top[0].r.key, { short: true })} of its typical range` } };
+    return { title: 'Morning range vs the day', view: 'vol', cam: null, text: t.join(' '), figure: { value: `${Math.round(top[0].u * 100)}%`, label: `${marketName(top[0].r.key, { short: true })} of the morning's range` } };
   },
   // the board's counts are in the Markets segue; the body names the movers, skipping any the lead has already covered (inp.leadKeys)
   candles(inp) {
@@ -191,11 +196,11 @@ const isFx = k => /^[A-Z]{6}$/.test(k) && FX.has(k.slice(0, 3)) && FX.has(k.slic
 export const SEGMENTS = [
   { id: 'markets', name: 'Markets', segue: 'Starting with the markets.', tiers: [['candles', 'wx']],
     say: ({ inp }) => { const b = inp.board; return b?.n ? `Starting with the markets. Of ${b.n} on the board, ${b.up} ${isAre(b.up)} up, ${b.dn} down, ${b.quiet} barely moving.` : null; } },
-  { id: 'chain', name: 'The Chain', segue: 'The chain.', tiers: [['reactor'], ['chainfly'], ['chain']],
+  { id: 'chain', name: 'The Chain', segue: 'The chain.', bodyless: true, tiers: [['reactor'], ['chainfly'], ['chain']],      // one line (owner, 24 Nov 2026): the counts, no body
     say: ({ inp, leadKinds }) => {
       const c = inp.chain; if (!c || !fin(c.holding) || !fin(c.broken)) return null;
       if (!c.broken) return `The chain is intact: all ${c.holding} judged links hold.`;
-      return leadKinds.includes('chain') && fin(c.quiet) ? `The chain: ${c.holding} links holding, ${c.quiet} too quiet to judge.` : `The chain: ${c.holding} links holding, ${c.broken} broken.`;     // the lead said the broken count already
+      return `The chain: ${c.holding} links holding, ${c.broken} broken.`;
     } },
   { id: 'macro', name: 'The Macro', segue: 'The bigger picture.', tiers: [['moneyglobe', 'surprise', 'cycle']], say: ({ fig }) => (fig ? `The bigger picture: ${fig}.` : null) },
   { id: 'rates', name: 'Rates', segue: 'Rates.', tiers: [['cbpaths', 'yields']], say: ({ fig }) => (fig ? `Rates. The headline number: ${fig}.` : null) },
@@ -226,12 +231,12 @@ export const QUICK_WORDS = 34;
 /** The SHORT broadcast (mode 'short', for a YouTube Short, which must stay under 3 minutes): shorter lines, a two-item lead, and if the estimate still runs long the
  *  least essential segments go first, in this order. Markets, The Chain and The Day Ahead always stay. The budget is an ESTIMATE: a real run took about 1.2x it (transitions, the voice's own pace), so 120 s lands near 2.5 minutes.
  *  The laptop's FRAME-BY-FRAME recording has no waits between lines, so it asks for more (budgetSec 145, about 2 min 45 s). */
-export const SHORT_WORDS = 24, SHORT_BUDGET_SEC = 120, SHORT_DROP = ['macro', 'ccy', 'rates', 'pos', 'vol'];
+export const SHORT_WORDS = 24, SHORT_BUDGET_SEC = 120, SHORT_DROP = ['chain', 'macro', 'ccy', 'rates', 'pos', 'vol'];
 // The drop order follows what is USEFUL for the day (24 Nov 2026): the slow-moving macro picture goes first, then currencies (the board and volatility already say which
 // markets are moving), then rates; positioning (where the options sit: the gamma range read has evidence behind it) and volatility (implied and expected ranges, the
 // desk's best-calibrated forecast) stay longest.
 /** The evening's order of drops: the snapshots go before the look-back (The Day, The Releases and Tomorrow always stay; Markets repeats The Day, so it goes last). */
-export const SHORT_DROP_EVENING = ['vol', 'pos', 'ccy', 'macro', 'rates', 'chain', 'markets'];
+export const SHORT_DROP_EVENING = ['chain', 'vol', 'pos', 'ccy', 'macro', 'rates', 'markets'];
 /** The one spoken disclaimer of the programme. */
 export const SIGNOFF_TEXT = 'That is the briefing. Description, not advice. Until tomorrow.';
 /** A sentence that is only a disclaimer or a cliché: dropped from scene bodies (the sign-off says it once for the whole programme). */
@@ -290,14 +295,19 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     segs.push({ id: s.id, name: s.name, segue: s.segue, scenes });
   }
   const part = partOfDay(date.hour), when = part === 'morning' ? 'this morning' : part === 'afternoon' ? 'this afternoon' : 'tonight';
-  let lead = pickLead(inp, short ? 2 : 3); if (lead.length === 3 && lead[2].score < 1.5) lead = lead.slice(0, 2);       // a weak third item is left out: two strong stories beat three
+  const head = inp.headline?.headline ? inp.headline : null;
+  let lead = pickLead({ ...inp, headKeys: head?.keys ?? (head?.key ? [head.key] : []) }, short ? 2 : 3); if (lead.length === 3 && lead[2].score < 1.5) lead = lead.slice(0, 2);       // a weak third item is left out: two strong stories beat three
   const lines = leadLines(lead, when, date.doy % 3), leadKeys = lead.map(x => x.key).filter(Boolean);
   const ctxInp = { ...inp, leadKeys };
   const build = list => {
     const total = list.length + 1, items = [], said = new Set();          // + the sign-off
     for (const l of lines) for (const x of sentences(l)) said.add(norm(x));
+    const headText = head ? [head.say, head.means].filter(Boolean).join(' ') : '';
+    for (const x of sentences(headText)) said.add(norm(x));
     list.forEach((s, i) => { s.num = i + 1; s.total = total; });
     items.push({ kind: 'open', title: `THE ${part.toUpperCase()} BRIEFING`, view: 'globe', cam: { region: 'world' }, hold: short ? 3 : 4.2, text: `${greeting(date.hour)}. This is Helix, with the ${part} briefing for ${date.spoken}.` });
+    // THE HEADLINE (the newsletter's one-line story), straight after the title: the market it names on its daily chart behind the card
+    if (head) items.push({ kind: 'headline', head, title: 'The Headline', view: head.key ? 'session' : 'globe', cam: head.key ? { chart: head.key, tf: '1d' } : { region: 'world' }, hold: 0.9, text: headText });
     lead.forEach((x, i) => items.push({ kind: 'lead', idx: i, n: lead.length, lead: x, title: 'The Lead', view: 'globe', cam: x.key ? { focus: x.key } : { region: 'world' }, hold: 0.6, text: lines[i] }));
     for (const s of list) {
       const seg = { id: s.id, name: s.name, num: s.num, total }, def = SEGMENTS.find(x => x.id === s.id);
@@ -306,6 +316,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
         const src = sc.id === 'candles' ? (BUILTIN.candles(ctxInp)?.text ?? sc.text) : sc.text;          // the board's body knows what the lead already said
         const w = def?.words ?? words;      // a segment may carry a longer line (the evening's releases: several numbers each with its reaction)
         let body = dedupeBody(quick ? trimWords(src, w + 8) : src, said); if (quick) body = trimWords(body, w);
+        if (def?.bodyless && j === 0) body = '';
         const figure = sc.figure && sc.figure.value ? sc.figure : keyFigure(body);
         let segue = '';
         const unitFig = figure && (String(figure.label ?? '').trim() || /[×%:]|bp|\bof\b/.test(String(figure.value))) ? speakFig(figure) : null;      // a bare number ("60" sessions) is not a headline

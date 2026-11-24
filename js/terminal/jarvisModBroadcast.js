@@ -12,6 +12,8 @@ import { helixLogo } from './helixLogo.js';
 import { planBroadcast, wantedSceneIds, subtitleChunks, chunkAt, itemSeconds, durText, tickerText, dateWords, partOfDay } from './broadcastCore.js';
 import { boardSummary, topMovers } from './jarvisCandles.js';
 import { enterScene, sceneMotion, makeRecorder, voiceButton, voiceWord } from './jarvisModShow.js';
+import { buildHeadline } from './broadcastHeadline.js';
+import { chartCommand } from './jarvisViewSession.js';
 
 const LS = 'jarvisBroadcast:v1';
 const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { return {}; } };
@@ -80,6 +82,20 @@ const css = R => `
 #${R} .bc-ghost{position:absolute;right:4vw;bottom:-4vh;font-weight:800;font-size:min(46vw,64vh);line-height:1;color:transparent;-webkit-text-stroke:1px color-mix(in srgb,var(--bca) 22%,transparent);letter-spacing:-.04em}
 #${R} .bc-lead.on .bc-lw>*{animation:bc-in .7s cubic-bezier(.2,.7,.2,1) both}#${R} .bc-lead.on .bc-lw>:nth-child(2){animation-delay:.1s}#${R} .bc-lead.on .bc-lw>:nth-child(3){animation-delay:.18s}#${R} .bc-lead.on .bc-lw>:nth-child(4){animation-delay:.28s}#${R} .bc-lead.on .bc-lw>:nth-child(5){animation-delay:.36s}
 @keyframes bc-in{from{opacity:0;transform:translateX(-26px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+/* THE HEADLINE: the newsletter's one-line story as a front page, the named market's daily chart showing through the lower half */
+#${R} .bc-head{background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 96%,transparent) 0%,color-mix(in srgb,var(--bg) 90%,transparent) 46%,color-mix(in srgb,var(--bg) 35%,transparent) 72%,transparent 100%)}
+#${R} .bc-hw{position:absolute;left:clamp(22px,7vw,110px);top:clamp(70px,12vh,140px);width:min(980px,86vw)}
+#${R} .bc-hk{font:600 13px/1 var(--mono,monospace);letter-spacing:.32em;color:var(--tx2);padding-bottom:14px;margin-bottom:20px;border-bottom:1px solid color-mix(in srgb,var(--bca) 45%,transparent)}
+#${R} .bc-hh{margin-top:18px;font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:clamp(30px,4.6vw,64px);line-height:1.12;color:var(--tx);text-shadow:0 0 22px color-mix(in srgb,var(--bca) 35%,transparent)}
+#${R} .bc-hh i{font-style:normal;display:inline-block;opacity:0}
+#${R} .bc-head.on .bc-hh i{animation:bc-word .45s cubic-bezier(.2,.7,.2,1) both}
+@keyframes bc-word{from{opacity:0;transform:translateY(12px);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+#${R} .bc-hf{display:flex;align-items:baseline;gap:16px;margin-top:22px}
+#${R} .bc-hf[hidden]{display:none}
+#${R} .bc-hf b{font-weight:200;font-size:clamp(56px,9vw,132px);line-height:.95;color:var(--tc,var(--tx));text-shadow:0 0 34px color-mix(in srgb,var(--tc,var(--bca)) 55%,transparent)}
+#${R} .bc-hf small{font:500 13px/1.3 var(--mono,monospace);letter-spacing:.2em;color:var(--tc,var(--tx2));text-transform:uppercase;opacity:.9}
+#${R} .bc-hm{margin-top:16px;font-size:clamp(17px,1.7vw,22px);line-height:1.45;color:var(--tx2);max-width:760px}
+#${R} .bc-head.on .bc-hk{animation:bc-up .7s ease .1s both}#${R} .bc-head.on .bc-tag{animation:bc-up .7s ease .2s both}#${R} .bc-head.on .bc-hf{animation:bc-in .8s cubic-bezier(.2,.7,.2,1) 1.1s both}#${R} .bc-head.on .bc-hm{animation:bc-up .8s ease 1.8s both}
 /* bumper */
 #${R} .bc-bump{background:radial-gradient(ellipse at 50% 50%,color-mix(in srgb,var(--bg) 70%,transparent),color-mix(in srgb,var(--bg) 90%,transparent) 75%)}
 #${R} .bc-bn{font:500 15px/1 var(--mono,monospace);letter-spacing:.5em;padding-left:.5em;color:var(--bca);text-shadow:0 0 12px var(--bca)}#${R} .bc-bn span{color:var(--tx2)}
@@ -123,6 +139,10 @@ const css = R => `
 #${R}.jv-compact .bc-lw{left:20px;right:20px;width:auto;top:46%}#${R}.jv-compact .bc-ghost{font-size:62vw;right:-4vw;bottom:2vh}#${R}.jv-compact .bc-lead{background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 70%,transparent),color-mix(in srgb,var(--bg) 92%,transparent) 40%,color-mix(in srgb,var(--bg) 92%,transparent))}
 #${R}.jv-compact .bc-kick{font-size:11px;letter-spacing:.5em;padding-left:.5em}#${R}.jv-compact .bc-h1{letter-spacing:.06em;padding-left:.06em}#${R}.jv-compact .bc-date{font-size:11px;letter-spacing:.24em;gap:10px}
 #${R}.jv-compact .bc-sig{font-size:9px;letter-spacing:.24em}
+#${R}.jv-compact .bc-hw{left:20px;right:20px;width:auto;top:70px}#${R}.jv-compact .bc-hk{font-size:11px;letter-spacing:.18em}#${R}.jv-compact .bc-hh{font-size:31px;line-height:1.14}
+#${R}.jv-compact .bc-hf b{font-size:64px}#${R}.jv-compact .bc-hf small{font-size:11px;letter-spacing:.12em}#${R}.jv-compact .bc-hm{font-size:17px}
+/* while a broadcast runs, nothing of the page under the HUD may show through (the desk terminal's header ghosted into the 24 Nov video) */
+html.jvbc-on body>:not(#${R}):not(#${R}-dock){visibility:hidden!important}
 #${R}.jv-compact .bc-bname{letter-spacing:.08em;padding-left:.08em}
 @media (prefers-reduced-motion:reduce){#${R} .bc *,#${R} .bc *::before,#${R} .bc *::after{animation:none!important;transition:none!important}#${R} .bc-tick .tr{position:static}}
 `;
@@ -138,6 +158,7 @@ function makeOverlay(api) {
   const el = doc.createElement('div'); el.className = 'bc'; el.id = `${api.ID}-bc`; el.setAttribute('aria-live', 'polite');
   el.innerHTML = `<style>${css(api.ID)}</style><div class="bc-veil"></div>
 <div class="bc-card bc-open"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-line"></div><div class="bc-tc bc-reveal"><canvas class="bc-helix" data-b="hx" aria-hidden="true"></canvas><div class="bc-kick">H.E.L.I.X.</div><h1 class="bc-h1">THE <b data-b="part">MORNING</b> BRIEFING</h1><div class="bc-date" data-b="odate"></div></div></div>
+<div class="bc-card bc-head"><div class="bc-hw"><div class="bc-hk" data-b="hk"></div><div class="bc-tag">THE HEADLINE</div><div class="bc-hh" data-b="hh"></div><div class="bc-hf" data-b="hf"><b data-b="hfv"></b><small data-b="hfl"></small></div><div class="bc-hm" data-b="hm"></div></div></div>
 <div class="bc-card bc-lead"><div class="bc-ghost" data-b="ghost"></div><div class="bc-lw"><div class="bc-tag">THE LEAD <span data-b="lnum"></span></div><div class="bc-fig" data-b="fig"></div><div class="bc-figl" data-b="figl"></div><div class="bc-hl" data-b="hl"></div><div class="bc-hs" data-b="hs"></div><div class="bc-pips" data-b="pips"></div></div></div>
 <div class="bc-card bc-bump"><div class="bc-scan"></div><div class="bc-tc"><div class="bc-bn" data-b="bn"></div><div class="bc-bname" data-b="bname"></div><div class="bc-bar"></div></div></div>
 <div class="bc-card bc-close"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-tc"><div class="bc-h1">That is the briefing.</div><div class="bc-not">Description, not advice.</div><div class="bc-date" data-b="cdate"></div><div class="bc-sig" data-b="sig">J.A.R.V.I.S. · THE MORNING BRIEFING</div></div></div>
@@ -153,9 +174,9 @@ function makeOverlay(api) {
   const clock = () => { try { $('clk').textContent = `LDN ${dateWords(new Date()).hm}`; } catch (e) { /* label only */ } };
   const O = {
     el,
-    on() { clock(); clockId = api.win.setInterval(clock, 15000); requestAnimationFrame(() => el.classList.add('on')); },
+    on() { clock(); clockId = api.win.setInterval(clock, 15000); requestAnimationFrame(() => el.classList.add('on')); doc.documentElement.classList.add('jvbc-on'); if (api.st.compact) root.dataset.fontFloor = '13'; },
     cards(which) {
-      for (const c of ['open', 'lead', 'bump', 'close']) card(c).classList.toggle('on', c === which);
+      for (const c of ['open', 'head', 'lead', 'bump', 'close']) card(c).classList.toggle('on', c === which);
       if (which === 'open' && !hxStop) { try { hxStop = helixLogo($('hx'), { calm: !!api.win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches }); } catch (e) { /* decoration */ } }
       else if (which !== 'open' && hxStop) api.win.setTimeout(() => { if (!card('open').classList.contains('on')) { hxStop?.(); hxStop = null; } }, 700);      // after the card has faded
     },
@@ -168,6 +189,14 @@ function makeOverlay(api) {
       $('figl').textContent = x.figLabel ?? ''; $('hl').textContent = x.headline; $('hs').textContent = x.sub ?? '';
       $('pips').innerHTML = Array.from({ length: n }, (_, k) => `<i class="${k === i ? 'on' : k < i ? 'done' : ''}"></i>`).join('');
       [...card('lead').querySelector('.bc-lw').children].forEach(c => { c.style.animation = 'none'; void c.offsetWidth; c.style.animation = ''; });
+    },
+    head(h) {
+      $('hk').textContent = h.kicker ?? '';
+      // the headline appears word by word, at about the voice's pace ("The headline:" is said first)
+      $('hh').innerHTML = String(h.headline).split(/\s+/).map((w, k) => `<i style="animation-delay:${(0.75 + k * 0.3).toFixed(2)}s">${ESC(w)}</i>`).join(' ');
+      const f = $('hf'); f.hidden = !h.figure?.value; f.style.setProperty('--tc', TONE[h.tone] ?? TONE.tx);
+      if (h.figure?.value) { $('hfv').textContent = h.figure.value; $('hfl').textContent = h.figure.label ?? ''; }
+      $('hm').textContent = h.means ?? '';
     },
     bump(seg) { $('bn').innerHTML = `${pad2(seg.num)} <span>/ ${pad2(seg.total)}</span>`; $('bname').textContent = seg.name; },
     l3(seg, title, fig) {
@@ -185,7 +214,7 @@ function makeOverlay(api) {
       el.classList.add('bc-tkon');
     },
     count(n) { const c = $('count'); c.classList.toggle('on', n > 0); c.querySelector('b').textContent = n > 0 ? String(n) : ''; },
-    remove() { api.win.clearInterval(clockId); el.remove(); root.classList.remove('jv-bcast'); },
+    remove() { api.win.clearInterval(clockId); el.remove(); root.classList.remove('jv-bcast'); doc.documentElement.classList.remove('jvbc-on'); delete root.dataset.fontFloor; },
   };
   return O;
 }
@@ -219,8 +248,15 @@ registerJarvisModule({
       let events = null; try { const m = await api.jf('/api/jarvis/morning'); if (m?.ok && Array.isArray(m.events)) events = m.events; } catch (e) { /* the digest is optional */ }
       const want = new Set(wantedSceneIds()), extra = {};
       await Promise.all(SHOW_HOOKS.filter(h => want.has(h.id)).map(async h => { try { extra[h.id] = (await h.prepare?.(api)) ?? null; } catch (e) { extra[h.id] = null; } }));
+      // THE HEADLINE: the newsletter's one-line story, from the feeds the newsletter reads (broadcastHeadline.js)
+      let headline = null;
+      try {
+        const F = { drill: '/api/drill-series', brief: '/api/daily-brief', sess: '/api/vol-forecast/session', fc: '/api/vol-forecast', mc: '/api/macro-changes', asia: '/api/asia-today', events: '/api/events' }, feeds = {};
+        await Promise.all(Object.entries(F).map(async ([k, u]) => { try { const j = await api.jf(u); feeds[k] = j?.ok === false ? null : j; } catch (e) { feeds[k] = null; } }));
+        headline = buildHeadline(feeds, { nowMs: Date.now(), evening: partOfDay(dateWords(new Date()).hour) === 'evening' });
+      } catch (e) { headline = null; }
       const s = st.sum, chain = s ? { holding: s.holding, broken: s.broken, quiet: s.quiet, judged: s.judged, brokenShort: s.brokenShort, headline: s.headline } : null;
-      cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra } };
+      cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra, headline } };
       return cache;
     }
     let shortSec;                                   // the short cut's budget (seconds at normal speed); the recorder may ask for more (undefined = the planner's default)
@@ -230,7 +266,7 @@ registerJarvisModule({
       try {
         const c = await gather(), P = plan(c.inp, q('len').value), rate = +q('rate').value || 1, tot = P.items.reduce((a, x) => a + itemSeconds(x, rate), 0);
         if (!ov) status(`Ready · about ${durText(tot)}.`);
-        box.innerHTML = `<p class="jv-sub" style="margin-top:10px;letter-spacing:.12em">TODAY'S RUNDOWN · about ${durText(tot)}</p><table>${P.lead.length ? `<tr><td>THE LEAD</td><td>${P.lead.map(l => api.esc(l.headline)).join(' · ')}</td></tr>` : ''}${P.segments.map(s => `<tr><td>${pad2(s.num)} ${api.esc(s.name.toUpperCase())}</td><td>${api.esc(s.scenes.join(', '))}</td></tr>`).join('')}<tr><td>${pad2(P.items[P.items.length - 1].seg.num)} SIGN-OFF</td><td></td></tr></table>`;
+        box.innerHTML = `<p class="jv-sub" style="margin-top:10px;letter-spacing:.12em">TODAY'S RUNDOWN · about ${durText(tot)}</p><table>${c.inp.headline ? `<tr><td>THE HEADLINE</td><td>${api.esc(c.inp.headline.headline)}</td></tr>` : ''}${P.lead.length ? `<tr><td>THE LEAD</td><td>${P.lead.map(l => api.esc(l.headline)).join(' · ')}</td></tr>` : ''}${P.segments.map(s => `<tr><td>${pad2(s.num)} ${api.esc(s.name.toUpperCase())}</td><td>${api.esc(s.scenes.join(', '))}</td></tr>`).join('')}<tr><td>${pad2(P.items[P.items.length - 1].seg.num)} SIGN-OFF</td><td></td></tr></table>`;
       } catch (e) { box.innerHTML = ''; status('Ready.'); }
     }
     rundown();
@@ -272,13 +308,15 @@ registerJarvisModule({
         if (cut || it.kind === 'scene' || it.cam || prevView == null) {
           if (cut) { ov.veil(true); await Promise.race([Promise.all([sleep(300), glWarm(it.view, api)]), sleep(2500)]); }   // the cut lands on a finished hologram, never on loading text
           if (my !== token) break;
-          enterScene(api, it.kind === 'scene' ? it.scene : { view: it.view, cam: it.cam });
+          const chart = it.cam?.chart;      // THE HEADLINE: the market it names, on its daily chart
+          enterScene(api, it.kind === 'scene' ? it.scene : chart ? { view: it.view, cam: null, enter: a => { chartCommand(`mk:${chart}`, a); chartCommand(`tf:${it.cam.tf ?? '1d'}`, a); a.st.spin = false; } } : { view: it.view, cam: it.cam });
           if (cut) api.win.setTimeout(() => ov?.veil(false), 120);
         }
         prevView = it.view;
         // the graphics for this item
-        ov.cards(it.kind === 'open' ? 'open' : it.kind === 'lead' ? 'lead' : it.kind === 'bumper' ? 'bump' : it.kind === 'close' ? 'close' : null);
+        ov.cards(it.kind === 'open' ? 'open' : it.kind === 'headline' ? 'head' : it.kind === 'lead' ? 'lead' : it.kind === 'bumper' ? 'bump' : it.kind === 'close' ? 'close' : null);
         if (it.kind === 'lead') ov.lead(it.lead, it.idx, it.n);
+        if (it.kind === 'headline') ov.head(it.head);
         if (it.kind === 'bumper') ov.bump(it.seg);
         if (it.kind === 'scene') ov.l3(it.seg, it.title, it.figure); else ov.l3(null);
         ov.sub(null);
@@ -288,7 +326,8 @@ registerJarvisModule({
         for (const nx of items.slice(i + 1, i + 4)) if (nx.view && nx.view !== st.view) { glWarm(nx.view, api).catch(() => {}); break; }   // build the next hologram while this line plays
         if (it.text) {
           const chunks = subtitleChunks(it.text, st.compact ? 8 : 14), dur = itemSeconds({ text: it.text }, ctl.rate);
-          stopMotion(); stopMotion = sceneMotion(api, it.kind === 'scene' ? it.scene : { cam: null }, dur, () => my === token, ctl, p => ov?.sub(chunkAt(chunks, p)?.text));
+          const subs = it.kind !== 'headline';        // the headline card already carries its words on screen
+          stopMotion(); stopMotion = sceneMotion(api, it.kind === 'scene' ? it.scene : { cam: null }, dur, () => my === token, ctl, p => ov?.sub(subs ? chunkAt(chunks, p)?.text : null));
           await api.speak(it.text, ctl.rate);       // the voice leads: nothing moves on until he has finished the line, or you skip it
           stopMotion(); stopMotion = () => {};
         }
