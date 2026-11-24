@@ -26,7 +26,9 @@ import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView } from './jarvisGL.js';
 import { familiesOf, releasesOf, unitFor, resample, bandStats, typical30, biggest, depthOf, dateTicks, fanOf, areaScale, nextToday, placeLabels, nativeText, shockwaveScript,
-  MARKETS, FAMILY_MARKET, FAMILY_SHORT, familyLabel, marketLabel, marketUnit, CAP, OFFS, GRID_STEP, fin } from './shockwaveCore.js';
+  MARKETS, FAMILY_MARKET, FAMILY_SHORT, familyLabel, marketLabel, marketUnit, CAP, OFFS, GRID_STEP, fin, shockTodayScript } from './shockwaveCore.js';
+import { isEvening } from './eveningCore.js';
+import { londonParts } from './dayAheadCore.js';
 
 const ID = 'shockwave', TTL = 10 * 60_000, XL = 6.4, HU = 0.42, DEPTH = 8, ZS = 1.5, BASE = -CAP * HU - 0.05, R0 = 0.55, RF = 4.4, HF = 0.42, SWEEP = 9, MAXL = 48;
 const KEY = 'each line = one past release · gold = the typical path · history, not a forecast: the direction of a release reaction is not predictable from the release alone';
@@ -399,6 +401,26 @@ registerShowScene({
     if (!data) return null; const text = shockwaveScript(data); if (!text) return null;
     return { title: 'Release shockwave', view: ID, cam: null, text, figure: { value: nativeText(data.typ.med, data.typ.unit), label: `typical 30-min ${marketLabel(data.mkt)} move after ${FAMILY_SHORT[data.family] ?? data.family}` },
       enter: api => { S.mode = 'stack'; S.abs = false; S.sel = null; S.family = null; setFamily(api, data.family); S.mkt = data.mkt; S.showP = 0; S.showAt = Date.now(); Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); },
+      motion: (api, p) => { S.showP = clamp(p, 0, 1); S.showAt = Date.now(); } };
+  },
+});
+
+// the EVENING's big release: when a release the record holds (payrolls, CPI, a central bank...) printed TODAY, its markets fanned out (ALL MARKETS) with the real first half hour
+registerShowScene({
+  id: 'shocktoday', after: ID,
+  prepare: api => {
+    const now = nowMs(api); if (!isEvening(now)) return null;
+    return loadRecord(api).then(() => {
+      if (!S.rl) return null; const today = londonParts(now).date;
+      const rel = S.rl.rows.filter(r => r && FAMILY_MARKET[r.family] && r.status !== 'upcoming' && !r.inProgress && Date.parse(r.t) <= now && londonParts(Date.parse(r.t)).date === today).sort((a, b) => Date.parse(b.t) - Date.parse(a.t))[0];
+      if (!rel) return null; const mkt = FAMILY_MARKET[rel.family], typ = typical30(S.rl.rows.filter(r => r.id !== rel.id), rel.family, mkt, now);
+      return typ ? { rel, mkt, typ, hm: londonParts(Date.parse(rel.t)).hm } : null;
+    }).catch(() => null);
+  },
+  build: (inp, data) => {
+    if (!data) return null; const text = shockTodayScript(data); if (!text) return null; const m = data.rel.M?.[data.mkt]?.m30;
+    return { title: 'Release shockwave', view: ID, cam: null, text, figure: { value: nativeText(m, data.typ.unit, true), label: `${marketLabel(data.mkt)} first 30 min` },
+      enter: api => { S.mode = 'all'; S.abs = false; S.sel = null; S.family = null; setFamily(api, data.rel.family); S.mkt = data.mkt; S.showP = 0; S.showAt = Date.now(); Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); },
       motion: (api, p) => { S.showP = clamp(p, 0, 1); S.showAt = Date.now(); } };
   },
 });

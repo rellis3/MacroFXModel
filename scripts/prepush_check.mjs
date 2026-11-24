@@ -30,6 +30,9 @@ const GUARDS = [
   'js/terminal/links.test.mjs', 'js/terminal/commandCore.test.mjs', 'js/terminal/linkedSelection.test.mjs', 'js/terminal/infoMapView.test.mjs',
   'js/deskAccess.test.mjs', 'js/storeRegistry.test.mjs', 'js/deskSnapshot.test.mjs',
   'js/newsletterTermV2.test.mjs', 'js/newsletterTerminal.test.mjs', 'js/newsletterPicto.test.mjs',
+  // 2026-11-24: of the last 100 Tests runs 43 were red, and the only causes were these registration guards (a file that mentions Bias Engine V2 outside its allowed list, desk-terminal.html out of step with
+  // js/scoreDisplay.js, a new page missing from the Info map, a new terminal route missing from the snapshot): add the two that were not listed here. biasEngineV2 is the slow one (~40 s).
+  'js/scoreDisplay.test.mjs', 'js/biasEngineV2.test.mjs',
 ];
 
 let failed = 0;
@@ -41,7 +44,9 @@ let changed = [];
   const g = run('git', ['diff', '--name-only', '--diff-filter=ACMR', 'origin/main...HEAD']);
   const w = run('git', ['status', '--porcelain']);
   const names = [...String(g.stdout || '').split('\n'), ...String(w.stdout || '').split('\n').map(l => l.slice(3))].map(s => s.trim().replace(/^"|"$/g, '')).filter(Boolean);
-  changed = [...new Set(names.filter(n => /\.test\.(mjs|js)$/.test(n) && existsSync(path.join(ROOT, n))))];
+  // a changed test file, or the test that sits next to a changed source file (js/foo.js -> js/foo.test.mjs / .test.js)
+  const asTest = n => /\.test\.(mjs|js)$/.test(n) ? [n] : /\.(mjs|js)$/.test(n) ? [n.replace(/\.(mjs|js)$/, '.test.mjs'), n.replace(/\.(mjs|js)$/, '.test.js')] : [];
+  changed = [...new Set(names.flatMap(asTest).filter(n => existsSync(path.join(ROOT, n))))];
 }
 
 // 2. regenerate the Info map

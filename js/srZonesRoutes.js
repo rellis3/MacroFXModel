@@ -11,9 +11,11 @@ import { tvTickers } from './deskBookPine.js';
 import { wallReachability, reachLabel } from './oiReachability.js';
 import { buildIntradayContext } from './forecastPathCore.js';
 import { londonDay, londonOpen, volumeProfileLevels, oiLegs, gexPeakLegs, stretchContext, forecastLegs, deskLegs, profileLegs, buildSrZones, gexContext, cotContext,
-  formatExport, splitParts, partsText, SRZ_HEADER, describeSrZone } from './srZones.js';
+  formatExport, splitParts, partsText, SRZ_HEADER, describeSrZone, zoneTouchState, zoneRead, bookFresh } from './srZones.js';
 
 const TTL = 5 * 60_000;
+const _hm = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });   // one formatter (per-call Intl objects leaked ICU memory on Railway)
+const hhmm = sec => _hm.format(new Date(sec * 1000));
 const NOT_IN_ALL = /^(CORN|SOYBN|WHEAT|SUGAR|XPT|XPD)/i;   // same exclusions as the OI Profile paste's pair=all
 // micro / currency futures the chart might be on, beyond js/deskBookPine.js tvTickers
 const EXTRA_ALIASES = { GOLD: ['MGC1!', 'MGC'], NQ: ['MNQ1!', 'MNQ'], SPX500: ['MES1!', 'MES'], US30: ['MYM1!', 'MYM'], US2000: ['M2K1!', 'M2K'],
@@ -26,7 +28,9 @@ const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
  * deps: kv · getForecast() → forecastState.latest · forecastKeyForPair(pair) · oandaFor(storeKey) → OANDA symbol | null ·
  * ivLadders(store) → { forecastName: ladder } · cotForExport() · deskCards() → { date, cards: { forecastName: { rating, card|null } }, reason? }
  */
-export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, ivLadders = async () => ({}), cotForExport = async () => null, deskCards = async () => ({ cards: {} }), fetchImpl = fetch, log = console }) {
+// oiProfileFor(storeKey, inst) → { gammaPeak, regime, dayMove } | null: the OI Profile built exactly as /api/oi-profile/export builds it (the build the
+// oi-profile-lines study replayed), so the gamma peak and PIN/BREAKOUT behind the zone read are the tested ones (2026-11-24).
+export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, ivLadders = async () => ({}), cotForExport = async () => null, deskCards = async () => ({ cards: {} }), oiProfileFor = () => null, fetchImpl = fetch, log = console }) {
   const barCache = new Map(), itemCache = new Map();
   let ivCache = { at: 0, v: null }, deskCache = { at: 0, v: null }, cotCache = { at: 0, v: null };
 
@@ -88,6 +92,10 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     const legs = [];
     // OI + gamma
     const oi = [...oiLegs((oiStoreToLevels(inst) || []).filter(l => Number.isFinite(l?.price) && l.price > 0), inst), ...gexPeakLegs(inst, spot)];
+    // the OI Profile's gamma peak (the one line with a candidate read) as its own gamma leg
+    let prof = null;
+    try { prof = oiProfileFor(k, inst); } catch (e) { log.warn?.('[sr-zones] profile', k, e.message); }
+    if (Number.isFinite(prof?.gammaPeak) && prof.gammaPeak > 0) oi.push({ price: prof.gammaPeak, kind: 'gamma', family: 'gamma', type: 'gamma_peak', label: 'gamma peak (OI Profile)' });
     if (!oi.some(l => l.family === 'oi')) missing.push('oi');
     if (!oi.some(l => l.family === 'gamma')) missing.push('gamma');
     legs.push(...oi);
@@ -108,6 +116,14 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     const coreZones = buildSrZones({ spot, sigma, legs: oi, opts: { radius: 0.03, maxSpan: 0.06, maxTiers: 8 } });
     // the near edge of each zone gets the calibrated P(touch within 4h) the OI levels export uses (js/oiReachability.js, per-instrument curve)
     try { addTouch(done, k, [...zones.support, ...coreZones.support], [...zones.resistance, ...coreZones.resistance]); } catch (e) { log.warn?.('[sr-zones] touch', k, e.message); }
+    // today's read per zone: what it has done since the London open (the study's 0.25σ arm/race on M5) and what the data says about the next touch
+    const since = (() => { const b = done.find(x => londonDay(x.time) === today); return b ? b.time : Infinity; })();
+    const rs = prof?.dayMove > 0 ? prof.dayMove : sigma;
+    const fresh = bookFresh(inst.savedAtMs, today), capSec = fresh ? inst.savedAtMs / 1000 : null;
+    for (const [side, arr] of [['S', zones.support], ['R', zones.resistance], ['S', coreZones.support], ['R', coreZones.resistance]])
+      for (const z of arr) z.read = zoneRead(z, zoneTouchState(done, z.lo, z.hi, rs, since), { regime: prof?.regime ?? null, side, hhmm, fresh,
+        bookTouches: fresh ? zoneTouchState(done, z.lo, z.hi, rs, capSec).touches : null });
+    if (prof?.regime && !fresh) missing.push('★ read (OI book not from this morning)');
     // futures basis (futures − spot) when the conversion is a plain shift; inverted (USD/JPY…) and unit-scaled (grains) books get none
     const fut = oiFuturesTermsPrice(spot, inst);
     const basisOk = Number.isFinite(inst.basis) && Number.isFinite(fut) && Math.abs(fut / spot - 1) < 0.05;
@@ -117,6 +133,7 @@ export function createSrZones({ kv, getForecast, forecastKeyForPair, oandaFor, i
     const basisAgeH = Number.isFinite(inst.basisAtMs) ? +((Date.now() - inst.basisAtMs) / 3.6e6).toFixed(1) : null;
     return {
       key: k, name, aliases, spot, sigma, basis, basisAgeH, date: today, digits: priceDigits(k, spot),
+      regime: prof?.regime ?? null, gammaPeak: prof?.gammaPeak ?? null, gpSince: fresh ? inst.savedAtMs : null,
       gex: gexContext(inst), cot: cotContext(fk ? ctx.cot?.[fk] : null), desk: dk?.rating || null,
       stretch: stretchContext({ spot, open, sigma, ladder: fc?.ladder, cot: fk ? ctx.cot?.[fk] : null }),
       open, missing, zones, coreZones, profile: { npoc: vp.npoc, hvn: vp.hvn, lvn: vp.lvn, sessions: vp.sessions, binWidth: vp.binWidth, reason: vp.reason || null },

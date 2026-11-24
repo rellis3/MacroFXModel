@@ -88,6 +88,31 @@ needs the owner to keep the log; months before any power. Source: QG quant vs di
 Not a direction or reversion test (the spread-reversion record is weak: `hedge-residual-mr` NULL). It's a hedging-mechanics
 question: what "neutral" is still worth a month later. Source: Crown 2026-11-15 relative-value clip (owner: "take it further").
 
+### Q6. Is trailing correlation the wrong price for the stress state? — score 9/15
+
+> Take S&P drawdowns past their own noise (20-day fall in the worst fifth). For S&P against USD/CHF, EUR/USD, USD/JPY and
+> gold, compare the realised correlation over the next 20 sessions with the trailing 60-day one known at the start. Sweep
+> 10 / 20 / 40 sessions; the noise threshold is the same gap on random 20-session windows. Does the gap jump in stress,
+> and which way?
+
+| | |
+|---|---|
+| Construct | daily log returns; trailing 60-session correlation at t, realised correlation t+1..t+h |
+| Condition | S&P 20-day return in its worst fifth at t (the `drawdown-forecast-error-fx` trigger) vs all other days |
+| Horizons | 10 / 20 / 40 sessions |
+| Noise threshold | the same gap on random start days (block bootstrap); Fisher-z for the difference |
+| Outcome distribution | realised minus trailing correlation, by pair; sign changes counted |
+| Benchmark / mirror | calm-start windows; the pre-2025 vs 2025-26 split (AP: before the tariffs, S&P down came with EUR down; now with USD down) |
+| Mechanism | in stress, flows (repatriation, mechanical rebalancing, margin) dominate the drivers that set calm-period correlation |
+| Builds on | `drawdown-forecast-error-fx` VALIDATED (FX ranges ~7% wider after an S&P fall: size, not correlation); Q1 here; lesson #7 |
+| Data & power | daily closes on hand back to 2008; ~15-25 independent stress starts, so powered for a large gap only |
+| If yes → | the Correlations & hedges tab shows a stress-conditioned correlation beside the trailing one; hedge ratios (Q5) get a stress check |
+| If no → | trailing correlation is a fair guide even in stress; stop saying "correlations break in a crisis" for these pairs |
+| Falsifier | the stress-start gap sits inside the random-window band for every pair |
+
+Source: Macro Trading Floor E06 (AP's dual digital, `education/podcast_transcripts/HOW_THEY_THINK.md` §3e, Pattern AJ).
+Not a direction test and not an options-pricing test (no dual-digital quotes on file).
+
 ## Not carded
 
 - Black-Litterman: no validated mean view to feed it; `L6_LITERATURE_SPEC.md` already covers it.

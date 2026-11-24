@@ -4,7 +4,7 @@ import sys
 from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from broadcast_core import concat_list, max_volume, is_silent, title_for, description_for, short_warning  # noqa: E402
+from broadcast_core import concat_list, max_volume, is_silent, title_for, description_for, short_warning, part_of_day  # noqa: E402
 
 
 def test_concat_holds_each_frame_until_the_next_and_cuts_to_the_window():
@@ -52,6 +52,10 @@ def test_titles_and_text_say_description_only():
     desc = description_for(d, voice='server voice', seconds=131.4)
     assert 'Not a forecast' in desc and '131 s' in desc and '#Shorts' in desc
     assert 'will' not in desc.lower().split('narrated')[0]
+    assert title_for(d, 'evening') == 'H.E.L.I.X. Evening Briefing · Mon 23 Nov 2026 #Shorts'
+    ev = description_for(d, part='evening')
+    assert "evening briefing" in ev and 'releases' in ev and 'Not a forecast' in ev
+    assert [part_of_day(h) for h in (7, 12, 17, 18, 21)] == ['morning', 'afternoon', 'afternoon', 'evening', 'evening']
 
 
 def test_short_warning():

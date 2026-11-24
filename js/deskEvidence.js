@@ -842,7 +842,28 @@ export const DESK_EVIDENCE = [
     claim: 'On US, euro-area or UK tier-1 release days a session hedge ratio sized only from past release days (and on quiet days from quiet days) removes more session variance than one sized from all recent sessions',
     result: 'UNDERPOWERED, leaning worse: -0.71pp [-1.57, +0.13] against the unconditioned 20-session hourly ratio, worse on 10 of 12 sets, both halves negative. Halving the sample costs more than the conditioning gains. Calendar covers USD, EUR and GBP only (A1).',
     use: 'Do not switch to event-day hedge ratios on release days. A release can be shown as context only.',
+  },  {
+    id: 'bias-fast-layer', domain: 'macro', verdict: 'underpowered', date: '2026-11-24', doc: 'forge/BIAS_FAST_LAYER_PREREG.md', also: ['analysis/output/bias-fast-layer/RESULTS.md'],
+    instruments: ['GOLD', 'NQ', 'SPX500', 'US30', 'DE30', 'EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+    claim: 'The dollar move and the US 2-year move since 07:00 London, mapped onto each market through its own hourly betas over the previous 120 sessions, call the next 3 hours (the Bias Engine fast layer)',
+    result: 'UNDERPOWERED. Call-weighted (A2): +0.019 of a 3-hour sigma [-0.004, +0.039], halves +0.031 / +0.011, positive on 11 of 12 markets, 81,499 calls 2016-03 to 2026-08. Below the 0.03 bar, about one spread on the majors. The prereg session-mean statistic read -0.131 because its weights carried lookahead (A2). Positive control 0.105 vs planted 0.10.',
+    use: 'Show the fast layer as context (what the dollar and the 2-year imply now, with its parts), not as a direction call. Not a reason to change the morning bias.',
   },
+  {
+    id: 'bias-fast-vs-momentum', domain: 'macro', verdict: 'null', date: '2026-11-24', doc: 'forge/BIAS_FAST_LAYER_PREREG.md', also: ['analysis/output/bias-fast-layer/RESULTS.md'],
+    instruments: ['GOLD', 'NQ', 'SPX500', 'US30', 'DE30', 'EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+    claim: 'The fast layer calls the next 3 hours better than following the market\x27s own move since 07:00 London',
+    result: 'NULL. Call-weighted (A2): fast minus momentum +0.009 [-0.005, +0.023], inside the +/-0.03 band; halves +0.016 / +0.005; 8 of 12. Momentum alone +0.010 [-0.007, +0.026].',
+    use: 'Do not present the fast layer as knowing more than the chart since the morning: on its own it adds nothing over the market\x27s own move.',
+  },
+  {
+    id: 'bias-fast-lag', domain: 'macro', verdict: 'validated', date: '2026-11-24', doc: 'forge/BIAS_FAST_LAYER_PREREG.md', also: ['analysis/output/bias-fast-layer/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
+    claim: 'When the dollar and the 2-year since 07:00 imply one direction for a market and the market has gone the other way, the market moves toward its drivers over the next 3 hours',
+    result: 'VALIDATED for the dollar pairs: +0.076 of a 3-hour sigma [+0.005, +0.143] call-weighted (prereg statistic +0.084 [+0.024, +0.141], BH pass), halves +0.084 / +0.070, 8 of 12, 3,824 calls. By market EURUSD +0.15, AUDUSD +0.23, NZDUSD +0.24, USDCAD +0.23, USDCHF +0.08, GBPUSD +0.06, USDJPY +0.02. Gold -0.055 and the indices about 0, so not those. Strong gaps (|z| >= 1, n 640) +0.35 [+0.10, +0.58], descriptive.',
+    use: 'Research-only. Through the day may flag a dollar pair that has gone against the rest of the dollar and the 2-year since 07:00, as likely to catch up over the next 3 hours (about 0.08 sigma, more on big gaps), with a forward record. Never for gold or indices: a dollar move gold has not followed is not a reason to expect gold to follow within hours.',
+  },
+
   {
     id: 'hedge-downside-beta', domain: 'execution', verdict: 'context', date: '2026-11-20', doc: 'forge/HEDGE_METHOD_COMPARISON_PREREG.md', also: ['analysis/output/hedge-method-comparison/RESULTS.md'],
     instruments: ['GOLD', 'NQ', 'US30', 'US2000', 'DE30', 'EURUSD', 'GBPUSD', 'AUDUSD', 'USDJPY', 'USDCHF'],
@@ -3530,6 +3551,41 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
   },
   {
+    id: 'ladder-close-split', domain: 'volatility', verdict: 'null', date: '2026-11-24', doc: 'forge/LADDER_CLOSE_SPLIT_PREREG.md', also: ['analysis/output/ladder-close-split/RESULTS.md'],
+    claim: 'Forecasting Close+ (close on up-close days) and Close- (close on down-close days) as separate lines, each with its own walk-forward model race and multipliers (Jordan\'s format), lands nearer the actual close than one symmetric OC line',
+    result: 'Pre-registered, NQ/GC/6E/6J futures, ~55 models per side, abs error of p50 vs actual close, test 2020-2026.08. +0.21% [-0.16, +0.57] (2020-22 +0.06%, 2023-26 +0.45%); old field only +0.40%. NQ -0.9% [-1.9, +0.2] leans better (fixes NQ close line sitting low: 55% -> 49% beaten); others +0.2 to +0.9%. Each side picks its own calc (e.g. NQ Close- RV EWMA 0.5, gold Close- implied vol), but up/down medians differ by only 0-0.1% of price. Graded weight: against, faint lean on NQ.',
+    use: 'One symmetric close line is enough; NQ close line could be nudged up. Split adds little.',
+    instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
+  },
+  {
+    id: 'ladder-exhaustion-accuracy', domain: 'volatility', verdict: 'null', date: '2026-11-23', doc: 'forge/LADDER_EXHAUSTION_ACCURACY_PREREG.md', also: ['analysis/output/ladder-exhaustion-accuracy/RESULTS.md'],
+    claim: 'Jordan\'s recipe as published (3-day ATR sigma x textbook constants) lands its median high-low and close lines nearer the actual day range and close than our QLIKE per-line picks (owner: the purpose is exhaustion, predicting the high, low and close)',
+    result: 'Pre-registered, NQ/GC/6E/6J futures, abs error of p50 lines, test 2020-2026.08. HL: Jordan +13.0% more error [+11.6, +14.8], both halves, all four (NQ +6.6%, gold +16.5%); Bank EMA alpha 0.15 +6.0%. Close: Jordan +2.8% [+2.1, +3.7]. Ours lands within 20% of the actual HL on 38-42% of days vs 33-36%. After big days Jordan overshoots and ours undershoots; NQ after big days level. Graded weight: against (ours nearer).',
+    use: 'Our HL lines are the better exhaustion lines. Candidate fix: NQ HL after big days runs low.',
+    instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
+  },
+  {
+    id: 'ladder-jordan-recipe', domain: 'volatility', verdict: 'null', date: '2026-11-23', doc: 'forge/LADDER_JORDAN_RECIPE_PREREG.md', also: ['analysis/output/ladder-jordan-recipe/RESULTS.md'],
+    claim: 'A fast True-Range sigma (ATR 2/3/10 days, EMA of TR alpha 0.15-0.60; the recipe that best matches Jordan\'s one-off 23 Nov levels, and the C.OG Bank\'s EMA-of-TR method) gives lower QLIKE for HL / OH / OL than our QLIKE per-line pick',
+    result: 'Pre-registered, NQ/GC/6E/6J futures, walk-forward pick among the TR arms, fitted scale, test 2020-2026.08. +1.85% [+0.66, +2.31] worse (2020-22 +0.59%, 2023-26 +2.89%); NQ +2.3%, gold +3.0%, EURUSD +1.2%. Best of family = Bank alpha 0.15 EMA (ranks ~13-32 of 52-56); the fast 2-3 day versions that match Jordan rank 35-51. Graded weight: against.',
+    use: 'Keep our HAR-family/IV picks. If a TR-based sigma is wanted, use EMA alpha 0.15, not a 2-3 day window.',
+    instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
+  },
+  {
+    id: 'ladder-jordan-recipe-published', domain: 'volatility', verdict: 'null', date: '2026-11-23', doc: 'forge/LADDER_JORDAN_RECIPE_PREREG.md', also: ['analysis/output/ladder-jordan-recipe/RESULTS.md'],
+    claim: 'Jordan-style levels as published (3-day ATR sigma x textbook Brownian constants, no refit) score as well as our QLIKE per-line ladder',
+    result: 'Pre-registered, same data. +9.05% [+6.87, +9.85] worse on QLIKE, both halves (+7.6% / +10.3%); HL +23.6%. Hit rates near target on average (p50 42-49% beyond, p75 23-26%, p90 10-14%) but the 3-day sigma is noisy, so day-by-day sharpness is poor. Graded weight: against.',
+    use: 'Textbook constants are about right on average; the weakness is the short window, not the multipliers.',
+    instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
+  },
+  {
+    id: 'ladder-wide-race', domain: 'volatility', verdict: 'underpowered', date: '2026-11-23', doc: 'forge/LADDER_WIDE_RACE_PREREG.md', also: ['analysis/output/ladder-wide-race/RESULTS.md'],
+    claim: 'A much wider sigma race (~35 new models: range estimators, yesterday RV, RV EWMA, AR/ARMA/AR22/ARFIMA, HAR-IV/leverage/weekday/range/all, direct per-line OLS and boosted trees, Realized GARCH, top-k combos) finds a lower out-of-sample QLIKE for HL / OH / OL than the ladder-qlike-per-line field (owner, worried Jordan\'s vol beats ours)',
+    result: 'Pre-registered, NQ/GC/6E/6J futures, walk-forward per-line pick, test 2020-2026.08. Controls: bar alignment 100%, old pick reproduced exactly, planted oracle picked every year. Wide vs old pick -0.06% [-0.89, +0.29] (2020-22 -0.64%, 2023-26 +0.42%); NQ -1.99% [-3.40, -0.54] (top-3/5 combos), USDJPY +2.36% (pick churn). Hindsight best beats old best by 0.2-4.4% (HAR-IV gold, combos NQ, HAR-all EURUSD). Yesterday-RV-only (closest to Jordan\'s 23 Nov NQ sigma) ranks 43rd-55th of 51-55, 4-152% worse. Graded weight: faint; leaning for NQ combos.',
+    use: 'Keep the HAR-family / IV picks. NQ top-k combo and gold HAR-IV are candidates for a forward check. A sigma built from yesterday\'s realised alone scores badly on QLIKE.',
+    instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
+  },
+  {
     id: 'ladder-anchor-sweep', domain: 'volatility', verdict: 'underpowered', date: '2026-11-23', doc: 'forge/LADDER_ANCHOR_SWEEP_PREREG.md', also: ['analysis/output/ladder-anchor-sweep/RESULTS.md'],
     claim: 'Anchoring the forecast day at another London hour (01:00-23:00, 22h window, features from 24h blocks ending at the anchor) gives better QLIKE range forecasts (HL / OH / OL) than London 00:00 (Jordan asked, owner suggested e.g. 07:00)',
     result: 'Pre-registered, NQ/GC/6E/6J futures, 24 anchors, walk-forward QLIKE pick, skill vs same-anchor 5-day RV baseline, test 2020-2026.08. Anchor chosen on 2020-22, confirmed 2023-26: pooled -0.45pp [-1.27, +1.34], 6/12 cells positive. EURUSD morning anchor holds: 6E HL 10:00 +5.6pp [+2.0, +10.0], 6E OL 11:00 +2.6pp [+1.5, +4.3] (10-11 above the best-of-24 chance line). NQ within +/-2pp at every hour; 07:00 within +/-1pp on 11/12 cells; evening anchors worst for GC/6E/6J HL. Graded weight: faint overall, leaning for EURUSD 10-11 London.',
@@ -4657,6 +4713,34 @@ export const DESK_EVIDENCE = [
     use: 'Do not cite the pre-FOMC drift as a live ~50bp effect: at that size it is gone here since 2014. A +10-15bp lean may remain, concentrated in 2018-2024 (mostly 2022). Reopen with 1994-2013 dates as a confirmation.',
     instruments: ['NQ', 'SPX500'],
   },
+  {
+    id: 'oi-profile-lines-s1', domain: 'positioning', verdict: 'null', date: '2026-11-23', doc: 'forge/OI_PROFILE_LINES_PREREG.md', also: ['analysis/output/oi-profile-lines/RESULTS.md', 'analysis/output/oi-profile-lines/results.json'],
+    claim: 'The OI Profile lines (walls, gamma peak, zero gamma, GEX flip, max pain, vanna/charm flip, volume, nodes, expected-move edges) hold on a first touch more or less often than the same lines shifted by 0.25-0.5 sigma',
+    result: 'Real lines held 48.7% vs placebo 48.5%: +0.2pp [-2.7, +3.1] on 1,706 resolved first touches (bar 5pp, MDE 5.5pp), halves +1.8 / -1.5; +-0.5 sigma placebos only +1.2pp [-2.0, +4.6]; mirror -1.0pp. Positive control: random-walk zero case +1.25pp, planted bounce +10.9pp. method: our nightly QuikStrike capture 2026-08-20 to 2026-11-23 replayed through the live OI Profile build (66 dates, 707 instrument-sessions, 11 instruments), first-touch 0.25 sigma race back vs through, placebo = the same lines shifted +-0.25/0.5 sigma, date-clustered bootstrap B 2000.',
+    use: 'Do not label profile lines as places price holds or breaks: pooled, they react like any nearby price. Per-type cells are atlas only (MDE 11-29pp), shown on OI Lab 2. Re-score at 132 dates (about 2027-03).',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'oi-profile-lines-s2', domain: 'positioning', verdict: 'null', date: '2026-11-23', doc: 'forge/OI_PROFILE_LINES_PREREG.md', also: ['analysis/output/oi-profile-lines/RESULTS.md', 'analysis/output/oi-profile-lines/results.json'],
+    claim: 'Profile lines hold better (relative to placebo) on PIN days (dealers long gamma at spot) than on BREAKOUT days',
+    result: 'Excess PIN +0.6pp [-3.2, +4.6] (lines 47.0% vs placebo 46.3%, 722 touches), BREAKOUT -0.0pp (50.0% vs 50.0%, 984); difference +0.65pp [-5.8, +7.2] against an 8pp bar. Atlas candidate only: the gamma peak on PIN days held 70.3% vs 48.5% (+21.7pp [13.6, 29.6], 74 first touches, 45 dates, both halves), the one BH survivor of about 150 atlas cells against a label-permutation chance baseline of median 0 / max 4. method: our nightly QuikStrike capture 2026-08-20 to 2026-11-23 replayed through the live OI Profile build (66 dates, 707 instrument-sessions, 11 instruments), first-touch 0.25 sigma race back vs through, placebo = the same lines shifted +-0.25/0.5 sigma, date-clustered bootstrap B 2000.',
+    use: 'No regime switch for line reads as a whole. The gamma-peak-on-PIN cell is a candidate for its own prereg on forward data, not a result; do not trade or label it.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'oi-profile-lines-s3', domain: 'positioning', verdict: 'null', date: '2026-11-23', doc: 'forge/OI_PROFILE_LINES_PREREG.md', also: ['analysis/output/oi-profile-lines/RESULTS.md', 'analysis/output/oi-profile-lines/results.json'],
+    claim: 'A return visit (touch 2 or later in the session, re-armed 0.25 sigma away) to a profile line reacts differently from the first touch, relative to placebo lines',
+    result: 'Touch 2+ excess +0.0pp (49.2% vs 49.2%, 1,759) vs touch 1 +0.2pp; difference -0.15pp [-4.6, +4.1] against a 5pp bar. No retest-after-break effect in the atlas. method: our nightly QuikStrike capture 2026-08-20 to 2026-11-23 replayed through the live OI Profile build (66 dates, 707 instrument-sessions, 11 instruments), first-touch 0.25 sigma race back vs through, placebo = the same lines shifted +-0.25/0.5 sigma, date-clustered bootstrap B 2000.',
+    use: 'Touch count does not change how a profile line behaves on this sample; do not show "second touch holds" or similar as a rule.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
+  {
+    id: 'oi-profile-lines-s4', domain: 'positioning', verdict: 'underpowered', date: '2026-11-23', doc: 'forge/OI_PROFILE_LINES_PREREG.md', also: ['analysis/output/oi-profile-lines/RESULTS.md', 'analysis/output/oi-profile-lines/results.json'],
+    claim: 'Stacked profile lines (2+ line types within 0.1 sigma) hold better relative to placebo than single lines',
+    result: 'Stacked excess -2.1pp (47.4% vs 49.5%, 784) vs single +2.1pp (49.8% vs 47.7%, 922); difference -4.15pp [-9.6, +1.3] against a 5pp bar (MDE about 11pp); halves -0.9 / -7.3. If anything stacked lines hold less. method: our nightly QuikStrike capture 2026-08-20 to 2026-11-23 replayed through the live OI Profile build (66 dates, 707 instrument-sessions, 11 instruments), first-touch 0.25 sigma race back vs through, placebo = the same lines shifted +-0.25/0.5 sigma, date-clustered bootstrap B 2000.',
+    use: 'Do not rank lines by how many types stack on them; the sign so far runs the wrong way for that claim. Judge again at 132 dates.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -4722,6 +4806,10 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'oi-profile-lines-s1': { n: '66 London dates (date-cluster bootstrap), 707 instrument-sessions, 1,706 resolved first touches', note: 'MDE 5.5pp against a 5pp bar (coin-flip Monte Carlo with a date random effect)' },
+  'oi-profile-lines-s2': { n: '66 dates; 722 PIN and 984 BREAKOUT first touches', note: 'MDE about 11pp against an 8pp bar; CI inside the bar, so null' },
+  'oi-profile-lines-s3': { n: '66 dates; 1,759 later and 1,706 first touches', note: 'MDE about 7.7pp against a 5pp bar; CI inside the bar, so null' },
+  'oi-profile-lines-s4': { n: '66 dates; 784 stacked and 922 single first touches', note: 'MDE about 11pp against a 5pp bar' },
   'ladder-v2-nq': { n: '2,229 sessions in 112 20-session blocks (block bootstrap, winner re-selected per draw)', note: 'MDE ~0.5pp on the 30-cell miss; observed -0.91pp' },
   'ladder-v2-nq-fut': { n: '2,196 sessions in 110 20-session blocks', note: 'MDE ~0.5pp; observed -0.68pp' },
   'ladder-v2-nq-cvf': { n: '2,706 common London dates, 20-session blocks', note: 'registered band +/-5% on the ratio; CIs within +/-1.7%' },
@@ -4744,6 +4832,11 @@ const POWER = {
   'fqt-nam-lines-tp': { n: '1,417 NQ trades', note: 'NULL bar +1 bp; CI upper -2.04 bp' },
   'futures-oc-tp-fade-p75': { n: '3,377 trades on ~6,600 sessions (4 futures)', note: 'NULL bar +0.05R; CI upper -0.043R' },
   'futures-oc-tp-fade-p90': { n: '1,364 trades', note: 'NULL bar +0.05R; CI upper -0.064R' },
+  'ladder-close-split': { n: '~1,650 test sessions per instrument split ~55/45 up/down, 63-session blocks', note: 'observed +0.21%, CI [-0.16, +0.57]; NULL bar CI lower > -0.5% met' },
+  'ladder-exhaustion-accuracy': { n: '~1,650 test sessions per instrument (4 futures, HL and close), 63-session blocks', note: 'observed HL +13.0%, CI [+11.6, +14.8]' },
+  'ladder-jordan-recipe': { n: '~1,650 test sessions per instrument (4 futures x 3 lines), 63-session blocks', note: 'observed +1.85%, CI [+0.66, +2.31]; NULL bar CI lower > -0.5% met' },
+  'ladder-jordan-recipe-published': { n: '~1,650 test sessions per instrument (4 futures x 3 lines), 63-session blocks', note: 'observed +9.05%, CI [+6.87, +9.85]' },
+  'ladder-wide-race': { n: '~1,650 test sessions per instrument (4 futures x 3 lines, 51-55 models), 63-session blocks', note: 'oracle picked every year; observed -0.06%, CI [-0.89, +0.29]; NULL bar needs CI lower > -0.5%' },
   'ladder-anchor-sweep': { n: '~1,650 test windows per anchor per instrument (4 futures x 24 anchors), 63-session blocks, paired days', note: 'oracle control +6 to +62pp; observed pooled -0.45pp, CI upper +1.34 (NULL bar +1.0)' },
   'ladder-qlike-per-line': { n: '~1,650 test sessions per instrument (4 futures), 63-session blocks', note: 'planted oracle detected at -3.6%; observed -0.45%' },
   'ladder-qlike-vs-pinball': { n: 'same sessions', note: 'observed -0.86% [-1.70, +0.16]' },
@@ -5122,6 +5215,9 @@ const POWER = {
   'hedge-today': { n: '~2,440 walk-forward sessions per set (~115 21-session blocks), 12 sets sharing sessions and markets', note: 'paired interval half-width 0.6-1.9pp vs a 1.0pp bar; S3 interval [+3.29, +6.67] is far from zero; the verdict is set by the placebo clause (A2), not by power' },
   'hedge-today-pick': { n: '~2,440 sessions per target, 8 targets', note: 'half-width 1.2pp' },
   'hedge-today-daytype': { n: '~2,440 sessions, ~900 release sessions per set', note: 'half-width 0.85pp, interval [-1.57, +0.13] crosses the -1pp band' },
+  'bias-fast-layer': { n: '81,499 calls, ~2,700 sessions (~128 21-session blocks), 12 markets sharing sessions', note: 'call-weighted half-width 0.022 vs a 0.03 bar; interval reaches past the bar so not NULL' },
+  'bias-fast-vs-momentum': { n: 'same calls, paired against 137,777 momentum calls', note: 'half-width 0.014; interval inside +/-0.03' },
+  'bias-fast-lag': { n: '3,824 disagreement calls over the same blocks', note: 'half-width 0.069; lower bound +0.005, effect carried by 6 dollar pairs' },
   'hedge-method-comparison': { n: '2,451 walk-forward days (~117 21-day blocks), 12 sets that share dates and markets', note: 'paired interval half-width 0.5-1.2pp for the estimators that matter vs a 1.0pp bar; naive/min-ES/downside intervals wider (1.5-15pp) but far from zero' },
   'hedge-downside-beta':     { n: '117 rolling windows per pair, 10 pairs, one 10-year path', note: 'descriptive; the registered form is a selection artefact (A2), the corrected form has no gate' },
   'hedge-residual-mr':       { n: '2,436 sessions (~116 21-session blocks), 9.4 years; 9,353 trades', note: 'Sharpe SE 0.31 (synthetic MC), MDE 1.01 vs a 0.5 bar; CI [-1.76, -0.60] excludes the bar (null reachable by design)' },

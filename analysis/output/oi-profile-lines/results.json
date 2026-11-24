@@ -1,0 +1,333 @@
+{
+ "id": "oi-profile-lines",
+ "verdict": "null",
+ "ranAt": "2026-11-23T20:30:53Z",
+ "seed": 20261123,
+ "B": 2000,
+ "prereg": "forge/OI_PROFILE_LINES_PREREG.md",
+ "preregCommit": "a6ce5ff4",
+ "branch": "claude/oi-profile-lines",
+ "dates": 66,
+ "sessions": 707,
+ "counts": {
+  "placebo:back": 4890,
+  "placebo:both": 10,
+  "placebo:through": 5116,
+  "placebo:unresolved": 800,
+  "real:back": 1696,
+  "real:both": 5,
+  "real:through": 1769,
+  "real:unresolved": 320
+ },
+ "cells": [
+  {
+   "name": "S1 lines vs placebo, first touch",
+   "n": 1706,
+   "est": 0.0016,
+   "lo": -0.026699999999999998,
+   "hi": 0.031200000000000002,
+   "mde": 0.055,
+   "bar": 0.05,
+   "p": 0.885,
+   "holm_alpha": 0.025,
+   "halves": [
+    0.0184,
+    -0.0149
+   ],
+   "verdict": "null"
+  },
+  {
+   "name": "S2 PIN minus BREAKOUT",
+   "n": 1706,
+   "est": 0.006500000000000001,
+   "lo": -0.057800000000000004,
+   "hi": 0.0723,
+   "mde": 0.11,
+   "bar": 0.08,
+   "p": 0.812,
+   "holm_alpha": 0.0167,
+   "halves": [
+    0.0,
+    0.011699999999999999
+   ],
+   "verdict": "null"
+  },
+  {
+   "name": "S3 touch 2+ minus touch 1",
+   "n": 3465,
+   "est": -0.0015,
+   "lo": -0.045700000000000005,
+   "hi": 0.041299999999999996,
+   "mde": 0.077,
+   "bar": 0.05,
+   "p": 0.93,
+   "holm_alpha": 0.05,
+   "halves": [
+    -0.027999999999999997,
+    0.0279
+   ],
+   "verdict": "null"
+  },
+  {
+   "name": "S4 stacked (2+ types) minus single",
+   "n": 1706,
+   "est": -0.0415,
+   "lo": -0.09630000000000001,
+   "hi": 0.0127,
+   "mde": 0.11,
+   "bar": 0.05,
+   "p": 0.125,
+   "holm_alpha": 0.0125,
+   "halves": [
+    -0.009300000000000001,
+    -0.0727
+   ],
+   "verdict": "underpowered"
+  }
+ ],
+ "mirror": {
+  "E_pp": -1.04,
+  "ci_pp": [
+   -4.43,
+   2.38
+  ],
+  "p": 0.565,
+  "halves_pp": [
+   -1.14,
+   -0.93
+  ],
+  "b_real": 47.8,
+  "b_plc": 48.8,
+  "n_real": 1187,
+  "n_plc": 3528,
+  "void_design": false
+ },
+ "sensitivity_pm05": {
+  "S1": {
+   "E_pp": 1.22,
+   "ci_pp": [
+    -1.99,
+    4.6
+   ]
+  },
+  "S2": {
+   "E_pp": -1.38,
+   "ci_pp": [
+    -8.71,
+    5.9
+   ]
+  },
+  "S3": {
+   "E_pp": -1.71,
+   "ci_pp": [
+    -7.06,
+    3.25
+   ]
+  },
+  "S4": {
+   "E_pp": -3.44,
+   "ci_pp": [
+    -10.05,
+    3.04
+   ]
+  }
+ },
+ "atlas_bh_passes": 1,
+ "atlas_chance_baseline": {
+  "perms": 20,
+  "median": 0.0,
+  "max": 4,
+  "all": [
+   0,
+   1,
+   3,
+   0,
+   2,
+   0,
+   3,
+   1,
+   0,
+   2,
+   0,
+   1,
+   4,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "descriptive": [
+  {
+   "slice": "all",
+   "kind": "real",
+   "touches": 1784,
+   "resolved": 1706,
+   "bounce_pct": 48.7,
+   "both": 2,
+   "unresolved": 76,
+   "mfe_back60_med": 0.176,
+   "mfe_thru60_med": 0.182,
+   "bars_to_res_med": 31.5
+  },
+  {
+   "slice": "all",
+   "kind": "placebo",
+   "touches": 4914,
+   "resolved": 4715,
+   "bounce_pct": 48.5,
+   "both": 9,
+   "unresolved": 190,
+   "mfe_back60_med": 0.177,
+   "mfe_thru60_med": 0.174,
+   "bars_to_res_med": 31.0
+  },
+  {
+   "slice": "PIN",
+   "kind": "real",
+   "touches": 754,
+   "resolved": 722,
+   "bounce_pct": 47.0,
+   "both": 0,
+   "unresolved": 32,
+   "mfe_back60_med": 0.169,
+   "mfe_thru60_med": 0.185,
+   "bars_to_res_med": 32.0
+  },
+  {
+   "slice": "PIN",
+   "kind": "placebo",
+   "touches": 2010,
+   "resolved": 1897,
+   "bounce_pct": 46.3,
+   "both": 3,
+   "unresolved": 110,
+   "mfe_back60_med": 0.157,
+   "mfe_thru60_med": 0.174,
+   "bars_to_res_med": 33.0
+  },
+  {
+   "slice": "BREAKOUT",
+   "kind": "real",
+   "touches": 1030,
+   "resolved": 984,
+   "bounce_pct": 50.0,
+   "both": 2,
+   "unresolved": 44,
+   "mfe_back60_med": 0.181,
+   "mfe_thru60_med": 0.177,
+   "bars_to_res_med": 31.0
+  },
+  {
+   "slice": "BREAKOUT",
+   "kind": "placebo",
+   "touches": 2904,
+   "resolved": 2818,
+   "bounce_pct": 50.0,
+   "both": 6,
+   "unresolved": 80,
+   "mfe_back60_med": 0.189,
+   "mfe_thru60_med": 0.173,
+   "bars_to_res_med": 30.0
+  },
+  {
+   "slice": "vol_low",
+   "kind": "real",
+   "touches": 789,
+   "resolved": 758,
+   "bounce_pct": 51.6,
+   "both": 1,
+   "unresolved": 30,
+   "mfe_back60_med": 0.179,
+   "mfe_thru60_med": 0.181,
+   "bars_to_res_med": 36.0
+  },
+  {
+   "slice": "vol_low",
+   "kind": "placebo",
+   "touches": 2226,
+   "resolved": 2150,
+   "bounce_pct": 51.5,
+   "both": 2,
+   "unresolved": 74,
+   "mfe_back60_med": 0.186,
+   "mfe_thru60_med": 0.163,
+   "bars_to_res_med": 33.0
+  },
+  {
+   "slice": "vol_high",
+   "kind": "real",
+   "touches": 574,
+   "resolved": 546,
+   "bounce_pct": 47.8,
+   "both": 0,
+   "unresolved": 28,
+   "mfe_back60_med": 0.185,
+   "mfe_thru60_med": 0.18,
+   "bars_to_res_med": 27.0
+  },
+  {
+   "slice": "vol_high",
+   "kind": "placebo",
+   "touches": 1442,
+   "resolved": 1379,
+   "bounce_pct": 44.0,
+   "both": 6,
+   "unresolved": 57,
+   "mfe_back60_med": 0.166,
+   "mfe_thru60_med": 0.201,
+   "bars_to_res_med": 26.0
+  },
+  {
+   "slice": "event",
+   "kind": "real",
+   "touches": 511,
+   "resolved": 499,
+   "bounce_pct": 48.3,
+   "both": 2,
+   "unresolved": 10,
+   "mfe_back60_med": 0.214,
+   "mfe_thru60_med": 0.226,
+   "bars_to_res_med": 18.0
+  },
+  {
+   "slice": "event",
+   "kind": "placebo",
+   "touches": 1398,
+   "resolved": 1336,
+   "bounce_pct": 47.6,
+   "both": 6,
+   "unresolved": 56,
+   "mfe_back60_med": 0.195,
+   "mfe_thru60_med": 0.203,
+   "bars_to_res_med": 18.5
+  },
+  {
+   "slice": "no_event",
+   "kind": "real",
+   "touches": 1273,
+   "resolved": 1207,
+   "bounce_pct": 48.9,
+   "both": 0,
+   "unresolved": 66,
+   "mfe_back60_med": 0.158,
+   "mfe_thru60_med": 0.166,
+   "bars_to_res_med": 37.0
+  },
+  {
+   "slice": "no_event",
+   "kind": "placebo",
+   "touches": 3516,
+   "resolved": 3379,
+   "bounce_pct": 48.9,
+   "both": 3,
+   "unresolved": 134,
+   "mfe_back60_med": 0.17,
+   "mfe_thru60_med": 0.166,
+   "bars_to_res_med": 36.0
+  }
+ ]
+}

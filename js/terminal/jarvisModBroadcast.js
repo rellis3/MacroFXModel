@@ -203,7 +203,7 @@ registerJarvisModule({
     pane.innerHTML = `<h3>THE ${part} BRIEFING</h3>
 <div class="jv-row"><button type="button" data-b="go" style="font-size:14px;letter-spacing:.2em;padding:10px 24px">▶ PLAY THIS ${part}</button><span class="jv-sub" data-b="status">Reading today's rundown...</span></div>
 <div data-b="rundown"></div>
-<div class="jv-row"><button type="button" data-b="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-b="len"><option value="quick">QUICK (about 2-3 min)</option><option value="short">SHORT (under 3 min, a YouTube Short)</option><option value="full">FULL (every view)</option></select></label><label class="jv-sub">speed <select data-b="rate"><option value="0.9">calm</option><option value="1">normal</option><option value="1.15">brisk</option><option value="1.3">fast</option></select></label><button type="button" data-b="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button></div>
+<div class="jv-row"><button type="button" data-b="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-b="len"><option value="quick">QUICK (about 2-3 min)</option><option value="short">SHORT (under 3 min, a YouTube Short)</option><option value="full">FULL (every view)</option></select></label><label class="jv-sub">speed <select data-b="rate"><option value="0.9">calm</option><option value="1">normal</option><option value="1.1">steady</option><option value="1.15">brisk</option><option value="1.3">fast</option></select></label><button type="button" data-b="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button></div>
 <details class="jv-sub"><summary>How recording works</summary><p class="jv-sub">The browser asks what to share. Choose <b>This tab</b>; Helix records its own voice and sound straight from the page, so there is no audio box to tick. The briefing plays and a video file downloads at the end (MP4 where the browser can, else WebM). On a phone it gets the briefing ready for the phone's own screen recorder. Keep the voice on so it is in the video.</p></details>
 <p class="jv-sub">A title sequence, the lead, then each segment over its hologram view, with a ticker, lower-thirds and subtitles. The voice leads; the picture follows. Esc ends it. Description only: what has moved and where things sit, never a forecast or a trade.</p>`;
     const q = s => pane.querySelector(`[data-b="${s}"]`), status = (t, bad = false) => { const e = q('status'); if (e) { e.textContent = t; e.style.color = bad ? 'var(--gold)' : ''; } };
@@ -223,7 +223,8 @@ registerJarvisModule({
       cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra } };
       return cache;
     }
-    const plan = (inp, mode) => planBroadcast({ ...inp, now: new Date(), mode }, { hooks: SHOW_HOOKS, have: new Set([...CORE_VIEWS, ...viewsOf().map(v => v.id)]), mode });
+    let shortSec;                                   // the short cut's budget (seconds at normal speed); the recorder may ask for more (undefined = the planner's default)
+    const plan = (inp, mode) => planBroadcast({ ...inp, now: new Date(), mode }, { hooks: SHOW_HOOKS, have: new Set([...CORE_VIEWS, ...viewsOf().map(v => v.id)]), mode, rate: +q('rate').value || 1, budgetSec: shortSec });
     async function rundown() {
       const box = q('rundown'); if (!box) return;
       try {
@@ -309,9 +310,23 @@ registerJarvisModule({
     // ── the laptop's daily job (jarvis_broadcast/record_broadcast.py) ──
     // Plays the broadcast with no human at the controls and records ITS SOUND from the HUD's audio bus (voice + effects; a sound card is not needed), while the job records the
     // picture from Chrome's own frame feed. Returns the audio (base64) with the wall-clock start/end so the job can line the two up. engine: 'server' (default, steady) or 'kokoro'.
-    api.win.__jarvisBroadcastAuto = async ({ len = 'quick', engine = 'server', kokoroWaitMs = 180000 } = {}) => {
+    api.win.__jarvisBroadcastAuto = async ({ len = 'quick', engine = 'server', kokoroWaitMs = 180000, rate = 1, budgetSec } = {}) => {
+      shortSec = budgetSec;
       const bus = api.audioBus?.(); if (!bus?.stream) throw new Error('the HUD has no audio bus');
-      q('len').value = ['full', 'short'].includes(len) ? len : 'quick'; lsPut({ voice: true }); st.voice = true; st.neural = true; st.sound = true;
+      q('len').value = ['full', 'short'].includes(len) ? len : 'quick'; q('rate').value = String([0.9, 1, 1.1, 1.15, 1.3].includes(+rate) ? +rate : 1);      // one of the panel's speeds (calm, normal, steady, brisk, fast); the planner's short budget scales with it
+      lsPut({ voice: true }); st.voice = true; st.neural = true; st.sound = true;
+      // FRAME-BY-FRAME (the recorder froze the page clock, jarvis_broadcast/vclock.js): no live recorder; the sound is rendered offline at the end, in step with the frames
+      const vc = api.win.__vclock?.frozen ? api.win.__vclock : null;
+      if (vc) {
+        api.voiceBake?.(+q('rate').value || 1);                 // the server voice is asked for at the broadcast's speed (pitch kept), not sped up afterwards
+        if (engine === 'kokoro') { api.voiceBegin?.(); const t0 = Date.now(); while (!api.voiceInfo?.()?.kokoro?.ready && Date.now() - t0 < kokoroWaitMs) await sleep(1000); }
+        const root = api.doc.getElementById(api.ID); root?.classList.add('jv-rec');
+        stop(); let t0 = 0; const onAir = async () => { await sleep(400); t0 = Date.now(); api.win.__vcOnAir = t0; };
+        try { await run(onAir); } finally { root?.classList.remove('jv-rec'); api.voiceBake?.(1); }
+        if (!t0) throw new Error('the broadcast never went on air (is the HUD open?)');
+        const t1 = Date.now(), wav = await vc.render(t0, t1);
+        return { ok: true, mime: 'audio/wav', t0, t1, audio: null, wavChars: wav.chars, voice: api.voiceLabel?.() ?? null, voiceInfo: api.voiceInfo?.() ?? null, status: q('status')?.textContent ?? '' };
+      }
       try { localStorage.setItem('jarvisVoice:v1', JSON.stringify({ ...(JSON.parse(localStorage.getItem('jarvisVoice:v1') || '{}') || {}), engine })); } catch (e) { /* private window */ }
       if (engine === 'kokoro') { api.voiceBegin?.(); const t0 = Date.now(); while (!api.voiceInfo?.()?.kokoro?.ready && Date.now() - t0 < kokoroWaitMs) await sleep(1000); }
       await bus.ctx.resume?.();

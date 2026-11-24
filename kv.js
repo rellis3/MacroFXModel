@@ -516,6 +516,8 @@ function isCfKey(key) {
   // desk_news_day_<London date>: the day's tier 1-2 headlines with the news analyst's reads and reactions, kept so a deploy does not empty the evening edition's wire
   // (server.js _nwDayPersist; the live wire key desk_news_wire is local-file only). Written at most every 15 minutes.
   if (key.startsWith('desk_news_day_')) return true;
+  // market_live_day_<London date>: the Desk Terminal live layer's record of the day (server.js _mlTick, js/marketLive.js), written once at 21:05 London
+  if (key.startsWith('market_live_day_')) return true;
   // bias_engine_<date> and bias_engine_index: the bias engine's write-once morning issue (js/biasEngine.js), scored forward on the
   // bias scoreboard; a missed or lost day is never back-issued, so it must survive redeploys.
   if (key.startsWith('bias_engine_')) return true;

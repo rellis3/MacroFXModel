@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OI Profile Lines</title>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --fg:#17202b; --muted:#5b6675; --line:#dde1e7;
+  --accent:#2457a6; --back:#2f7d6d; --through:#c0702a; --chip:#eaeef4; --plc:#8a94a3;
+  --display:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+  --body:-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+  --mono:ui-monospace,Consolas,"SF Mono",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f141b; --panel:#161d27; --fg:#e4e9f0; --muted:#97a3b3; --line:#2a3442;
+  --accent:#7aa7ec; --back:#5cc0aa; --through:#e59a55; --chip:#1f2935; --plc:#6f7b8b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141b; --panel:#161d27; --fg:#e4e9f0; --muted:#97a3b3; --line:#2a3442;
+  --accent:#7aa7ec; --back:#5cc0aa; --through:#e59a55; --chip:#1f2935; --plc:#6f7b8b; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px;margin:0}
+html,body{overflow-x:hidden}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:34px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:clamp(28px,5vw,38px);letter-spacing:-.01em}
+h2{font-size:21px} h3{font-size:16px}
+p{margin:0;max-width:72ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:12px;padding-top:18px}
+.lede{font-size:17px;max-width:66ch}
+.answer{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.answer div{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.answer b{font-family:var(--display);font-size:17px}
+.answer span{color:var(--muted);font-size:14px}
+.answer .q{font-size:13px;color:var(--muted);font-family:var(--mono)}
+section{display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--muted);font-size:12.5px}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.verdict{display:inline-block;font:600 11.5px var(--mono);letter-spacing:.06em;padding:2px 8px;border-radius:5px;border:1px solid var(--muted);color:var(--muted)}
+.verdict.null{border-color:var(--through);color:var(--through)}
+.verdict.cand{border-color:var(--back);color:var(--back)}
+.bar{position:relative;height:14px;min-width:140px;background:linear-gradient(90deg,transparent calc(50% - 1px),var(--line) calc(50% - 1px),var(--line) calc(50% + 1px),transparent calc(50% + 1px))}
+.bar i{position:absolute;top:2px;width:10px;height:10px;border-radius:50%;transform:translateX(-50%)}
+.bar i.r{background:var(--accent)} .bar i.p{background:transparent;border:2px solid var(--plc);box-sizing:border-box}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.hl td{background:color-mix(in srgb,var(--back) 14%,transparent)}
+.muted{color:var(--muted)}
+.small{font-size:13px;color:var(--muted)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:12px}
+code{font-family:var(--mono);font-size:12.5px;background:var(--chip);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div id="commandHub"></div>
+<script src="js/commandHub.js"></script>
+<div class="wrap">
+<header>
+  <div class="eyebrow">OI research · oi-profile-lines · run 2026-11-23</div>
+  <h1>Do the OI Profile lines hold or break?</h1>
+  <p class="lede">Every morning of our own OI capture since 20 August, rebuilt through the live OI Profile and scored against that day's price. Each line is compared with the same line shifted ±0.25σ and ±0.5σ, so the question is whether the <em>OI line</em> matters, not whether price reacts to touches in general.</p>
+  <p class="small" id="meta"></p>
+</header>
+
+<section>
+  <h2>The answers</h2>
+  <div class="answer" id="answers"></div>
+</section>
+
+<section>
+  <h2>Line type × touch number</h2>
+  <p class="small">Held = after touching the line, price went 0.25σ back the way it came before going 0.25σ through. Filled dot = the OI line, ring = the same line shifted (placebo). 50% is a coin flip. With 60–380 touches per cell, gaps under ~12pp are noise.</p>
+  <div class="legend"><span><i style="background:var(--accent)"></i>OI line</span><span><i style="border:2px solid var(--plc);box-sizing:border-box"></i>shifted copy</span><span>scale 20% → 80%</span></div>
+  <div class="panel scroll"><table id="tTouch"></table></div>
+</section>
+
+<section>
+  <h2>Line type × dealer regime (first touch)</h2>
+  <p class="small">PIN = dealers long gamma at spot on the morning's hedging map (they sell rallies and buy dips). BREAKOUT = short gamma (they chase). The highlighted row is the one cell that stood out. It's a lead to test forward, not a result.</p>
+  <div class="panel scroll"><table id="tRegime"></table></div>
+</section>
+
+<section>
+  <h2>Volatility, events, time of day, stacking</h2>
+  <div class="grid3">
+    <div class="panel scroll"><h3>Forecast vol tercile</h3><table id="tVol"></table></div>
+    <div class="panel scroll"><h3>Release day</h3><table id="tEvent"></table></div>
+    <div class="panel scroll"><h3>London hour</h3><table id="tHour"></table></div>
+    <div class="panel scroll"><h3>Line types stacked within 0.1σ</h3><table id="tConf"></table></div>
+  </div>
+</section>
+
+<section>
+  <h2>Gamma at the line × volume at the line (first touch)</h2>
+  <p class="small">Terciles of the profile's own gamma and volume bars at the line's price. Held % for OI lines / shifted copies, with touches.</p>
+  <div class="panel scroll"><table id="tGV"></table></div>
+</section>
+
+<section>
+  <h2>Does what happened last time change the next touch?</h2>
+  <p class="small"><b>Exploratory, not pre-registered</b> (2026-11-24, about 20 cells looked at, so one or two will look interesting by chance). Held % on the next touch for OI lines / the same lines shifted, by what the line did before, with the difference and its 95% range.</p>
+  <div class="grid2">
+    <div class="panel scroll"><h3>Touch 2, by what touch 1 did</h3><table id="tSeq2"></table></div>
+    <div class="panel scroll"><h3>Touch 3, by touches 1 → 2 (H held, B broke)</h3><table id="tSeq3"></table></div>
+    <div class="panel scroll"><h3>Touch 2 after a held touch 1, by line</h3><table id="tSeqType"></table></div>
+    <div class="panel scroll"><h3>Can the market state call it? (fit on half the dates, scored on the other half)</h3><table id="tState"></table><p class="small" id="stateNote"></p></div>
+  </div>
+  <p class="small" id="seqNote"></p>
+</section>
+
+<section>
+  <h2>Scored tests</h2>
+  <div class="panel scroll"><table id="tScored"></table></div>
+  <p class="small" id="controls"></p>
+</section>
+
+<section>
+  <h2>Method</h2>
+  <div class="panel">
+    <p>Capture: <code>oi_raw_&lt;date&gt;</code> (QuikStrike, ~06:40 UTC), rebuilt with <code>buildOiProfile</code> exactly as <code>/api/oi-profile/export</code> (strongest-expiry book, ±3σ window, that day's forecast σ). Lines are scored from the capture time to 22:00 London on OANDA M1. A line counts as touched once price has closed 0.25σ away and then reaches it; touch 2, 3… need a fresh 0.25σ move away first. Uncertainty: bootstrap over dates (all instruments of a day together), B = 2000. A random-walk control returned ~0 with nothing planted and +10.9pp with a planted bounce, so the test can see an effect of that size.</p>
+    <p class="small">Prereg <code>forge/OI_PROFILE_LINES_PREREG.md</code> · results <code>analysis/output/oi-profile-lines/RESULTS.md</code> · Evidence Book <code>oi-profile-lines-s1…s4</code> · re-scored at 132 dates (about March 2027).</p>
+  </div>
+</section>
+</div>
+
+<script>
+const NAMES={put_wall:"Put wall",call_wall:"Call wall",gamma_peak:"Gamma peak",zero_gamma:"Zero gamma",gex_flip:"GEX flip",max_pain:"Max pain",vanna_flip:"Vanna / charm flip",oi_volume:"Volume",short_gamma_node:"Short-gamma node",long_gamma_node:"Long-gamma node",exp_hi:"Exp move ↑",exp_lo:"Exp move ↓"};
+const f1=v=>v==null?"–":v.toFixed(1);
+const pos=v=>Math.max(0,Math.min(100,(v-20)/60*100));
+const dots=c=>c&&c.n?`<div class="bar" title="OI line ${f1(c.real)}% · shifted ${f1(c.plc)}% · ${c.n} touches"><i class="p" style="left:${pos(c.plc)}%"></i><i class="r" style="left:${pos(c.real)}%"></i></div>`:"";
+const cellTxt=c=>c&&c.n?`${f1(c.real)} <span class="muted">/ ${f1(c.plc)} · ${c.n}</span>`:"–";
+function small(id,obj,label){
+  const el=document.getElementById(id);
+  el.innerHTML=`<tr><th>${label}</th><th>OI line</th><th>shifted</th><th>n</th></tr>`+Object.entries(obj).map(([k,c])=>`<tr><td>${k}</td><td class="num">${f1(c.real)}%</td><td class="num">${f1(c.plc)}%</td><td class="num">${c.n}</td></tr>`).join("");
+}
+Promise.all(["analysis/output/oi-profile-lines/page.json","analysis/output/oi-profile-lines/results.json"].map(u=>fetch(u,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error(u+" "+r.status);return r.json()})))
+.then(([p,res])=>{
+  document.getElementById("meta").textContent=`${p.dates} trading days · ${p.sessions} instrument-sessions · ${p.window} · 11 instruments (EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, Gold, NQ, SPX500, US30, US2000)`;
+  const S=Object.fromEntries(p.scored.map(c=>[c.name.slice(0,2),c]));
+  const pp=x=>(x*100>=0?"+":"")+(x*100).toFixed(1)+"pp";
+  const ci=c=>`[${(c.lo*100).toFixed(1)}, ${(c.hi*100).toFixed(1)}]`;
+  const s1=res.descriptive.find(d=>d.slice==="all"&&d.kind==="real"), s1p=res.descriptive.find(d=>d.slice==="all"&&d.kind==="placebo");
+  const cand=p.candidate;
+  const A=[
+    ["Do the lines hold more than any nearby price?",`No: ${s1.bounce_pct}% vs ${s1p.bounce_pct}%`,`OI lines held about as often as the same lines shifted 0.25–0.5σ (${pp(S.S1.est)} ${ci(S.S1)}). <span class="verdict null">NULL</span>`],
+    ["First touch vs second, third…?","No difference",`Return visits behave like first touches, relative to the shifted copies (${pp(S.S3.est)} ${ci(S.S3)}). <span class="verdict null">NULL</span>`],
+    ["Do lines hold better on PIN (long-gamma) days?","Not as a group",`${pp(S.S2.est)} ${ci(S.S2)}. One line type stands out, see the next card. <span class="verdict null">NULL</span>`],
+    ["The one lead","Gamma peak on PIN days",`First touch held ${cand.b_real}% vs ${cand.b_plc}% (${cand.E_pp>0?"+":""}${cand.E_pp}pp, ${cand.n_real} touches, both halves). One of ~150 cells, about what chance gives. <span class="verdict cand">TEST FORWARD</span>`],
+    ["Do stacked lines matter more?","No, if anything less",`2+ line types together held ${pp(S.S4.est)} vs single lines ${ci(S.S4)}. Wrong sign for the idea, but can't rule out 5pp. <span class="verdict">UNDERPOWERED</span>`],
+    ["Do volatile days blow through lines?","Yes, but every price does",`On high-vol days fake lines break more too (${f1(p.vol.high.plc)}% held), so it's the volatility, not the OI line. Release days settle twice as fast.`],
+  ];
+  document.getElementById("answers").innerHTML=A.map(([q,b,s])=>`<div><span class="q">${q}</span><b>${b}</b><span>${s}</span></div>`).join("");
+  const T=Object.keys(NAMES);
+  document.getElementById("tTouch").innerHTML=`<tr><th>Line</th><th>Touch 1</th><th></th><th>Touch 2</th><th></th><th>Touch 3+</th><th></th></tr>`+
+    T.map(t=>{const v=p.byTypeTouch[t];return `<tr><td>${NAMES[t]}</td>${["1","2","3+"].map(o=>`<td class="num">${cellTxt(v[o])}</td><td>${dots(v[o])}</td>`).join("")}</tr>`}).join("");
+  document.getElementById("tRegime").innerHTML=`<tr><th>Line</th><th>PIN</th><th></th><th>BREAKOUT</th><th></th></tr>`+
+    T.map(t=>{const v=p.byTypeRegime[t];return `<tr class="${t==="gamma_peak"?"hl":""}"><td>${NAMES[t]}</td>${["PIN","BREAKOUT"].map(o=>`<td class="num">${cellTxt(v[o])}</td><td>${dots(v[o])}</td>`).join("")}</tr>`}).join("");
+  small("tVol",p.vol,"Vol"); small("tEvent",p.event,"Release day"); small("tHour",p.hours,"London"); small("tConf",p.conf,"Types");
+  document.getElementById("tGV").innerHTML=`<tr><th>Gamma ↓ / Volume →</th><th>low</th><th>mid</th><th>high</th></tr>`+
+    ["low","mid","high"].map(g=>`<tr><td>${g}</td>${["low","mid","high"].map(v=>`<td class="num">${cellTxt(p.gammaVolume[g][v])}</td>`).join("")}</tr>`).join("");
+  document.getElementById("tScored").innerHTML=`<tr><th>Test</th><th>n</th><th>OI − shifted</th><th>95% CI</th><th>bar</th><th>verdict</th></tr>`+
+    p.scored.map(c=>`<tr><td>${c.name}</td><td class="num">${c.n}</td><td class="num">${pp(c.est)}</td><td class="num">${ci(c)}</td><td class="num">${(c.bar*100).toFixed(0)}pp</td><td><span class="verdict ${c.verdict==="null"?"null":""}">${c.verdict.toUpperCase()}</span></td></tr>`).join("");
+  document.getElementById("controls").textContent=`Mirror (shifted copies scored against each other): ${res.mirror.E_pp}pp [${res.mirror.ci_pp.join(", ")}]. Atlas: ${p.atlasBH} cell passes the false-discovery cut vs a chance baseline of median ${p.chance.median}, max ${p.chance.max}.`;
+  fetch("analysis/output/oi-profile-lines/sequence.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(q=>{ if(!q) return;
+    const dd=c=>c.E==null?"–":`${c.E>0?"+":""}${c.E.toFixed(1)}pp <span class="muted">[${c.ci[0]}, ${c.ci[1]}]</span>`;
+    const tab=(id,obj,lab,nm=k=>k)=>{document.getElementById(id).innerHTML=`<tr><th>${lab}</th><th>held (OI / shifted · n)</th><th>difference</th></tr>`+Object.entries(obj).map(([k,c])=>`<tr class="${c.ci&&(c.ci[0]>0||c.ci[1]<0)?"hl":""}"><td>${nm(k)}</td><td class="num">${cellTxt(c)}</td><td class="num">${dd(c)}</td></tr>`).join("")};
+    tab("tSeq2",q.touch2,"Touch 1");
+    tab("tSeq3",q.touch3,"Path",k=>({HH:"held → held",HB:"held → broke",BH:"broke → held",BB:"broke → broke"})[k]);
+    tab("tSeqType",q.touch2AfterHeldByType,"Line",k=>NAMES[k]||k);
+    const st=q.state;
+    document.getElementById("tState").innerHTML=`<tr><th>Fold</th><th>touches</th><th>Brier skill vs 50/50</th><th>predicted → actual held, by fifth</th></tr>`+st.folds.map(f=>`<tr><td>${f.fold}</td><td class="num">${f.n}</td><td class="num">${(f.brierSkill*100).toFixed(1)}% <span class="muted">[${(f.ci[0]*100).toFixed(1)}, ${(f.ci[1]*100).toFixed(1)}]</span></td><td class="num">${f.quintiles.map(x=>`${Math.round(x.pred*100)}→${Math.round(x.actual*100)}`).join(" · ")}</td></tr>`).join("");
+    document.getElementById("stateNote").textContent=`Features: stretch from the London open in the direction of approach, approach speed, forecast-vol percentile, range so far, PIN/BREAKOUT, touch number, the previous result, after 19:00 London, and the gamma-peak-PIN-first-touch flag. ${st.touches.toLocaleString()} touches (OI lines and shifted copies pooled, since they behave alike), base rate ${Math.round(st.base*100)}% held. The model did worse than "always 50/50" on the dates it had not seen: nothing in the market state at the touch tells you hold vs break at this distance. The one feature that kept its weight in both halves was the gamma-peak-PIN flag.`;
+    document.getElementById("seqNote").innerHTML=`Reading it: a line that held once is no more likely to break on the next visit than a fake line, and a broken line is not defended on the retest (role reversal ${q.touch2["after broke, retest from the other side"].real}% vs ${q.touch2["after broke, retest from the other side"].plc}%). Two hints, both carried into the forward test <code>forge/OI_GAMMA_PEAK_PIN_PREREG.md</code>: after held → broke the third touch tends to keep breaking (${q.touch3.HB.real}% held vs ${q.touch3.HB.plc}%), and the gamma peak's PIN-day edge looks like a first-touch-only effect. This is what the S/R zones export now shows live: every zone 50/50 except the gamma peak on a PIN day before its first touch (★).`;
+  });
+}).catch(e=>{document.getElementById("answers").innerHTML=`<div><b>Could not load the results</b><span>${e.message}</span></div>`});
+</script>
+</body>
+</html>

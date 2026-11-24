@@ -247,6 +247,9 @@ export const SERVICES = [
   { id: 'tradeWatch', where: 'server', label: 'Desk trade watcher: each card\'s entry zone, first target and invalidation against live prices (plans/DESK_ANALYST_PIPELINE.md, agent 18, §9u)',
     cadence: 'every 2 min on weekdays 07:00-21:00 London: one OANDA pricing call for the live cards; no model call', cost: 'low', lean: false, on: true,
     feeds: '/api/trade-watch; Telegram (tgMaster.tradeWatch). Writes desk_trade_watch_<date> on each event. Each event fires once per card per day. Off = no alerts; the book is unchanged.' },
+  { id: 'marketLive', where: 'server', label: 'Desk Terminal live layer: every market on the book against live prices, move since the open in u, the day\'s range, lines touched, currency strength (js/marketLive.js)',
+    cadence: 'every minute while the FX week is open: one OANDA pricing call; M1 bars since 00:00 London and 20 daily bars for the indices and gold once a day; the position-book store every 20 min; no model call', cost: 'low', lean: false, on: true,
+    feeds: '/api/market-live (the terminal polls it every minute); Telegram (tgMaster.liveLayer) nudges; writes market_live_day_<date> once at 21:05 London. Off = the cards show the morning view only.' },
   { id: 'fxFairValueLog', where: 'server', label: 'Short-term FX fair value forward record: one row a London weekday of each pair\'s gap to the rates-and-risk fair value (js/fxFairValue.js; description only, Evidence Book fx-short-term-fair-value)',
     cadence: 'every 3 h + once 6 min after boot; writes at most once a London weekday (10 OANDA daily-candle calls and the yield feeds, cached 6 h with /api/fx-fair-value)', cost: 'low', lean: false, on: true,
     feeds: 'KV fx_fair_value_log_v1 → /api/fx-fair-value/log (the forward record a re-test would be judged on). Off = no forward record; the page still draws.' },
@@ -435,7 +438,8 @@ export const SERVICES = [
 
   // ── Paper-bot plan producers ─────────────────────────────────────────────
   { id: 'volatilityV2Plan', where: 'server', label: 'Vote Atlas (volatility v2) plan producer',
-    cadence: 'every 45s', legacyEnv: ['VOLATILITY_V2_PLAN_REFRESH'], cost: 'high', lean: false, on: true,
+    cadence: 'every 45s', legacyEnv: ['VOLATILITY_V2_PLAN_REFRESH'], cost: 'high', lean: false, on: false,
+    note: 'OFF since 2026-11-23 (owner: the bot is not trading). Each tick cold-warmed the live cache of every enabled pair (a ~15 MB R2 snapshot parse per pair, ~1.5 GB of memory churn Railway kept billing). While off, volatility_bot_v2 gets no fresh plan from the server. Set SVC_VOLATILITY_V2_PLAN=1 to turn it back on.',
     feeds: 'KV plan read by volatility_bot_v2 — 80 wake-ups/hour against the live ladder cache' },
   { id: 'fibAtlasPlan', where: 'server', label: 'Fib Atlas plan producer',
     cadence: 'every 45s', legacyEnv: ['FIB_ATLAS_PLAN_REFRESH'], cost: 'high', lean: false, on: true,
