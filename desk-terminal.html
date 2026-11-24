@@ -16,7 +16,7 @@
 :root{
   /* THE DEFAULT THEME. Every token a theme can change is here; the other themes are html[data-theme="x"] blocks in js/terminal/themes.css,
      generated from js/terminal/themes.js (a test checks this block against that file). Use var(--x) or rgba(var(--xrgb),a), never a colour literal. */
-  --bg:#070a17;--bg1:#0c1124;--bg2:#111833;--bg3:#18203f;--line:#1f2950;--line2:#2c3866;--line3:#3a4677;
+  --top-h:0px;--bg:#070a17;--bg1:#0c1124;--bg2:#111833;--bg3:#18203f;--line:#1f2950;--line2:#2c3866;--line3:#3a4677;
   --tx:#eef0fb;--tx2:#a9b0d0;--tx3:#8088ae;
   --pur:#8b7cf6;--pur2:#b4a9ff;--pur3:#9b8cff;--purdeep:#3a2f8f;
   --gold:#e8b85a;--gold2:#f3e3bf;
@@ -65,6 +65,20 @@ button{font:inherit}
 .tk span b{color:var(--tx);font-weight:600}
 @keyframes tk{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.tk{animation:none}}
+/* two tapes (owner 2026-11-24): live prices on top in a market-screen style, the news and desk notes under it in plain type */
+.ptape{background:var(--bg);border-bottom:1px solid var(--line2)}
+.pk{padding:5px 0;gap:22px;animation-duration:150s;font:600 12px var(--mono);color:var(--tx)}
+.pk .s{color:var(--gold);letter-spacing:.04em}
+.pk .v{color:var(--tx)}
+.pk .up{color:var(--up)} .pk .dn{color:var(--dn)} .pk .u{color:var(--tx2);font-weight:400}
+.ntape .tk{font:12.5px var(--sans);gap:30px}
+.ntape .tk span b{font:600 10.5px var(--mono);letter-spacing:.06em;color:var(--pur2);margin-right:4px}
+/* the World stress box folds away (owner 2026-11-24): a one-line summary, open it to see every input */
+.ws-acc>summary{cursor:pointer;list-style:none;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ws-acc>summary::-webkit-details-marker{display:none}
+.ws-acc>summary::after{content:'show';margin-left:auto;font:600 10px var(--mono);letter-spacing:.08em;color:var(--tx2);text-transform:uppercase}
+.ws-acc[open]>summary::after{content:'hide'}
+.ws-acc .ws-body{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px}
 /* tabs */
 .wrap{max-width:1440px;margin:0 auto;padding:16px 16px 90px}
 .tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 18px;padding:4px;background:var(--bg1);border:1px solid var(--line);border-radius:12px;width:max-content;max-width:100%}
@@ -255,7 +269,8 @@ html[data-role="owner"] .disclaimer{display:none}
     <div class="tright" id="hdrsheet"><input type="text" id="cmdbtn" class="cmdbar" data-surface="widget.cmdline" placeholder="Command  /" aria-label="Command line: type a market, a board or a command. Press / anywhere." title="Command line: type a market, a board or a command. Press / anywhere." autocomplete="off" spellcheck="false" hidden><button type="button" id="alertsbtn" class="btn" data-surface="widget.alerts" title="Alerts: set a note for the desk when a number does something" hidden>Alerts</button><button type="button" id="linkchip" class="chip" data-surface="widget.linked" hidden></button><span id="mktchip" class="chip mkt-chip" data-surface="widget.mktchip" hidden></span><button type="button" id="asofchip" class="chip" data-surface="widget.asof" title="Live. Click to show or hide the time bar" aria-label="Live. Show or hide the time bar." hidden>LIVE</button><button type="button" id="asofbtn" class="btn" data-surface="widget.asof" title="Time machine: see the whole terminal as the saved records showed it at an earlier moment" aria-haspopup="dialog" aria-expanded="false" hidden>Time machine</button><span id="lvtape" class="chip" data-surface="widget.risktape" title="The live risk tape">tape –</span><span id="lvstamp" class="chip gold" data-surface="widget.livestamp" title="The live layer: prices every minute, the macro tilt hourly">live –</span><span id="bookchip" class="chip" data-surface="widget.bookchip">book…</span><span id="dqchip" class="chip" data-surface="widget.dqchip">data…</span><button id="themebtn" class="btn" data-surface="widget.themepicker" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="themepop" title="Change the colour theme"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7" r="1"/></svg><span id="themename">Deep navy</span></button><button id="signout" class="btn" data-surface="widget.signout" type="button" style="display:none">Sign out</button><a class="btn" data-surface="nav.access" href="desk-admin.html" title="Which tabs, links and panels the desk login sees">Access</a><a class="btn" data-surface="nav.research" href="research.html">Research</a><a class="btn" data-surface="nav.deskoffice" href="desk-office.html">Desk Office</a><a class="btn" data-surface="nav.deskrun" href="desk-run.html">Desk Run</a><div id="themepop" class="tpop" role="menu" aria-label="Colour theme" hidden></div></div>
     <button type="button" id="hdrmore" class="btn hm-more" data-surface="widget.phonemenu" aria-expanded="false" aria-controls="hdrsheet" aria-label="More: menu, theme, links and status" title="More"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   </div>
-  <div class="ticker" aria-label="headlines"><div class="tk" id="tk"><span>Loading the desk…</span></div></div>
+  <div class="ticker ptape" aria-label="live prices" data-surface="strip.prices"><div class="tk pk" id="pk"><span>Loading live prices…</span></div></div>
+  <div class="ticker ntape" aria-label="headlines"><div class="tk" id="tk"><span>Loading the desk…</span></div></div>
 </header>
 <main class="wrap">
   <nav class="tabs" role="tablist" id="tabs">
@@ -779,7 +794,10 @@ function stressStrip() {
   const w = E['world-stress'], el = $('wstrip'); if (!el) return;
   if (!w?.ok || !w.tiles?.length) { el.innerHTML = ''; return; }
   const C = { ok: 'up', watch: 'gold', stress: 'dn' }, O = { calm: 'up', watch: 'gold', stress: 'dn' };
-  el.innerHTML = `<div class="card" style="margin:0 0 12px;padding:10px 14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><span class="lbl" style="margin-right:4px">World stress</span><span class="chip ${O[w.overall] ?? ''}" style="font-weight:700">${esc(w.overall ?? '–')}</span>${w.tiles.map(t => `<span class="chip ${C[t.level] ?? ''}" title="${esc(t.detail)}">${esc(t.label)}${t.detail ? ` <span class="muted" style="font-weight:400">${esc(t.detail)}</span>` : ''}</span>`).join('')}</div>`;
+  const nRed = w.tiles.filter(t => t.level === 'stress').length, nAmb = w.tiles.filter(t => t.level === 'watch').length;
+  let open = false; try { open = localStorage.getItem('deskStressOpen') === '1'; } catch { /* private window: folded */ }
+  el.innerHTML = `<details class="card ws-acc" style="margin:0 0 12px;padding:10px 14px"${open ? ' open' : ''}><summary><span class="lbl" style="margin-right:4px">World stress</span><span class="chip ${O[w.overall] ?? ''}" style="font-weight:700">${esc(w.overall ?? '–')}</span><span class="muted" style="font-size:12px">${nRed} red · ${nAmb} amber · ${w.tiles.length - nRed - nAmb} green</span></summary><div class="ws-body">${w.tiles.map(t => `<span class="chip ${C[t.level] ?? ''}" title="${esc(t.detail)}">${esc(t.label)}${t.detail ? ` <span class="muted" style="font-weight:400">${esc(t.detail)}</span>` : ''}</span>`).join('')}</div></details>`;
+  el.querySelector('details').addEventListener('toggle', e => { try { localStorage.setItem('deskStressOpen', e.target.open ? '1' : '0'); } catch { /* fine */ } });
 }
 // §9ag boards on the Macro tab: global yields, credit, liquidity, term premium, cross-currency basis.
 let GYV = 'all';

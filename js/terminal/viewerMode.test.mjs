@@ -57,7 +57,7 @@ function visibleText(node, hidden) {
 
 // ── the real top bar, parsed from desk-terminal.html ──
 function parseTopBar() {
-  const m = /<div class="tright"[^>]*>([\s\S]*?)<\/div>\s*(?:<button[^>]*id="hdrmore"[\s\S]*?<\/button>\s*)?<\/div>\s*<div class="ticker"/.exec(html);   // the phone More button (js/terminal/phoneHeader.js) sits after .tright
+  const m = /<div class="tright"[^>]*>([\s\S]*?)<\/div>\s*(?:<button[^>]*id="hdrmore"[\s\S]*?<\/button>\s*)?<\/div>\s*<div class="ticker[" ]/.exec(html);   // the phone More button (js/terminal/phoneHeader.js) sits after .tright
   assert.ok(m, 'the top bar markup is found');
   const bar = new El('div', { class: 'tright' });
   for (const t of m[1].matchAll(/<(a|button|span)\b([^>]*)>([\s\S]*?)<\/\1>/g)) {

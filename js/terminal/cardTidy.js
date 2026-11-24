@@ -26,6 +26,7 @@ const TERMS = [
   [/\bplanCheck\b/g, 'the plan check'], [/\bat20dLow\s*=\s*true\b/g, 'at its 20-day low'], [/\bat20dHigh\s*=\s*true\b/g, 'at its 20-day high'],
   [/\bswing_state\b/g, 'the swing state'], [/\brelease-calls\b/g, 'the release calls'], [/\bnews-outcome\b/g, 'the news-reaction read'],
   [/\bevent-impact-map\b/g, 'the event-impact map'], [/\bevent-day\b/g, 'the event-day list'], [/\bvrp\b/g, 'variance risk premium'],
+  [/\bpivot_s\b/g, 'pivot'], [/\bvol_band\b/g, 'volatility band'], [/\bround_big\b/g, 'big round number'],
   [/\bOI null\b/g, 'no open interest'], [/\bn=0\b/g, 'no readings'], [/\brows empty\b/g, 'nothing recorded'],
 ];
 const DATE_FMT = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' });
@@ -36,6 +37,7 @@ export function tidyText(s) {
   t = t.replace(/\b(1[5-9]\d{11})\b/g, (_, ms) => DATE_FMT.format(new Date(Number(ms))))   // epoch ms
     .replace(/\b(1[5-9]\d{8})\b(?!\.\d)/g, (m0, sec) => (/^\d{10}$/.test(sec) ? DATE_FMT.format(new Date(Number(sec) * 1000)) : m0))   // epoch s
     .replace(/\basOf\s*\(?\s*/g, 'as of ')
+    .replace(/\s*\((?=[^()]*\b[a-z][a-z0-9-]*\/[a-z][^()]*\))[^()]*\)/g, '')   // a source citation in brackets, "(trade-decision/state:EURUSD, options oi)": the Sources line names them
     .replace(/\b([a-z]+)_([a-z]+)\b/g, '$1 $2');   // any other snake_case name
   return t.replace(/\(\s*as of ([^)]+)\)/g, '(as of $1)');
 }
@@ -149,7 +151,7 @@ ${fin(plan.invalid) && c ? row('Plan out', `${px(plan.invalid)}: ${E(tidyText(c.
 /** An accordion with a one-line summary. */
 export const details = (summary, body, open = false, cls = '') => (body ? `<details class="ct-acc ${cls}"${open ? ' open' : ''}><summary>${summary}</summary><div class="ct-acc-body">${body}</div></details>` : '');
 
-export const CSS = `.ct-strip{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:8px 12px;margin:0 0 12px;border:1px solid var(--line2);border-radius:12px;background:var(--bg2);font-size:12.5px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+export const CSS = `.ct-strip{position:sticky;top:calc(var(--top-h, 0px) + 6px);z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:8px 12px;margin:0 0 12px;border:1px solid var(--line2);border-radius:12px;background:var(--bg2);font-size:12.5px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 .ct-strip .up{color:var(--up)} .ct-strip .dn{color:var(--dn)} .ct-strip .gold{color:var(--gold)}
 .ct-dot{color:var(--line2)}
 .ct-tn{display:grid;gap:6px;margin:10px 0 4px}

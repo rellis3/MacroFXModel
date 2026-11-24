@@ -114,3 +114,11 @@ test('replayAt: the moves and the currency strength at a time of a stored day', 
   assert.equal(r.ccy[0].ccy, 'GBP');
   assert.equal(replayAt(day, -1).ccy.length, 0);
 });
+
+import { tapeOrder, tapeBits } from './liveLayer.js';
+test('price tape: indices, gold and majors first; change in % and u', () => {
+  assert.deepEqual(tapeOrder(['GBPJPY', 'EURUSD', 'NQ', 'AUDNZD', 'GOLD']), ['NQ', 'GOLD', 'EURUSD', 'AUDNZD', 'GBPJPY']);
+  assert.deepEqual(tapeBits({ last: 1.09156, chgPct: 0.07, nowU: 0.21 }), { v: '1.09156', c: '▲0.07%', cls: 'up', u: '+0.21u' });
+  assert.equal(tapeBits({ last: 208.6, chgPct: -0.4 }).cls, 'dn');
+  assert.equal(tapeBits({}).c, '–');
+});
