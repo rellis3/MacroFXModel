@@ -7,7 +7,7 @@
 // (HAR-CJ); for the ladder-v2-rollout instruments, whatever their banked sigma needs (NY-close daily bars from 2015-12,
 // and 5- or 15-minute closes for the last 45 days). Cached 10 minutes.
 import { oandaCandles } from './volStateRoutes.js';
-import { QPARAMS, qlikeInstruments, qlikeSeries, qlikeDayLevels, qlikeText } from './ladderV2Qlike.js';
+import { qlikeParams, qlikeInstruments, qlikeSeries, qlikeDayLevels, qlikeText } from './ladderV2Qlike.js';
 import { PARAMS, nqSigma, harcjSigma, buildText, sessionDate, nyKey, nqSigmaSeries, harcjSigmaSeries, sigmaForSession, dayLevels, rolloutSigmaSeries } from './ladderV2Shadow.js';
 
 const TTL_MS = 10 * 60e3;
@@ -137,10 +137,10 @@ export async function levelsRange(pair, from, to, track = 'cfd') {
            note: 'shadow ladder-v2; widths fitted on sessions to 2026-08-21, so earlier dates are partly in-sample', days };
 }
 
-// ── QLIKE per-line shadow ladder (ladder-qlike-per-line; futures track) ─────────────────────────────
-const qCache = new Map();   // `${sym}|${from}|${to}` -> { at, series }
-async function qlikeInputs(sym, fromSec = null, toSec = null) {
-  const P = QPARAMS.instruments[sym];
+// ── QLIKE per-line shadow ladders (ladder-qlike-per-line: futures; ladder-qlike-per-line-cfd: CFDs) ─────────
+const qCache = new Map();   // `${track}|${sym}|${from}|${to}` -> { at, series }
+async function qlikeInputs(sym, fromSec = null, toSec = null, track = 'fut') {
+  const P = qlikeParams(sym, track);
   const inp = { d1: await d1Bars(P.oanda) };
   for (const g of ['m5', 'm15']) {
     if (!P.needs.includes(g)) continue;
@@ -148,18 +148,18 @@ async function qlikeInputs(sym, fromSec = null, toSec = null) {
   }
   return inp;
 }
-export async function qlikeLevelsRange(pair, from, to) {
+export async function qlikeLevelsRange(pair, from, to, track = 'fut') {
   const sym = PAIR_SYM[String(pair).toLowerCase()] ?? String(pair).toUpperCase();
-  if (!QPARAMS.instruments[sym]) return { ok: false, error: `no QLIKE per-line ladder for ${pair}; on the site: ${qlikeInstruments().join(', ')}` };
+  if (!qlikeParams(sym, track)) return { ok: false, error: `no QLIKE per-line ${track} ladder for ${pair}; on the site: ${qlikeInstruments(track).join(', ')}` };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return { ok: false, error: 'from/to as YYYY-MM-DD' };
   const span = (Date.parse(to) - Date.parse(from)) / 86400e3;
   if (!(span >= 0) || span > MAX_DAYS) return { ok: false, error: `range must be 0-${MAX_DAYS} days` };
-  const ck = `${sym}|${from}|${to}`;
+  const ck = `${track}|${sym}|${from}|${to}`;
   let hit = qCache.get(ck);
   if (!hit || Date.now() - hit.at > TTL_MS) {
     const fromSec = Math.floor(Date.parse(from + 'T00:00:00Z') / 1000) - 50 * 86400;
     const toSec = Math.floor(Date.parse(to + 'T23:59:59Z') / 1000);
-    hit = { at: Date.now(), series: qlikeSeries(sym, await qlikeInputs(sym, fromSec, toSec)) };
+    hit = { at: Date.now(), series: qlikeSeries(sym, await qlikeInputs(sym, fromSec, toSec, track), track) };
     qCache.set(ck, hit);
     if (qCache.size > 16) qCache.delete(qCache.keys().next().value);
   }
@@ -168,22 +168,23 @@ export async function qlikeLevelsRange(pair, from, to) {
     const dow = new Date(t).getUTCDay();
     if (dow === 0 || dow === 6) continue;
     const date = new Date(t).toISOString().slice(0, 10);
-    const o = qlikeDayLevels(sym, hit.series, date);
+    const o = qlikeDayLevels(sym, hit.series, date, track);
     if (o) days[date] = o;
   }
-  return { ok: true, pair: String(pair).toLowerCase(), symbol: sym, track: 'fut', calc: 'qlike', lines: QPARAMS.instruments[sym].lines,
-           note: 'shadow QLIKE per-line ladder; widths fitted on futures sessions to 2026-08-21, so earlier dates are partly in-sample', days };
+  return { ok: true, pair: String(pair).toLowerCase(), symbol: sym, track, calc: 'qlike', lines: qlikeParams(sym, track).lines,
+           note: `shadow QLIKE per-line ladder; widths fitted on ${track === 'cfd' ? 'CFD' : 'futures'} sessions to 2026-08-21, so earlier dates are partly in-sample`, days };
 }
-let qExport = null, qExportAt = 0;
-async function qlikeExportText() {
+const qExport = {}, qExportAt = {};
+async function qlikeExportText(track = 'fut') {
   const session = sessionDate();
-  if (qExport && qExport.session === session && Date.now() - qExportAt < TTL_MS) return qExport.text;
+  const c = qExport[track];
+  if (c && c.session === session && Date.now() - (qExportAt[track] ?? 0) < TTL_MS) return c.text;
   const lv = {};
-  await pool(qlikeInstruments(), 4, async sym => {
-    try { lv[sym] = qlikeDayLevels(sym, qlikeSeries(sym, await qlikeInputs(sym)), session); } catch { lv[sym] = null; }
+  await pool(qlikeInstruments(track), 4, async sym => {
+    try { lv[sym] = qlikeDayLevels(sym, qlikeSeries(sym, await qlikeInputs(sym, null, null, track), track), session, track); } catch { lv[sym] = null; }
   });
-  qExport = { session, text: qlikeText(lv, session) }; qExportAt = Date.now();
-  return qExport.text;
+  qExport[track] = { session, text: qlikeText(lv, session, track) }; qExportAt[track] = Date.now();
+  return qExport[track].text;
 }
 
 export function mountLadderV2Shadow(app) {
@@ -191,12 +192,13 @@ export function mountLadderV2Shadow(app) {
   app.get('/api/vol-forecast/ladder-v2/instruments', (req, res) => {
     const pick = t => Object.keys(PARAMS.instruments).filter(s => PARAMS.instruments[s][t]).map(s => s.toLowerCase());
     res.json({ ok: true, cfd: pick('cfd'), fut: pick('fut'), off_site: PARAMS.rollout?.off_site ?? [],
-               qlike: { fut: qlikeInstruments().map(s => s.toLowerCase()), lines: Object.fromEntries(qlikeInstruments().map(s => [s.toLowerCase(), QPARAMS.instruments[s].lines])) } });
+               qlike: { fut: qlikeInstruments().map(s => s.toLowerCase()), lines: Object.fromEntries(qlikeInstruments().map(s => [s.toLowerCase(), qlikeParams(s).lines])),
+                        cfd: qlikeInstruments('cfd').map(s => s.toLowerCase()), cfd_lines: Object.fromEntries(qlikeInstruments('cfd').map(s => [s.toLowerCase(), qlikeParams(s, 'cfd').lines])) } });
   });
   app.get('/api/vol-forecast/ladder-v2/levels', async (req, res) => {
     try {
       const r = req.query.calc === 'qlike'
-        ? await qlikeLevelsRange(req.query.pair, String(req.query.from ?? ''), String(req.query.to ?? ''))
+        ? await qlikeLevelsRange(req.query.pair, String(req.query.from ?? ''), String(req.query.to ?? ''), req.query.track === 'cfd' ? 'cfd' : 'fut')
         : await levelsRange(req.query.pair, String(req.query.from ?? ''), String(req.query.to ?? ''), req.query.track === 'fut' ? 'fut' : 'cfd');
       res.status(r.ok ? 200 : 400).json(r);
     } catch (e) {
@@ -207,7 +209,7 @@ export function mountLadderV2Shadow(app) {
     const kind = req.query.kind === 'exhaustion' ? 'exhaustion' : 'forecast';
     const track = req.query.track === 'fut' ? 'fut' : 'cfd';
     if (req.query.calc === 'qlike') {
-      try { return res.type('text/plain').send(await qlikeExportText()); } catch (e) { return res.status(500).type('text/plain').send(`Error: ${e.message}`); }
+      try { return res.type('text/plain').send(await qlikeExportText(req.query.track === 'cfd' ? 'cfd' : 'fut')); } catch (e) { return res.status(500).type('text/plain').send(`Error: ${e.message}`); }
     }
     try {
       const { session, sigmas } = await inputs();

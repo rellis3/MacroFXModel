@@ -65,6 +65,13 @@ col_med     = input.color(color.new(color.orange, 55), "Median Colour")
 col_oc_75   = input.color(color.new(color.aqua,   0),  "OC 75th Colour")
 col_oc_med  = input.color(color.new(color.aqua,   55), "OC Median Colour")
 col_open    = input.color(color.new(color.white,  55), "Day Open Colour")
+// 2026-11-24: Close+ / Close- (Jordan's per-line format). When the paste carries "Close+ (close above open)" and
+// "Close- (close below open)" rows (the QLIKE per-line export), the close lines above / below the open use those two
+// numbers, each from its own QLIKE-best calc, instead of the one symmetric Open-to-Close number. Adds a 90th line.
+use_close_split = input.bool(true, "Close+ / Close- from their own calcs",
+     tooltip="Uses the Close+ (days that close above the open) and Close- (days that close below) rows of the QLIKE per-line export for the close lines. Older pastes without those rows keep the symmetric Open to Close lines.")
+show_close_90   = input.bool(true, "Close 90th lines (Close+ / Close- paste)")
+col_oc_90       = input.color(color.new(color.teal, 0), "Close 90th Colour")
 openSource  = input.string("London Midnight (00:00)", "Session Open Source",
      options=["London Midnight (00:00)", "Pre-Session (23:00 prev night)"],
      tooltip="Midnight: standard FX day open at 00:00 London time.\nPre-Session 23:00: day/open resets at 23:00 London (post-market session open — recommended for indices like SPX500, DE30, UK100, US30, US2000).\nChanging this option redraws all levels from the new open time.")
@@ -390,6 +397,13 @@ var float vol_ol_med     = na   // Open Low median %
 var float vol_ol_75      = na   // Open Low 75th %
 var float vol_oh_90      = na   // Open High 90th % (fitted ladder; absent on older exports)
 var float vol_ol_90      = na   // Open Low 90th %
+// Close+ / Close- (QLIKE per-line export, 2026-11-24)
+var float vol_cup_med    = na
+var float vol_cup_75     = na
+var float vol_cup_90     = na
+var float vol_cdn_med    = na
+var float vol_cdn_75     = na
+var float vol_cdn_90     = na
 // Drift d=μ/σ
 var float drift_val      = na
 // The human-readable drift readout the export now carries after the arrow, e.g.
@@ -461,6 +475,8 @@ if barstate.isfirst
                      str.contains(rowUp, "EURNZD") or str.contains(rowUp, "GBPAUD") or
                      str.contains(rowUp, "GBPCAD") or str.contains(rowUp, "AUDCAD") or
                      str.contains(rowUp, "NZDCAD") or str.contains(rowUp, "NZDJPY") or
+                 str.contains(rowUp, "AUDCHF") or str.contains(rowUp, "AUDNZD") or str.contains(rowUp, "CADCHF") or
+                 str.contains(rowUp, "CHFJPY") or str.contains(rowUp, "GBPNZD") or
                      str.contains(rowUp, "BTCUSD") or
                      str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
                      str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
@@ -510,7 +526,7 @@ if barstate.isfirst
             isDataLine    = str.contains(rowUp, "RANGE") or str.contains(rowUp, "MOVE") or
                  str.contains(rowUp, "VOLATILITY") or str.contains(rowUp, "PERCENTILE") or
                  str.contains(rowUp, "OPEN HIGH") or str.contains(rowUp, "OPEN LOW") or
-                 str.contains(rowUp, "DRIFT")
+                 str.contains(rowUp, "DRIFT") or str.contains(rowUp, "CLOSE+") or str.contains(rowUp, "CLOSE-")
             isKnownTicker = str.contains(rowUp, "GOLD")   or str.contains(rowUp, "NQ")     or
                  str.contains(rowUp, "EURUSD") or str.contains(rowUp, "GBPUSD") or
                  str.contains(rowUp, "USDJPY") or str.contains(rowUp, "AUDUSD") or
@@ -523,6 +539,8 @@ if barstate.isfirst
                  str.contains(rowUp, "EURNZD") or str.contains(rowUp, "GBPAUD") or
                  str.contains(rowUp, "GBPCAD") or str.contains(rowUp, "AUDCAD") or
                  str.contains(rowUp, "NZDCAD") or str.contains(rowUp, "NZDJPY") or
+                 str.contains(rowUp, "AUDCHF") or str.contains(rowUp, "AUDNZD") or str.contains(rowUp, "CADCHF") or
+                 str.contains(rowUp, "CHFJPY") or str.contains(rowUp, "GBPNZD") or
                  str.contains(rowUp, "BTCUSD") or
                  str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
                  str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
@@ -572,6 +590,26 @@ if barstate.isfirst
                         vol_ol_75 := p75
                     if not na(p90) and na(vol_ol_90)
                         vol_ol_90 := p90
+                if str.contains(rowUp, "CLOSE+")
+                    med = f_firstNumAfter(rowRaw, ": ")
+                    p75 = f_lastNumBefore(rowRaw, "75th")
+                    p90 = f_lastNumBefore(rowRaw, "90th")
+                    if not na(med) and na(vol_cup_med)
+                        vol_cup_med := med
+                    if not na(p75) and na(vol_cup_75)
+                        vol_cup_75 := p75
+                    if not na(p90) and na(vol_cup_90)
+                        vol_cup_90 := p90
+                if str.contains(rowUp, "CLOSE-")
+                    med = f_firstNumAfter(rowRaw, ": ")
+                    p75 = f_lastNumBefore(rowRaw, "75th")
+                    p90 = f_lastNumBefore(rowRaw, "90th")
+                    if not na(med) and na(vol_cdn_med)
+                        vol_cdn_med := med
+                    if not na(p75) and na(vol_cdn_75)
+                        vol_cdn_75 := p75
+                    if not na(p90) and na(vol_cdn_90)
+                        vol_cdn_90 := p90
                 if str.contains(rowUp, "DRIFT")
                     d = f_parseDrift(rowRaw, ": ")
                     if not na(d) and na(drift_val)
@@ -592,6 +630,16 @@ if barstate.isfirst and symInverted
     t3 = vol_oh_90
     vol_oh_90 := vol_ol_90
     vol_ol_90 := t3
+    // Close+ / Close- swap the same way (an up-close in USDJPY is a down-close on 6J)
+    c1 = vol_cup_med
+    vol_cup_med := vol_cdn_med
+    vol_cdn_med := c1
+    c2 = vol_cup_75
+    vol_cup_75 := vol_cdn_75
+    vol_cdn_75 := c2
+    c3 = vol_cup_90
+    vol_cup_90 := vol_cdn_90
+    vol_cdn_90 := c3
     if not na(drift_val)
         drift_val := -drift_val
     if not na(drift_text) and str.length(drift_text) > 0
@@ -662,10 +710,14 @@ pH_75  = not na(vol_hl_75)  ? dayLow  * (1 + vol_hl_75  / 100) : na
 pL_med = not na(vol_hl_med) ? dayHigh * (1 - vol_hl_med / 100) : na
 pL_75  = not na(vol_hl_75)  ? dayHigh * (1 - vol_hl_75  / 100) : na
 
-oc_up_med = not na(vol_oc_med) ? dayOpen * (1 + vol_oc_med / 100) : na
-oc_dn_med = not na(vol_oc_med) ? dayOpen * (1 - vol_oc_med / 100) : na
-oc_up_75  = not na(vol_oc_75)  ? dayOpen * (1 + vol_oc_75  / 100) : na
-oc_dn_75  = not na(vol_oc_75)  ? dayOpen * (1 - vol_oc_75  / 100) : na
+// Close+ / Close- from their own calcs when the paste has them; otherwise the symmetric Open-to-Close lines
+closeSplit = use_close_split and not na(vol_cup_med) and not na(vol_cdn_med)
+oc_up_med = closeSplit ? dayOpen * (1 + vol_cup_med / 100) : not na(vol_oc_med) ? dayOpen * (1 + vol_oc_med / 100) : na
+oc_dn_med = closeSplit ? dayOpen * (1 - vol_cdn_med / 100) : not na(vol_oc_med) ? dayOpen * (1 - vol_oc_med / 100) : na
+oc_up_75  = closeSplit ? (not na(vol_cup_75) ? dayOpen * (1 + vol_cup_75 / 100) : na) : not na(vol_oc_75) ? dayOpen * (1 + vol_oc_75 / 100) : na
+oc_dn_75  = closeSplit ? (not na(vol_cdn_75) ? dayOpen * (1 - vol_cdn_75 / 100) : na) : not na(vol_oc_75) ? dayOpen * (1 - vol_oc_75 / 100) : na
+oc_up_90  = closeSplit and show_close_90 and not na(vol_cup_90) ? dayOpen * (1 + vol_cup_90 / 100) : na
+oc_dn_90  = closeSplit and show_close_90 and not na(vol_cdn_90) ? dayOpen * (1 - vol_cdn_90 / 100) : na
 
 // =====================================================
 // PRICE LEVELS — OH / OL (anchored at day open, asymmetric)
@@ -732,6 +784,8 @@ plot(oc_up_75,   "Close 75 Up",  color=col_oc_75,  linewidth=2, style=plot.style
 plot(oc_dn_75,   "Close 75 Dn",  color=col_oc_75,  linewidth=2, style=plot.style_stepline)
 plot(oc_up_med,  "Close Med Up", color=col_oc_med, linewidth=1, style=plot.style_stepline)
 plot(oc_dn_med,  "Close Med Dn", color=col_oc_med, linewidth=1, style=plot.style_stepline)
+plot(oc_up_90,   "Close+ 90th",  color=col_oc_90,  linewidth=2, style=plot.style_stepline)
+plot(oc_dn_90,   "Close- 90th",  color=col_oc_90,  linewidth=2, style=plot.style_stepline)
 
 // =====================================================
 // STATIC PLOTS — OH / OL (asymmetric open-anchored bands)
@@ -761,6 +815,8 @@ var label lb_oc_up_75  = na
 var label lb_oc_dn_75  = na
 var label lb_oc_up_med = na
 var label lb_oc_dn_med = na
+var label lb_oc_up_90  = na
+var label lb_oc_dn_90  = na
 var label lb_open      = na
 
 // — Day High / Day Low (grey, always shown) —
@@ -823,6 +879,8 @@ if barstate.islast
     label.delete(lb_oc_dn_75)
     label.delete(lb_oc_up_med)
     label.delete(lb_oc_dn_med)
+    label.delete(lb_oc_up_90)
+    label.delete(lb_oc_dn_90)
     label.delete(lb_open)
 
     line.delete(ln_dayH)
@@ -927,24 +985,34 @@ if barstate.islast
                  textcolor=color.white, size=size.small)
 
     if show_labels
+        if not na(oc_up_90)
+            lb_oc_up_90 := label.new(bar_index + 2, oc_up_90,
+                 "Close+ 90p  " + f_pctStr(f_pct(oc_up_90, dayOpen)),
+                 style=label.style_label_left, color=color.new(col_oc_90, 70),
+                 textcolor=color.white, size=size.small)
+        if not na(oc_dn_90)
+            lb_oc_dn_90 := label.new(bar_index + 2, oc_dn_90,
+                 "Close- 90p  " + f_pctStr(f_pct(oc_dn_90, dayOpen)),
+                 style=label.style_label_left, color=color.new(col_oc_90, 70),
+                 textcolor=color.white, size=size.small)
         if not na(oc_up_75)
             lb_oc_up_75 := label.new(bar_index + 2, oc_up_75,
-                 "Close 75p  " + f_pctStr(f_pct(oc_up_75, dayOpen)),
+                 (closeSplit ? "Close+ 75p  " : "Close 75p  ") + f_pctStr(f_pct(oc_up_75, dayOpen)),
                  style=label.style_label_left, color=color.new(col_oc_75, 70),
                  textcolor=color.white, size=size.small)
         if not na(oc_dn_75)
             lb_oc_dn_75 := label.new(bar_index + 2, oc_dn_75,
-                 "Close 75p  " + f_pctStr(f_pct(oc_dn_75, dayOpen)),
+                 (closeSplit ? "Close- 75p  " : "Close 75p  ") + f_pctStr(f_pct(oc_dn_75, dayOpen)),
                  style=label.style_label_left, color=color.new(col_oc_75, 70),
                  textcolor=color.white, size=size.small)
         if not na(oc_up_med)
             lb_oc_up_med := label.new(bar_index + 2, oc_up_med,
-                 "Close Med  " + f_pctStr(f_pct(oc_up_med, dayOpen)),
+                 (closeSplit ? "Close+ Med  " : "Close Med  ") + f_pctStr(f_pct(oc_up_med, dayOpen)),
                  style=label.style_label_left, color=color.new(col_oc_med, 70),
                  textcolor=color.white, size=size.small)
         if not na(oc_dn_med)
             lb_oc_dn_med := label.new(bar_index + 2, oc_dn_med,
-                 "Close Med  " + f_pctStr(f_pct(oc_dn_med, dayOpen)),
+                 (closeSplit ? "Close- Med  " : "Close Med  ") + f_pctStr(f_pct(oc_dn_med, dayOpen)),
                  style=label.style_label_left, color=color.new(col_oc_med, 70),
                  textcolor=color.white, size=size.small)
         lb_open := label.new(bar_index + 2, dayOpen,
