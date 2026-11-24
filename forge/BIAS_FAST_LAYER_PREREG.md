@@ -90,4 +90,10 @@ About 2,600 evaluation sessions, ≈ 120 independent 21-session blocks. Calls pe
 
 ## Amendments
 
+### A1 — 2026-11-24 — PRE-RESULTS
+Only the panel build and the positive control had run; no real outcome had been computed.
+- **Panel:** 2,774 London weekdays 2016-01-04 → 2026-08-20; hourly prices found 39,759 (DE30) to 41,356 (NZDUSD) of 41,610 per instrument; US02Y 39,562 (the bond CFD has more closed hours and holidays).
+- **Calls built:** 274,111 slot × market observations with drivers, fit and a 3-hour outcome; skipped 733 session × market fits (under 60 sessions of history), 50,292 slot observations with a driver leg missing (mostly US02Y), 1,147 with no price 3 hours later. Evaluation starts 2016-03-29 (the first session with 60 usable sessions behind it; the prereg's "≈ mid-2016" assumed 120, but §3.3 requires at least 60, which governs).
+- **Positive control passed:** planted 0.10, recovered 0.105 [0.095, 0.118].
+
 ## RESULTS
