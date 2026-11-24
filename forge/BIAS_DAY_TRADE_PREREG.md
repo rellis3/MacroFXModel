@@ -130,3 +130,11 @@ BST is 23:00 UTC, so the engine's own rule ("published after the issue time") re
 closes at 16:15 New York, before 00:00 London all year. Fix: with `BEB_ISSUE_HHMM` set, VIX / VIX3M are stamped at the
 CBOE close (16:15 New York) of their date (`build_inputs.py` `vix_stamp`); the 07:00 replay is unchanged. Inputs and
 engine rebuilt; coverage re-checked against the 07:00 replay before scoring.
+
+### A3 — 2026-11-24 — POST-HOC (results seen)
+
+The line cells (L1–L3) had a pass gate but no NULL rule. Applied the house rule from `trade-at-lines` §3 (the source
+of these trades): NULL when the net-R interval of the traded cell (WITH) excludes +0.05R. All three WITH intervals
+exclude it (upper +0.010 / −0.072 / +0.042), so L1–L3 are NULL. This only describes; nothing is promoted. The WITH − ALL
+gains (+0.072 FADE-L, +0.066 FOLLOW, intervals excluding 0) are reported as candidates. Coverage: DE30 and UK100 have
+no bid/ask bars at 00:00 London, so the idx group is the 4 US indices (reported, not patched).

@@ -1,0 +1,296 @@
+engine rows 147,560  markets 34  dates 2010-01-04 .. 2026-08-21
+  EURGBP  sessions  2545  e21  2503  e24  2460  h4  2541
+  EURAUD  sessions  2545  e21  2502  e24  2460  h4  2541
+  EURNZD  sessions  2546  e21  2503  e24  2461  h4  2542
+  EURUSD  sessions  2546  e21  2505  e24  2462  h4  2542
+  EURCAD  sessions  2546  e21  2504  e24  2461  h4  2542
+  EURCHF  sessions  2545  e21  2504  e24  2461  h4  2541
+  EURJPY  sessions  2546  e21  2503  e24  2461  h4  2542
+  GBPAUD  sessions  2545  e21  2504  e24  2461  h4  2541
+  GBPNZD  sessions  2545  e21  2503  e24  2461  h4  2541
+  GBPUSD  sessions  2546  e21  2505  e24  2462  h4  2542
+  GBPCAD  sessions  2546  e21  2505  e24  2462  h4  2542
+  GBPCHF  sessions  2546  e21  2505  e24  2462  h4  2542
+  GBPJPY  sessions  2546  e21  2504  e24  2461  h4  2542
+  AUDNZD  sessions  2545  e21  2502  e24  2459  h4  2541
+  AUDUSD  sessions  2545  e21  2503  e24  2460  h4  2541
+  AUDCAD  sessions  2546  e21  2505  e24  2462  h4  2542
+  AUDCHF  sessions  2544  e21  2502  e24  2459  h4  2540
+  AUDJPY  sessions  2546  e21  2505  e24  2462  h4  2542
+  NZDUSD  sessions  2545  e21  2502  e24  2459  h4  2541
+  NZDCAD  sessions  2546  e21  2503  e24  2461  h4  2542
+  NZDJPY  sessions  2546  e21  2503  e24  2460  h4  2542
+  USDCAD  sessions  2546  e21  2505  e24  2463  h4  2542
+  USDCHF  sessions  2543  e21  2501  e24  2456  h4  2539
+  USDJPY  sessions  2546  e21  2505  e24  2464  h4  2542
+  CADCHF  sessions  2544  e21  2502  e24  2459  h4  2540
+  CADJPY  sessions  2546  e21  2504  e24  2461  h4  2542
+  CHFJPY  sessions  2545  e21  2503  e24  2460  h4  2541
+  GOLD    sessions  2532  e21  2413  e24  2425  h4  2528
+  NQ      sessions  2531  e21  2401  e24  2421  h4  2527
+  SPX500  sessions  2512  e21  2382  e24  2402  h4  2508
+  US30    sessions  2533  e21  2403  e24  2424  h4  2529
+  US2000  sessions  2211  e21  2112  e24  2044  h4  2210
+  DE30    sessions     0  e21     0  e24     0  h4     0
+  UK100   sessions     0  e21     0  e24     0  h4     0
+PLANT c 0.06 (V1 fx E21): lift +0.0600, recovered >= 80% in 100.0% of 200 draws; planted value above the random-side placebo at pct 100.0
+
+================ ARM V1: called market-days 18,307; by group fx 11,795, gold 1,004, idx 5,508
+CELLS (net R per call; WITH = trade the side, AGAINST = fade it)
+  fx-E21    n  11788 long 51%  gross -0.0020 (placebo -0.0069, pct  68.4)  WITH -0.0592 [-0.0931,-0.0284] h -0.058/-0.060 holm 0.00  AGAINST -0.0552 [-0.0848,-0.0237] h -0.067/-0.046  MDE 0.026 bar 0.04  -> NULL
+  gold-E21  n    979 long 42%  gross +0.0475 (placebo -0.0023, pct  90.6)  WITH +0.0185 [-0.0576,+0.0899] h +0.002/+0.031 holm 1.00  AGAINST -0.0764 [-0.1450,-0.0020] h -0.087/-0.069  MDE 0.104 bar 0.04  -> UNDERPOWERED
+  idx-E21   n   5286 long 66%  gross +0.0227 (placebo +0.0132, pct  75.4)  WITH +0.0093 [-0.0426,+0.0591] h +0.013/+0.005 holm 1.00  AGAINST -0.0361 [-0.0873,+0.0153] h -0.048/-0.023  MDE 0.036 bar 0.04  -> NULL
+  fx-E24    n  11569 long 51%  gross -0.0102 (placebo -0.0116, pct  54.8)  WITH -0.0863 [-0.1189,-0.0565] h -0.084/-0.091 holm 0.00  AGAINST -0.0659 [-0.0963,-0.0326] h -0.090/-0.043  MDE 0.029 bar 0.05  -> NULL
+  gold-E24  n    982 long 42%  gross +0.0527 (placebo -0.0086, pct  93.8)  WITH +0.0160 [-0.0563,+0.0820] h -0.005/+0.032 holm 1.00  AGAINST -0.0893 [-0.1571,-0.0175] h -0.108/-0.075  MDE 0.109 bar 0.05  -> UNDERPOWERED
+  idx-E24   n   5296 long 66%  gross +0.0084 (placebo +0.0181, pct  22.8)  WITH -0.0071 [-0.0593,+0.0449] h +0.000/-0.015 holm 1.00  AGAINST -0.0240 [-0.0767,+0.0277] h -0.040/-0.006  MDE 0.037 bar 0.05  -> NULL
+PER MARKET, E21 (net R per call; one-sided BH q 0.10 over 64 market x side tests, chance ~3.2)
+  EURJPY  fx   n   449 long 45%  gross +0.088  with +0.057  against -0.119  
+  SPX500  idx  n  1393 long 65%  gross +0.045  with +0.029  against -0.061  
+  GBPCAD  fx   n   140 long 51%  gross +0.078  with +0.028  against -0.129  
+  US30    idx  n  1326 long 67%  gross +0.037  with +0.026  against -0.048  
+  NQ      idx  n  1405 long 69%  gross +0.036  with +0.025  against -0.047  
+  GOLD    gold n   979 long 42%  gross +0.047  with +0.019  against -0.076  
+  USDJPY  fx   n   699 long 68%  gross +0.031  with +0.002  against -0.060  
+  GBPJPY  fx   n   560 long 69%  gross +0.038  with +0.001  against -0.075  
+  EURNZD  fx   n   410 long 31%  gross +0.065  with -0.005  against -0.135  
+  EURCHF  fx   n   361 long 52%  gross +0.080  with -0.008  against -0.168  
+  GBPCHF  fx   n   514 long 78%  gross +0.040  with -0.020  against -0.101  
+  CADJPY  fx   n   715 long 71%  gross +0.022  with -0.022  against -0.067  
+  NZDUSD  fx   n   602 long 38%  gross +0.024  with -0.028  against -0.076  
+  EURUSD  fx   n   367 long 9%  gross +0.003  with -0.029  against -0.035  
+  US2000  idx  n  1162 long 63%  gross -0.027  with -0.042  against +0.012  
+  GBPAUD  fx   n   182 long 69%  gross +0.020  with -0.043  against -0.083  
+  USDCHF  fx   n   521 long 74%  gross +0.005  with -0.045  against -0.055  
+  AUDCHF  fx   n   618 long 75%  gross +0.031  with -0.045  against -0.106  
+  NZDJPY  fx   n   934 long 50%  gross +0.008  with -0.048  against -0.063  
+  CADCHF  fx   n   591 long 81%  gross +0.021  with -0.055  against -0.097  
+  CHFJPY  fx   n   508 long 11%  gross -0.006  with -0.066  against -0.053  
+  AUDJPY  fx   n   577 long 65%  gross -0.032  with -0.071  against -0.007  
+  EURAUD  fx   n   227 long 11%  gross -0.024  with -0.071  against -0.023  
+  EURCAD  fx   n   368 long 8%  gross -0.031  with -0.076  against -0.015  
+  GBPNZD  fx   n   525 long 62%  gross +0.001  with -0.078  against -0.079  
+  EURGBP  fx   n   233 long 1%  gross -0.032  with -0.091  against -0.026  
+  NZDCAD  fx   n   525 long 34%  gross -0.017  with -0.106  against -0.072  
+  AUDUSD  fx   n   226 long 35%  gross -0.068  with -0.111  against +0.025  
+  AUDNZD  fx   n   310 long 54%  gross -0.002  with -0.112  against -0.107  
+  GBPUSD  fx   n   241 long 55%  gross -0.078  with -0.113  against +0.044  
+  USDCAD  fx   n   166 long 39%  gross -0.101  with -0.150  against +0.052  
+  AUDCAD  fx   n   219 long 37%  gross -0.218  with -0.295  against +0.141  
+  BH passes E21: 0
+PER MARKET, E24 (net R per call; one-sided BH q 0.10 over 64 market x side tests, chance ~3.2)
+  EURJPY  fx   n   444 long 45%  gross +0.084  with +0.043  against -0.125  
+  GOLD    gold n   982 long 42%  gross +0.053  with +0.016  against -0.089  
+  SPX500  idx  n  1407 long 65%  gross +0.028  with +0.010  against -0.045  
+  NQ      idx  n  1418 long 69%  gross +0.025  with +0.010  against -0.041  
+  US30    idx  n  1338 long 67%  gross +0.016  with +0.003  against -0.029  
+  USDJPY  fx   n   693 long 68%  gross +0.029  with -0.012  against -0.069  
+  GBPJPY  fx   n   554 long 69%  gross +0.036  with -0.014  against -0.087  
+  GBPCAD  fx   n   136 long 51%  gross +0.049  with -0.019  against -0.117  
+  EURCHF  fx   n   355 long 52%  gross +0.082  with -0.028  against -0.192  
+  EURNZD  fx   n   398 long 31%  gross +0.042  with -0.043  against -0.127  
+  GBPCHF  fx   n   509 long 78%  gross +0.040  with -0.046  against -0.125  
+  GBPAUD  fx   n   175 long 69%  gross +0.033  with -0.050  against -0.116  
+  US2000  idx  n  1133 long 63%  gross -0.036  with -0.052  against +0.019  
+  CADJPY  fx   n   708 long 71%  gross +0.005  with -0.058  against -0.067  
+  NZDUSD  fx   n   585 long 38%  gross +0.014  with -0.059  against -0.086  
+  EURUSD  fx   n   360 long 9%  gross -0.031  with -0.072  against -0.011  
+  USDCHF  fx   n   509 long 74%  gross -0.008  with -0.075  against -0.058  
+  NZDJPY  fx   n   916 long 50%  gross -0.007  with -0.078  against -0.065  
+  EURAUD  fx   n   219 long 11%  gross -0.021  with -0.085  against -0.044  
+  GBPNZD  fx   n   509 long 62%  gross +0.009  with -0.086  against -0.104  
+  AUDCHF  fx   n   609 long 75%  gross +0.014  with -0.092  against -0.120  
+  CHFJPY  fx   n   497 long 11%  gross -0.011  with -0.092  against -0.070  
+  GBPUSD  fx   n   236 long 55%  gross -0.046  with -0.094  against -0.002  
+  EURGBP  fx   n   229 long 1%  gross -0.013  with -0.094  against -0.068  
+  AUDJPY  fx   n   569 long 65%  gross -0.047  with -0.102  against -0.008  
+  CADCHF  fx   n   584 long 81%  gross -0.000  with -0.104  against -0.104  
+  EURCAD  fx   n   360 long 8%  gross -0.049  with -0.113  against -0.014  
+  AUDNZD  fx   n   302 long 54%  gross -0.004  with -0.131  against -0.122  
+  AUDUSD  fx   n   221 long 35%  gross -0.087  with -0.139  against +0.035  
+  USDCAD  fx   n   164 long 39%  gross -0.092  with -0.160  against +0.024  
+  NZDCAD  fx   n   516 long 34%  gross -0.053  with -0.173  against -0.067  
+  AUDCAD  fx   n   212 long 37%  gross -0.241  with -0.351  against +0.130  
+  BH passes E24: 0
+BY YEAR (E21, pooled rows: gross / with / against)
+  fx   2016  +0.033 -0.002 -0.068
+  fx   2017  +0.012 -0.037 -0.062
+  fx   2018  -0.025 -0.081 -0.030
+  fx   2019  +0.023 -0.039 -0.085
+  fx   2020  +0.006 -0.065 -0.076
+  fx   2021  +0.014 -0.055 -0.083
+  fx   2022  +0.015 -0.025 -0.055
+  fx   2023  +0.035 -0.007 -0.077
+  fx   2024  +0.021 -0.040 -0.082
+  fx   2025  -0.035 -0.097 -0.026
+  fx   2026  +0.021 -0.049 -0.090
+  gold 2016  -0.144 -0.183 +0.105
+  gold 2017  +0.071 +0.031 -0.112
+  gold 2018  +0.081 +0.042 -0.120
+  gold 2019  +0.158 +0.122 -0.193
+  gold 2020  -0.020 -0.085 -0.045
+  gold 2021  +0.141 +0.114 -0.167
+  gold 2022  +0.040 +0.022 -0.059
+  gold 2023  +0.025 +0.005 -0.045
+  gold 2024  -0.012 -0.031 -0.008
+  gold 2025  +0.121 +0.099 -0.142
+  gold 2026  -0.030 -0.040 +0.019
+  idx  2016  -0.058 -0.075 +0.041
+  idx  2017  +0.109 +0.075 -0.144
+  idx  2018  +0.223 +0.200 -0.245
+  idx  2019  +0.074 +0.055 -0.092
+  idx  2020  -0.071 -0.082 +0.060
+  idx  2021  -0.073 -0.083 +0.063
+  idx  2022  +0.046 +0.039 -0.053
+  idx  2023  +0.120 +0.110 -0.129
+  idx  2024  -0.081 -0.092 +0.071
+  idx  2025  +0.009 -0.001 -0.019
+  idx  2026  -0.091 -0.100 +0.082
+BY STRENGTH (E21)
+  fx   3-4  n  10384 gross +0.008 with -0.049
+  fx   5-6  n   1345 gross +0.009 with -0.046
+  fx   7+   n     66 gross +0.024 with -0.042
+  gold 3-4  n    694 gross +0.069 with +0.040
+  gold 5-6  n    267 gross -0.014 with -0.044
+  gold 7+   n     43 gross +0.077 with +0.056
+  idx  3-4  n   3459 gross +0.027 with +0.013
+  idx  5-6  n   1591 gross +0.003 with -0.009
+  idx  7+   n    458 gross +0.081 with +0.072
+median round-trip cost in R (E21): fx 0.048, gold 0.022, idx 0.010
+
+================ ARM H4: called market-days 79,775; by group fx 67,633, gold 2,491, idx 9,651
+CELLS (net R per call; WITH = trade the side, AGAINST = fade it)
+  fx-E21    n  67595 long 51%  gross -0.0043 (placebo +0.0004, pct  12.6)  WITH -0.0601 [-0.0762,-0.0428] h -0.055/-0.066 holm 0.00  AGAINST -0.0515 [-0.0698,-0.0345] h -0.063/-0.040  MDE 0.011 bar 0.04  -> NULL
+  gold-E21  n   2413 long 55%  gross +0.0310 (placebo +0.0031, pct  87.6)  WITH +0.0019 [-0.0376,+0.0425] h -0.021/+0.025 holm 1.00  AGAINST -0.0602 [-0.1021,-0.0211] h -0.059/-0.061  MDE 0.065 bar 0.04  -> UNDERPOWERED
+  idx-E21   n   9298 long 59%  gross +0.0036 (placebo +0.0076, pct  36.6)  WITH -0.0104 [-0.0451,+0.0255] h -0.017/-0.005 holm 1.00  AGAINST -0.0177 [-0.0537,+0.0171] h -0.022/-0.014  MDE 0.029 bar 0.04  -> NULL
+  fx-E24    n  66440 long 51%  gross -0.0081 (placebo +0.0005, pct   2.2)  WITH -0.0832 [-0.0993,-0.0659] h -0.083/-0.084 holm 0.00  AGAINST -0.0671 [-0.0848,-0.0497] h -0.081/-0.053  MDE 0.012 bar 0.05  -> NULL
+  gold-E24  n   2425 long 55%  gross +0.0232 (placebo +0.0056, pct  78.6)  WITH -0.0154 [-0.0569,+0.0255] h -0.054/+0.023 holm 1.00  AGAINST -0.0617 [-0.1019,-0.0209] h -0.058/-0.065  MDE 0.061 bar 0.05  -> UNDERPOWERED
+  idx-E24   n   9291 long 59%  gross -0.0057 (placebo +0.0096, pct   9.2)  WITH -0.0219 [-0.0563,+0.0131] h -0.021/-0.023 holm 1.00  AGAINST -0.0106 [-0.0455,+0.0243] h -0.023/+0.001  MDE 0.031 bar 0.05  -> NULL
+PER MARKET, E21 (net R per call; one-sided BH q 0.10 over 64 market x side tests, chance ~3.2)
+  NQ      idx  n  2401 long 61%  gross +0.013  with +0.002  against -0.024  
+  GOLD    gold n  2413 long 55%  gross +0.031  with +0.002  against -0.060  
+  US30    idx  n  2403 long 59%  gross +0.012  with +0.001  against -0.024  
+  AUDJPY  fx   n  2505 long 55%  gross +0.040  with -0.000  against -0.080  
+  GBPUSD  fx   n  2505 long 51%  gross +0.024  with -0.011  against -0.059  
+  GBPJPY  fx   n  2504 long 55%  gross +0.026  with -0.013  against -0.065  
+  USDJPY  fx   n  2505 long 55%  gross +0.016  with -0.014  against -0.046  
+  SPX500  idx  n  2382 long 61%  gross +0.003  with -0.015  against -0.021  
+  US2000  idx  n  2112 long 54%  gross -0.014  with -0.030  against -0.002  
+  EURUSD  fx   n  2505 long 50%  gross +0.004  with -0.030  against -0.038  
+  AUDUSD  fx   n  2503 long 51%  gross +0.008  with -0.032  against -0.048  
+  EURJPY  fx   n  2503 long 54%  gross +0.001  with -0.034  against -0.037  
+  USDCAD  fx   n  2505 long 51%  gross +0.001  with -0.040  against -0.042  
+  NZDJPY  fx   n  2503 long 52%  gross +0.016  with -0.041  against -0.074  
+  CADJPY  fx   n  2504 long 54%  gross -0.001  with -0.045  against -0.043  
+  USDCHF  fx   n  2501 long 50%  gross -0.002  with -0.050  against -0.047  
+  NZDUSD  fx   n  2502 long 49%  gross +0.002  with -0.050  against -0.053  
+  EURAUD  fx   n  2502 long 47%  gross -0.013  with -0.058  against -0.032  
+  CHFJPY  fx   n  2503 long 55%  gross -0.000  with -0.062  against -0.062  
+  GBPCAD  fx   n  2505 long 52%  gross -0.014  with -0.066  against -0.037  
+  GBPAUD  fx   n  2504 long 49%  gross -0.015  with -0.067  against -0.037  
+  AUDNZD  fx   n  2502 long 51%  gross +0.035  with -0.071  against -0.142  
+  EURNZD  fx   n  2503 long 50%  gross -0.009  with -0.077  against -0.060  
+  CADCHF  fx   n  2502 long 49%  gross -0.009  with -0.084  against -0.066  
+  NZDCAD  fx   n  2503 long 49%  gross -0.003  with -0.087  against -0.081  
+  EURCAD  fx   n  2504 long 50%  gross -0.043  with -0.088  against -0.003  
+  GBPCHF  fx   n  2505 long 51%  gross -0.028  with -0.089  against -0.033  
+  EURCHF  fx   n  2504 long 47%  gross -0.016  with -0.094  against -0.062  
+  AUDCAD  fx   n  2505 long 50%  gross -0.027  with -0.094  against -0.040  
+  EURGBP  fx   n  2503 long 48%  gross -0.039  with -0.101  against -0.022  
+  AUDCHF  fx   n  2502 long 51%  gross -0.026  with -0.101  against -0.048  
+  GBPNZD  fx   n  2503 long 52%  gross -0.043  with -0.122  against -0.036  
+  BH passes E21: 0
+PER MARKET, E24 (net R per call; one-sided BH q 0.10 over 64 market x side tests, chance ~3.2)
+  US30    idx  n  2424 long 59%  gross +0.003  with -0.010  against -0.017  
+  GOLD    gold n  2425 long 55%  gross +0.023  with -0.015  against -0.062  
+  USDJPY  fx   n  2464 long 55%  gross +0.019  with -0.020  against -0.058  
+  NQ      idx  n  2421 long 61%  gross -0.006  with -0.021  against -0.010  
+  AUDJPY  fx   n  2462 long 55%  gross +0.034  with -0.023  against -0.091  
+  GBPJPY  fx   n  2461 long 55%  gross +0.028  with -0.024  against -0.080  
+  US2000  idx  n  2044 long 54%  gross -0.009  with -0.026  against -0.008  
+  GBPUSD  fx   n  2462 long 51%  gross +0.022  with -0.026  against -0.069  
+  SPX500  idx  n  2402 long 61%  gross -0.011  with -0.030  against -0.007  
+  EURJPY  fx   n  2461 long 54%  gross +0.009  with -0.036  against -0.055  
+  EURUSD  fx   n  2462 long 50%  gross +0.006  with -0.037  against -0.049  
+  AUDUSD  fx   n  2460 long 51%  gross -0.001  with -0.055  against -0.052  
+  USDCHF  fx   n  2456 long 50%  gross -0.000  with -0.064  against -0.064  
+  NZDJPY  fx   n  2460 long 52%  gross +0.014  with -0.065  against -0.092  
+  USDCAD  fx   n  2463 long 51%  gross -0.014  with -0.067  against -0.040  
+  CADJPY  fx   n  2461 long 54%  gross -0.009  with -0.072  against -0.053  
+  CHFJPY  fx   n  2460 long 55%  gross +0.007  with -0.080  against -0.093  
+  NZDUSD  fx   n  2459 long 49%  gross -0.008  with -0.082  against -0.066  
+  GBPAUD  fx   n  2461 long 49%  gross -0.019  with -0.088  against -0.050  
+  EURAUD  fx   n  2460 long 47%  gross -0.025  with -0.088  against -0.038  
+  GBPCAD  fx   n  2462 long 52%  gross -0.023  with -0.092  against -0.045  
+  EURNZD  fx   n  2461 long 50%  gross -0.019  with -0.107  against -0.068  
+  GBPCHF  fx   n  2462 long 51%  gross -0.023  with -0.107  against -0.062  
+  CADCHF  fx   n  2459 long 49%  gross -0.007  with -0.110  against -0.095  
+  EURCAD  fx   n  2461 long 50%  gross -0.049  with -0.111  against -0.013  
+  AUDNZD  fx   n  2459 long 51%  gross +0.026  with -0.112  against -0.163  
+  EURGBP  fx   n  2460 long 48%  gross -0.031  with -0.115  against -0.052  
+  EURCHF  fx   n  2461 long 47%  gross -0.017  with -0.119  against -0.086  
+  AUDCAD  fx   n  2462 long 50%  gross -0.037  with -0.131  against -0.057  
+  NZDCAD  fx   n  2461 long 49%  gross -0.018  with -0.132  against -0.095  
+  AUDCHF  fx   n  2459 long 51%  gross -0.031  with -0.133  against -0.070  
+  GBPNZD  fx   n  2461 long 52%  gross -0.048  with -0.152  against -0.055  
+  BH passes E24: 0
+BY YEAR (E21, pooled rows: gross / with / against)
+  fx   2016  -0.008 -0.073 -0.056
+  fx   2017  +0.007 -0.049 -0.062
+  fx   2018  -0.001 -0.061 -0.058
+  fx   2019  -0.007 -0.070 -0.057
+  fx   2020  +0.031 -0.028 -0.090
+  fx   2021  -0.011 -0.070 -0.047
+  fx   2022  +0.004 -0.040 -0.047
+  fx   2023  -0.024 -0.069 -0.020
+  fx   2024  +0.013 -0.039 -0.066
+  fx   2025  -0.018 -0.076 -0.041
+  fx   2026  -0.055 -0.120 -0.011
+  gold 2016  +0.267 +0.225 -0.308
+  gold 2017  +0.073 +0.033 -0.113
+  gold 2018  -0.001 -0.045 -0.042
+  gold 2019  -0.044 -0.082 +0.006
+  gold 2020  +0.020 -0.031 -0.071
+  gold 2021  +0.049 +0.024 -0.074
+  gold 2022  -0.030 -0.049 +0.012
+  gold 2023  +0.118 +0.098 -0.138
+  gold 2024  +0.005 -0.014 -0.024
+  gold 2025  +0.120 +0.101 -0.139
+  gold 2026  -0.030 -0.041 +0.019
+  idx  2016  +0.006 -0.023 -0.035
+  idx  2017  -0.031 -0.068 -0.005
+  idx  2018  +0.119 +0.096 -0.141
+  idx  2019  -0.061 -0.078 +0.043
+  idx  2020  +0.047 +0.036 -0.058
+  idx  2021  -0.039 -0.048 +0.029
+  idx  2022  -0.040 -0.047 +0.033
+  idx  2023  +0.070 +0.060 -0.080
+  idx  2024  +0.024 +0.013 -0.035
+  idx  2025  +0.023 +0.013 -0.032
+  idx  2026  -0.106 -0.115 +0.097
+median round-trip cost in R (E21): fx 0.047, gold 0.023, idx 0.011
+
+HEAD-TO-HEAD (descriptive): market-days where both speak 18,307; agree 65.7%
+  fx   E21  n  11795  V1 -0.049  H4 -0.056  V1-H4 +0.005 [-0.036,+0.044]  V1 when agree -0.050 / disagree -0.047  (agree 62%)
+  fx   E24  n  11795  V1 -0.078  H4 -0.082  V1-H4 +0.006 [-0.032,+0.044]  V1 when agree -0.082 / disagree -0.070  (agree 62%)
+  gold E21  n   1004  V1 +0.019  H4 +0.025  V1-H4 -0.007 [-0.096,+0.075]  V1 when agree +0.046 / disagree -0.037  (agree 67%)
+  gold E24  n   1004  V1 +0.016  H4 +0.020  V1-H4 -0.004 [-0.084,+0.074]  V1 when agree +0.045 / disagree -0.040  (agree 67%)
+  idx  E21  n   5508  V1 +0.011  H4 +0.014  V1-H4 -0.004 [-0.048,+0.039]  V1 when agree +0.022 / disagree -0.017  (agree 73%)
+  idx  E24  n   5508  V1 -0.005  H4 +0.001  V1-H4 -0.007 [-0.053,+0.035]  V1 when agree +0.003 / disagree -0.025  (agree 73%)
+  all  E21  n  18307  V1 -0.028  H4 -0.031  V1-H4 +0.004 [-0.033,+0.038]  V1 when agree -0.021 / disagree -0.040  (agree 66%)
+  all  E24  n  18307  V1 -0.051  H4 -0.052  V1-H4 +0.004 [-0.029,+0.038]  V1 when agree -0.047 / disagree -0.058  (agree 66%)
+
+LINES [v1]: 31,234 trade-at-lines trades (pos 0, 2018 -> 2026-08-20); with 5,889, against 6,049, neutral bias 19,296
+  L1 FADE-L  all -0.102 (n 11204)  WITH -0.030 [-0.067,+0.010] n 2076  AGAINST -0.102  with-all +0.072 [+0.037,+0.109]  with-against +0.072 [+0.013,+0.134]  halves -0.047/-0.013  -> UNDERPOWERED
+             with by market: EURUSD -0.083, GOLD -0.057, NQ +0.000
+  L2 FADE-Z  all -0.140 (n 8581)  WITH -0.118 [-0.163,-0.072] n 1555  AGAINST -0.148  with-all +0.022 [-0.016,+0.062]  with-against +0.031 [-0.031,+0.099]  halves -0.135/-0.100  -> NULL
+             with by market: EURUSD -0.172, GOLD -0.141, NQ -0.089
+  L3 FOLLOW  all -0.081 (n 11449)  WITH -0.015 [-0.072,+0.042] n 2258  AGAINST -0.109  with-all +0.066 [+0.016,+0.117]  with-against +0.094 [+0.006,+0.181]  halves -0.005/-0.026  -> UNDERPOWERED
+             with by market: EURUSD -0.154, GOLD -0.081, NQ +0.070
+
+LINES [h4]: 31,234 trade-at-lines trades (pos 0, 2018 -> 2026-08-20); with 15,530, against 15,654, neutral bias 50
+  L1 FADE-L  all -0.102 (n 11204)  WITH -0.086 [-0.108,-0.064] n 5541  AGAINST -0.117  with-all +0.016 [-0.001,+0.032]  with-against +0.031 [-0.003,+0.063]  halves -0.097/-0.074  -> NULL
+             with by market: EURUSD -0.102, GOLD -0.078, NQ -0.078
+  L2 FADE-Z  all -0.140 (n 8581)  WITH -0.116 [-0.145,-0.088] n 4219  AGAINST -0.162  with-all +0.023 [+0.006,+0.042]  with-against +0.046 [+0.011,+0.083]  halves -0.119/-0.114  -> NULL
+             with by market: EURUSD -0.106, GOLD -0.146, NQ -0.097
+  L3 FOLLOW  all -0.081 (n 11449)  WITH -0.064 [-0.095,-0.034] n 5770  AGAINST -0.100  with-all +0.017 [-0.006,+0.040]  with-against +0.036 [-0.011,+0.082]  halves -0.074/-0.054  -> NULL
+             with by market: EURUSD -0.124, GOLD -0.108, NQ +0.039
