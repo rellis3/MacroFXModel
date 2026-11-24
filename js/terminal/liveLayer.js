@@ -241,8 +241,35 @@ async function openReplay(date) {
   load();
 }
 
+// ── the price tape (owner 2026-11-24: "a Bloomberg-style feed"): every market the live layer prices, in a fixed order, updated in place ──
+const TAPE_FIRST = ['SPX500', 'NQ', 'US30', 'DE30', 'GOLD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'];
+/** The tape's order: the indices, gold and the majors first, then everything else alphabetically. */
+export function tapeOrder(names) { const set = new Set(names); return [...TAPE_FIRST.filter(n => set.has(n)), ...names.filter(n => !TAPE_FIRST.includes(n)).sort()]; }
+/** One market's text on the tape: { v, c, cls, u }. */
+export function tapeBits(m) {
+  const c = fin(m?.chgPct) ? m.chgPct : null;
+  return { v: px(m?.last), c: c == null ? '–' : `${c > 0 ? '▲' : c < 0 ? '▼' : '▬'}${Math.abs(c).toFixed(2)}%`, cls: c > 0 ? 'up' : c < 0 ? 'dn' : '', u: fin(m?.nowU) ? `${sg(m.nowU)}u` : '' };
+}
+function patchTape(doc) {
+  const el = doc.getElementById('pk'); if (!el || !LIVE?.markets) return;
+  const names = tapeOrder(Object.keys(LIVE.markets)), key = names.join(',');
+  if (el.dataset.key !== key) {   // the set of markets changed: build it (twice, so the scroll loops), then fill in place from here on
+    const one = names.map(n => `<span data-pt="${E(n)}"><span class="s">${E(n)}</span> <span class="v"></span> <span class="c"></span> <span class="u"></span></span>`).join('');
+    el.innerHTML = one + one; el.dataset.key = key;
+  }
+  for (const n of names) {
+    const b = tapeBits(LIVE.markets[n]);
+    for (const sp of el.querySelectorAll(`[data-pt="${globalThis.CSS?.escape ? globalThis.CSS.escape(n) : n}"]`)) {
+      sp.querySelector('.v').textContent = b.v; const c = sp.querySelector('.c'); c.textContent = b.c; c.className = `c ${b.cls}`; sp.querySelector('.u').textContent = b.u;
+    }
+  }
+}
+// the Pair page's pinned strip sits just under the sticky top bar, whatever height the bar has on this screen
+function topOffset(doc) { const t = doc.querySelector('header.top, .top'); if (t) doc.documentElement.style.setProperty('--top-h', `${Math.round(t.getBoundingClientRect().height)}px`); }
+
 /** Fill every placeholder on the page from the latest reads. */
 export function patch(doc = document) {
+  try { patchTape(doc); topOffset(doc); } catch (e) { console.warn('price tape', e); }
   const mk = LIVE?.markets ?? {}, at = LIVE?.at, ccy = Object.fromEntries((LIVE?.ccy ?? []).map(r => [r.ccy, r]));
   const set = (el, h) => { el.dataset.lvDone = '1'; if (el.innerHTML !== h) el.innerHTML = h; };
   const plansOn = () => globalThis.deskSurfaceOn?.('panel.asset.plan') ?? true;   // the plan's prices are a trade surface: off for the desk login unless switched on
@@ -345,5 +372,6 @@ if (typeof document !== 'undefined') {
     queued = true; requestAnimationFrame(() => { queued = false; patch(); }); }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', e => { const el = e.target.closest?.('[data-lv-open]'); if (el) globalThis.openAsset?.(el.dataset.lvOpen); if (e.target.closest?.('[data-lv-replay]')) openReplay(); });
   document.addEventListener('keydown', e => { if (e.key !== 'Enter') return; const el = e.target.closest?.('[data-lv-open]'); if (el) globalThis.openAsset?.(el.dataset.lvOpen); });
+  addEventListener('resize', () => topOffset(document));
   if (globalThis.deskAccessState) start(); else addEventListener('deskaccess', start, { once: true });
 }
