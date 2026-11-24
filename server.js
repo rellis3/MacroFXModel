@@ -8378,6 +8378,57 @@ app.get('/api/trade-watch', async (_req, res) => {
     res.json({ ok: true, date, live: true, events: _tw.events, fired: _tw.state.fired, last: _tw.state.last, plan: _tw.plan });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── The live layer (js/marketLive.js; owner 2026-11-23: the terminal should move with the day) ──
+// Every minute while the FX week is open: every market on the latest desk book against OANDA mids, one batch pricing call. The day so far is
+// seeded once from M1 bars since 00:00 London (again when a new book lands, and every 15 minutes while a market is still missing). No model
+// call, nothing stored: a restart re-seeds from the bars. GET /api/market-live serves the view and the currency strength.
+let _ml = { date: null, runKey: null, cards: {}, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: null };
+let _mlBusy = false;
+async function _mlBook(date) {
+  for (let i = 0; i < 6; i++) {   // today's book, else the latest within the week (a Monday before the morning run reads Friday's)
+    const d = new Date(Date.parse(`${date}T12:00:00Z`) - i * 86400e3).toISOString().slice(0, 10), run = await _drLoad(d);
+    if (run?.head?.ok) return { run, runDate: d };
+  }
+  return null;
+}
+async function _mlTick() {
+  const now = Date.now();
+  if (_mlBusy || !_fxWeekOpen(now)) return;
+  _mlBusy = true;
+  try {
+    const ML = await import('./js/marketLive.js'), date = _dpLondonDate(now), b = await _mlBook(date);
+    if (!b) return;
+    const runKey = `${b.runDate}|${b.run.finishedAt}`;
+    if (_ml.date !== date || _ml.runKey !== runKey) {
+      const { unitOf } = await import('./js/deskScore.js'), cards = {};
+      for (const [n, c] of Object.entries(b.run.head.book.instruments ?? {})) cards[n] = b.runDate === date ? { levels: c.levels ?? null } : { unit: unitOf(c.levels) };   // an earlier day's lines do not apply today
+      _ml = { date, runKey, cards, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: b.runDate };
+    }
+    const names = Object.keys(_ml.cards).filter(n => _dsOanda[n]);
+    if (!_ml.state || (names.some(n => !_ml.state.markets[n]) && now - _ml.seededAt > 15 * 60_000)) {
+      const bars = await _dsBars(names, date, { entryMs: _dsLondonMs(date, 0), exitMs: now });
+      _ml.state = ML.seed(_ml.cards, bars, date); _ml.seededAt = now;
+    }
+    const q = await _fetchSpreads(names.map(n => _dsOanda[n]));
+    if (q.ok) {
+      const prices = {};
+      for (const n of names) { const p = q.pairs[_dsOanda[n]]; if (p?.tradeable !== false && Number.isFinite(p?.bid) && Number.isFinite(p?.ask)) prices[n] = (p.bid + p.ask) / 2; }
+      ML.step(_ml.state, prices, now);
+    }
+    _ml.view = ML.view(_ml.state, _ml.cards); _ml.ccy = ML.ccyStrength(_ml.view); _ml.at = new Date(now).toISOString();
+  } finally { _mlBusy = false; }
+}
+svcInterval('marketLive', () => _mlTick().catch(e => console.warn('[market-live]', e.message)), 60_000);
+// GET /api/market-live: every market on the book now (move since the open in u and %, the day's range, lines touched, a 15-minute path) and
+// the currency strength since the open. Market data, no trade levels: the desk login reads it too.
+app.get('/api/market-live', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (!_ml.at) await _mlTick().catch(() => {});
+    res.json({ ok: !!_ml.at, date: _ml.date, runDate: _ml.runDate, at: _ml.at, open: _fxWeekOpen(Date.now()), markets: _ml.view, ccy: _ml.ccy,
+      note: 'Where each market is now against the open, in u (the day\'s p50 distance). A description, not a forecast or a call.', ...(_ml.at ? {} : { error: 'the live layer has not run yet (the FX week is shut, or no desk book)' }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 // GET /api/policy-rates: each central bank's policy rate from its own published series (js/policyRates.js), with its as-of
 // date and source. Cached 6 hours. (The rate-diff engine's latestRate is a 3-month interbank rate, not the policy rate.)
 let _prCache = { at: 0, data: null };

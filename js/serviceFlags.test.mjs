@@ -168,8 +168,9 @@ t('no bare setInterval is left in server.js outside the svcInterval helper', () 
     .filter(([, line]) => /(?<!svc)setInterval\(/.test(line) && !line.trim().startsWith('//') && !line.includes('svcRun(id, fn)'));
   // Three known exceptions stay bare, none of them a background service:
   //   _scheduleDailyUtc's re-arm, the VFR nightly refresh (opt-IN via VFR_REFRESH_UTC), and the shutdown wait for an in-flight brief (cleared as soon as it finishes).
-  //   and the 5 s memory-trace sampler, which clears itself after 10 minutes (a diagnostic, not a service).
-  assert.ok(stray.length <= 4, `unexpected ungated setInterval(s): ${stray.map(([n]) => n).join(', ')}`);
+  //   and the 5 s memory-trace sampler, which clears itself after 10 minutes (a diagnostic, not a service),
+  //   and the heap-GC guard (2026-11-23, HEAP_GC_MB; 0 switches it off): a process memory cap that checks the heap every 3 s, not a background service.
+  assert.ok(stray.length <= 5, `unexpected ungated setInterval(s): ${stray.map(([n]) => n).join(', ')}`);
 });
 
 t('every id server.js gates on is in the registry', () => {
