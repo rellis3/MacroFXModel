@@ -181,12 +181,19 @@ async function qlikeExportText(track = 'fut') {
   const c = qExport[track];
   if (c && c.session === session && Date.now() - (qExportAt[track] ?? 0) < TTL_MS) return c.text;
   const lv = {};
-  await pool(qlikeInstruments(track), 4, async sym => {
+  const one = async sym => {
     try { lv[sym] = qlikeDayLevels(sym, qlikeSeries(sym, await qlikeInputs(sym, null, null, track), track), session, track); } catch { lv[sym] = null; }
-  });
+  };
+  await pool(qlikeInstruments(track), 4, one);
+  // A transient OANDA failure under the parallel fetch (seen 2026-11-24 on NQ, 18 futures) would otherwise be cached as
+  // 'unavailable' for the TTL: retry the failures once, one at a time, and only cache a partial board briefly.
+  const failed = qlikeInstruments(track).filter(s => !lv[s]);
+  for (const s of failed) await one(s);
   // Layer 2 (event days, CFD only): extra 'EV2' rows on decision days; the base rows above them are unchanged.
   const extra = track === 'cfd' ? Object.fromEntries(Object.keys(lv).map(s => [s, eventLayerRows(s, lv[s], session)])) : {};
-  qExport[track] = { session, text: qlikeText(lv, session, track, extra) }; qExportAt[track] = Date.now();
+  const partial = qlikeInstruments(track).some(s => !lv[s]);
+  qExport[track] = { session, text: qlikeText(lv, session, track, extra) };
+  qExportAt[track] = Date.now() - (partial ? TTL_MS - 60e3 : 0);   // partial: expires after ~1 min instead of 10
   return qExport[track].text;
 }
 
