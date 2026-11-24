@@ -182,13 +182,28 @@ ${assets.length ? `<div class="card" style="margin-top:14px"><div class="ch"><sp
 export function pairCardHtml(view, head = {}) {
   if (!view) return '';
   const legs = view.legs ?? null;
-  const side = leg => { const ds = (view.drivers ?? []).filter(x => x.leg === leg).sort((a, b) => Math.abs(b.contrib) - Math.abs(a.contrib)), miss = (view.missing ?? []).filter(x => x.leg === leg);
-    return `<div class="be-leg"><div class="ch" style="margin-bottom:6px"><b class="mono">${esc(leg)}</b><span class="r mono ${cls(view.legScores?.[leg])}">score ${sgn(view.legScores?.[leg])}</span></div><table class="be-table"><tbody>${ds.map(x => `<tr><td>${esc(x.label)}<br><span class="muted" style="font-size:11px">${esc(x.reading ?? '')}</span></td><td class="n ${cls(x.contrib)}">${sgn(x.contrib)}</td></tr>`).join('') || '<tr><td class="muted">No drivers.</td></tr>'}</tbody></table>${miss.length ? `<p class="muted" style="font-size:11px;margin:6px 0 0">missing: ${miss.map(x => esc(x.label)).join(', ')}</p>` : ''}</div>`; };
+  // each leg's header shows what its rows add up to (its contribution to the pair, halved and, for the quote, negated), with the leg's own
+  // score beside it in words: before 2026-11-24 the header showed the own score (+0.53) over rows that added to -0.27, which read as a mistake
+  const legSum = leg => (view.drivers ?? []).filter(x => x.leg === leg).reduce((a, x) => a + (fin(x.contrib) ? x.contrib : 0), 0);
+  const side = leg => { const ds = (view.drivers ?? []).filter(x => x.leg === leg).sort((a, b) => Math.abs(b.contrib) - Math.abs(a.contrib)), miss = (view.missing ?? []).filter(x => x.leg === leg), sum = legSum(leg);
+    return `<div class="be-leg"><div class="ch" style="margin-bottom:6px"><b class="mono">${esc(leg)}</b><span class="r mono ${cls(sum)}" title="${esc(`what these rows add to the pair's score; ${leg}'s own score is ${sgn(view.legScores?.[leg])}`)}">adds ${sgn(sum)} <span class="muted" style="font-size:10.5px">(own ${sgn(view.legScores?.[leg])})</span></span></div><table class="be-table"><tbody>${ds.map(x => `<tr><td>${esc(x.label)}<br><span class="muted" style="font-size:11px">${esc(x.reading ?? '')}</span></td><td class="n ${cls(x.contrib)}">${sgn(x.contrib)}</td></tr>`).join('') || '<tr><td class="muted">No drivers.</td></tr>'}</tbody></table>${miss.length ? `<p class="muted" style="font-size:11px;margin:6px 0 0">missing: ${miss.map(x => esc(x.label)).join(', ')}</p>` : ''}</div>`; };
+  const top = topDrivers(view, 1)[0];
   return `<div class="ch"><span class="lbl">Bias engine · ${esc(view.market ?? '')}</span><span class="r">${engineChip(view)}${splitChip(view, head.desk ?? null)}${head.live ? '<span class="chip" title="computed now, not stored and not scored">live read</span>' : head.date ? `<span class="chip">${esc(head.date)}</span>` : ''}</span></div>
+<p class="be-sum" style="margin:6px 0 4px;font-size:13px">Score <b class="${cls(view.score)}">${sgn(view.score)}</b> of ±2${top ? ` · strongest pull: <b>${esc(top.leg ? `${top.leg} ` : '')}${esc(top.label)}</b> <span class="mono ${cls(top.contrib)}">${sgn(top.contrib)}</span>` : ''} · <span class="muted">context only: the back-test found no direction skill</span></p>
+${barsHtml(view)}
+<details class="be-more"><summary class="muted" style="cursor:pointer;font-size:12.5px">Drivers in full${legs ? ', both legs' : ''} · coverage ${pctTxt(view.coverage)}</summary>
 <div class="drv"><span>score ${sgn(view.score)} of ±2${legs ? ' = (base − quote) / 2' : ''}</span><span>coverage ${pctTxt(view.coverage)}</span></div>
 ${view.why ? `<p class="be-why">${esc(view.why)}</p>` : ''}
 ${legs ? `<p class="muted" style="font-size:12px;margin:0 0 6px">Each leg's contributions are halved; the quote's are negated, so a driver that lifts ${esc(legs[1])} counts against ${esc(legs[0])}/${esc(legs[1])}.</p><div class="be-legs">${side(legs[0])}${side(legs[1])}</div>` : driverTableHtml(view)}
-${flipHtml(view)}${footnoteHtml(head)}`;
+${flipHtml(view)}${footnoteHtml(head)}</details>`;
+}
+
+/** Each driver's contribution as a bar from the centre (green pushes the market up, red down), largest first, at most n. */
+export function barsHtml(view, n = 8) {
+  const ds = topDrivers(view, n).filter(x => fin(x.contrib) && x.contrib !== 0); if (!ds.length) return '';
+  const max = Math.max(0.05, ...ds.map(x => Math.abs(x.contrib)));
+  return `<div class="ct-bars" role="list" aria-label="driver contributions">${ds.map(x => { const w = (Math.abs(x.contrib) / max) * 50;
+    return `<div class="ct-bar" role="listitem"><span title="${esc(x.reading ?? '')}">${esc(x.leg ? `${x.leg} ` : '')}${esc(x.label)}</span><span class="tr"><i class="${x.contrib > 0 ? 'up' : 'dn'}" style="left:${x.contrib > 0 ? 50 : 50 - w}%;width:${w}%"></i></span><b class="mono ${cls(x.contrib)}">${sgn(x.contrib)}</b></div>`; }).join('')}</div>`;
 }
 
 /** The Replay side card: the engine's stored read for the replayed day, for this market. '' when none was issued that day. */

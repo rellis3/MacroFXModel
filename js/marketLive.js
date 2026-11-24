@@ -83,7 +83,12 @@ export function view(state, cards) {
       touched,
       sess: Object.fromEntries(Object.entries(m.sess ?? {}).map(([k, x]) => [k, u ? { hiU: r2((x.hi - m.open) / u), loU: r2((x.lo - m.open) / u) } : { hi: x.hi, lo: x.lo }])),
       dayType: dayType(u ? (m.last - m.open) / u : null, u ? span / u : null, m.last - m.open, span),
+      u: u ? +u.toPrecision(6) : null,
+      // how much of the forecast's p50-to-p50 span the day's range has used (1 = the whole span)
+      spanUsed: L && fin(L.up?.p50) && fin(L.down?.p50) && L.up.p50 > L.down.p50 ? r2(span / (L.up.p50 - L.down.p50)) : null,
+      ref: cards?.[n]?.ref ?? null,   // yesterday's high / low / close and this week's open (refLevels)
       path: m.path.filter((_, i, a) => i % 3 === 0 || i === a.length - 1).map(p => p[1]),   // 15-minute closes and the latest, for a sparkline
+      pathT: m.path.filter((_, i, a) => i % 3 === 0 || i === a.length - 1).map(p => p[0]),   // their bucket times (ms), for the day replay
     };
   }
   return out;
@@ -187,4 +192,17 @@ export function nudges(prev, cur, fired) {
   if (bot(prev.ccy) && bot(cur?.ccy) && bot(prev.ccy) !== bot(cur.ccy)) add(`bot:${bot(cur.ccy)}`, `${bot(cur.ccy)} is now the weakest currency today (was ${bot(prev.ccy)})`);
   if (prev.tape?.label && cur?.tape?.label && prev.tape.label !== cur.tape.label) add(`tape:${cur.tape.label}:${Math.floor(Date.now() / 3600e3)}`, `Risk tape turned ${cur.tape.label} (score ${cur.tape.score > 0 ? '+' : ''}${cur.tape.score}u; equities ${cur.tape.legs.equities ?? '–'}, havens ${cur.tape.legs.havens ?? '–'}, AUD/NZD ${cur.tape.legs.commodityFx ?? '–'})`);
   return out;
+}
+
+/**
+ * Yesterday's high, low and close and this week's open, from completed daily bars ([{date, open, high, low, close}], OANDA's trading-day
+ * dates) and today's London date. The week open is the first completed bar of this week; on a Monday there is none yet, so it is null
+ * (the page then uses today's open). Null when there is no completed bar before today.
+ */
+export function refLevels(d1, date) {
+  const bars = (d1 ?? []).filter(b => b?.date && b.date < date && fin(b.high) && fin(b.low)).sort((a, b) => (a.date < b.date ? -1 : 1));
+  const y = bars.at(-1); if (!y) return null;
+  const dt = new Date(`${date}T12:00:00Z`), dow = dt.getUTCDay() || 7, monday = new Date(dt.getTime() - (dow - 1) * 86400e3).toISOString().slice(0, 10);
+  const wk = bars.find(b => b.date >= monday);
+  return { pdh: y.high, pdl: y.low, pdc: y.close, pdDate: y.date, wo: wk ? wk.open : null };
 }

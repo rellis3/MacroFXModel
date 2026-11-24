@@ -10,6 +10,9 @@
 // fills them and refills them on every poll, without redrawing anything else (an open card and its chart stay put).
 // Description only: a move since the open is not a forecast, and the tilt's back-test found no direction skill. Theme tokens only.
 
+import * as CT from './cardTidy.js';
+import { ccyStrength } from '../marketLive.js';
+
 const E = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const sg = (v, d = 2) => (fin(v) ? `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(d)}` : '–');
@@ -36,12 +39,12 @@ export function sparkSvg(path, open, w = 120, h = 26) {
 }
 
 /** An asset card's "now" block from one market of /api/market-live. */
-export function assetHtml(m, at) {
+export function assetHtml(m, at, { compact = false } = {}) {
   if (!m) return '';
   const pos = fin(m.pos) ? Math.round(m.pos * 100) : null;
   const move = fin(m.nowU) ? `<b class="${cls(m.nowU)}">${m.nowU > 0 ? '▲' : m.nowU < 0 ? '▼' : '▬'} ${sg(m.nowU)}u</b>` : `<b class="${cls(m.chgPct)}">${sg(m.chgPct, 2)}%</b>`;
   return `<div class="lv-row"><span class="lv-tag" title="Live: where this market is now against the day's open (updated ${E(hhmm(at))} London). u = the day's p50 distance, so a move reads alike across markets.">NOW</span>${move}<span class="muted mono">${fin(m.nowU) ? `${sg(m.chgPct)}% · ` : ''}${px(m.last)}</span>${sparkSvg(m.path, m.open)}</div>
-<div class="lv-row lv-sub">${pos != null ? `<span class="lv-rng" title="Where price sits in today's range: ${E(px(m.lo))} to ${E(px(m.hi))}"><i style="left:${pos}%"></i></span><span class="muted">${pos}% of the day's range${fin(m.highU) && fin(m.lowU) ? ` (${sg(m.lowU)}u to ${sg(m.highU)}u)` : ''}</span>` : ''}${(m.touched ?? []).length ? `<span class="lv-touch">lines hit: ${E(m.touched.join(', '))}</span>` : ''}</div>${shapeHtml(m)}`;
+<div class="lv-row lv-sub">${pos != null ? `<span class="lv-rng" title="Where price sits in today's range: ${E(px(m.lo))} to ${E(px(m.hi))}"><i style="left:${pos}%"></i></span><span class="muted">${pos}% of the day's range${fin(m.highU) && fin(m.lowU) ? ` (${sg(m.lowU)}u to ${sg(m.highU)}u)` : ''}</span>` : ''}${fin(m.spanUsed) ? `<span class="muted" title="today's range against the forecast's p50-to-p50 span">· range ${Math.round(m.spanUsed * 100)}% of the p50 span</span>` : ''}${(m.touched ?? []).length ? `<span class="lv-touch">lines hit: ${E(m.touched.join(', '))}</span>` : ''}</div>${compact ? '' : shapeHtml(m)}`;
 }
 
 const SESS = [['asia', 'Asia'], ['london', 'London'], ['ny', 'New York']];
@@ -107,14 +110,14 @@ export function favsHtml(rows) {
 }
 
 /** The macro tilt through the day for one market, from the intraday timeline (v1r = V1's logic re-run on fresh data). */
-export function tiltHtml(bei, name) {
+export function tiltHtml(bei, name, { compact = false } = {}) {
   const key = ALIAS[name] ?? name, mk = (bei?.markets ?? []).find(x => x.market === key);
   const calls = mk?.calls?.v1r ?? []; if (!calls.length) return '';
   const first = calls[0], last = calls.at(-1), shifts = mk.shifts?.v1r ?? [];
   const one = c => { const [a, k, w] = DIRW[c[1]] ?? DIRW.NEUTRAL; return `<span class="${k}">${a} ${w} ${sg(c[2])}</span>`; };
   const pt = p => (p === 'issue' ? `issue ${hhmm(bei.issueAt)}` : p);
   const moved = last[0] !== first[0] && fin(last[2]) && fin(first[2]) ? last[2] - first[2] : null;
-  return `<div class="lv-row lv-sub" title="The bias engine re-run hourly on fresh data (V1's logic). The morning issue stays the record. Back-test: no direction skill at 1, 5 or 20 days, so read it as context."><span class="lv-tag">TILT</span><span>now (${E(pt(last[0]))}) ${one(last)}</span>${last[0] !== first[0] ? `<span class="muted">· ${E(pt(first[0]))} ${one(first)}${fin(moved) ? ` · ${sg(moved)} since` : ''}</span>` : ''}${shifts.length ? `<span class="chip gold">turned ${E((DIRW[shifts.at(-1).to] ?? DIRW.NEUTRAL)[2].toLowerCase())} at ${E(shifts.at(-1).at)}</span>` : ''}</div>`;
+  return `<div class="lv-row lv-sub" title="The bias engine re-run hourly on fresh data (V1's logic). The morning issue stays the record. Back-test: no direction skill at 1, 5 or 20 days, so read it as context."><span class="lv-tag">TILT</span><span>now (${E(pt(last[0]))}) ${one(last)}</span>${!compact && last[0] !== first[0] ? `<span class="muted">· ${E(pt(first[0]))} ${one(first)}${fin(moved) ? ` · ${sg(moved)} since` : ''}</span>` : ''}${shifts.length ? `<span class="chip gold">turned ${E((DIRW[shifts.at(-1).to] ?? DIRW.NEUTRAL)[2].toLowerCase())} at ${E(shifts.at(-1).at)}</span>` : ''}</div>`;
 }
 
 /**
@@ -162,20 +165,115 @@ export function speedsHtml(info, liveAt, tiltAt) {
     ['LIVE', 'gold', `prices, moves since the open, the day's range, lines hit, currency strength`, liveAt ? `every minute · last ${hhmm(liveAt)}` : 'waiting for the first read'],
     ...(tiltAt ? [['HOURLY', '', 'the macro tilt (rule-based re-run)', `last ${tiltAt}`]] : []),
     ['SET TIMES', '', `the desk call and its reasoning${upd.length ? `, then ${upd.join(', ')}` : ''}`, info?.book ? `issued ${hhmm(info.book)} ${d(info.book)}` : 'no book yet'],
-    ['RECORD', '', 'the live layer\'s whole day is saved at 21:05 London', 'once a day'],
+    ['RECORD', '', 'the live layer\'s whole day is saved at 21:05 London: Replay a day steps through any saved day', 'once a day'],
     ['DAILY / WEEKLY', '', `forecast lines (with the book), rates, central-bank pricing, macro prints as published${info?.cot ? `; COT weekly, report of ${d(info.cot)}` : '; COT weekly'}`, 'not live'],
   ];
-  return `<details class="lv-speeds"><summary><span class="lv-tag">DATA</span> what is live and what is not · prices ${liveAt ? hhmm(liveAt) : '–'}${info?.book ? ` · desk call ${hhmm(info.book)}` : ''}</summary><table>${rows.map(([k, c, w, t]) => `<tr><td><span class="chip ${c}">${E(k)}</span></td><td>${E(w)}</td><td class="muted mono">${E(t)}</td></tr>`).join('')}</table></details>`;
+  return `<details class="lv-speeds"><summary><span class="lv-tag">DATA</span> what is live and what is not · prices ${liveAt ? hhmm(liveAt) : '–'}${info?.book ? ` · desk call ${hhmm(info.book)}` : ''}</summary><table>${rows.map(([k, c, w, t]) => `<tr><td><span class="chip ${c}">${E(k)}</span></td><td>${E(w)}</td><td class="muted mono">${E(t)}</td></tr>`).join('')}</table><button class="btn" type="button" data-lv-replay style="margin-top:6px">▶ Replay a day</button></details>`;
+}
+
+const stripPlan = c => (c ? { ...c, plan: null, invalidation: null } : c);
+
+// ── since you last looked (owner 2026-11-24): what changed on a market since its full view was last opened, kept in this browser ──
+const SEEN_KEY = 'lvSeen';
+const readSeen = () => { try { const j = JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); return j && typeof j === 'object' ? j : {}; } catch { return {}; } };
+const writeSeen = o => { try { localStorage.setItem(SEEN_KEY, JSON.stringify(o)); } catch { /* private window: no memory, no dot */ } };
+/** What the dot compares: the call's state, the lines hit, the tilt's direction and the day type, for one market. */
+export function sigOf(m, card, tiltDir) {
+  return { ag: againstCall(card?.rating, m, tiltDir).length > 0, t: [...(m?.touched ?? [])].sort().join(','), tilt: tiltDir ?? null, dt: m?.dayType && m.dayType !== 'quiet' ? m.dayType : null };
+}
+/** The changes between two signatures, in words ([] when none). */
+export function sigDiff(a, b) {
+  if (!a || !b) return [];
+  const out = [], was = new Set((a.t || '').split(',').filter(Boolean));
+  const hit = (b.t || '').split(',').filter(x => x && !was.has(x)); if (hit.length) out.push(`${hit.join(', ')} hit`);
+  if (!a.ag && b.ag) out.push('day now against the call'); if (a.ag && !b.ag) out.push('day no longer against the call');
+  if (b.tilt && a.tilt && a.tilt !== b.tilt) out.push(`tilt turned ${b.tilt.toLowerCase()}`);
+  if (b.dt && a.dt !== b.dt) out.push(`now ${b.dt}`);
+  return out;
+}
+function newSinceHtml(n, m, card) {
+  if (!m) return '';
+  const seen = readSeen(), cur = sigOf(m, card, tiltDirOf(n)), day = LIVE?.date;
+  if (!seen[n] || seen[n].day !== day) { seen[n] = { day, sig: cur }; writeSeen(seen); return ''; }   // first sight today: the baseline
+  const d = sigDiff(seen[n].sig, cur);
+  return d.length ? `<div class="lv-row lv-sub"><span class="chip pur" title="Changed since you last opened this market today">● new</span><span>${E(d.join(' · '))}</span></div>` : '';
+}
+function markSeen(n, m, card) { if (!m) return; const seen = readSeen(); seen[n] = { day: LIVE?.date, sig: sigOf(m, card, tiltDirOf(n)) }; writeSeen(seen); }
+
+// ── replay a stored day (owner 2026-11-24): the 21:05 record, stepped through in 15-minute steps ──
+/** Each market's move at time t from a stored day's paths (the last 15-minute close at or before t), and the currency strength then. */
+export function replayAt(day, t) {
+  const mk = {};
+  for (const [n, m] of Object.entries(day?.markets ?? {})) {
+    const T = m.pathT ?? [], P = m.path ?? []; let v = null;
+    for (let i = 0; i < T.length; i++) { if (T[i] <= t) v = P[i]; else break; }
+    if (!fin(v) || !fin(m.open)) continue;
+    mk[n] = { nowU: fin(m.u) && m.u > 0 ? Math.round(((v - m.open) / m.u) * 100) / 100 : null, chgPct: Math.round(((v - m.open) / m.open) * 100000) / 1000, last: v };
+  }
+  return { markets: mk, ccy: ccyStrength(mk) };
+}
+export function replayTimes(day) { const s = new Set(); for (const m of Object.values(day?.markets ?? {})) for (const t of m.pathT ?? []) s.add(t); return [...s].sort((a, b) => a - b); }
+function replayFrameHtml(day, t) {
+  const r = replayAt(day, t), movers = Object.entries(r.markets).filter(([, m]) => fin(m.nowU)).sort((a, b) => Math.abs(b[1].nowU) - Math.abs(a[1].nowU)).slice(0, 10);
+  const tape = (day.tape?.history ?? []).filter(h => Date.parse(h.at) <= t).at(-1);
+  const prints = (day.reactions ?? []).filter(x => x.ms <= t).slice(0, 5);
+  return `<p style="margin:6px 0"><b class="mono">${hhmm(new Date(t).toISOString())}</b> London${tape ? ` · tape <b class="${tape.label === 'risk-on' ? 'up' : tape.label === 'risk-off' ? 'dn' : ''}">${E(tape.label)}</b>` : ''}</p>${stripHtml(r.ccy, new Date(t).toISOString())}
+<div class="lbl" style="margin-top:8px">Biggest moves so far</div><div class="drv">${movers.map(([n, m]) => `<span>${E(n)} <b class="${cls(m.nowU)}">${sg(m.nowU)}u</b></span>`).join('') || '<span class="muted">none yet</span>'}</div>
+${prints.length ? `<div class="lbl" style="margin-top:8px">Prints so far</div><div class="drv">${prints.map(p => `<span>${E(p.ccy)} ${E(p.event)}${fin(p.m15) ? ` <b class="${cls(p.m15)}">${sg(p.m15)}u</b> at 15m` : ''}</span>`).join('')}</div>` : ''}`;
+}
+async function openReplay(date) {
+  const prevWeekday = () => { const d = new Date(); do { d.setUTCDate(d.getUTCDate() - 1); } while ([0, 6].includes(d.getUTCDay())); return d.toISOString().slice(0, 10); };
+  const day0 = date || prevWeekday();
+  globalThis.openModal?.(`<div class="ch"><span class="lbl">Replay a day · the live layer's record</span><span class="r"><button class="x" aria-label="Close">✕</button></span></div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0"><input type="date" id="lvrp-d" value="${E(day0)}" max="${new Date().toISOString().slice(0, 10)}"><button class="btn" type="button" id="lvrp-go">Load</button><span class="muted" id="lvrp-msg"></span></div>
+<input type="range" id="lvrp-t" min="0" max="0" value="0" style="width:100%" aria-label="time of day" disabled><div id="lvrp-f"><p class="muted">Pick a day. A record is written at 21:05 London on each day the live layer ran.</p></div>`);
+  const $ = id => document.getElementById(id), load = async () => {
+    const d = $('lvrp-d')?.value; if (!d) return;
+    $('lvrp-msg').textContent = 'Loading…';
+    const day = await get(`/api/market-live?date=${encodeURIComponent(d)}`);
+    if (!day?.ok || !day.markets) { $('lvrp-msg').textContent = day?.error ?? 'No record for that day.'; $('lvrp-t').disabled = true; $('lvrp-f').innerHTML = ''; return; }
+    const ts = replayTimes(day); $('lvrp-msg').textContent = `${Object.keys(day.markets).length} markets · ${ts.length} steps`;
+    const sl = $('lvrp-t'); sl.disabled = !ts.length; sl.max = String(Math.max(0, ts.length - 1)); sl.value = sl.max;
+    const draw = () => { const t = ts[Number(sl.value)]; if (t != null) $('lvrp-f').innerHTML = replayFrameHtml(day, t); };
+    sl.oninput = draw; draw();
+  };
+  $('lvrp-go').onclick = load;
+  load();
 }
 
 /** Fill every placeholder on the page from the latest reads. */
 export function patch(doc = document) {
   const mk = LIVE?.markets ?? {}, at = LIVE?.at, ccy = Object.fromEntries((LIVE?.ccy ?? []).map(r => [r.ccy, r]));
   const set = (el, h) => { el.dataset.lvDone = '1'; if (el.innerHTML !== h) el.innerHTML = h; };
+  const plansOn = () => globalThis.deskSurfaceOn?.('panel.asset.plan') ?? true;   // the plan's prices are a trade surface: off for the desk login unless switched on
   doc.querySelectorAll('[data-lv-asset]').forEach(el => {
-    const n = el.dataset.lvAsset, full = !!el.closest('#modal'), t = tiltHtml(BEI, n), ag = againstCall(globalThis.deskCardOf?.(n)?.rating, mk[n], tiltDirOf(n));
-    set(el, (ag.length ? `<div class="lv-row lv-sub"><span class="chip gold" title="${E(ag.join('; '))}">⚠ day against the call</span><span class="muted">${E(ag.join('; '))}</span></div>` : '') + assetHtml(mk[n], at) + eventHtml(n, globalThis.deskEvents?.(), LIVE?.reactions) + retailHtml(LIVE?.retail?.[n]) + t + (full && t ? movedHtml(MOVED.get(n)?.points) : ''));
-    if (full && t) loadMoved(n);
+    const n = el.dataset.lvAsset, full = el.hasAttribute('data-lv-full') || !!el.closest('#modal'), card = globalThis.deskCardOf?.(n), t = tiltHtml(BEI, n), ag = againstCall(card?.rating, mk[n], tiltDirOf(n));
+    const agRow = ag.length ? `<div class="lv-row lv-sub"><span class="chip gold" title="${E(ag.join('; '))}">⚠ day against the call</span>${full ? `<span class="muted">${E(ag.join('; '))}</span>` : ''}</div>` : '';
+    if (full) {
+      // the full view's strip and then-and-now already say whether the day is against the call: the live block starts at the move
+      set(el, (el.closest('#modal') ? agRow : '') + assetHtml(mk[n], at) + eventHtml(n, globalThis.deskEvents?.(), LIVE?.reactions) + retailHtml(LIVE?.retail?.[n]) + t + (t ? movedHtml(MOVED.get(n)?.points) : ''));
+      if (t) loadMoved(n);
+      markSeen(n, mk[n], card);
+    } else {
+      // the grid card stays short: what changed since you looked, the call's state, the move, the next event and the tilt in one line each
+      set(el, newSinceHtml(n, mk[n], card) + agRow + assetHtml(mk[n], at, { compact: true }) + eventHtml(n, globalThis.deskEvents?.(), []) + tiltHtml(BEI, n, { compact: true }));
+    }
+  });
+  // the Pair page: the pinned strip, then and now, and the level ladder
+  doc.querySelectorAll('[data-lv-pstrip]').forEach(el => {
+    const n = el.dataset.lvPstrip, card = globalThis.deskCardOf?.(n), m = mk[n];
+    const nx = eventHtml(n, globalThis.deskEvents?.(), []).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    set(el, CT.statusStripHtml({ card, m, against: againstCall(card?.rating, m, tiltDirOf(n)), planChip: plansOn() ? (globalThis.twChip?.(n) ?? '') : '', nextEvent: nx, tape: LIVE?.tape }));
+  });
+  doc.querySelectorAll('[data-lv-thennow]').forEach(el => {
+    const n = el.dataset.lvThennow, card = globalThis.deskCardOf?.(n), m = mk[n], c = plansOn() ? card : stripPlan(card);
+    const sh = (BEI?.markets ?? []).find(x => x.market === (ALIAS[n] ?? n))?.shifts?.v1r?.at(-1);
+    set(el, CT.thenNowHtml({ card: c, m, against: againstCall(card?.rating, m, tiltDirOf(n)), tilt: sh ? { turned: `${String(sh.to).toLowerCase()} at ${sh.at}` } : null, tape: LIVE?.tape, rows: CT.mergedLevels(c, m) }));
+  });
+  doc.querySelectorAll('[data-lv-ladder]').forEach(el => {
+    const n = el.dataset.lvLadder, card = globalThis.deskCardOf?.(n), m = mk[n], c = plansOn() ? card : stripPlan(card);
+    if (!card && !m) return;
+    set(el, CT.ladderHtml(CT.mergedLevels(c, m), m));
   });
   doc.querySelectorAll('[data-lv-ccy]').forEach(el => set(el, ccyHtml(ccy[el.dataset.lvCcy], at)));
   doc.querySelectorAll('[data-lv-strip]').forEach(el => set(el, stripHtml(LIVE?.ccy, at)));
@@ -237,15 +335,15 @@ const CSS = `.lv{margin-top:8px;display:flex;flex-direction:column;gap:4px}
 .lv-bar b{text-align:right}`;
 
 if (typeof document !== 'undefined') {
-  const st = document.createElement('style'); st.id = 'liveLayerCss'; st.textContent = CSS; document.head.appendChild(st);
+  const st = document.createElement('style'); st.id = 'liveLayerCss'; st.textContent = CSS + '\n' + CT.CSS; document.head.appendChild(st);
   globalThis.liveLayer = { patch, last: n => LIVE?.markets?.[n]?.last ?? null, ccy: () => LIVE?.ccy ?? null, at: () => LIVE?.at ?? null, move: n => LIVE?.markets?.[n] ?? null };
   const start = () => { pollLive(); pollTilt(); setInterval(() => { if (!document.hidden) pollLive(); }, 60_000); setInterval(() => { if (!document.hidden) pollTilt(); }, 5 * 60_000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pollLive(); }); };
   // a section re-render leaves fresh, empty placeholders: fill them at once from the last reads (patch marks what it filled, so this never loops)
   let queued = false;
-  new MutationObserver(() => { if (queued || !(LIVE || BEI) || !document.querySelector('[data-lv-asset]:not([data-lv-done]),[data-lv-ccy]:not([data-lv-done]),[data-lv-strip]:not([data-lv-done]),[data-lv-speeds]:not([data-lv-done]),[data-lv-against]:not([data-lv-done]),[data-lv-favs]:not([data-lv-done])')) return;
+  new MutationObserver(() => { if (queued || !(LIVE || BEI) || !document.querySelector('[data-lv-asset]:not([data-lv-done]),[data-lv-ccy]:not([data-lv-done]),[data-lv-strip]:not([data-lv-done]),[data-lv-speeds]:not([data-lv-done]),[data-lv-against]:not([data-lv-done]),[data-lv-favs]:not([data-lv-done]),[data-lv-pstrip]:not([data-lv-done]),[data-lv-thennow]:not([data-lv-done]),[data-lv-ladder]:not([data-lv-done])')) return;
     queued = true; requestAnimationFrame(() => { queued = false; patch(); }); }).observe(document.body, { childList: true, subtree: true });
-  document.addEventListener('click', e => { const el = e.target.closest?.('[data-lv-open]'); if (el) globalThis.openAsset?.(el.dataset.lvOpen); });
+  document.addEventListener('click', e => { const el = e.target.closest?.('[data-lv-open]'); if (el) globalThis.openAsset?.(el.dataset.lvOpen); if (e.target.closest?.('[data-lv-replay]')) openReplay(); });
   document.addEventListener('keydown', e => { if (e.key !== 'Enter') return; const el = e.target.closest?.('[data-lv-open]'); if (el) globalThis.openAsset?.(el.dataset.lvOpen); });
   if (globalThis.deskAccessState) start(); else addEventListener('deskaccess', start, { once: true });
 }

@@ -96,3 +96,21 @@ test('retailHtml, tapeChip, againstHtml, favsHtml', () => {
   assert.match(favsHtml([{ n: 'GBPJPY', call: 'SHORT', dir: -1, m: { nowU: 0.9, dayType: 'trend up' }, against: ['x'], next: '' }]), /⚠ against/);
   assert.equal(favsHtml([]), '');
 });
+
+import { sigOf, sigDiff, replayAt, replayTimes } from './liveLayer.js';
+test('since you last looked: the signature and its differences in words', () => {
+  const a = sigOf({ touched: ['up p50'], dayType: 'range', nowU: 0.2 }, { rating: 'SHORT' }, 'NEUTRAL');
+  const b = sigOf({ touched: ['up p50', 'up p75'], dayType: 'trend up', nowU: 1.2 }, { rating: 'SHORT' }, 'BULLISH');
+  assert.deepEqual(sigDiff(a, b), ['up p75 hit', 'day now against the call', 'tilt turned bullish', 'now trend up']);
+  assert.deepEqual(sigDiff(a, a), []);
+  assert.deepEqual(sigDiff(null, a), []);
+});
+test('replayAt: the moves and the currency strength at a time of a stored day', () => {
+  const day = { markets: { GBPUSD: { open: 1.3, u: 0.004, path: [1.3, 1.304, 1.302], pathT: [0, 900000, 1800000] }, USDJPY: { open: 150, u: 0.5, path: [150, 149.5], pathT: [0, 900000] } } };
+  assert.deepEqual(replayTimes(day), [0, 900000, 1800000]);
+  const r = replayAt(day, 900000);
+  assert.equal(r.markets.GBPUSD.nowU, 1);
+  assert.equal(r.markets.USDJPY.nowU, -1);
+  assert.equal(r.ccy[0].ccy, 'GBP');
+  assert.equal(replayAt(day, -1).ccy.length, 0);
+});
