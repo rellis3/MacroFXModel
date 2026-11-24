@@ -3530,6 +3530,13 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
   },
   {
+    id: 'ladder-close-split', domain: 'volatility', verdict: 'null', date: '2026-11-24', doc: 'forge/LADDER_CLOSE_SPLIT_PREREG.md', also: ['analysis/output/ladder-close-split/RESULTS.md'],
+    claim: 'Forecasting Close+ (close on up-close days) and Close- (close on down-close days) as separate lines, each with its own walk-forward model race and multipliers (Jordan\'s format), lands nearer the actual close than one symmetric OC line',
+    result: 'Pre-registered, NQ/GC/6E/6J futures, ~55 models per side, abs error of p50 vs actual close, test 2020-2026.08. +0.21% [-0.16, +0.57] (2020-22 +0.06%, 2023-26 +0.45%); old field only +0.40%. NQ -0.9% [-1.9, +0.2] leans better (fixes NQ close line sitting low: 55% -> 49% beaten); others +0.2 to +0.9%. Each side picks its own calc (e.g. NQ Close- RV EWMA 0.5, gold Close- implied vol), but up/down medians differ by only 0-0.1% of price. Graded weight: against, faint lean on NQ.',
+    use: 'One symmetric close line is enough; NQ close line could be nudged up. Split adds little.',
+    instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY'],
+  },
+  {
     id: 'ladder-exhaustion-accuracy', domain: 'volatility', verdict: 'null', date: '2026-11-23', doc: 'forge/LADDER_EXHAUSTION_ACCURACY_PREREG.md', also: ['analysis/output/ladder-exhaustion-accuracy/RESULTS.md'],
     claim: 'Jordan\'s recipe as published (3-day ATR sigma x textbook constants) lands its median high-low and close lines nearer the actual day range and close than our QLIKE per-line picks (owner: the purpose is exhaustion, predicting the high, low and close)',
     result: 'Pre-registered, NQ/GC/6E/6J futures, abs error of p50 lines, test 2020-2026.08. HL: Jordan +13.0% more error [+11.6, +14.8], both halves, all four (NQ +6.6%, gold +16.5%); Bank EMA alpha 0.15 +6.0%. Close: Jordan +2.8% [+2.1, +3.7]. Ours lands within 20% of the actual HL on 38-42% of days vs 33-36%. After big days Jordan overshoots and ours undershoots; NQ after big days level. Graded weight: against (ours nearer).',
@@ -4772,6 +4779,7 @@ const POWER = {
   'fqt-nam-lines-tp': { n: '1,417 NQ trades', note: 'NULL bar +1 bp; CI upper -2.04 bp' },
   'futures-oc-tp-fade-p75': { n: '3,377 trades on ~6,600 sessions (4 futures)', note: 'NULL bar +0.05R; CI upper -0.043R' },
   'futures-oc-tp-fade-p90': { n: '1,364 trades', note: 'NULL bar +0.05R; CI upper -0.064R' },
+  'ladder-close-split': { n: '~1,650 test sessions per instrument split ~55/45 up/down, 63-session blocks', note: 'observed +0.21%, CI [-0.16, +0.57]; NULL bar CI lower > -0.5% met' },
   'ladder-exhaustion-accuracy': { n: '~1,650 test sessions per instrument (4 futures, HL and close), 63-session blocks', note: 'observed HL +13.0%, CI [+11.6, +14.8]' },
   'ladder-jordan-recipe': { n: '~1,650 test sessions per instrument (4 futures x 3 lines), 63-session blocks', note: 'observed +1.85%, CI [+0.66, +2.31]; NULL bar CI lower > -0.5% met' },
   'ladder-jordan-recipe-published': { n: '~1,650 test sessions per instrument (4 futures x 3 lines), 63-session blocks', note: 'observed +9.05%, CI [+6.87, +9.85]' },
