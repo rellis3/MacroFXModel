@@ -48469,15 +48469,19 @@ if (process.env.OANDA_KEY) {
     if (!_atlasBooksOn) console.log('[reference-engine-rebuild] Level Atlas + Fib Atlas book rebuild skipped (Caps.atlasBooksRebuild is off; their bots are retired)');
     // Resume (2026-11-24): a catch-up boot after a mid-run restart used to redo all of Level Atlas from M1 (a ~3 GB boot burst, repeated on every overnight deploy). Skip any pair whose stored book
     // was already generated since the due slot; only the unfinished ones are rebuilt.
-    let _laPairs = REFERENCE_ENGINE_PAIRS;
-    if (resumeSinceMs) {
-      const _fresh = new Set();
+    // `_pairsLeft(prefix)` = the pairs whose stored book under that R2 prefix was NOT generated since the due slot (all pairs when not resuming).
+    const _pairsLeft = async (prefix) => {
+      if (!resumeSinceMs) return REFERENCE_ENGINE_PAIRS;
+      const done = new Set();
       for (const p of REFERENCE_ENGINE_PAIRS) {
-        try { const bk = await _r2GetJSON(`level-atlas/${p.toLowerCase()}.json`); if (bk?.generatedAt && Date.parse(bk.generatedAt) >= resumeSinceMs) _fresh.add(p); } catch (e) { /* unreadable: rebuild it */ }
+        try { const bk = await _r2GetJSON(`${prefix}/${p.toLowerCase()}.json`); if (bk?.generatedAt && Date.parse(bk.generatedAt) >= resumeSinceMs) done.add(p); } catch (e) { /* unreadable: rebuild it */ }
       }
-      _laPairs = REFERENCE_ENGINE_PAIRS.filter(p => !_fresh.has(p));
-      console.log(`[reference-engine-rebuild] resume: Level Atlas ${_fresh.size}/${REFERENCE_ENGINE_PAIRS.length} pairs already rebuilt since the due slot, ${_laPairs.length} left`);
-    }
+      const left = REFERENCE_ENGINE_PAIRS.filter(p => !done.has(p));
+      console.log(`[reference-engine-rebuild] resume: ${prefix} ${done.size}/${REFERENCE_ENGINE_PAIRS.length} pairs already rebuilt since the due slot, ${left.length} left`);
+      return left;
+    };
+    let _laPairs = REFERENCE_ENGINE_PAIRS;
+    if (resumeSinceMs && _atlasBooksOn) _laPairs = await _pairsLeft('level-atlas');
     if (_atlasBooksOn) await runSeq('Level Atlas', () => _startLevelAtlasRunJob({ instruments: _laPairs }));
     // Fib Atlas (Asia+Monday) moved to run 2nd/3rd, right after Level Atlas —
     // was 4th/5th, after Session Path + Session Handoff (2026-09-18, direct
@@ -48531,8 +48535,10 @@ if (process.env.OANDA_KEY) {
     console.log(`[reference-engine-rebuild] Fib Atlas pair order rotated to start at "${fibAtlasPairs[0]}" (offset ${_fibRotOffset}/${fibAtlasPairsBase.length}, day-of-year ${_dayOfYear})`);
     if (_atlasBooksOn) await runSeq('Asia Fib Atlas', () => _startAsiaFibAtlasRunJob({ instruments: fibAtlasPairs }));
     if (_atlasBooksOn) await runSeq('Monday Fib Atlas', () => _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }));
-    await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
-    await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+    const _spPairs = await _pairsLeft('session-path');
+    await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: _spPairs }));
+    const _shPairs = await _pairsLeft('session-handoff');
+    await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: _shPairs }));
 
     // Follow-on healing pass (2026-09-19, direct owner request after tracing
     // AUDNZD's repeated overnight failure): the batch job above still dies
