@@ -11,7 +11,7 @@ How it records, and why this way:
     js/terminal/jarvisModBroadcast.js). No sound card, no Stereo Mix, no "share tab audio" tick. The page hands back the audio and its start time.
   * ffmpeg lines the two up (broadcast_core.concat_list) and writes H.264 + AAC. A recording whose loudest moment is near silence is NOT uploaded.
 
-FRAME-BY-FRAME (--frames; the MORNING run (Task Scheduler stop-after limit raised to 1 h 30 min for it)'s default from 24 Nov 2026, on trial; the evening run stays --live until it is judged): the live way above drops frames whenever the laptop is busy (short freezes at the heavy 3D changes).
+FRAME-BY-FRAME (the default for both runs: morning from 24 Nov 2026, evening from 24 Nov 2026 after the morning one was judged; Task Scheduler stop-after limit 1 h 30 min): the live way above drops frames whenever the laptop is busy (short freezes at the heavy 3D changes).
   vclock.js is injected before the page's scripts; just before the broadcast starts the page's clock is FROZEN, and the job moves it on 1/30 s at a time, taking a
   screenshot after each step. Timers, animation frames, CSS animations and the audio clock all follow that virtual clock, so every frame is complete however slow the
   machine is (a slow machine just takes longer). The sound (voice, ambient, whooshes) is scheduled on an offline audio context on the same clock and rendered to a WAV
@@ -276,8 +276,6 @@ def main() -> None:
         print('YouTube sign-in saved.')
         return
     out_dir = Path(a.out)
-    if not a.live and not a.frames and part_of_day(datetime.now().hour) != 'morning':
-        a.live = True                                       # on trial: frame by frame for the morning run only, until it has been judged
     try:
         if a.live:
             cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate)

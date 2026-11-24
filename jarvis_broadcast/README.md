@@ -21,12 +21,12 @@ It runs at 07:00 so it comes **after the 06:30 OI pull** (`oi_recon\run_daily.ba
 | Mixing | ffmpeg (bundled through `imageio-ffmpeg`) lines up picture and sound by their timestamps; H.264 + AAC | |
 | Safety | A recording whose loudest moment is near silence is **not uploaded**; the log says why | The voice must be on it |
 
-**Frame by frame (the morning run, on trial from 24 Nov 2026).** Recording live drops frames whenever the laptop is busy (short freezes at the heavy 3D changes). The morning run now records frame by frame instead:
+**Frame by frame (both runs, from 24 Nov 2026).** Recording live drops frames whenever the laptop is busy (short freezes at the heavy 3D changes). The morning run now records frame by frame instead:
 - `vclock.js` is loaded before the page; just before the broadcast the page's clock is frozen and moved on 1/30 s at a time, with a screenshot after each step;
 - timers, animations and the audio clock all follow it, so every frame is complete however slow the laptop is;
 - the sound is rendered at the end, in step with the frames, and the server voice is asked for at the broadcast's speed (pitch unchanged).
 
-It takes about 13-27 minutes to capture plus about 5 to encode, so the 07:00 video is up by about 07:35. Frame by frame asks for a fuller short (about 2 min 45 s), since it has no waits between lines. `--live` records the old way; `--frames` forces the new way (the evening run stays live until the morning one has been judged).
+It takes about 20-30 minutes to capture plus about 2 to encode, so the 07:00 video is up by about 07:30. Frame by frame asks for a fuller short (about 2 min 45 s), since it has no waits between lines. `--live` records the old way. The evening run (21:00) records frame by frame too, so it is up by about 21:30.
 
 **SHORT length.** The broadcast keeps its lines short and drops the least essential segments, so the video stays under YouTube's 3-minute Shorts limit:
 - drop order (least useful first): the macro, currencies, rates, positioning, volatility;
