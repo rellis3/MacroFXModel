@@ -181,6 +181,7 @@ export const EXCLUDED_PAGES = {
   'primary-signal.html': 'research',
   'research.html': 'research hub',
   'residual-fx8-forward.html': 'forward test',
+  'residual-fx8-paper-layers.html': 'backtest',
   'roe.html': 'research hub',
   'swing-map.html': 'research',
   'system-backtest.html': 'backtest',
