@@ -5,7 +5,10 @@
 Per instrument and line (hl / oh / ol) the sigma model is the one with the lowest out-of-sample QLIKE on the futures
 (2020 -> 2026-08, analysis/output/ladder-qlike-per-line/leaderboard.csv) among the models the site can compute from
 OANDA (no IV feed on the site yet: V3 / V4 / B_har_iv are skipped, and H8). OC has its own calc: the site-computable
-winner of the OC QLIKE race (oc_race.py, exploratory) - since 2026-11-23; before that OC borrowed the OH model. The sigma is computed on OANDA data as the rollout does for futures; the
+winner of the OC QLIKE race (oc_race.py, exploratory) - since 2026-11-23; before that OC borrowed the OH model.
+Close+ (cup: close above the open) and Close- (cdn: close below) have their own calcs too (2026-11-24, owner: each line
+keeps the calc with the best QLIKE for its purpose): the site-computable winner of close_race.py for that side, widths
+fitted on that side's sessions only. The sigma is computed on OANDA data as the rollout does for futures; the
 widths of each line are fitted on the FUTURES' realised ranges with that sigma, every session <= 2026-08-21.
 Zones and next-line odds are the instrument's existing v2 ones (js/ladderV2Params.json).
 """
@@ -30,6 +33,18 @@ LINES, TAUS = ("hl", "oh", "ol"), (50, 75, 90)
 REGCOLS = {"R5": ["d1", "d5", "d22"], "R15": ["d1", "d5", "d22"], "SHAR": ["pos", "neg", "d5", "d22"],
            "HARCJ": ["c1", "c5", "c22", "j1"]}
 END = pd.Timestamp("2026-08-21")
+SIDES = {"cup": "Close+ (close above open)", "cdn": "Close- (close below open)"}
+
+
+def signed_oc(sym):
+    """(close - open)/open % per London session 00:00-22:00 on the futures (as ladder.london_sessions, signed)."""
+    m = L.load_m1(sym, "F", "unadj")
+    lt = m.index.tz_convert("Europe/London")
+    x = m[(lt.hour < 22) & (lt.dayofweek < 5)].copy()
+    x["date"] = x.index.tz_convert("Europe/London").tz_localize(None).normalize()
+    g = x.groupby("date")
+    o, c, n = g["open"].first(), g["close"].last(), g.size()
+    return ((c - o) / o * 100)[(n >= 600) & (n.index <= L.LOCK)]
 
 
 def base(sym):
@@ -67,9 +82,10 @@ def main():
     LB = pd.read_csv(ROOT / "analysis/output/ladder-qlike-per-line/leaderboard.csv")
     global OCR
     OCR = pd.read_csv(ROOT / "analysis/output/ladder-qlike-per-line/oc_race.csv")
+    CR = pd.read_csv(ROOT / "analysis/output/ladder-qlike-per-line/close_race.csv")
     V2 = json.loads((ROOT / "js/ladderV2Params.json").read_text())["instruments"]
     out = {"banked": "ladder-qlike-per-line", "track": "fut", "research_window_end": "2026-08-21",
-           "note": "QLIKE-best site-computable sigma per line (futures, OOS 2020-2026.08); OC has its own calc from the OC QLIKE race",
+           "note": "QLIKE-best site-computable sigma per line (futures, OOS 2020-2026.08); OC, Close+ and Close- each have their own calc from their own QLIKE race",
            "instruments": {}}
     fx = {"instruments": {}}
     for sym, oanda in SYMS.items():
@@ -93,7 +109,15 @@ def main():
         picks["oc"] = {"arm": r.arm, "qlike": round(float(r.oc_qlike), 4), "rank": int(r["rank"]), "of": int(r.n),
                        "best_overall": best.arm, "best_qlike": round(float(best.oc_qlike), 4),
                        "live_qlike": round(float(a0.oc_qlike), 4), "oh_model": picks["oh"]["arm"]}
-        for q in ("hl", "oh", "ol", "oc"):
+        for side in SIDES:
+            cr = CR[(CR.sym == sym) & (CR.side == side)].sort_values("qlike")
+            g = cr[~cr.arm.isin(NO_SITE)]
+            r, best = g.iloc[0], cr.iloc[0]
+            picks[side] = {"arm": r.arm, "qlike": round(float(r.qlike), 4), "rank": int(r["rank"]), "of": int(r.n),
+                           "best_overall": best.arm, "best_qlike": round(float(best.qlike), 4), "days": int(r.days)}
+        so = signed_oc(sym).reindex(rf.index)
+        rf = rf.assign(cup=so.where(so > 0), cdn=(-so).where(so < 0))
+        for q in ("hl", "oh", "ol", "oc", "cup", "cdn"):
             arm = picks[q]["arm"]
             if arm not in specs:
                 specs[arm], sigs[arm] = spec_sigma(sym, arm, rows)
@@ -115,7 +139,7 @@ def main():
             "zone_sigma": z.get("zone_sigma", [0.175, 0.355]), "odds": z.get("odds"),
             "v2_arm": z.get("arm"),
         }
-        print(sym, {q: (p["arm"], p["qlike"], p["live_qlike"], p["hits_2020_26"]) for q, p in picks.items()})
+        print(sym, {q: (p["arm"], p["qlike"], p.get("live_qlike"), p["hits_2020_26"]) for q, p in picks.items()})
         # parity fixture: inputs before the last research session and each arm's Python sigma
         sess = max(s.dropna().index.max() for s in sigs.values())
         item = {"session": str(sess.date()), "sigma": {a: float(s.loc[sess]) for a, s in sigs.items()},

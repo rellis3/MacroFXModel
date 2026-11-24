@@ -2,15 +2,18 @@
  * QLIKE per-line SHADOW ladder (ladder-qlike-per-line, banked 2026-11-22). Futures track only. Not live.
  *
  * Jordan's method: each line (HL / OH / OL) gets the sigma model with the best out-of-sample QLIKE on the futures
- * (NQ / GC / 6E / 6J, 2020 -> 2026-08), among the models the site can compute from OANDA (no IV feed yet). OC uses the
- * OH model. Widths are fitted on the futures' realised ranges. Params: js/ladderV2QlikeParams.json, written by
+ * (NQ / GC / 6E / 6J, 2020 -> 2026-08), among the models the site can compute from OANDA (no IV feed yet). OC, Close+
+ * and Close- each have their own QLIKE race too. Widths are fitted on the futures' realised ranges. Params: js/ladderV2QlikeParams.json, written by
  * scripts/ladder-qlike-per-line/build_params.py; js/ladderV2Qlike.test.mjs checks each sigma against the Python.
  */
 import { readFileSync } from 'node:fs';
 import { specSeries, sigmaForSession } from './ladderV2Shadow.js';
 
 export const QPARAMS = JSON.parse(readFileSync(new URL('./ladderV2QlikeParams.json', import.meta.url), 'utf8'));
-const QS = ['hl', 'oc', 'oh', 'ol'];
+// cup / cdn = Close+ / Close- (2026-11-24): where price closes on days that close above / below the London 00:00 open,
+// each with its own QLIKE-best calc and widths fitted on that side's sessions (close_race.py; owner: each line keeps the
+// calc with the best QLIKE for its purpose).
+const QS = ['hl', 'oc', 'oh', 'ol', 'cup', 'cdn'];
 const TAUS = ['50', '75', '90'];
 const SQRT252 = Math.sqrt(252);
 
@@ -44,7 +47,8 @@ export function qlikeDayLevels(sym, series, session) {
   return o;
 }
 
-const LABEL = { hl: 'High to Low range', oc: 'Open to Close move', oh: 'Open High (upside)', ol: 'Open Low  (downside)' };
+const LABEL = { hl: 'High to Low range', oc: 'Open to Close move', oh: 'Open High (upside)', ol: 'Open Low  (downside)',
+  cup: 'Close+ (close above open)', cdn: 'Close- (close below open)' };
 const div = name => { const pre = `──── ${name} `; return pre + '─'.repeat(Math.max(0, 30 - pre.length)); };
 
 /** Paste text: one block per instrument, each line with its own model. lv = { SYM: qlikeDayLevels(...) | null }. */
