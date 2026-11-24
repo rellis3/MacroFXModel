@@ -278,8 +278,18 @@ def main() -> None:
     if not a.live and not a.frames and part_of_day(datetime.now().hour) != 'morning':
         a.live = True                                       # on trial: frame by frame for the morning run only, until it has been judged
     try:
-        cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate) if a.live else record_frames(a.base, a.len, a.voice, a.show, out_dir, a.rate, a.fps)
-        mp4 = encode(cap)
+        if a.live:
+            cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate)
+            mp4 = encode(cap)
+        else:
+            try:
+                cap = record_frames(a.base, a.len, a.voice, a.show, out_dir, a.rate, a.fps)
+                mp4 = encode(cap)
+            except Exception as e:                  # a video beats none: fall back to the live recording
+                log(f'frame-by-frame failed ({e}); recording live instead')
+                a.live = True
+                cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate)
+                mp4 = encode(cap)
         result = {'ok': True, 'mode': 'live' if a.live else 'frames', 'file': str(mp4), 'seconds': round(cap['seconds'], 1), 'voice': cap['voice'], 'at': datetime.now().isoformat(timespec='seconds')}
         if not a.no_upload:
             from youtube_upload import upload
