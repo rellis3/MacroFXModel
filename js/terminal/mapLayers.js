@@ -15,6 +15,8 @@
  *   ctx.me       /api/macro-engines-board  composite[ccy], cells[ccy][family]
  *   ctx.bc       /api/bank-credit      BIS borrowers
  *   ctx.fv       /api/fair-value       BIS real effective rates
+ *   ctx.live     /api/market-live .ccy  [{ccy, score, rank, pairs}]  each currency's move since the open in u (js/terminal/liveLayer.js)
+ *   ctx.liveAt   that read's time
  *   ctx.iso2n    { ISO-2: numeric id } for the BIS borrower list
  *   ctx.fvIso    { BIS area: [numeric ids] } for the fair-value layer
  *   ctx.h        { esc, spk, sgn, tile(bank), cell(ccy, family, cell), families }  the page's own renderers
@@ -54,6 +56,7 @@ export const LAYERS = [
   { id: 'level',  label: 'Policy rate',   group: 'policy',  attr: 'data-surface="widget.ovl.level"' },
   { id: 'priced', label: 'Priced path',   group: 'policy',  attr: 'data-surface="widget.ovl.priced"' },
   { id: 'tone',   label: 'Bank tone',     group: 'policy',  attr: 'data-surface="widget.ovl.tone"' },
+  { id: 'today',  label: 'Today (live)',  group: 'markets', attr: 'data-surface="widget.ovl.today"' },
   { id: 'y10',    label: '10Y yield',     group: 'markets', attr: 'data-surface="widget.ovl.y10"' },
   { id: 'gap',    label: '2Y gap to US',  group: 'markets', attr: 'data-surface="widget.ovl.gap"' },
   { id: 'macro',  label: 'Macro composite', group: 'economy', attr: 'data-surface="widget.ovl.macro"' },
@@ -83,6 +86,7 @@ const gyRow = (ccy, ctx) => (ctx.gy?.rows ?? []).find(r => r.ccy === ccy) ?? nul
 const cbBank = (ccy, ctx) => (ctx.cbBoard?.banks ?? []).find(b => b.ccy === ccy && !String(b.id ?? '').startsWith('beige')) ?? null;
 const compositeOf = (ccy, ctx) => { const c = ctx.me?.composite?.[ccy]?.composite; return fin(c) ? +c : null; };
 const pricedOf = (ccy, ctx) => { const h = ctx.cbx?.[ccy]?.m6; return h && fin(h.bp) ? +h.bp : null; };
+const liveOf = (ccy, ctx) => (ctx.live ?? []).find(r => r.ccy === ccy) ?? null;
 const toneOf = (ccy, ctx) => { const b = cbBank(ccy, ctx); return b?.status === 'read' && fin(b.read?.score) ? +b.read.score : null; };
 
 // ── colours ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -98,6 +102,7 @@ const levelMax = ctx => { const r = Object.values(ctx.wr?.banks ?? {}).filter(b 
 /** The fill for a country on one of this module's layers: `fill:...` or null (no data). */
 export function layerStyle(layer, id, ctx) {
   const ccy = ctx.zone?.[id] ?? null;
+  if (layer === 'today') { const r = ccy ? liveOf(ccy, ctx) : null; if (!r || !fin(r.score)) return null; const m = maxOf((ctx.live ?? []).map(x => Math.abs(x.score)), 0.25); return `fill:${Math.abs(r.score) < 0.05 ? rgba(FLAT, 0.38) : ramp(r.score > 0 ? UP : DN, Math.abs(r.score) / m)}`; }
   if (layer === 'level') { const b = bankOf(id, ctx); return b && !b.stale && fin(b.rate) ? `fill:${ramp(GOLD, +b.rate / levelMax(ctx))}` : null; }
   if (layer === 'priced') { const bp = ccy ? pricedOf(ccy, ctx) : null; if (bp == null) return null; const t = Math.abs(bp) / 50; return `fill:${Math.abs(bp) < 2 ? rgba(FLAT, 0.38) : ramp(bp > 0 ? GOLD : BLUE, t)}`; }
   if (layer === 'tone') { const s = ccy ? toneOf(ccy, ctx) : null; if (s == null) return null; return `fill:${Math.abs(s) < 0.05 ? rgba(FLAT, 0.38) : rgba(s > 0 ? GOLD : PUR, 0.3 + 0.55 * clamp01(Math.abs(s)))}`; }
@@ -111,6 +116,7 @@ const noFeed = (esc, nm, what) => `<b>${esc(nm)}</b><br><span class="muted">no f
 /** The hover tip for a country on one of this module's layers. */
 export function layerTip(layer, id, nm, ctx) {
   const esc = ctx.h?.esc ?? defEsc, sg = ctx.h?.sgn ?? sgnD, ccy = ctx.zone?.[id] ?? null;
+  if (layer === 'today') { const r = ccy ? liveOf(ccy, ctx) : null; if (!ccy) return noFeed(esc, nm, 'live strength covers the eight desk currencies'); return r ? `<b>${esc(nm)} · ${esc(ccy)}</b><br>since the open <b>${sg(r.score)}u</b> · ${r.rank} of 8<br><span class="muted">mean of ${r.pairs} pair${r.pairs === 1 ? '' : 's'} on the book</span>` : noFeed(esc, nm, 'no live read yet'); }
   if (layer === 'level') { const b = bankOf(id, ctx); return b ? `<b>${esc(nm)}</b><br>${esc(b.name)} policy rate <b>${b.rate}%</b> (${esc(b.asOf)})${b.stale ? '<br><span class="muted">stale</span>' : ''}<br><span class="muted">${esc(b.cycle)} · 12m ${sg(b.change12m)}pp</span>` : noFeed(esc, nm, 'no BIS policy rate'); }
   if (layer === 'priced') { const x = ccy ? ctx.cbx?.[ccy] : null; if (!x) return noFeed(esc, nm, ccy ? 'no futures pull for this bank' : 'only the eight desk banks have a futures-priced path'); const f = h => (h && fin(h.bp) ? `${sg(h.bp, 0)}bp` : '–'); return `<b>${esc(nm)} · ${ccy}</b><br>futures price <b>${f(x.m6)}</b> by ~6 months<br><span class="muted">~3m ${f(x.m3)} · ~12m ${f(x.m12)} · 25bp = one standard move</span>`; }
   if (layer === 'tone') { const b = ccy ? cbBank(ccy, ctx) : null; if (!ccy) return noFeed(esc, nm, 'statement tone is read for the eight desk banks only'); if (!b) return noFeed(esc, nm, 'no statement board'); if (b.status === 'read') return `<b>${esc(nm)} · ${esc(b.bank)}</b><br>tone <b>${sg(b.read.score)}</b> ${esc(String(b.read.regime ?? '').toLowerCase())}<br><span class="muted">${esc(b.read.date ?? '')}${b.change ? ` · ${sg(b.change.delta)} vs the meeting before` : ''}</span>`; return `<b>${esc(nm)} · ${esc(b.bank)}</b><br><span class="muted">${b.status === 'headline_only' ? esc(b.decision?.title ?? 'headline only') + ': statement blocked, no tone score' : 'no read for the latest meeting'}</span>`; }
@@ -124,6 +130,7 @@ export function layerTip(layer, id, nm, ctx) {
 const sw = (c, a, t) => `<span><i style="background:${rgba(c, a)}"></i>${t}</span>`;
 /** Legend of one of this module's layers: swatches with units. */
 export function legendHtml(layer) {
+  if (layer === 'today') return `${sw(UP, 0.7, 'stronger since the open')}${sw(DN, 0.7, 'weaker')}${sw(FLAT, 0.38, 'flat')}<span>mean move across each currency's pairs, in u (the day's p50 distance) · live, every minute · what the day has done, not what it will do</span>`;
   if (layer === 'level') return `${sw(GOLD, 0.25, 'lower policy rate')}${sw(GOLD, 0.8, 'higher (scaled to the 90th-percentile bank)')}<span>every BIS central bank, per cent</span>`;
   if (layer === 'priced') return `${sw(GOLD, 0.8, 'hikes priced by ~6 months')}${sw(BLUE, 0.8, 'cuts priced')}${sw(FLAT, 0.38, 'flat')}<span>25bp = one standard move · the eight desk banks · futures price, not a forecast</span>`;
   if (layer === 'tone') return `${sw(GOLD, 0.8, 'hawkish statement')}${sw(PUR, 0.8, 'dovish')}<span>latest statement tone, -1 to +1 · banks with a current read only · description, not a signal</span>`;
@@ -139,6 +146,7 @@ export function metaHtml(layer, ctx) {
   const esc = ctx.h?.esc ?? defEsc;
   const chip = (t, cls = '') => `<span class="chip${cls ? ' ' + cls : ''}">${esc(t)}</span>`;
   const ctxChip = `<span class="chip gold" title="a description of where each country stands, not a forecast and not a signal">context, not a signal</span>`;
+  if (layer === 'today') { const t = Date.parse(ctx.liveAt ?? ''); return ctx.live?.length ? `${chip(Number.isFinite(t) ? `live · ${new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} London` : 'live')}<span class="chip gold" title="what the day has done, not a forecast">description, not a forecast</span>` : chip('no live read yet', 'dn'); }
   if (layer === 'rates' || layer === 'level') return ctx.wr?.ok ? `${chip(`BIS, monthly, to ${ctx.wr.asOf}`)}${ctxChip}` : chip('no BIS rates feed', 'dn');
   if (layer === 'priced') { const a = ctx.cbxMeta?.ageH; return ctx.cbx ? `${chip(a != null ? `futures pulled ${a}h ago` : 'futures pull')}${a != null && a > 36 ? chip('old pull', 'dn') : ''}${ctxChip}` : chip('no futures pull yet', 'dn'); }
   if (layer === 'tone') { const c = ctx.cbBoard?.counts; return ctx.cbBoard?.ok ? `${chip(c ? `${c.read} of ${c.total} banks have a current read` : 'statement board')}<span class="chip gold" title="Evidence Book cb-tone-direction: the statement's tone is priced within 30 minutes and does not predict the next-day dollar (NULL, 82 FOMC meetings)">description only</span>` : chip('no statement board', 'dn'); }
@@ -171,6 +179,10 @@ export function layerRanking(layer, ctx) {
     banks.sort((a, b) => b.rate - a.rate);
     for (const b of banks.slice(0, 8)) rows.push({ id: areaIds(b.area, ctx)[0] ?? null, name: b.name, sub: b.ccy, value: `${b.rate}%`, note: b.cycle, spark: b.spark });
     return { title: 'Highest policy rates', sub: `${banks.length} central banks`, rows, foot: banks.length ? `Lowest: ${banks.slice(-3).reverse().map(b => `${b.name} ${b.rate}%`).join(', ')}.` : '' };
+  }
+  if (layer === 'today') {
+    for (const r of ctx.live ?? []) rows.push({ id: home(r.ccy, ctx), name: r.ccy, sub: CCY_BANK[r.ccy] ?? '', value: `${sg(r.score)}u`, note: `${r.pairs} pair${r.pairs === 1 ? '' : 's'}`, cls: r.score > 0.05 ? 'up' : r.score < -0.05 ? 'dn' : '' });
+    return { title: 'Strongest to weakest today', sub: 'since the open, live', rows, foot: 'Each currency\'s mean move across its pairs on the book, in u (base counts for, quote against). It describes the day so far and changes every minute.' };
   }
   if (layer === 'priced') {
     const r = Object.entries(ctx.cbx ?? {}).map(([c, x]) => ({ c, m6: x?.m6?.bp, m3: x?.m3?.bp, m12: x?.m12?.bp })).filter(x => fin(x.m6)).sort((a, b) => b.m6 - a.m6);

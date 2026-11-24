@@ -462,7 +462,7 @@ const LAYER_LEGEND = {
 // under the map and the country card. The page owns the data (E, D, ZONE) and hands it over as ctx.
 function mapCtx() {
   const ML = globalThis.ttMapLayers;
-  return { zone: ZONE, wr: E?.['world-rates'], cbx: D.cbx?.ok ? D.cbx.banks : null, cbxMeta: D.cbx, cbBoard: E?.['cb-board'], gy: E?.['global-yields'], me: E?.['macro-engines-board'], bc: E?.['bank-credit'], fv: E?.['fair-value'], iso2n: ISO2N, fvIso: FV_ISO,
+  return { zone: ZONE, live: globalThis.liveLayer?.ccy?.() ?? null, liveAt: globalThis.liveLayer?.at?.() ?? null, wr: E?.['world-rates'], cbx: D.cbx?.ok ? D.cbx.banks : null, cbxMeta: D.cbx, cbBoard: E?.['cb-board'], gy: E?.['global-yields'], me: E?.['macro-engines-board'], bc: E?.['bank-credit'], fv: E?.['fair-value'], iso2n: ISO2N, fvIso: FV_ISO,
     h: { esc, spk: (...a) => spk(...a), sgn: (...a) => sgn(...a), tile: ML?.tile, cell: ML?.cell, families: ML?.families } };
 }
 function layerAllowed(id) {
@@ -1147,7 +1147,7 @@ function overviewNoBook() {
 function overview() {
   if (!D.run?.ok) { overviewNoBook(); return; }
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
-  $('overview').innerHTML = `<div data-lv-strip></div><div class="sfc" data-surface="panel.ov.hero">${heroCard(`The desk's world · ${esc(D.run.date)}`, `${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest`, true)}</div>
+  $('overview').innerHTML = `<div data-lv-strip></div><div data-lv-speeds></div><div class="sfc" data-surface="panel.ov.hero">${heroCard(`The desk's world · ${esc(D.run.date)}`, `${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest`, true)}</div>
 <div class="sfc" data-surface="panel.ov.book">${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}</div><div class="sfc" data-surface="panel.ov.bookintel"><div id="bkintel" style="margin-bottom:14px"></div></div>
 <div class="grid g2"><div class="sfc" data-surface="panel.ov.regime">${regimeCard()}</div><div class="grid" style="align-content:start"><div class="sfc" data-surface="panel.ov.strength">${strengthStrip()}</div><div class="sfc" data-surface="panel.ov.engine"><div id="beov"></div></div><div class="sfc" data-surface="panel.ov.exposure">${sh(exposureChart)}</div><div class="sfc" data-surface="panel.ov.record">${sh(recordCard)}</div></div></div>
 <div class="sfc" data-surface="panel.ov.week">${sh(weekSection)}</div><div class="sfc" data-surface="panel.ov.bestpairs">${sh(bestPairs)}</div><div id="xo"></div><div class="sfc" data-surface="panel.ov.dayshape">${dayShape()}</div>
@@ -1235,7 +1235,12 @@ function currencies() {
 }
 
 // ── ASSETS ──
+// when each slow part of the page was written, for the live layer's "what is live and what is not" line (js/terminal/liveLayer.js speedsHtml)
+globalThis.deskAsOf = () => ({ book: D.run?.finishedAt ?? null, upd: Object.fromEntries(Object.entries(D.upd?.slots ?? {}).map(([k, v]) => [k, v?.at ?? null])), cot: D.cot?.reportDate ?? null });
 let assetFilter = 'all';
+// the order of the cards: the desk call's strength (the morning view) or the biggest move today (the live view, re-sorted as reads land)
+let assetSort = (() => { try { return localStorage.getItem('deskAssetSort') === 'move' ? 'move' : 'desk'; } catch { return 'desk'; } })();
+const moveKey = n => { const m = globalThis.liveLayer?.move?.(n); return m ? Math.abs(Number.isFinite(m.nowU) ? m.nowU : (m.chgPct ?? 0) / 0.5) : -1; };   // no unit: 0.5% counts as about 1u
 // the numbers in a plan's text with thousands separators kept whole ("4,066-4,070" is 4066 and 4070): the same rule as js/tradeWatch.js priceNums
 const priceNums = s => (String(s ?? '').replace(/(\d),(?=\d{3}(?!\d))/g, '$1').match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
 // a card without forecast lines says why, instead of drawing nothing: a run made before the session opens (a weekend or pre-open run) has no open to hang them on
@@ -1295,9 +1300,10 @@ function assets() {
   const inGroup = Object.entries(D.cards).filter(([n]) => assetFilter === 'all' || groupOf(n) === assetFilter);
   const entries = AF ? AF.filter(inGroup, D.cards) : inGroup;
   const keepOpen = $('assets').querySelector('.fav-tools')?.open;
-  $('assets').innerHTML = `<div data-lv-strip></div><div class="filters">${[['all', 'All'], ...Object.entries(GROUPS)].map(([k, l]) => `<button aria-pressed="${k === assetFilter}" data-g="${k}">${l}</button>`).join('')}${AF?.pillHtml(D.cards) ?? ''}</div>${AF?.toolsHtml() ?? ''}
-<div class="grid g3">${entries.sort((a, b) => Math.abs(assetScore(b[1]) ?? -1) - Math.abs(assetScore(a[1]) ?? -1)).map(([n, c]) => assetCard(n, c)).join('') || (AF?.on(D.cards) ? AF.emptyHtml(GROUPS[assetFilter]) : '<div class="card muted">No cards.</div>')}</div>`;
+  $('assets').innerHTML = `<div data-lv-strip></div><div data-lv-speeds></div><div class="filters">${[['all', 'All'], ...Object.entries(GROUPS)].map(([k, l]) => `<button aria-pressed="${k === assetFilter}" data-g="${k}">${l}</button>`).join('')}${AF?.pillHtml(D.cards) ?? ''}<span class="lgl" style="margin-left:8px">Sort</span>${[['desk', 'Desk call'], ['move', 'Moving today']].map(([k, l]) => `<button aria-pressed="${k === assetSort}" data-asort="${k}" title="${k === 'move' ? 'Biggest move since the open first (in u), re-sorted as live prices land' : 'Strongest desk call first (the morning view)'}">${l}</button>`).join('')}</div>${AF?.toolsHtml() ?? ''}
+<div class="grid g3">${entries.sort((a, b) => (assetSort === 'move' ? moveKey(b[0]) - moveKey(a[0]) : 0) || Math.abs(assetScore(b[1]) ?? -1) - Math.abs(assetScore(a[1]) ?? -1)).map(([n, c]) => assetCard(n, c)).join('') || (AF?.on(D.cards) ? AF.emptyHtml(GROUPS[assetFilter]) : '<div class="card muted">No cards.</div>')}</div>`;
   $('assets').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { assetFilter = b.dataset.g; assets(); });
+  $('assets').querySelectorAll('[data-asort]').forEach(b => b.onclick = () => { assetSort = b.dataset.asort; try { localStorage.setItem('deskAssetSort', assetSort); } catch { /* fine */ } assets(); });
   wire($('assets'));
   AF?.wire($('assets'));
   applyTw();
@@ -1716,6 +1722,9 @@ $('askbtn').onclick = () => {
 
 whenDeskAccess(load);
 // the live layer: the trade watcher's state every minute, patched into the cards in place (no re-render, so an open card and its chart stay put)
+// the map's Today layer follows the live layer: redraw it when a new read lands, and only while it is the layer on screen
+addEventListener('marketlive', () => { if (assetSort === 'move' && !$('assets').hidden && $('modal').hidden && !$('assets').matches(':focus-within')) assets(); });
+addEventListener('marketlive', () => { if (HLAYER === 'today') { try { globalThis.redrawHero?.(); } catch (e) { console.warn('today layer', e); } } });
 setInterval(() => { if (!document.hidden && D.cards) getJson('/api/trade-watch').then(tw => { if (tw?.ok) { D.tw = tw; applyTw(); } }); }, 60_000);
 setInterval(() => { if (!document.hidden) { ANA = null; ASC = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
 </script>

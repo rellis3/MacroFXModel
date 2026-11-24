@@ -178,6 +178,7 @@ export const SURFACES = [
   mk('widget.ovl.macro', 'widget', 'Map layer: Macro composite', 'Overview map layers', null, 'the macro engines composite per currency: market data, size not direction'),
   mk('widget.ovl.credit', 'widget', 'Map layer: Bank credit', 'Overview map layers', null, 'BIS cross-border bank credit growth: market data'),
   mk('widget.ovl.value', 'widget', 'Map layer: Fair value', 'Overview map layers', null, 'BIS real effective exchange rates against their 20-year average: market data'),
+  mk('widget.ovl.today', 'widget', 'Map layer: Today (live)', 'Overview map layers', null, 'each currency\'s strength since the open from live prices (js/terminal/liveLayer.js, /api/market-live): market data'),
   // ── Currencies, Assets, Pair: the trade-level lines inside an otherwise analytic card ──
   mk('panel.ccy.expressions', 'panel', 'Currency card: best expressions', 'Currencies', T, 'the book\'s cards on a currency, with size: how to trade the view'),
   mk('panel.ccy.tone', 'panel', 'Currency card: central-bank tone timeline', 'Currencies', null, 'how the bank\'s statement tone has moved over its last ten meetings, and the wording that changed: context for tone and timing (cb-tone-direction NULL), not a signal'),

@@ -37,3 +37,24 @@ test('ccyHtml and stripHtml', () => {
   assert.equal((s.match(/class="lv-bar"/g) ?? []).length, 2);
   assert.equal(stripHtml([]), '');
 });
+
+import { movedSince, movedHtml, speedsHtml } from './liveLayer.js';
+test('movedSince / movedHtml: the drivers that changed between the issue and the latest re-run', () => {
+  const pts = [{ point: 'issue', v1r: [['JPY Risk role', -0.12, 'R -1.5'], ['JPY Policy path', 0.15, '6m -6bp']] }, { point: '10:00', v1r: [['JPY Risk role', -0.1, 'x']] },
+    { point: '13:00', v1r: [['JPY Risk role', 0.2, 'R +0.4'], ['JPY Policy path', 0.15, '6m -6bp'], ['GBP Trend', 0.06, 'D1 up']] }];
+  const m = movedSince(pts);
+  assert.equal(m[0].driver, 'JPY Risk role');
+  assert.ok(Math.abs(m[0].d - 0.32) < 1e-9);
+  assert.equal(m.length, 2);                      // the unchanged policy path is left out
+  assert.match(movedHtml(pts), /from the morning issue to 13:00/);
+  assert.equal(movedHtml(pts.slice(0, 1)), '');
+  assert.match(movedHtml([pts[0], pts[0]]), /no driver of the tilt has moved/);
+});
+test('speedsHtml: live, hourly, set times and daily, each with its time', () => {
+  const h = speedsHtml({ book: '2026-11-23T07:01:00Z', upd: { london: '2026-11-23T08:06:00Z' }, cot: '2026-11-18' }, '2026-11-23T14:05:00Z', '13:00');
+  assert.match(h, /every minute · last 14:05/);
+  assert.match(h, /HOURLY/);
+  assert.match(h, /London update 08:06/);
+  assert.match(h, /report of 18 Nov/);
+  assert.doesNotMatch(speedsHtml(null, null, null), /HOURLY/);
+});
