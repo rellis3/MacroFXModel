@@ -1,6 +1,6 @@
 # Jarvis morning broadcast → YouTube (unlisted), daily from the laptop
 
-Every weekday at **07:15 UK** the laptop:
+Every weekday at **07:00 UK** the laptop:
 
 1. opens the desk site in a real Chrome window, parked off-screen;
 2. plays Jarvis's **MORNING BROADCAST** in the SHORT length, in portrait;
@@ -9,7 +9,7 @@ Every weekday at **07:15 UK** the laptop:
 
 The link lands in `out\last_run.json` and `out\run.log`, and you share it yourself.
 
-It runs at 07:15 so it comes **after the 06:30 OI pull** (`oi_recon\run_daily.bat`). That way the gamma views carry today's option books.
+It runs at 07:00 so it comes **after the 06:30 OI pull** (`oi_recon\run_daily.bat`). That way the gamma views carry today's option books.
 
 ## How it records (and why the sound is reliable)
 
@@ -21,8 +21,15 @@ It runs at 07:15 so it comes **after the 06:30 OI pull** (`oi_recon\run_daily.ba
 | Mixing | ffmpeg (bundled through `imageio-ffmpeg`) lines up picture and sound by their timestamps; H.264 + AAC | |
 | Safety | A recording whose loudest moment is near silence is **not uploaded**; the log says why | The voice must be on it |
 
+**Frame by frame (the morning run, on trial from 24 Nov 2026).** Recording live drops frames whenever the laptop is busy (short freezes at the heavy 3D changes). The morning run now records frame by frame instead:
+- `vclock.js` is loaded before the page; just before the broadcast the page's clock is frozen and moved on 1/30 s at a time, with a screenshot after each step;
+- timers, animations and the audio clock all follow it, so every frame is complete however slow the laptop is;
+- the sound is rendered at the end, in step with the frames, and the server voice is asked for at the broadcast's speed (pitch unchanged).
+
+It takes about 13-27 minutes to capture plus about 5 to encode, so the 07:00 video is up by about 07:35. Frame by frame asks for a fuller short (about 2 min 45 s), since it has no waits between lines. `--live` records the old way; `--frames` forces the new way (the evening run stays live until the morning one has been judged).
+
 **SHORT length.** The broadcast keeps its lines short and drops the least essential segments, so the video stays under YouTube's 3-minute Shorts limit:
-- drop order: volatility, then positioning, currencies, the macro, rates;
+- drop order (least useful first): the macro, currencies, rates, positioning, volatility;
 - Markets, The Chain and The Day Ahead always stay.
 
 A test run came out at 2 min 56 s before the budget was tightened; it now aims for about 2.5 minutes. If a video ever runs over 3 minutes, it still uploads, but YouTube files it as a normal video rather than a Short.
@@ -92,13 +99,13 @@ python record_broadcast.py
 
 The unlisted link appears in the output and in `out\last_run.json`.
 
-### 6. Schedule it: Task Scheduler, 07:15 weekdays
+### 6. Schedule it: Task Scheduler, 07:00 weekdays
 
 Create a task the same way as the OI pull:
 
 - **Program/script:** `C:\...\MacroFXModel\jarvis_broadcast\run_daily.bat`
 - **Start in:** `C:\...\MacroFXModel\jarvis_broadcast`
-- **Trigger:** daily at **07:15**, Monday to Friday.
+- **Trigger:** daily at **07:00**, Monday to Friday.
 - **Run only when user is logged on:** yes. It needs the desktop to draw the browser window.
 - **Conditions:** tick **Wake the computer to run this task**, and untick "Start only if on AC power".
 - **Settings:** tick **Run task as soon as possible after a scheduled start is missed**.

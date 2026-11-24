@@ -36,7 +36,7 @@
  * Pure: no network, no I/O. Callers supply packed M1 + sessions.
  */
 
-import { bucketM1IntoSessions } from './forecastAnalyser.js';
+import { bucketM1IntoSessions, ymdOfDayNum } from './forecastAnalyser.js';
 import { buildLadder } from './forecastLadder.js';
 import { LADDER_PARAMS } from './forecastLadderParams.js';
 import { forecastSigma } from './forecastSigma.js';
@@ -99,20 +99,22 @@ function dowOf(dateStr) { return new Date(dateStr + 'T00:00:00Z').getUTCDay(); }
 export function sessionRangeSeries(packed) {
   const { n, times, opens, highs, lows, closes } = packed;
   const out = new Map();   // key -> { hi, lo, range, open, close, t0 }
+  // Integer arithmetic instead of two Date objects + an ISO string per bar (2026-11-23: this was 3.5 s of a 6 s walk over 180 days of M1). Same keys, same values, same insertion order.
+  const SESS = ['Asia', 'London', 'NY'], byNum = new Map();
   for (let i = 0; i < n; i++) {
-    const t = times[i], d = new Date(t * 1000);
-    const h = d.getUTCHours();
-    const sess = sessionOf(h);
+    const t = times[i];
+    const dayN = Math.floor(t / 86400), h = Math.floor((t - dayN * 86400) / 3600);
+    const si = (h >= 22 || h < 7) ? 0 : h < 13 ? 1 : 2;
     // Session date: Asia (22:00-07:00) is keyed to the date it STARTS on, so it
     // groups with the London/NY of the SAME trading day that follows it —
     // matching bucketM1IntoSessions' own day convention.
-    const dayD = new Date(t * 1000);
-    if (sess === 'Asia' && h < 7) dayD.setUTCDate(dayD.getUTCDate() - 1);
-    const date = dayD.toISOString().slice(0, 10);
-    const key = `${date}|${sess}`;
-    const cur = out.get(key);
-    if (!cur) out.set(key, { hi: highs[i], lo: lows[i], range: 0, open: opens[i], close: closes[i], t0: t });
-    else { if (highs[i] > cur.hi) cur.hi = highs[i]; if (lows[i] < cur.lo) cur.lo = lows[i]; cur.close = closes[i]; }
+    const keyDay = (si === 0 && h < 7) ? dayN - 1 : dayN;
+    const nk = keyDay * 4 + si;
+    let cur = byNum.get(nk);
+    if (!cur) {
+      cur = { hi: highs[i], lo: lows[i], range: 0, open: opens[i], close: closes[i], t0: t };
+      byNum.set(nk, cur); out.set(`${ymdOfDayNum(keyDay).s}|${SESS[si]}`, cur);
+    } else { if (highs[i] > cur.hi) cur.hi = highs[i]; if (lows[i] < cur.lo) cur.lo = lows[i]; cur.close = closes[i]; }
   }
   for (const v of out.values()) v.range = v.hi - v.lo;
   return out;
@@ -278,6 +280,15 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
     return { date: d, open: b[0].open, high: hi, low: lo, close: b[b.length - 1].close };
   });
   const est = ladderParams.pairs?.[sym]?.estimator ?? ladderParams.classDefaults?.[assetClass]?.estimator ?? 'yz_30';
+  // forecastSigma(d1.slice(0, k), est) is a pure function of k, and the loop below asked for the same k about 22 times (today's sigma, yesterday's for prevCloseLoc, and 20 trailing days for dayVol), each time
+  // copying the history and refitting. 2026-11-23: that was 3 GB of the 13 GB the live walk allocated in 150 s on Railway. Computed once per k; a throw is remembered and re-thrown so every call site behaves as before.
+  const _sigmaMemo = new Map();
+  const sigmaAt = k => {
+    let r = _sigmaMemo.get(k);
+    if (r === undefined) { try { r = { v: forecastSigma(d1.slice(0, k), est) }; } catch { r = { err: true }; } _sigmaMemo.set(k, r); }
+    if (r.err) throw new Error('forecastSigma unavailable');
+    return r.v;
+  };
 
   let pip = 1; try { pip = pipSize(instrument) || 1; } catch { /* unknown symbol → raw price units */ }
 
@@ -298,7 +309,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
     const bars = sessions.get(date);
     const open = bars[0].open;
     let sigma = 0;
-    try { sigma = forecastSigma(d1.slice(0, i), est); } catch { continue; }
+    try { sigma = sigmaAt(i); } catch { continue; }
     if (!(sigma > 0)) continue;
     const lad = buildLadder(sigma, { instrument: sym, assetClass, horizon: 'daily', eventTag: 'none', ladderParams });
     if (!lad?.oh?.p90 || !lad?.ol?.p90) continue;
@@ -311,7 +322,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
     // what was forecast for it.
     const prevCloseLoc = (() => {
       if (i < 1) return null;
-      let ySigma; try { ySigma = forecastSigma(d1.slice(0, i - 1), est); } catch { return null; }
+      let ySigma; try { ySigma = sigmaAt(i - 1); } catch { return null; }
       if (!(ySigma > 0)) return null;
       const yLad = buildLadder(ySigma, { instrument: sym, assetClass, horizon: 'daily', eventTag: 'none', ladderParams });
       if (!yLad?.oh?.p75 || !yLad?.ol?.p75) return null;
@@ -333,7 +344,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
     // present with the future — a quiet-looking day almost tautologically didn't
     // extend far AFTER an early touch, which is circularity, not a finding.
     const dayVol = (() => {
-      const hist = []; for (let k = Math.max(0, i - 20); k < i; k++) { try { const s = forecastSigma(d1.slice(0, k), est); if (s > 0) hist.push(s); } catch {} }
+      const hist = []; for (let k = Math.max(0, i - 20); k < i; k++) { try { const s = sigmaAt(k); if (s > 0) hist.push(s); } catch {} }
       if (hist.length < 8) return null;
       const sorted = [...hist].sort((a, b) => a - b), med = sorted[Math.floor(sorted.length / 2)];
       if (!(med > 0)) return null;

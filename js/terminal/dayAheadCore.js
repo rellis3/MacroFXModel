@@ -66,11 +66,12 @@ export function shortName(event, ccy) {
   if (!s) return pre || 'release';
   const sp = s.match(/([A-Za-z]+)\s+(?:speaks|testifies)\b/i);
   if (sp) return pre ? `${pre} ${sp[1]} speaks` : `${sp[1]} speaks`;
-  const sub = s.match(/\b(german|french|italian|spanish)\b/i); const pre2 = sub ? { german: 'DE', french: 'FR', italian: 'IT', spanish: 'ES' }[sub[1].toLowerCase()] : pre;
+  const sub = s.match(/\b(german|germany|french|france|italian|italy|spanish|spain)\b/i);      // Nasdaq says "HCOB Germany ...", ForexFactory "German ...": both are DE
+  const pre2 = sub ? { german: 'DE', germany: 'DE', french: 'FR', france: 'FR', italian: 'IT', italy: 'IT', spanish: 'ES', spain: 'ES' }[sub[1].toLowerCase()] : pre;
   const hit = SHORT.find(([re]) => re.test(s));
   const core = hit ? hit[1] : s.replace(/\b(m\/m|y\/y|q\/q|mom|yoy|qoq|s\.a\.|sa|prelim(inary)?|flash|final)\b/gi, '').replace(/[()]/g, '').replace(/\s+/g, ' ').trim();
   const body = core.length > 22 ? core.slice(0, 21).trimEnd() + '…' : core;
-  return pre2 ? `${pre2} ${body.replace(/^(german|french|italian|spanish)\s+/i, '')}` : body;
+  return pre2 ? `${pre2} ${body.replace(/^(german|germany|french|france|italian|italy|spanish|spain)\s+/i, '')}` : body;
 }
 /** High-impact by release TYPE (for rows with no vendor rating): the same family as the server's week-ahead list. */
 export const HIGH_TYPE = /rate decision|interest rate|cash rate|bank rate|fomc|federal funds|\bcpi\b|consumer price|inflation rate|nonfarm|non-farm|payroll|employment change|unemployment rate|\bgdp\b|retail sales|\bpmi\b|\bism\b/i;
@@ -210,7 +211,8 @@ export function placeLabels(items, W, H, taken = [], pad = 3) {
 
 // ── words ──
 const NAT = { US: 'US', EZ: 'euro area', UK: 'UK', JP: 'Japanese', AU: 'Australian', NZ: 'New Zealand', CA: 'Canadian', CH: 'Swiss', CN: 'Chinese', DE: 'German', FR: 'French', IT: 'Italian', ES: 'Spanish' };
-const say = e => e.short.replace(/^[A-Z]{2} (\w+ speaks)$/, '$1').replace(/^([A-Z]{2}) /, (m, c) => `${NAT[c] ?? c} `).replace(/\bmfg\b/, 'manufacturing').replace(/\bconf\.$/, 'conference');
+export const sayRelease = e => e.short.replace(/^[A-Z]{2} (\w+ speaks)$/, '$1').replace(/^([A-Z]{2}) /, (m, c) => `${NAT[c] ?? c} `).replace(/\bmfg\b/, 'manufacturing').replace(/\bconf\.$/, 'conference');
+const say = sayRelease;
 /** A calendar figure for the voice: "0.3%" -> "0.3 percent", "-0.1%" -> "minus 0.1 percent", "245K" -> "245 thousand", "1.2M" -> "1.2 million", "4.50%" -> "4.5 percent". */
 export function sayFig(v) {
   let t = String(v ?? '').trim(); if (!t) return null;

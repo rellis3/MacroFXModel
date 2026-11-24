@@ -145,6 +145,7 @@ Work through EVERY driver in the checklist. For each one, say what today's data 
 
 Rules:
 - Use only the material below. Never invent a number, a level or a headline. If a driver has no data, say "no data" and list it under gaps.
+- Write for a person, not a parser: never quote a data field's internal name (posInRange, oh_rem, bandDaily, round_half, levels_structure, planCheck, asOf and the like) or a raw timestamp. Say what it means in words ("price is near the top of today's range", "the daily band", "a round number", "20 Nov").
 - Quote levels in price, from the levels, forecast lines, swing map or trade-decision state given. Do not make levels up.
 - An Evidence Book entry marked null or underpowered was tested and found no reliable edge: never present it as working.
 - This is context for the desk, not a trade instruction. You do not change the morning card's rating or size; you say whether you agree with it.
@@ -218,6 +219,7 @@ Work through EVERY driver in the checklist. For each one, say what today's data 
 
 Rules:
 - Use only the material below. Never invent a number, a level or a headline. If a driver has no data, say "no data" and list it under gaps.
+- Write for a person, not a parser: never quote a data field's internal name (posInRange, oh_rem, bandDaily, round_half, levels_structure, planCheck, asOf and the like) or a raw timestamp. Say what it means in words ("price is near the top of today's range", "the daily band", "a round number", "20 Nov").
 - NEVER give a trade. No buy, sell, long or short instruction; no entry, stop, stop-loss, target, take-profit, invalidation level, position size or risk-reward; no "best way to trade it". State the bias of the day as an observation of what the data leans towards, and say what to watch and which scheduled events carry risk.
 - Levels are reference points only: where the forecast range, options walls or the swing map say the day's range may sit. Quote them in price from the material given; never as something to act on.
 - An Evidence Book entry marked null or underpowered was tested and found no reliable edge: never present it as working.

@@ -1,6 +1,6 @@
 // node js/srZones.test.mjs
 import assert from 'node:assert/strict';
-import { londonDay, londonOpen, volumeProfileLevels, oiLegs, forecastLegs, deskLegs, profileLegs, buildSrZones, gexContext, cotContext, gexPeakLegs, stretchContext, formatBlock, formatExport, splitParts, partsText, SRZ_HEADER, describeSrZone } from './srZones.js';
+import { londonDay, londonOpen, volumeProfileLevels, oiLegs, forecastLegs, deskLegs, profileLegs, buildSrZones, gexContext, cotContext, gexPeakLegs, stretchContext, formatBlock, formatExport, splitParts, partsText, SRZ_HEADER, describeSrZone, zoneTouchState, zoneRead, READ_EVIDENCE } from './srZones.js';
 
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok', name); };
 
@@ -95,8 +95,8 @@ t('text format: header, pipes, plain decimals, parts', () => {
   const b = formatBlock({ name: 'GOLD', aliases: ['XAUUSD', 'GC1!'], spot: 4130.1, sigma: 35.2, basis: 23.3, date: '2026-11-10', digits: 2, gex: 'neg breakout', cot: 'a|b=c', desk: 'LONG', zones });
   const L = b.split('\n');
   assert.equal(L[0], 'SRZ|GOLD|XAUUSD,GC1!|spot=4130.10|sigma=35.20|basis=23.30|date=2026-11-10|gex=neg breakout|cot=a b:c|desk=LONG');
-  assert.equal(L[1], 'S|1|4111.60|4111.60|2|forecast median low + put wall|0.50|-|');
-  assert.equal(L[2], 'S|2|4089.40|4091.60|3|GEX flip + IV-adj median low + nPOC 11-04|1.10|-|');
+  assert.equal(L[1], 'S|1|4111.60|4111.60|2|forecast median low + put wall|0.50|-||-|-');
+  assert.equal(L[2], 'S|2|4089.40|4091.60|3|GEX flip + IV-adj median low + nPOC 11-04|1.10|-||-|-');
   assert.equal(formatBlock({ name: 'USDJPY', aliases: [], spot: 150, sigma: 1, basis: null, date: 'd', digits: 3, zones }).split('\n')[0].includes('basis=na'), true);
   const txt = formatExport([{ name: 'A', aliases: [], spot: 1, sigma: 1, basis: 0, date: 'd', zones }], {});
   assert.ok(txt.startsWith('# ' + SRZ_HEADER));
@@ -125,5 +125,51 @@ t('tight zones: no box wider than 0.1σ; IV-adj counts with the forecast; touch 
   z.resistance[0].touch = '41%~2h';
   const row = formatBlock({ name: 'X', aliases: [], spot: 100, sigma: 20, basis: 0, date: 'd', digits: 1, zones: { support: [], resistance: z.resistance } }).split(String.fromCharCode(10))[1].split('|');
   assert.equal(row[7], '41%~2h'); assert.equal(row[8], '101.0;101.2;102.0');
+});
+// ── live reads (2026-11-24) ──
+// path of closes, each bar high/low = close ± 0.05 (σ = 1, k = 0.25 → 0.25 points)
+const path = (cs, t0 = 1000) => cs.map((c, i) => ({ time: t0 + i * 300, close: c, high: c + 0.05, low: c - 0.05 }));
+t('touch state: armed above, touch, held (back 0.25σ before through)', () => {
+  const st = zoneTouchState(path([10.5, 10.2, 10.02, 10.15, 10.4]), 10, 10, 1);
+  assert.equal(st.touches, 1); assert.equal(st.seq, 'H'); assert.equal(st.last.from, 'above'); assert.equal(st.where, 'above');
+});
+t('touch state: break, then retest from below re-arms and counts as touch 2', () => {
+  const st = zoneTouchState(path([10.5, 10.02, 9.6, 9.95, 9.6]), 10, 10, 1);
+  assert.equal(st.touches, 2); assert.equal(st.seq, 'BH'); assert.equal(st.last.from, 'below'); assert.equal(st.where, 'below');
+});
+t('touch state: needs a close 0.25σ away to arm; nothing before `since` counts', () => {
+  assert.equal(zoneTouchState(path([10.1, 10.0, 10.1]), 10, 10, 1).touches, 0);
+  assert.equal(zoneTouchState(path([10.5, 10.0, 10.5]), 10, 10, 1, 1000 + 3 * 300).touches, 0);
+});
+t('touch state: the touch bar can only resolve through; a bar doing both is chop', () => {
+  const big = [{ time: 1, close: 10.5, high: 10.55, low: 10.45 }, { time: 2, close: 9.7, high: 10.3, low: 9.7 }];
+  assert.equal(zoneTouchState(big, 10, 10, 1).seq, 'B');
+  const chop = [{ time: 1, close: 10.5, high: 10.55, low: 10.45 }, { time: 2, close: 10.1, high: 10.2, low: 10.0 }, { time: 3, close: 10, high: 10.4, low: 9.6 }];
+  assert.equal(zoneTouchState(chop, 10, 10, 1).seq, '?');
+});
+t('touch state: a zone band uses near edge for the touch and far edge for the break', () => {
+  const st = zoneTouchState(path([11, 10.45, 10.1, 9.9]), 10, 10.5, 1);   // touched 10.5 from above, never 0.25 under 10 → still testing
+  assert.equal(st.touches, 1); assert.equal(st.pending, 'above'); assert.equal(st.seq, '');
+});
+t('read: 50/50 everywhere except the Profile gamma peak on a PIN day before its first touch', () => {
+  const gpZone = { members: [{ type: 'gamma_peak' }] }, plain = { members: [{ type: 'call_wall' }] };
+  const fresh = { touches: 0, seq: '', pending: null, last: null };
+  assert.equal(zoneRead(plain, fresh, { regime: 'PIN' }).call, '50/50');
+  assert.equal(zoneRead(gpZone, fresh, { regime: 'BREAKOUT' }).call, '50/50');
+  const r = zoneRead(gpZone, fresh, { regime: 'PIN' });
+  assert.equal(r.call, 'HOLD lean'); assert.equal(r.p, READ_EVIDENCE.gpPin.p); assert.equal(r.grade, 'candidate'); assert.equal(r.gp, true);
+  const after = zoneRead(gpZone, { touches: 1, seq: 'H', pending: null, last: { res: 'held', time: 1, from: 'above' } }, { regime: 'PIN', side: 'S' });
+  assert.equal(after.call, '50/50'); assert.equal(after.p, READ_EVIDENCE.gpLater.p); assert.match(after.state, /held ×1/);
+});
+t('read: a broken support now above price says it flipped', () => {
+  const r = zoneRead({ members: [] }, { touches: 1, seq: 'B', pending: null, last: { res: 'broke', time: 1, from: 'above' } }, { side: 'R' });
+  assert.equal(r.flipped, true); assert.match(r.state, /was support, now resistance/);
+});
+t('export rows carry the gp flag and state (fields 9-10) and the regime in the header', () => {
+  const z = { tier: 1, lo: 10, hi: 10, mid: 10, dist: 0.3, families: ['gamma'], nFamilies: 1, sources: ['gamma peak (OI Profile)'], members: [{ price: 10, type: 'gamma_peak' }],
+    read: { gp: true, state: 'untouched today' } };
+  const txt = formatBlock({ name: 'X', aliases: [], spot: 11, sigma: 1, basis: null, date: '2026-11-24', digits: 2, regime: 'PIN', zones: { support: [z], resistance: [] } });
+  assert.match(txt.split('\n')[0], /\|regime=PIN/);
+  const f = txt.split('\n')[1].split('|'); assert.equal(f[9], 'gp'); assert.equal(f[10], 'untouched today');
 });
 console.log(`${n} tests passed`);

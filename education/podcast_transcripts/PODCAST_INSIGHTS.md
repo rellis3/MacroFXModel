@@ -165,6 +165,10 @@ Things we could test: R12, below.
 Reasoning decoded in `HOW_THEY_THINK.md` §3d (patterns U-AC), including how their views moved since E04.
 Things we could test: R13-R15, below.
 
+### E06: a brutal market, the 2018 template, the correlation nobody is pricing (~20-21 Nov 2026)
+Reasoning decoded in `HOW_THEY_THINK.md` §3e (patterns AD-AL), including how their views moved since E05.
+Things we could test: R17-R20, below.
+
 ---
 
 ## Other podcasts
@@ -344,6 +348,28 @@ reads it as continuation. Spec: the banked TOP-stall events split by C > SMA200 
 above-trend arm against its own above-trend control, 20/40/60 sessions; mirror = the same stall below a falling
 200-day. Powered for a large effect only (~480 events). Carded: daily-bias Q12.
 
+**R17. Stress correlation the market prices at zero (AP, E06).** TESTABLE as a correlation claim, not direction.
+AP's dual digital (S&P down and USD/CHF down) is cheap because dealers price the recent ~0 rolling correlation. Claim:
+in equity drawdowns the realised S&P / USD/CHF (and S&P / EUR/USD) correlation differs from the trailing 60-day one by
+more than its noise, so trailing correlation is a poor price for the stress state. **PARTLY ON FILE:**
+`drawdown-forecast-error-fx` (validated) shows FX ranges run ~7% wider after a 20-day S&P fall, which is size, not
+correlation; method lesson #7 already asks for stress-window correlations. Carded: portfolio-construction Q6.
+
+**R18. "Stocks down 20%, the Fed cuts" (BD, E06).** CONTEXT, cheap. BD: "if you back-test stocks down 20%, will the Fed
+cut? The answer is yes." Rebuild from S&P closes and the fed funds target since the 1970s: after a first close 20% below
+the high, the share of episodes with a cut within 3 / 6 / 12 months, and the lag. Few episodes (~10), so a base-rate
+card for the Fed path panel, never a test.
+
+**R19. The 60/40 as the pain gauge (AP, E06).** CONTEXT. AP: deleveraging isn't done while the 60/40 is still green for the
+year (2018: +3-4% in September to −8% at year end). Build the 60/40 year-to-date from S&P total return and a 10-year
+Treasury total-return proxy; mark the years it went negative and what the S&P drawdown did after. A handful of years:
+a gauge for a page, not a test.
+
+**R20. The dollar's two-step in equity drawdowns (BD, E06).** CONTEXT, maybe UNDERPOWERED as a test. BD: the dollar rallies
+first (mechanical rebalancing), then falls (less demand for US assets; template 2000). Event study over S&P drawdowns
+of 10%+ since 2000: the dollar index path over the first 20 sessions after the drawdown passes 10%, then the next 60.
+~8 episodes; describe the paths. Overlaps E05 W (two clocks) and R13.
+
 ## Calls to Score
 
 | Date | Speaker | Call | Check by | Level at call | Outcome |
@@ -368,11 +394,17 @@ above-trend arm against its own above-trend control, 20/40/60 sessions; mirror =
 | 2026-10-23 | BD | Brazil: Flávio wins, BRL then flatlines quickly; vol collapses either way | after the 10-25 runoff | 1w vol ~57; Polymarket ~77% | |
 | 2026-10-23 | AP | If Bolsonaro side wins, BRL rallies harder than expected and knocks out RKOs | after the 10-25 runoff | | |
 | 2026-10-23 | AP | School 1: AI repricing then drift; hikes continue unless credit (AI, France) tightens further | rolling | | |
-| 2026-10-23 | BD | No December Fed hike if equities fall another ~8% | Dec FOMC | | Open on E05: equities ~6% lower, December still 16-20bp priced; BD says the bar to stop is "pretty low" |
-| ~2026-11-07 | AP | The sell-off is a technical liquidation; macro implications "close to zero"; Fed still hikes in December | Dec FOMC | Dec 16-20bp priced; 10y 4.85% | |
+| 2026-10-23 | BD | No December Fed hike if equities fall another ~8% | Dec FOMC | | Open on E05: equities ~6% lower, December still 16-20bp priced; BD says the bar to stop is "pretty low". **Changed by BD in E06**: base case now a December hike "because they said they would", cuts ~June |
+| ~2026-11-07 | AP | The sell-off is a technical liquidation; macro implications "close to zero"; Fed still hikes in December | Dec FOMC | Dec 16-20bp priced; 10y 4.85% | **"Close to zero" overtaken by E06**: bonds sold off too and both hosts now talk a 2027 slowdown; December hike now fully priced (25bp) |
 | ~2026-11-07 | BD | If Anthropic postpones its IPO: negative first, but likely a sign of the bottom (supply removed, capitulation) | ~2026-11-18 | pricing pencilled 16 Nov | |
 | ~2026-11-07 | AP | Anthropic goes ahead; a clearing event for the market | ~2026-11-18 |  | |
 | ~2026-11-07 | AP | 2027 equities two-humped: ~50% down ~20%, ~50% up ~20% | end 2027 |  | |
 | ~2026-11-07 | AP | Gold +15-20% next year if the Fed hikes once more then pauses | end 2027 | gold ~4,000 | |
-| ~2026-11-07 | BD | Maybe long gold, stop below the lows (support 3,900 broke and was reclaimed) | rolling | gold ~4,000 | |
+| ~2026-11-07 | BD | Maybe long gold, stop below the lows (support 3,900 broke and was reclaimed) | rolling | gold ~4,000 | **Against by E06**: gold ~3,500; the stop below 3,900 would have been hit |
 | ~2026-11-07 | AP / BD | USDJPY lower over 12 months (wages, Shunto 6%+, MoF cap at 160); BD on the sidelines because of carry and skew | ~2027-11 | level not stated; realised vol ~4% | |
+| ~2026-11-21 | AP | Q4 2018 template: another ~10% down possible; deleveraging not done until the 60/40 is negative for the year | end 2026 | S&P ~8% off top, NQ ~14%; 60/40 still green YTD | |
+| ~2026-11-21 | BD | Fed hikes 25bp in December "because they said they would", then cuts around June 2027; November CPI m/m negative | Dec FOMC; Nov CPI; mid-2027 | Dec 25bp fully priced | |
+| ~2026-11-21 | BD | 70-80% of the move is done; things bought now worth more in 6 months (tactical, with stops) | ~2027-05 | S&P ~7,300 | |
+| ~2026-11-21 | BD | Dollar two-step: rallies first, then "probably sells off a lot" | rolling | EUR sold from ~1.12 | |
+| ~2026-11-21 | AP | In the bad scenario S&P and USD/CHF fall together (dual digital priced at ~0 correlation) | end 2026 | each leg ~16-20% | |
+| ~2026-11-21 | AP | Gold, silver and BTC trade with stocks in the short run; silver heading to $33 | rolling | gold ~3,500 | |

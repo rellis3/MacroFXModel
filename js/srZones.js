@@ -20,7 +20,7 @@ import { nakedLevels } from './nakedLevels.js';
 import { oiLevelList } from './oiConf.js';
 import { cardPlan } from './tradeWatch.js';
 
-export const SRZ_HEADER = 'Tier = distance from spot (nearer is reached more often). touch = calibrated P(price trades there within 4h), a reach estimate, not a reaction. Sources agreeing is descriptive, not shown to predict a reaction.';
+export const SRZ_HEADER = 'Tier = distance from spot (nearer is reached more often). touch = calibrated P(price trades there within 4h), a reach estimate, not a reaction. Sources agreeing is descriptive, not shown to predict a reaction. Read: 50/50 for every zone (13k touches: lines held as often as fake lines) except the OI Profile gamma peak on a PIN day, first touch (HOLD lean, candidate).';
 export const SRZ_DEFAULTS = { radius: 0.05, maxSpan: 0.1, maxTiers: 6, maxSigma: 2.5, binFrac: 0.02, npocLookback: 15, compositeN: 5, hvnMult: 1.3, lvnMult: 0.5, maxHvn: 3, maxLvn: 3, minSessionBars: 36 };
 export const FAMILY_ORDER = ['oi', 'gamma', 'forecast', 'iv', 'desk', 'profile'];
 // The IV-adjusted ladder is the forecast ladder re-scaled by implied vol: one source, so it counts once with the forecast ladder (2026-11-11 review:
@@ -228,6 +228,8 @@ export function formatBlock(item) {
   const head = [`SRZ`, safe(item.name), (item.aliases || []).map(safe).join(','), `spot=${f(item.spot)}`, `sigma=${f(item.sigma)}`,
     `basis=${Number.isFinite(item.basis) ? f(item.basis) : 'na'}`, `date=${item.date}`];
   if (item.gex) head.push(`gex=${safe(item.gex)}`);
+  if (item.regime) head.push(`regime=${safe(item.regime)}`);
+  if (Number.isFinite(item.gpSince)) head.push(`gpsince=${Math.round(item.gpSince)}`);   // unix ms of the OI capture: the Pine ★ counts first touches from here   // OI Profile PIN/BREAKOUT (2026-11-24): the Pine read uses it with each row's gp flag
   if (item.cot) head.push(`cot=${safe(item.cot)}`);
   if (item.desk) head.push(`desk=${safe(item.desk)}`);
   if (item.stretch?.text) head.push(`stretch=${safe(item.stretch.text)}`);
@@ -236,7 +238,10 @@ export function formatBlock(item) {
   for (const [side, arr] of [['S', item.zones?.support || []], ['R', item.zones?.resistance || []]]) {
     // fields 7-8 (touch, member prices) are new 2026-11-11; older Pine copies read 0-5 and ignore them
     for (const z of arr) L.push([side, z.tier, f(z.lo), f(z.hi), z.nFamilies, safe(z.sources.join(' + ')), z.dist.toFixed(2), safe(z.touch || '-'),
-      [...new Set((z.members || []).map(m => m.price).sort((a, b) => a - b).map(f))].join(';')].join('|'));
+      [...new Set((z.members || []).map(m => m.price).sort((a, b) => a - b).map(f))].join(';'),
+      // fields 9-10 are new 2026-11-24: 'gp' = the zone holds the OI Profile gamma peak on a PIN day (the one candidate read), and the zone's state
+      // at export time. The Pine indicator recomputes the state live from the chart's own bars; older copies read 0-8 and ignore these.
+      z.read?.gp ? 'gp' : '-', safe(z.read?.state || '-')].join('|'));
   }
   return L.join('\n');
 }
@@ -259,5 +264,90 @@ export const partsText = parts => parts.map((p, i) => `=====PART ${i + 1}/${part
 /** Human-readable desk note for one item: "Support T2 4089.4–4091.6 · 3 families — GEX flip + IV-adj median low + nPOC 11-04". */
 export function describeSrZone(z, side, dp = 2) {
   const f = v => (+v).toFixed(dp), rng = Math.abs(z.hi - z.lo) < 1e-12 ? f(z.lo) : `${f(z.lo)}–${f(z.hi)}`;
-  return `${side === 'S' || side === 'support' ? 'Support' : 'Resistance'} T${z.tier} ${rng} · ${z.nFamilies} famil${z.nFamilies === 1 ? 'y' : 'ies'}${z.touch ? ` · touch ${z.touch}` : ''} — ${z.sources.join(' + ')}`;
+  const rd = z.read ? ` · ${z.read.call}${z.read.call === '50/50' ? '' : ` ${Math.round(z.read.p * 100)}% (${z.read.grade})`} · ${z.read.state}` : '';
+  return `${side === 'S' || side === 'support' ? 'Support' : 'Resistance'} T${z.tier} ${rng} · ${z.nFamilies} famil${z.nFamilies === 1 ? 'y' : 'ies'}${z.touch ? ` · touch ${z.touch}` : ''}${rd} — ${z.sources.join(' + ')}`;
+}
+
+// ── Live reads: what each zone has done today and what our data says about the next touch (2026-11-24) ────────────────────────────
+// Evidence (analysis/output/oi-profile-lines/RESULTS.md): OI Profile lines held on a first touch 48.7% vs 48.5% for the same line moved 0.25-0.5σ
+// (NULL); later touches, stacked lines, PIN/BREAKOUT days: no edge. A market-state model (stretch from the open, approach speed, vol, hour, touch
+// history; 13,471 touches pooled with placebos) lost to plain 50/50 on unseen dates (Brier skill −0.4% / −0.5%). The one lead is the Profile's
+// gamma peak on a PIN day, FIRST touch: 70% vs 49% (n 74, 45 dates, both halves, 1 survivor of ~150 cells: a candidate, scored forward in
+// forge/OI_GAMMA_PEAK_PIN_PREREG.md). So every zone reads 50/50 unless it holds that gamma peak on a PIN day and is untouched today.
+export const READ_K = 0.25;   // arm / race distance in one day's σ: the study's definition
+export const READ_EVIDENCE = {
+  base: { p: 0.49, grade: 'no edge', why: 'lines held 48.7% vs 48.5% for fake lines nearby (oi-profile-lines, NULL); no market-state model beat 50/50 out of sample' },
+  gpPin: { p: 0.70, lo: 0.62, grade: 'candidate', why: 'gamma peak on a PIN day, first touch: held 70% vs 49% at fake lines (n 74, 45 dates); one survivor of ~150 cells, forward test running' },
+  gpLater: { p: 0.45, grade: 'no edge', why: 'gamma peak after its first touch held 46% / 43% (touch 2 / 3+), no better than fake lines: the lead is first-touch only' },
+};
+
+/**
+ * What a zone [lo, hi] has done in `bars` (chronological, {time, high, low, close}) at/after `since` (unix s), with the study's rules:
+ * armed when a close is ≥ k·σ outside the zone; touched when the bar reaches the zone's near edge; held ('H') when price then gets k·σ back
+ * beyond the near edge before k·σ beyond the far edge, broke ('B') the other way; a bar that does both is 'chop' ('?'). The touch bar itself can
+ * only resolve as a break. After a result the zone re-arms on the next close ≥ k·σ outside it (a broken support re-arms from below = a retest).
+ * Returns { touches, seq ('HB?'), pending: 'above'|'below'|null, last: {res, time, from}|null, where: 'above'|'below'|'inside'|null }.
+ */
+export function zoneTouchState(bars, lo, hi, sigma, since = -Infinity, k = READ_K) {
+  const out = { touches: 0, seq: '', pending: null, last: null, where: null };
+  if (!(sigma > 0) || !Number.isFinite(lo) || !Number.isFinite(hi)) return out;
+  if (lo > hi) [lo, hi] = [hi, lo];
+  const d = k * sigma;
+  let armed = null, pend = null;
+  const done = (res, time, from) => { out.seq += res; out.last = { res: res === 'H' ? 'held' : res === 'B' ? 'broke' : 'chop', time, from }; pend = null; };
+  for (const b of bars || []) {
+    if (!(b?.time >= since) || !Number.isFinite(b.high) || !Number.isFinite(b.low)) continue;
+    if (pend) {
+      const back = pend === 'above' ? b.high >= hi + d : b.low <= lo - d;
+      const thru = pend === 'above' ? b.low <= lo - d : b.high >= hi + d;
+      if (back && thru) done('?', b.time, pend); else if (thru) done('B', b.time, pend); else if (back) done('H', b.time, pend);
+    } else if (armed) {
+      const touch = armed === 'above' ? b.low <= hi : b.high >= lo;
+      if (touch) {
+        out.touches++; pend = armed; armed = null;
+        if (pend === 'above' ? b.low <= lo - d : b.high >= hi + d) done('B', b.time, pend);
+      }
+    }
+    if (!pend && Number.isFinite(b.close)) { if (b.close >= hi + d) armed = 'above'; else if (b.close <= lo - d) armed = 'below'; }
+  }
+  out.pending = pend;
+  const lastC = [...(bars || [])].reverse().find(b => Number.isFinite(b?.close))?.close;
+  if (Number.isFinite(lastC)) out.where = lastC > hi ? 'above' : lastC < lo ? 'below' : 'inside';
+  return out;
+}
+
+/** Does the zone hold the OI Profile's gamma peak (type 'gamma_peak' member)? */
+export const hasGammaPeak = z => (z?.members || []).some(m => m.type === 'gamma_peak');
+
+/** The study only scored books captured that London morning (before 12:00) and only touches after the capture: the ★ read needs the same. */
+export function bookFresh(savedAtMs, today) {
+  if (!Number.isFinite(savedAtMs)) return false;
+  const sec = savedAtMs / 1000;
+  return londonDay(sec) === today && +_ldnHm.format(new Date(sec * 1000)).slice(0, 2) < 12;
+}
+
+/**
+ * The read for one zone: { call: 'HOLD lean'|'50/50', p, grade, why, state (plain words), flipped }.
+ * st = zoneTouchState(...) since the London open (the state shown); regime = 'PIN'|'BREAKOUT'|null from the OI Profile; side = 'S'|'R' (where the
+ * zone sits now); fresh = bookFresh(...); bookTouches = touches since the OI capture (the study's "first touch"; defaults to st.touches).
+ */
+export function zoneRead(z, st, { regime = null, side = null, hhmm = t => '', fresh = true, bookTouches = null } = {}) {
+  const gp = hasGammaPeak(z) && regime === 'PIN' && fresh;
+  const bt = Number.isFinite(bookTouches) ? bookTouches : st.touches;
+  const ev = gp ? (bt === 0 ? READ_EVIDENCE.gpPin : READ_EVIDENCE.gpLater) : READ_EVIDENCE.base;
+  const call = ev === READ_EVIDENCE.gpPin ? 'HOLD lean' : '50/50';
+  const held = (st.seq.match(/H/g) || []).length, broke = (st.seq.match(/B/g) || []).length;
+  // a zone that was support and broke now sits above price (and the reverse): the zone lists already split on spot, this names the change
+  const wasSide = st.last?.from === 'above' ? 'S' : st.last?.from === 'below' ? 'R' : null;
+  const flipped = !!(side && st.last?.res === 'broke' && wasSide && wasSide !== side);
+  let state = st.touches === 0 ? 'untouched today' : st.pending ? `testing now (touch ${st.touches})` : '';
+  if (!state || st.pending) {
+    const parts = [];
+    if (held) parts.push(`held ×${held}`);
+    if (broke) parts.push(`broke ×${broke}`);
+    if (st.last && !st.pending) parts.push(`last ${st.last.res}${hhmm(st.last.time) ? ' ' + hhmm(st.last.time) : ''}`);
+    state = [state, parts.join(', ')].filter(Boolean).join(' · ');
+  }
+  if (flipped) state += ` · was ${wasSide === 'S' ? 'support' : 'resistance'}, now ${side === 'S' ? 'support' : 'resistance'} (retests: no edge, 48.5%)`;
+  return { call, p: ev.p, grade: ev.grade, why: ev.why, gp, state, seq: st.seq, touches: st.touches, flipped };
 }

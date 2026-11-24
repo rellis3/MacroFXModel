@@ -17,5 +17,6 @@ test('openAsset opens the Pair page, and falls back to the pop-up only when the 
 });
 test('what only the pop-up had (the group desk line) now sits on the Pair page', () => {
   assert.match(html, /globalThis\.deskViewHtml = deskView;/);
-  assert.match(tabs, /\$\{AAV\.boxHtml\(n\)\}\$\{globalThis\.deskViewHtml\?\.\(n\) \?\? ''\}/);
+  // 2026-11-24: the line sits in an accordion under the deep read (js/terminal/cardTidy.js details), still right after it
+  assert.match(tabs, /\$\{AAV\.boxHtml\(n\)\}\$\{CT\.details\([^\n]*globalThis\.deskViewHtml\?\.\(n\) \?\? ''\)\}/);
 });

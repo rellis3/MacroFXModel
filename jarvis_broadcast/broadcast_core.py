@@ -53,16 +53,25 @@ def is_silent(db: float | None) -> bool:
     return db is None or db < SILENT_DB
 
 
-def title_for(d: date) -> str:
+def part_of_day(hour: int) -> str:
+    """'morning' before noon, 'afternoon' before six, else 'evening' (the programme's own rule, js/terminal/broadcastCore.js partOfDay; the laptop clock is London)."""
+    return 'morning' if hour < 12 else 'afternoon' if hour < 18 else 'evening'
+
+
+def title_for(d: date, part: str = 'morning') -> str:
     """'H.E.L.I.X. Morning Briefing · Mon 23 Nov 2026 #Shorts' (YouTube titles are capped at 100 characters)."""
-    return f"H.E.L.I.X. Morning Briefing · {d.strftime('%a')} {d.day} {d.strftime('%b %Y')} #Shorts"[:100]
+    return f"H.E.L.I.X. {part.capitalize()} Briefing · {d.strftime('%a')} {d.day} {d.strftime('%b %Y')} #Shorts"[:100]
 
 
-def description_for(d: date, voice: str | None = None, seconds: float | None = None) -> str:
+def description_for(d: date, voice: str | None = None, seconds: float | None = None, part: str = 'morning') -> str:
+    what = ("The day looked back on: the move of the day, the releases and what followed them, the markets, and tomorrow's calendar."
+            if part == 'evening' else 'What markets did and how things stand.')
     parts = [
-        f"The desk's morning briefing for {d.strftime('%A')} {d.day} {d.strftime('%B %Y')}, narrated by H.E.L.I.X. (Holistic Economic Links & Intermarket Xplorer) over the desk's own hologram views.",
+        f"The desk's {part} briefing for {d.strftime('%A')} {d.day} {d.strftime('%B %Y')}, narrated by H.E.L.I.X. (Holistic Economic Links & Intermarket Xplorer) over the desk's own hologram views.",
         '',
-        'Description only: what markets did and how things stand. Not a forecast, not advice, not a trade.',
+        what,
+        '',
+        'Description only. Not a forecast, not advice, not a trade.',
     ]
     meta = []
     if seconds:

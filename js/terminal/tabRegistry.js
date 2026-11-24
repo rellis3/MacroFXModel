@@ -79,6 +79,8 @@ export const SURFACES = [
   mk('widget.worldstress', 'widget', 'World stress strip', 'Shell', null, 'every stress input green/amber/red, pinned above the tabs'),
   mk('widget.bookchip', 'widget', 'Analysis date chip', 'Shell', null, 'the date and time of the morning analysis'),
   mk('widget.mktchip', 'widget', 'Market-closed chip', 'Shell', null, 'top-bar chip while the FX week is shut ("closed · as at Fri 22:00 UTC"), and a note on a US/UK/euro holiday; the live boards show the close instead of going flat'),
+  mk('widget.livestamp', 'widget', 'Live-layer stamp', 'Shell', null, 'top-bar chip with the time of the last live price update (js/terminal/liveLayer.js): prices every minute, the macro tilt hourly'),
+  mk('widget.risktape', 'widget', 'Live risk tape', 'Shell', null, 'top-bar chip: risk-on / mixed / risk-off from live prices (equity indices, JPY and CHF, AUD and NZD; js/marketLive.js riskTape), with the time it last turned'),
   mk('panel.opt.terrain', 'panel', 'Options: The terrain chart', 'Options', null, 'a block on the Options tab: the terrain chart; can be moved with the Layout button'),
   mk('panel.opt.smile', 'panel', 'Options: The IV smile', 'Options', null, 'a block on the Options tab: the iv smile; can be moved with the Layout button'),
   mk('panel.opt.lines', 'panel', 'Options: Option lines', 'Options', null, 'a block on the Options tab: option lines; can be moved with the Layout button'),
@@ -177,6 +179,7 @@ export const SURFACES = [
   mk('widget.ovl.macro', 'widget', 'Map layer: Macro composite', 'Overview map layers', null, 'the macro engines composite per currency: market data, size not direction'),
   mk('widget.ovl.credit', 'widget', 'Map layer: Bank credit', 'Overview map layers', null, 'BIS cross-border bank credit growth: market data'),
   mk('widget.ovl.value', 'widget', 'Map layer: Fair value', 'Overview map layers', null, 'BIS real effective exchange rates against their 20-year average: market data'),
+  mk('widget.ovl.today', 'widget', 'Map layer: Today (live)', 'Overview map layers', null, 'each currency\'s strength since the open from live prices (js/terminal/liveLayer.js, /api/market-live): market data'),
   // ── Currencies, Assets, Pair: the trade-level lines inside an otherwise analytic card ──
   mk('panel.ccy.expressions', 'panel', 'Currency card: best expressions', 'Currencies', T, 'the book\'s cards on a currency, with size: how to trade the view'),
   mk('panel.ccy.tone', 'panel', 'Currency card: central-bank tone timeline', 'Currencies', null, 'how the bank\'s statement tone has moved over its last ten meetings, and the wording that changed: context for tone and timing (cb-tone-direction NULL), not a signal'),

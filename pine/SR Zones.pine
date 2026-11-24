@@ -16,9 +16,16 @@
 //
 // STATUS: Tier = distance from spot (nearer is reached more often). Sources agreeing is descriptive, not shown to predict a reaction.
 //   OI walls and ladder lines were each placebo-null as reaction levels in our own tests. A map, not a signal.
+// LIVE READ (2026-11-24): the indicator redraws on every bar. For each zone it replays today's bars with the oi-profile-lines study rules
+//   (armed when a close is 0.25σ outside the zone, touched at the near edge, HELD if price then gets 0.25σ back before 0.25σ through the far edge,
+//   BROKE the other way) and colours the zone by where price is NOW: a support that broke turns red (now resistance) and is drawn dotted.
+//   The read on the label is what our data supports, and it is mostly "50/50": on 13k touches OI Profile lines held 48.7% vs 48.5% for fake
+//   lines nearby, and stretch, speed, vol, hour and touch history did not beat 50/50 on unseen dates. The one exception is marked ★: the zone
+//   holding the OI Profile gamma peak on a PIN day, before its first touch today ("HOLD lean 70%", a candidate under a forward test,
+//   forge/OI_GAMMA_PEAK_PIN_PREREG.md). After that first touch it reads 50/50 again (later touches held 43-46%).
 // NOTE: written without a Pine compiler — if TradingView reports an error, the line number points at it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-indicator("SR Zones", shorttitle="SR Zones", overlay=true, max_lines_count=300, max_labels_count=100, max_boxes_count=100)
+indicator("SR Zones", shorttitle="SR Zones", overlay=true, max_lines_count=300, max_labels_count=100, max_boxes_count=100, max_bars_back=2000)
 
 G1 = "1 · Data"
 paste1 = input.text_area("", "Paste the S/R zones export (all instruments)", group=G1, tooltip="Paste the whole export in one go: every instrument fits (Pine v6 strings hold 40,960 characters). The block matching the chart ticker is drawn.")
@@ -32,6 +39,7 @@ basisMode = input.string("Auto", "Futures basis", options=["Auto", "Always add",
 showSrc   = input.bool(false, "Sources in the label", group=G2)
 showTouch = input.bool(true, "P(touch within 4h) in the label", group=G2)
 showTable = input.bool(true, "Context table", group=G2)
+showRead  = input.bool(true, "Live read (state today + hold/break evidence)", group=G2, tooltip="Replays today's chart bars per zone: untouched / held / broke, and recolours a zone by the side price is on now. The read is 50/50 except the OI Profile gamma peak on a PIN day before its first touch (★ HOLD lean, candidate).")
 supCol    = input.color(color.rgb(38, 166, 91), "Support colour", group=G2)
 resCol    = input.color(color.rgb(232, 77, 77), "Resistance colour", group=G2)
 
@@ -39,7 +47,17 @@ resCol    = input.color(color.rgb(232, 77, 77), "Resistance colour", group=G2)
 f_num(string s) => str.tonumber(str.trim(s))
 
 
-if barstate.islastconfirmedhistory
+var table tb = na
+if barstate.islast
+    // redraw from scratch every bar so the zone states and colours follow price through the day
+    for o in line.all
+        line.delete(o)
+    for o in box.all
+        box.delete(o)
+    for o in label.all
+        label.delete(o)
+    if not na(tb)
+        table.delete(tb)
     string allTxt = paste1
     array<string> rows = str.split(allTxt, "\n")
     string tkU = str.upper(syminfo.ticker)
@@ -49,6 +67,9 @@ if barstate.islastconfirmedhistory
     bool inBlock = false
     string blockName = ""
     float spotX = na
+    float sigX = na
+    string regX = ""
+    float gpSince = na
     float basisX = na
     string dateX = ""
     string gexX = "—"
@@ -81,6 +102,12 @@ if barstate.islastconfirmedhistory
                                     string val = str.substring(tok, eq + 1)
                                     if key == "spot"
                                         spotX := f_num(val)
+                                    else if key == "sigma"
+                                        sigX := f_num(val)
+                                    else if key == "regime"
+                                        regX := val
+                                    else if key == "gpsince"
+                                        gpSince := f_num(val)
                                     else if key == "basis"
                                         basisX := f_num(val)   // "na" parses to na
                                     else if key == "date"
@@ -118,6 +145,12 @@ if barstate.islastconfirmedhistory
             d := int(dd)
     int t0 = timestamp("Europe/London", y, m, d, 0, 0)
     int t1 = timestamp("Europe/London", y, m, d, 22, 0)
+    // how many chart bars belong to the export's London day (the live read replays these)
+    int nb = 0
+    while nb < 1999 and not na(time[nb]) and time[nb] >= t0
+        nb += 1
+    int nHeld = 0
+    int nBroke = 0
 
     if found and not cantShift
         for zr in zoneRows
@@ -133,33 +166,91 @@ if barstate.islastconfirmedhistory
                 string mem = array.size(f) >= 9 ? str.trim(array.get(f, 8)) : ""
                 int tier = na(tierF) ? 9 : int(tierF)
                 int nf = na(nfF) ? 1 : int(nfF)
-                bool show = (isSup ? showSup : showRes) and tier <= maxTier and nf >= minFam and not na(lo) and not na(hi)
+                bool gp = array.size(f) >= 10 ? str.trim(array.get(f, 9)) == "gp" : false
+                float pLo = lo + shift
+                float pHi = hi + shift
+                // ── live state today (the study's 0.25σ arm / race, replayed on the chart's bars) ──
+                int touches = 0
+                string seq = ""
+                int lastRes = 0      // 1 held, -1 broke, 2 chop
+                int lastFrom = 0     // 1 = came from above (was support), -1 = from below (was resistance)
+                int pend = 0
+                int bt = 0           // touches since the OI capture (the study's "first touch" for the ★ read)
+                if showRead and not na(sigX) and sigX > 0 and nb > 0 and not na(lo) and not na(hi)
+                    float k = 0.25 * sigX
+                    int armed = 0
+                    for j = nb - 1 to 0
+                        float bh = high[j]
+                        float bl = low[j]
+                        float bc = close[j]
+                        if pend != 0
+                            bool back = pend == 1 ? bh >= pHi + k : bl <= pLo - k
+                            bool thru = pend == 1 ? bl <= pLo - k : bh >= pHi + k
+                            if back or thru
+                                lastRes := back and thru ? 2 : thru ? -1 : 1
+                                seq += lastRes == 2 ? "?" : lastRes == -1 ? "B" : "H"
+                                lastFrom := pend
+                                pend := 0
+                        else if armed != 0
+                            bool hitZ = armed == 1 ? bl <= pHi : bh >= pLo
+                            if hitZ
+                                touches += 1
+                                bt += not na(gpSince) and time[j] >= gpSince ? 1 : 0
+                                pend := armed
+                                armed := 0
+                                if (pend == 1 ? bl <= pLo - k : bh >= pHi + k)
+                                    lastRes := -1
+                                    seq += "B"
+                                    lastFrom := pend
+                                    pend := 0
+                        if pend == 0
+                            if bc >= pHi + k
+                                armed := 1
+                            else if bc <= pLo - k
+                                armed := -1
+                // which side the zone is on NOW (inside the zone: the side the export put it on)
+                bool supNow = close > pHi ? true : close < pLo ? false : isSup
+                bool flipped = showRead and lastRes == -1 and ((lastFrom == 1 and not supNow) or (lastFrom == -1 and supNow))
+                bool star = showRead and gp and regX == "PIN" and not na(gpSince) and bt == 0
+                int nH = 0
+                int nB = 0
+                for ch in str.split(seq, "")
+                    if ch == "H"
+                        nH += 1
+                    else if ch == "B"
+                        nB += 1
+                nHeld += nH
+                nBroke += nB
+                bool show = (supNow ? showSup : showRes) and tier <= maxTier and nf >= minFam and not na(lo) and not na(hi)
                 if show
-                    float pLo = lo + shift
-                    float pHi = hi + shift
-                    color c = isSup ? supCol : resCol
+                    color c = supNow ? supCol : resCol
                     int tr = 30
+                    string lst = flipped ? line.style_dotted : line.style_solid
+                    int wd = star ? 2 : 1
                     bool isRange = math.abs(pHi - pLo) >= syminfo.mintick
                     string px = isRange ? str.tostring(pLo, format.mintick) + "–" + str.tostring(pHi, format.mintick) : str.tostring(pLo, format.mintick)
                     string tch = showTouch and touch != "-" and touch != "" ? " · touch " + touch : ""
-                    string txt = (isSup ? "Support T" : "Resistance T") + str.tostring(tier) + " " + px + " · " + str.tostring(nf) + tch + (showSrc and src != "" ? "\n" + src : "")
+                    string stTxt = pend != 0 ? "testing now" : touches == 0 ? "untouched" : (nH > 0 ? "held ×" + str.tostring(nH) : "") + (nH > 0 and nB > 0 ? ", " : "") + (nB > 0 ? "broke ×" + str.tostring(nB) : "") + (nH == 0 and nB == 0 ? "chop" : "")
+                    string rd = not showRead ? "" : star ? " · ★ HOLD lean 70% (1st touch, candidate)" : " · 50/50 · " + stTxt + (flipped ? (lastFrom == 1 ? " · was support" : " · was resistance") : "") + (gp and regX == "PIN" and bt > 0 ? " · gamma peak spent" : "")
+                    string txt = (supNow ? "Support T" : "Resistance T") + str.tostring(tier) + " " + px + " · " + str.tostring(nf) + tch + rd + (showSrc and src != "" ? "\n" + src : "")
+                    string tip = star ? "OI Profile gamma peak on a PIN day, first touch: held 70% vs 49% at fake lines nearby (n 74, 45 dates, both halves). One survivor of ~150 cells: a candidate, scored forward from 2026-11-24." : "On 13k touches OI Profile lines held 48.7% vs 48.5% for the same line moved 0.25-0.5σ, and no market-state model beat 50/50 on unseen dates. Treat it as a place price may reach (touch %), not a fade or breakout call." + (flipped ? " Retests of a broken line held 48.5% (no edge)." : "")
                     if isRange and nf >= 2
-                        box.new(left=t0, top=pHi, right=t1, bottom=pLo, xloc=xloc.bar_time, border_color=color.new(c, tr), border_width=1, border_style=line.style_dashed, bgcolor=color.new(c, 85))
+                        box.new(left=t0, top=pHi, right=t1, bottom=pLo, xloc=xloc.bar_time, border_color=color.new(c, tr), border_width=wd, border_style=flipped ? line.style_dotted : line.style_dashed, bgcolor=color.new(c, 85))
                     else if isRange and mem != ""
                         // one family spread over a range (e.g. two call walls): its own prices as lines, no box
                         for mp in str.split(mem, ";")
                             float pm = f_num(mp)
                             if not na(pm)
-                                line.new(x1=t0, y1=pm + shift, x2=t1, y2=pm + shift, xloc=xloc.bar_time, color=color.new(c, tr), width=1, style=line.style_solid)
+                                line.new(x1=t0, y1=pm + shift, x2=t1, y2=pm + shift, xloc=xloc.bar_time, color=color.new(c, tr), width=wd, style=lst)
                     else if isRange
-                        line.new(x1=t0, y1=pLo, x2=t1, y2=pLo, xloc=xloc.bar_time, color=color.new(c, tr), width=1, style=line.style_solid)
-                        line.new(x1=t0, y1=pHi, x2=t1, y2=pHi, xloc=xloc.bar_time, color=color.new(c, tr), width=1, style=line.style_solid)
+                        line.new(x1=t0, y1=pLo, x2=t1, y2=pLo, xloc=xloc.bar_time, color=color.new(c, tr), width=wd, style=lst)
+                        line.new(x1=t0, y1=pHi, x2=t1, y2=pHi, xloc=xloc.bar_time, color=color.new(c, tr), width=wd, style=lst)
                     else
-                        line.new(x1=t0, y1=pLo, x2=t1, y2=pLo, xloc=xloc.bar_time, color=color.new(c, tr), width=1, style=line.style_solid)
-                    label.new(x=t1, y=(pLo + pHi) / 2, text=txt, xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.black, 100), textcolor=c, size=size.small)
+                        line.new(x1=t0, y1=pLo, x2=t1, y2=pLo, xloc=xloc.bar_time, color=color.new(c, tr), width=wd, style=lst)
+                    label.new(x=t1, y=(pLo + pHi) / 2, text=txt, tooltip=tip, xloc=xloc.bar_time, style=label.style_label_left, color=color.new(color.black, 100), textcolor=c, size=size.small)
 
     if showTable
-        table tb = table.new(position.top_right, 2, 8, bgcolor=color.new(color.black, 30), border_width=1)
+        tb := table.new(position.top_right, 2, 9, bgcolor=color.new(color.black, 30), border_width=1)
         table.cell(tb, 0, 0, "S/R zones", text_color=color.white, text_size=size.small)
         table.cell(tb, 1, 0, found ? blockName + " " + dateX : "no block for " + syminfo.ticker, text_color=color.white, text_size=size.small)
         table.cell(tb, 0, 1, "spot (export)", text_color=color.gray, text_size=size.small)
@@ -176,3 +267,5 @@ if barstate.islastconfirmedhistory
         table.cell(tb, 1, 7, strX, text_color=color.white, text_size=size.tiny)
         table.cell(tb, 0, 6, "note", text_color=color.gray, text_size=size.small)
         table.cell(tb, 1, 6, "tier = distance; touch = P(reach) 4h; families descriptive" + (missX != "" ? " · missing: " + missX : ""), text_color=color.gray, text_size=size.tiny)
+        table.cell(tb, 0, 8, "read", text_color=color.gray, text_size=size.small)
+        table.cell(tb, 1, 8, (regX != "" ? regX + " day · " : "") + "today: " + str.tostring(nHeld) + " held, " + str.tostring(nBroke) + " broke · 50/50 except ★ (gamma peak, PIN, 1st touch)", text_color=color.white, text_size=size.tiny)

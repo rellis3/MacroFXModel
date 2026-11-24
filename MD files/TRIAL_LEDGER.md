@@ -10,15 +10,15 @@ Generated 2026-11-24.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **596** |
+| claims tested (validated + null + underpowered) | **600** |
 | validated | 199 |
-| null | 226 |
-| underpowered | 171 |
+| null | 229 |
+| underpowered | 172 |
 | context (base rates, descriptions: not counted as tests) | 85 |
-| pre-registrations with no banked verdict (below) | 91 |
+| pre-registrations with no banked verdict (below) | 92 |
 
-**What the count says (Lesson 02 §05).** If none of the 596 claims were real, tests at the usual 5% size would still pass
-about **29.8** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 600 claims were real, tests at the usual 5% size would still pass
+about **30** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
 **roughly 30 of the 199 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -703,6 +703,10 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-23 | ladder-jordan-recipe | volatility | null | forge/LADDER_JORDAN_RECIPE_PREREG.md |
 | 2026-11-23 | ladder-jordan-recipe-published | volatility | null | forge/LADDER_JORDAN_RECIPE_PREREG.md |
 | 2026-11-23 | ladder-wide-race | volatility | underpowered | forge/LADDER_WIDE_RACE_PREREG.md |
+| 2026-11-23 | oi-profile-lines-s1 | positioning | null | forge/OI_PROFILE_LINES_PREREG.md |
+| 2026-11-23 | oi-profile-lines-s2 | positioning | null | forge/OI_PROFILE_LINES_PREREG.md |
+| 2026-11-23 | oi-profile-lines-s3 | positioning | null | forge/OI_PROFILE_LINES_PREREG.md |
+| 2026-11-23 | oi-profile-lines-s4 | positioning | underpowered | forge/OI_PROFILE_LINES_PREREG.md |
 | 2026-11-24 | bias-fast-lag | macro | validated | forge/BIAS_FAST_LAYER_PREREG.md |
 | 2026-11-24 | bias-fast-layer | macro | underpowered | forge/BIAS_FAST_LAYER_PREREG.md |
 | 2026-11-24 | bias-fast-vs-momentum | macro | null | forge/BIAS_FAST_LAYER_PREREG.md |
@@ -771,6 +775,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/LINE_TOUCH_WIDE_SCAN_PREREG.md`: Pre-registration: wide scan of candle shape / position / time / regime at the forecast lines
 - `forge/MACRO_TREND_WEEKDAY_PREREG.md`: Macro state, H1/H4 trend state and weekday at the vol lines — pre-registration
 - `forge/NEWS_TOUCH_PREREG.md`: News at the vol lines — pre-registration
+- `forge/OI_GAMMA_PEAK_PIN_PREREG.md`: oi-gamma-peak-pin — On sessions after 2026-11-23, does the OI Profile's gamma peak, on a PIN day, hold on its 
 - `forge/OI_WALL_BUILDING_FORWARD_PREREG.md`: oi-wall-building-forward — does a wall where open interest is being built bounce price more than a flat wall, 
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration

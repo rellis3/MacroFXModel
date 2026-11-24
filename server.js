@@ -142,7 +142,7 @@ import { createFeed } from './js/feedRoutes.js';
 import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
-  getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
+  getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, liveWalkStats as _laWalkStats, PREFIX as _LA_PREFIX,
   DEFAULT_REARM as _LA_DEFAULT_REARM, loadLocalVoteTrades as _laLoadLocalVoteTrades, loadLocalP90VoteTrades as _laLoadLocalP90VoteTrades, pickFresher as _laPickFresher,
   saveAllLiveSnapshots as _laSaveAllLiveSnapshots,
 } from './js/levelAtlasRoutes.js';
@@ -2065,6 +2065,7 @@ const TG_SENDERS = {
   deskWeekly:        'Desk weekly strategist: the Sunday week-ahead note',
   chiefOfStaff:      'Desk chief of staff: the morning note after the book, the evening note after the score',
   allocation:        'Desk allocation committee: the weekly per-bot keep / cut / pause / raise note (advice; the owner decides)',
+  liveLayer:         'Desk Terminal live layer: a p75/p90 line reached, a new strongest or weakest currency, the risk tape turning, a macro-tilt turn at an hourly re-run (each once a day, one note a minute at most; what the day is doing, not a call)',
   tradeWatch:        'Desk trade watcher: a card reached its entry zone, first target or invalidation (context, not an order)',
   surpriseReader:    'Live surprise reader: a high-impact print, its surprise against consensus and the release playbook, within a minute (history, not a forecast)',
   forecastDrift:     'Forecast auditor: a forecast line set drifted out of its calibration band (only after opting in on the Forecast auditor card; a prompt to look, nothing is changed)',
@@ -8376,6 +8377,150 @@ app.get('/api/trade-watch', async (_req, res) => {
     const date = _dpLondonDate(Date.now());
     if (_tw.date !== date) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); const j = raw ? JSON.parse(raw) : {}; return res.json({ ok: true, date, live: false, events: j.events ?? [], fired: j.fired ?? {}, plan: {} }); }
     res.json({ ok: true, date, live: true, events: _tw.events, fired: _tw.state.fired, last: _tw.state.last, plan: _tw.plan });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── The live layer (js/marketLive.js; owner 2026-11-23: the terminal should move with the day) ──
+// Every minute while the FX week is open: every market on the latest desk book against OANDA mids, one batch pricing call. The day so far is
+// seeded once from M1 bars since 00:00 London (again when a new book lands, and every 15 minutes while a market is still missing). No model
+// call. GET /api/market-live serves the view, the currency strength, the risk tape, the release reactions and retail positioning since the
+// morning. Round 2 (owner 2026-11-24, "do it all"):
+//   - the risk tape needs the equity indices and gold even when the book has no card for them: they are priced too, their unit is half the
+//     median daily range of the last 20 days (an approximation of the p50 distance, fetched once a day);
+//   - release reactions: each high-impact print the surprise reader logged today, the currency's move 15 and 60 minutes after it;
+//   - retail positioning since 07:00 London from the position-book store (every 20 minutes, read only);
+//   - Telegram nudges (tgMaster.liveLayer): a p75/p90 line reached, a new strongest or weakest currency, a risk-tape turn, a macro-tilt turn
+//     at an hourly re-run; each once a day, sent together, never more than one message a tick;
+//   - the day's record: at 21:05 London the whole live state is written once to market_live_day_<date>, so a day can be looked back on.
+const _ML_DAY_KEY = date => `market_live_day_${date}`;
+const _ML_EXTRA = ['NQ', 'SPX500', 'DE30', 'US30', 'GOLD'];
+let _ml = { date: null, runKey: null, cards: {}, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: null };
+let _mlBusy = false;
+async function _mlBook(date) {
+  for (let i = 0; i < 6; i++) {   // today's book, else the latest within the week (a Monday before the morning run reads Friday's)
+    const d = new Date(Date.parse(`${date}T12:00:00Z`) - i * 86400e3).toISOString().slice(0, 10), run = await _drLoad(d);
+    if (run?.head?.ok) return { run, runDate: d };
+  }
+  return null;
+}
+async function _mlRefs(ML, cards, date) {   // yesterday's high / low / close and the week open, once a day, 4 at a time
+  const list = Object.keys(cards).filter(n => _dsOanda[n]); let next = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => { while (next < list.length) { const n = list[next++];
+    try { cards[n].ref = ML.refLevels(await _btFetchD1(_dsOanda[n], 8), date); } catch (e) { console.warn(`[market-live] ref ${n}: ${e.message}`); } } }));
+}
+async function _mlExtraUnits(cards) {   // half the median daily range of 20 days, for the markets the book has no lines for
+  await Promise.all(Object.entries(cards).filter(([, c]) => c.extra && !(c.unit > 0)).map(async ([n, c]) => {
+    try { const r = (await _btFetchD1(_dsOanda[n], 21)).map(b => (b.high - b.low) / 2).filter(v => v > 0).sort((x, y) => x - y); if (r.length >= 5) c.unit = r[Math.floor(r.length / 2)]; }
+    catch (e) { console.warn(`[market-live] unit ${n}: ${e.message}`); }
+  }));
+}
+async function _mlReactions(ML, date, now) {
+  if (!_lsr0.loaded && !_lsr0.log.length) { const raw = await kv.get(_LSR_KV).catch(() => null); if (raw) { try { _lsr0.log = JSON.parse(raw).log ?? []; } catch { /* the reader owns it */ } } }
+  const from = _dsLondonMs(date, 0), out = [];
+  for (const r of _lsr0.log ?? []) {
+    const ms = Number(r.ms ?? Date.parse(r.at)); if (!(ms >= from && ms <= now) || !ML.CCYS.includes(r.country)) continue;
+    out.push({ ccy: r.country, event: r.event, ms, actual: r.actual ?? null, estimate: r.estimate ?? null, z: r.surprise?.z ?? null, direction: r.surprise?.direction ?? null,
+      m15: ML.reaction(_ml.state, _ml.cards, r.country, ms, 15, now), m60: ML.reaction(_ml.state, _ml.cards, r.country, ms, 60, now) });
+  }
+  return out.sort((x, y) => y.ms - x.ms).slice(0, 40);
+}
+async function _mlRetail(ML, date) {
+  const store = _bookParse(await kv.getStrict(BOOK_HISTORY_KV)); if (!store) return null;
+  const out = {}, open = _dsLondonMs(date, 7);
+  for (const [k, x] of Object.entries(store.byInstrument ?? {})) { const n = k.replace('_', '').replace('XAUUSD', 'GOLD').replace('XAGUSD', 'SILVER'), r = ML.retailSince(x.fine, open); if (r) out[n] = r; }
+  return out;
+}
+async function _mlTiltTurns(date) {   // the macro tilt's hourly re-run: markets whose v1r direction changed at the latest slot
+  const raw = await kv.get(_BEVI_KEY(date)).catch(() => null); if (!raw) return [];
+  const slots = Object.entries(JSON.parse(raw).slots ?? {}).sort(([a], [b]) => (a < b ? -1 : 1)); if (slots.length < 2) return [];
+  const [[sl, cur], [, prev]] = [slots.at(-1), slots.at(-2)], out = [];
+  for (const [m, c] of Object.entries(cur.v1r ?? {})) { const p = prev.v1r?.[m]; if (p && p[0] !== c[0] && _ml.cards[m] && !_ml.cards[m].extra) out.push({ key: `tilt:${m}:${sl}`, text: `Macro tilt on ${m} turned ${String(c[0]).toLowerCase()} at the ${sl} re-run (score ${c[1] > 0 ? '+' : ''}${c[1]}; was ${String(p[0]).toLowerCase()})` }); }
+  return out;
+}
+async function _mlTick() {
+  const now = Date.now();
+  if (_mlBusy || !_fxWeekOpen(now)) return;
+  _mlBusy = true;
+  try {
+    const ML = await import('./js/marketLive.js'), date = _dpLondonDate(now), b = await _mlBook(date);
+    if (!b) return;
+    const runKey = `${b.runDate}|${b.run.finishedAt}`;
+    if (_ml.date !== date || _ml.runKey !== runKey) {
+      const { unitOf } = await import('./js/deskScore.js'), cards = {};
+      for (const [n, c] of Object.entries(b.run.head.book.instruments ?? {})) cards[n] = b.runDate === date ? { levels: c.levels ?? null } : { unit: unitOf(c.levels) };   // an earlier day's lines do not apply today
+      for (const n of _ML_EXTRA) if (!cards[n] && _dsOanda[n]) cards[n] = { unit: null, extra: true };
+      const keep = _ml.date === date ? { tapeHist: _ml.tapeHist, fired: _ml.fired, saved: _ml.saved } : {};
+      _ml = { date, runKey, cards, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: b.runDate, tapeHist: [], fired: new Set(), saved: false, retail: null, retailAt: 0, reactions: [], tiltAt: 0, ...keep };
+      await _mlExtraUnits(_ml.cards);
+      await _mlRefs(ML, _ml.cards, date);
+    }
+    const names = Object.keys(_ml.cards).filter(n => _dsOanda[n]);
+    if (!_ml.state || (names.some(n => !_ml.state.markets[n]) && now - _ml.seededAt > 15 * 60_000)) {
+      const bars = await _dsBars(names, date, { entryMs: _dsLondonMs(date, 0), exitMs: now });
+      _ml.state = ML.seed(_ml.cards, bars, date); _ml.seededAt = now;
+    }
+    const q = await _fetchSpreads(names.map(n => _dsOanda[n]));
+    if (q.ok) {
+      const prices = {};
+      for (const n of names) { const p = q.pairs[_dsOanda[n]]; if (p?.tradeable !== false && Number.isFinite(p?.bid) && Number.isFinite(p?.ask)) prices[n] = (p.bid + p.ask) / 2; }
+      ML.step(_ml.state, prices, now);
+    }
+    const prev = _ml.at ? { markets: _ml.view, ccy: _ml.ccy, tape: _ml.tape } : null;
+    _ml.view = ML.view(_ml.state, _ml.cards); _ml.ccy = ML.ccyStrength(Object.fromEntries(Object.entries(_ml.view).filter(([n]) => !_ml.cards[n]?.extra)));
+    _ml.tape = ML.riskTape(_ml.view, _ml.ccy); ML.tapeHistory(_ml.tapeHist, _ml.tape, now);
+    _ml.at = new Date(now).toISOString();
+    try { _ml.reactions = await _mlReactions(ML, date, now); } catch (e) { console.warn('[market-live] reactions', e.message); }
+    if (now - _ml.retailAt > 20 * 60_000) { _ml.retailAt = now; try { _ml.retail = await _mlRetail(ML, date); } catch (e) { console.warn('[market-live] retail', e.message); } }
+    // nudges: one message a tick at most, each key once a day
+    const msgs = ML.nudges(prev, { markets: Object.fromEntries(Object.entries(_ml.view).filter(([n]) => !_ml.cards[n]?.extra)), ccy: _ml.ccy, tape: _ml.tape }, _ml.fired);
+    if (now - _ml.tiltAt > 10 * 60_000) { _ml.tiltAt = now; for (const t of await _mlTiltTurns(date).catch(() => [])) if (!_ml.fired.has(t.key)) { _ml.fired.add(t.key); msgs.push(t); } }
+    if (msgs.length && prev && tgOn('liveLayer') && state.tg?.token && state.tg?.chatId) {
+      await sendTelegram(state.tg.token, state.tg.chatId, `📡 <b>Live layer</b> · ${new Date(now).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} London\n${msgs.slice(0, 8).map(m => `• ${m.text.replace(/[<>&]/g, '')}`).join('\n')}${msgs.length > 8 ? `\n• and ${msgs.length - 8} more` : ''}\n<i>What the day is doing, not a call.</i>`).catch(e => console.warn('[market-live] telegram', e.message));
+    }
+    // the day's record, once, after the New York close
+    if (!_ml.saved && b.runDate === date && now >= _dsLondonMs(date, 21, 5)) {
+      _ml.saved = true;
+      await kv.put(_ML_DAY_KEY(date), JSON.stringify(_mlPayload()), { expirationTtl: 400 * 86400 }).catch(e => { _ml.saved = false; console.warn('[market-live] day record', e.message); });
+    }
+  } finally { _mlBusy = false; }
+}
+const _mlPayload = () => ({ ok: !!_ml.at, date: _ml.date, runDate: _ml.runDate, at: _ml.at, open: _fxWeekOpen(Date.now()), markets: _ml.view, ccy: _ml.ccy,
+  tape: _ml.tape ? { ..._ml.tape, since: _ml.tapeHist?.at(-1)?.at ? new Date(_ml.tapeHist.at(-1).at).toISOString() : null, history: (_ml.tapeHist ?? []).map(h => ({ at: new Date(h.at).toISOString(), label: h.label })) } : null,
+  reactions: _ml.reactions ?? [], retail: _ml.retail ?? null, extra: Object.keys(_ml.cards ?? {}).filter(n => _ml.cards[n]?.extra),
+  note: 'Where each market is now against the open, in u (the day\'s p50 distance; for the equity indices and gold off the book, half the median daily range). A description, not a forecast or a call.' });
+svcInterval('marketLive', () => _mlTick().catch(e => console.warn('[market-live]', e.message)), 60_000);
+// GET /api/market-live: every market on the book now (move since the open in u and %, the day's range, sessions, day type, lines touched,
+// a 15-minute path), the currency strength, the risk tape, release reactions and retail positioning since the morning. ?date=YYYY-MM-DD: a
+// stored day (written at 21:05 London). Market data, no trade levels: the desk login reads it too.
+app.get('/api/market-live', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const d = String(req.query.date ?? '');
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d !== _ml.date) { const raw = await kv.get(_ML_DAY_KEY(d)).catch(() => null); return res.json(raw ? { ...JSON.parse(raw), stored: true } : { ok: false, date: d, error: 'no stored record for that day (written at 21:05 London on days the live layer ran)' }); }
+    if (!_ml.at) await _mlTick().catch(() => {});
+    res.json({ ..._mlPayload(), ...(_ml.at ? {} : { error: 'the live layer has not run yet (the FX week is shut, or no desk book)' }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/terminal-bundle?u=<path>,<path>,...  (owner 2026-11-24: the Desk Terminal's first load in one request)
+// Each path is fetched from this same server with the caller's own cookie, so every route's login, desk-login rules and viewer copies apply
+// exactly as if the page had asked for it. Only the terminal's own load routes are accepted, at most 25, and never this route itself.
+const _TB_ALLOWED = new Set(['/api/desk-run', '/api/desk-score/record', '/api/desk-update', '/api/desk-quality', '/api/macro-scorecard', '/api/rate-diff', '/api/real-yield',
+  '/api/rates', '/api/cot-state', '/api/oanda-book/history', '/api/gpr', '/api/events', '/api/trade-watch', '/api/desk-weekly', '/api/desk-news', '/api/policy-rates',
+  '/api/cb-expectations', '/api/desk-dayfc', '/api/pair-select', '/api/market-live', '/api/bias-engine']);
+app.get('/api/terminal-bundle', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const list = [...new Set(String(req.query.u ?? '').split(',').map(x => x.trim()).filter(Boolean))].slice(0, 25);
+    const results = {};
+    await Promise.all(list.map(async u => {
+      const path = u.split('?')[0];
+      if (!u.startsWith('/api/') || !_TB_ALLOWED.has(path)) { results[u] = { ok: false, error: 'not a terminal load route' }; return; }
+      try {
+        const r = await fetch(`http://127.0.0.1:${PORT}${u}`, { headers: { cookie: req.headers.cookie ?? '', accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(45_000) });
+        const txt = await r.text();
+        try { results[u] = JSON.parse(txt); } catch { results[u] = { ok: false, error: `HTTP ${r.status}` }; }
+      } catch (e) { results[u] = { ok: false, error: e.message }; }
+    }));
+    res.json({ ok: true, results });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/policy-rates: each central bank's policy rate from its own published series (js/policyRates.js), with its as-of
@@ -32887,6 +33032,19 @@ createSrZones({
     return Object.fromEntries(adjusted.map(a => [a.name, instruments[a.name].ladder]));
   },
   cotForExport: () => _cotForExport(),
+  // the OI Profile as /api/oi-profile/export builds it (strongest book, ±3σ window, hedging map maxDte 3): gamma peak + PIN/BREAKOUT for the zone read
+  oiProfileFor: (sk, inst) => {
+    if (!inst?.spot) return null;
+    const fk = (() => { try { return _forecastKeyForPair(sk); } catch { return null; } })();
+    const sg = fk ? forecastState.latest?.instruments?.[fk]?.ladder?.sigma_daily_pct : null;
+    const dayMove = sg > 0 ? inst.spot * sg / 100 : null;
+    const rm = dayMove ?? (inst.refMove?.move > 0 ? inst.refMove.move : inst.spot * 0.01);
+    let hedge = null;
+    try { const bk = _cmeBook(sk, inst, { maxDte: 3 }); if (bk) { const half = Math.min(0.08, Math.max(0.008, 3.1 * rm / inst.spot)); hedge = hedgingScenario(bk.contracts, { spot: bk.spot, lo: bk.spot * (1 - half), hi: bk.spot * (1 + half), n: 81, shifts: [-2, 0, 2, 4], optMult: 1, futMult: 1 }); } } catch { hedge = null; }
+    const prof = buildOiProfile({ ...inst, pair: inst.pair || sk }, { sym: sk, hedge, dayMove, windowRm: 3 });
+    if (!prof) return null;
+    return { gammaPeak: prof.levels.find(l => l.type === 'gamma_peak')?.price ?? null, regime: prof.regime ?? null, dayMove };
+  },
   // today's desk book, read-only, as the trade watcher reads it: a card keeps its plan levels only while the session updates leave its direction unchanged
   deskCards: async () => {
     const date = _dpLondonDate(Date.now()), run = await _drLoad(date);
@@ -46048,7 +46206,10 @@ app.get('/api/services', (req, res) => {
       trace: _memTrace,
       kvBig: kv.kvBigReads(),
       bootProfile: _bootProfile,
+      heapAlloc: _heapAlloc,
+      heapGc: _heapGc,
       intlCache: intlCacheStats,
+      liveAtlas: { warmPairs: _laLiveCache.size, warming: _laLiveWarming.size, walks: _laWalkStats.walks, walkSec: +(_laWalkStats.ms / 1000).toFixed(1), sinceMin: +((Date.now() - _laWalkStats.since) / 60000).toFixed(1), top: Object.entries(_laWalkStats.byPair).sort((a, b) => b[1].ms - a[1].ms).slice(0, 8).map(([p, v]) => `${p}:${v.n}/${(v.ms / 1000).toFixed(1)}s`) },
       mappings: _memShots.list,
       sampledAt: new Date().toISOString(),
       note: 'This process only, not the container total (start.sh bots run as separate OS processes with their own RSS Railway meters separately). '
@@ -47776,6 +47937,60 @@ if (process.platform === 'linux' && process.env.BOOT_PROFILE !== '0') {
     }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
   }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
 }
+// ── Heap cap by forced collection (2026-11-23). The Level Atlas live walk allocates ~0.7 GB a minute of short-lived arrays (31 warm pairs x a walk per new bar). V8 sizes its old generation to the machine, so it lets that
+// garbage pile up to ~2 GB before a full collection, and Railway bills the resulting RSS high-water mark although the live data is ~0.5 GB. When the JS heap passes HEAP_GC_MB (default 800; 0 turns this off) a full
+// collection runs, at most once per 20 s; if the heap is still above the line afterwards (a genuinely big job such as the nightly book rebuild) the line moves up to 300 MB above that so it does not collect in a loop.
+// Needs no startup flag: --expose-gc is switched on at runtime. Stats in /api/services -> memory.heapGc. ──
+const _heapGc = { thresholdMB: Number(process.env.HEAP_GC_MB ?? 800), line: 0, runs: 0, freedMB: 0, lastAt: null, lastMs: 0, state: 'off' };
+if (_heapGc.thresholdMB > 0) {
+  try {
+    const v8 = await import('node:v8'), vm = await import('node:vm');
+    v8.setFlagsFromString('--expose-gc');
+    const gcFn = vm.runInNewContext('gc');
+    if (typeof gcFn === 'function') {
+      _heapGc.state = 'on'; _heapGc.line = _heapGc.thresholdMB; let last = 0;
+      const t = setInterval(() => {
+        const used = process.memoryUsage().heapUsed / 1048576;
+        if (used < _heapGc.line) { if (_heapGc.line > _heapGc.thresholdMB && used < _heapGc.thresholdMB) _heapGc.line = _heapGc.thresholdMB; return; }
+        if (Date.now() - last < 20_000) return;
+        const t0 = Date.now(); gcFn(); last = Date.now();
+        const after = process.memoryUsage().heapUsed / 1048576;
+        _heapGc.runs++; _heapGc.freedMB += Math.max(0, Math.round(used - after)); _heapGc.lastAt = new Date().toISOString().slice(11, 19); _heapGc.lastMs = last - t0;
+        _heapGc.line = after > _heapGc.thresholdMB ? Math.round(after + 300) : _heapGc.thresholdMB;
+      }, 3000); t.unref?.();
+    } else _heapGc.state = 'gc unavailable';
+  } catch (e) { _heapGc.state = 'error: ' + e.message; }
+}
+
+// ── Heap allocation sample (2026-11-23, diagnostic): from 15 min after boot, 150 s of V8 sampling-heap-profiler data (counting objects the GC has already freed too) names which functions allocate the ~1 GB/minute
+// that makes the JS heap sawtooth 0.7-2 GB and sets Railway's memory high-water mark. Answer in /api/services -> memory.heapAlloc ({state, totalMB, top[{mb, fn, chain}]}). Runs once per boot; BOOT_PROFILE=0 skips. ──
+const _heapAlloc = { state: 'off', totalMB: 0, top: [] };
+if (process.platform === 'linux' && process.env.BOOT_PROFILE !== '0') {
+  const startAt = setTimeout(() => import('node:inspector').then(({ default: insp }) => {
+    const ses = new insp.Session(); ses.connect();
+    const post = (m, p) => new Promise((res, rej) => ses.post(m, p ?? {}, (e, r) => e ? rej(e) : res(r)));
+    post('HeapProfiler.startSampling', { samplingInterval: 32768, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true }).then(() => {
+      _heapAlloc.state = 'running since ' + new Date().toISOString().slice(11, 19);
+      const stop = setTimeout(async () => {
+        try {
+          const { profile } = await post('HeapProfiler.stopSampling');
+          const rows = [], walk = (n, chain) => {
+            const f = n.callFrame, lab = `${f.functionName || '(anon)'} ${String(f.url).split('/').slice(-2).join('/')}:${f.lineNumber + 1}`;
+            if (n.selfSize > 0) rows.push({ b: n.selfSize, fn: lab, chain: chain.slice(-5).reverse() });
+            for (const c of n.children ?? []) walk(c, [...chain, lab]);
+          };
+          walk(profile.head, []);
+          const total = rows.reduce((a, r) => a + r.b, 0);
+          // roll the leaf allocator up by function, keeping the busiest call chain for it
+          const by = new Map(); for (const r of rows) { const e = by.get(r.fn) ?? { b: 0, best: 0, chain: [] }; e.b += r.b; if (r.b > e.best) { e.best = r.b; e.chain = r.chain; } by.set(r.fn, e); }
+          _heapAlloc.totalMB = Math.round(total / 1048576);
+          _heapAlloc.top = [...by.entries()].sort((a, b) => b[1].b - a[1].b).slice(0, 25).map(([fn, e]) => ({ mb: Math.round(e.b / 1048576), fn, chain: e.chain }));
+          _heapAlloc.state = 'done'; ses.disconnect();
+        } catch (e) { _heapAlloc.state = 'error: ' + e.message; }
+      }, 150_000); stop.unref?.();
+    }).catch(e => { _heapAlloc.state = 'error: ' + e.message; });
+  }).catch(e => { _heapAlloc.state = 'error: ' + e.message; }), 900_000); startAt.unref?.();
+}
 // every second for the first 90 s (where the boot jump happens, so it can be matched to the jobs running at that second), every 5 s after, until 10 min
 { let n = 0; const fast = setInterval(() => { const up = Date.now() - _serverBootedAt; if (up > 600_000) { clearInterval(fast); return; } if (up < 90_000 || ++n % 5 === 0) _memTracePush(); }, 1000); fast.unref?.(); }
 
@@ -48210,7 +48425,7 @@ if (process.env.OANDA_KEY) {
 }
 
 if (process.env.OANDA_KEY) {
-  const _referenceEngineRebuildTick = async () => {
+  const _referenceEngineRebuildTick = async ({ resumeSinceMs = 0 } = {}) => {
     let enabled = process.env.REFERENCE_ENGINE_REBUILD !== '0';   // env opt-OUT, defaults on
     try {
       const raw = await kv.get('caps');
@@ -48247,7 +48462,27 @@ if (process.env.OANDA_KEY) {
     // Session Handoff, below) can tell "never touched tonight" apart from
     // "touched tonight, just early" — see that pass's own doc.
     const _rebuildTickStartedAt = Date.now();
-    await runSeq('Level Atlas', () => _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+    // 2026-11-24: Level Atlas (Vote Atlas) and Fib Atlas books only feed the Vote/Fib Atlas trading bots, which are retired after the look-ahead findings. Their rebuild is the heaviest memory job
+    // (31 pairs of full M1) and is now OFF by default. Turn back on with Caps.atlasBooksRebuild=true or env ATLAS_BOOKS_REBUILD=1. Session Path and Session Handoff are unaffected.
+    let _atlasBooksOn = process.env.ATLAS_BOOKS_REBUILD === '1';
+    try { const rawC = await kv.get('caps'); if (rawC) { const cc = JSON.parse(rawC); if (typeof cc.atlasBooksRebuild === 'boolean') _atlasBooksOn = cc.atlasBooksRebuild; } } catch (e) { /* keep env default */ }
+    if (!_atlasBooksOn) console.log('[reference-engine-rebuild] Level Atlas + Fib Atlas book rebuild skipped (Caps.atlasBooksRebuild is off; their bots are retired)');
+    // Resume (2026-11-24): a catch-up boot after a mid-run restart used to redo all of Level Atlas from M1 (a ~3 GB boot burst, repeated on every overnight deploy). Skip any pair whose stored book
+    // was already generated since the due slot; only the unfinished ones are rebuilt.
+    // `_pairsLeft(prefix)` = the pairs whose stored book under that R2 prefix was NOT generated since the due slot (all pairs when not resuming).
+    const _pairsLeft = async (prefix) => {
+      if (!resumeSinceMs) return REFERENCE_ENGINE_PAIRS;
+      const done = new Set();
+      for (const p of REFERENCE_ENGINE_PAIRS) {
+        try { const bk = await _r2GetJSON(`${prefix}/${p.toLowerCase()}.json`); if (bk?.generatedAt && Date.parse(bk.generatedAt) >= resumeSinceMs) done.add(p); } catch (e) { /* unreadable: rebuild it */ }
+      }
+      const left = REFERENCE_ENGINE_PAIRS.filter(p => !done.has(p));
+      console.log(`[reference-engine-rebuild] resume: ${prefix} ${done.size}/${REFERENCE_ENGINE_PAIRS.length} pairs already rebuilt since the due slot, ${left.length} left`);
+      return left;
+    };
+    let _laPairs = REFERENCE_ENGINE_PAIRS;
+    if (resumeSinceMs && _atlasBooksOn) _laPairs = await _pairsLeft('level-atlas');
+    if (_atlasBooksOn) await runSeq('Level Atlas', () => _startLevelAtlasRunJob({ instruments: _laPairs }));
     // Fib Atlas (Asia+Monday) moved to run 2nd/3rd, right after Level Atlas —
     // was 4th/5th, after Session Path + Session Handoff (2026-09-18, direct
     // owner request once fib_atlas_bot_v2 made Fib Atlas freshness load-
@@ -48298,10 +48533,12 @@ if (process.env.OANDA_KEY) {
     const _fibRotOffset = _dayOfYear % fibAtlasPairsBase.length;
     const fibAtlasPairs = [...fibAtlasPairsBase.slice(_fibRotOffset), ...fibAtlasPairsBase.slice(0, _fibRotOffset)];
     console.log(`[reference-engine-rebuild] Fib Atlas pair order rotated to start at "${fibAtlasPairs[0]}" (offset ${_fibRotOffset}/${fibAtlasPairsBase.length}, day-of-year ${_dayOfYear})`);
-    await runSeq('Asia Fib Atlas', () => _startAsiaFibAtlasRunJob({ instruments: fibAtlasPairs }));
-    await runSeq('Monday Fib Atlas', () => _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }));
-    await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
-    await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+    if (_atlasBooksOn) await runSeq('Asia Fib Atlas', () => _startAsiaFibAtlasRunJob({ instruments: fibAtlasPairs }));
+    if (_atlasBooksOn) await runSeq('Monday Fib Atlas', () => _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }));
+    const _spPairs = await _pairsLeft('session-path');
+    await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: _spPairs }));
+    const _shPairs = await _pairsLeft('session-handoff');
+    await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: _shPairs }));
 
     // Follow-on healing pass (2026-09-19, direct owner request after tracing
     // AUDNZD's repeated overnight failure): the batch job above still dies
@@ -48325,7 +48562,7 @@ if (process.env.OANDA_KEY) {
     // (loud staleness alert, investigate) rather than quietly patched over
     // one-by-one, which could also just extend how long this tick keeps a
     // memory-constrained container busy.
-    try {
+    if (_atlasBooksOn) try {
       const _FIB_HEAL_MAX = 5;
       const _fibHealLadders = [
         { label: 'asia', prefix: 'asia-fib-atlas', starter: _startAsiaFibAtlasRunJob },
@@ -48409,7 +48646,8 @@ if (process.env.OANDA_KEY) {
         return;
       }
       console.log(`[reference-engine-rebuild] catch-up: last successful run was ${lastRun ?? 'never'}, due slot ${dueDate} missing -- running now (boot within the safe overnight window)`);
-      await _referenceEngineRebuildTick();
+      const _slotMs = (() => { let m = _btLondonMidnightSec(new Date(nowMs)) * 1000; if (m + 30 * 60_000 > nowMs) m -= 24 * 3600_000; return m + 30 * 60_000; })();
+      await _referenceEngineRebuildTick({ resumeSinceMs: _slotMs });
       await kv.put(_REF_ENGINE_SCHED_KEY, dueDate).catch(e => console.error('[reference-engine-rebuild] catch-up stamp write failed:', e.message));
     } catch (e) {
       console.error('[reference-engine-rebuild] catch-up check failed:', e.message);

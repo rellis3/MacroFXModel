@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FX8 Residual Paper Layers</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --blue:#3987e5;--orange:#d95926;--aqua:#199e70;--amber:#d29922;--red:#f85149;--green:#3fb950;--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .chip.ok{color:var(--green);border-color:var(--green)} .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 48px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .note{font-size:12px;color:var(--text2);line-height:1.6;max-width:130ch} .note b{color:var(--text)}
+  .ctrl{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+  .ctrl label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font:inherit;font-size:12.5px;text-transform:none;letter-spacing:0;max-width:100%}
+  .btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn.on{background:#22304d;color:#fff;border-color:var(--blue)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+  .kpi{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+  .kpi .l{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .kpi .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media (max-width:950px){.grid2{grid-template-columns:1fr}}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:4px 7px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+  th{color:var(--text3);font-weight:600;background:var(--card);position:sticky;top:0;z-index:1}
+  td:first-child,th:first-child{text-align:left}
+  tr.sel td{background:#1d2a40} tr.click{cursor:pointer} tr.click:hover td{background:#1b2230}
+  .xscroll{overflow-x:auto;max-width:100%} .tscroll{overflow:auto;max-height:420px}
+  .pos{color:#5fb4ff} .neg{color:#ff8a5c} .mut{color:var(--text3)}
+  .call-better{color:var(--green);font-weight:700} .call-worse{color:var(--red);font-weight:700} .call-none{color:var(--text3)}
+  #eq{height:380px} #dd{height:130px} #tv{height:420px} @media (max-width:700px){#eq{height:300px}#tv{height:320px}}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text2);margin:2px 0 6px}
+  .sw{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+  .rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin-top:8px}
+  .rule{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text2)} .rule b{color:var(--text)}
+  .rule .res{margin-top:4px;font-size:11.5px}
+  .pager{display:flex;gap:6px;align-items:center;margin-top:6px;font-size:11.5px;color:var(--text3)}
+  svg text{fill:var(--text2);font-size:10.5px}
+  .tvinfo{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin:8px 0}
+  .tvinfo div{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11.5px;color:var(--text2)}
+  .tvinfo b{display:block;color:var(--text);font-size:13px;font-variant-numeric:tabular-nums}
+  .warnbar{background:#2a2110;border:1px solid #5a4514;color:#e3c27a;border-radius:8px;padding:8px 12px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>FX8 residual book · research-paper layers</h1>
+  <span class="chip warn">EXPLORATORY · not pre-registered</span>
+  <span class="chip" id="chipRange">—</span>
+  <span class="spacer"></span>
+  <span class="chip" id="chipRepro">base repro —</span>
+  <a class="chip" href="residual-fx8-forward.html" target="_blank">Forward record (frozen base) →</a>
+  <a class="chip" href="evidence.html" target="_blank">Evidence Book</a>
+</div>
+<div class="wrap">
+
+  <div class="warnbar">The base book was chosen on this same 2016–2026 history, so every number here is in-sample. The layer rules were fixed in
+    <code>scripts/residual-fx8-paper-layers/layers.py</code> before any variant was run. Use this page to see <b>what each paper's idea does to the book</b>, not as proof of an edge.
+    The only test on new data is the <a href="residual-fx8-forward.html">forward record</a>.</div>
+
+  <div class="box">
+    <h2>Strategy</h2>
+    <div class="note"><b>Base:</b> 8 currencies (USD EUR GBP AUD NZD JPY CAD CHF) at the 17:00 New York close. Each currency's return minus the basket average;
+      a 120-day PCA removes K = 2 common factors (dollar, risk); the cumulative residual path is z-scored. <b>Enter</b> a currency when |z| ≥ 1.5 (fade it),
+      <b>exit</b> when z crosses back through 0. Inverse-vol weights, factor- and basket-neutral, scaled to gross 1, house spread costs.
+      "+carry" adds the 3-month interest differential the book earns or pays.</div>
+    <div class="rules" id="rules"></div>
+  </div>
+
+  <div class="box">
+    <div class="ctrl">
+      <label>Variant<select id="selVar"></select></label>
+      <label>Compare with<select id="selCmp"><option value="">— none —</option></select></label>
+      <label>P&amp;L<select id="selPnl">
+        <option value="net_carry">Net of spread + carry</option>
+        <option value="net">Net of spread (no carry)</option>
+        <option value="gross">Gross</option></select></label>
+      <label>Period<select id="selPer">
+        <option value="all">All (2016-06 → 2026-08)</option>
+        <option value="IS">First half (to 2021-07)</option>
+        <option value="OOS">Second half (from 2021-07)</option></select></label>
+      <label>Size<span><button class="btn on" id="bG1">gross 1 (as tested)</button> <button class="btn" id="bV10">scaled to 10% vol</button></span></label>
+      <label>Scale<span><button class="btn" id="bLog">log</button> <button class="btn on" id="bLin">linear</button></span></label>
+    </div>
+    <div class="note" id="sizeNote" style="margin-top:8px"></div>
+  </div>
+
+  <div class="box">
+    <h2 id="kpiTitle">Performance</h2>
+    <div class="kpis" id="kpis"></div>
+  </div>
+
+  <div class="box">
+    <h2><span id="eqTitle">Equity curve</span> <button class="btn" id="csvEq" style="margin-left:10px;text-transform:none;letter-spacing:0">Download daily CSV</button></h2>
+    <div class="legend" id="eqLegend"></div>
+    <div id="eq"></div>
+    <h2 style="margin-top:10px">Drawdown</h2>
+    <div id="dd"></div>
+  </div>
+
+  <div class="box">
+    <h2>Layer ladder: every variant vs the base (click a row to view it)</h2>
+    <div class="note" style="margin-bottom:6px">"Better" / "worse" needs the Sharpe change to have the same sign in both halves <b>and</b> a 90% block-bootstrap interval
+      (block 21 days, 2,000 draws) that excludes 0. Six single layers were tried, so about one is expected to look good by chance.</div>
+    <div class="xscroll"><table id="ladder"></table></div>
+  </div>
+
+  <div class="grid2">
+    <div class="box">
+      <h2>Sharpe by year (selected P&amp;L)</h2>
+      <div class="xscroll"><table id="yrTable"></table></div>
+    </div>
+    <div class="box">
+      <h2>Trade P&amp;L distribution (leg P&amp;L, bp of book)</h2>
+      <svg id="hist" width="100%" height="210"></svg>
+      <div class="note" id="histNote"></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2 id="monTitle">Monthly returns (%)</h2>
+    <div class="xscroll"><table id="monTable"></table></div>
+  </div>
+
+  <div class="grid2">
+    <div class="box">
+      <h2>By currency</h2>
+      <div class="xscroll"><table id="ccyTable"></table></div>
+    </div>
+    <div class="box">
+      <h2>How trades end: MAE vs final (bp)</h2>
+      <svg id="mae" width="100%" height="230"></svg>
+      <div class="note">Each dot is a trade. Left = how far it went against you; up = where it finished. Losers far left with no recovery are the fat tail.</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Trade view</h2>
+    <div class="ctrl">
+      <button class="btn" id="tvPrev">‹ prev</button>
+      <button class="btn" id="tvNext">next ›</button>
+      <span class="note" id="tvTitle"></span>
+    </div>
+    <div class="tvinfo" id="tvInfo"></div>
+    <div class="legend"><span><span class="sw" style="background:#5fb4ff"></span>currency vs basket (index, right)</span>
+      <span><span class="sw" style="background:var(--amber)"></span>residual z (left) with ±1.5 entry and 0 exit lines</span>
+      <span class="mut">▲▼ entry · ● exit · shaded = in trade · keys ← →</span></div>
+    <div id="tv"></div>
+  </div>
+
+  <div class="box">
+    <h2><span id="trTitle">Trade list</span> <button class="btn" id="csvTr" style="margin-left:10px;text-transform:none;letter-spacing:0">Download trades CSV</button></h2>
+    <div class="ctrl" style="margin-bottom:6px">
+      <label>Currency<select id="fCcy"><option value="">all</option></select></label>
+      <label>Result<select id="fRes"><option value="">all</option><option value="w">winners</option><option value="l">losers</option></select></label>
+      <label>Direction<select id="fDir"><option value="">both</option><option value="1">long</option><option value="-1">short</option></select></label>
+    </div>
+    <div class="tscroll"><table id="trTable"></table></div>
+    <div class="pager" id="trPager"></div>
+  </div>
+
+  <div class="box">
+    <h2>Data notes</h2>
+    <div class="note" id="dataNote"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const PAPERS = {
+  'base': ['Base', 'FX8 threshold residual book (residual-pca-stops). Reproduces net Sharpe 0.432 / 0.378.'],
+  '+V global FX vol': ['Menkhoff, Sarno, Schmeling & Schrimpf (2012), "Carry trades and global FX volatility"', 'No new entries when average 20-day FX vol is at or above its 80th percentile of the prior year.'],
+  '+M momentum guard': ['Menkhoff et al. (2012) "Currency momentum"; Asness, Moskowitz & Pedersen (2013)', "Don't fade a currency in the top 2 or bottom 2 of the 8 by 63-day return when the trade is against that run."],
+  '+VAL value guard': ['Rogoff (1996) PPP; AMP (2013) value', 'Only fade toward value: the trade must agree with the sign of the 3-year (756-day) move vs the median (nominal proxy, no CPI).'],
+  '+C carry guard': ['Lustig, Roussanov & Verdelhan (2011)', "Don't take a fade that pays carry (direction × (3m rate − 8-currency average) < 0)."],
+  '+AL Avellaneda-Lee entry/exit': ['Avellaneda & Lee (2010) statistical arbitrage', 'Enter at |z| ≥ 1.25, exit at |z| ≤ 0.5 or a sign change (their OU s-score approximated by our z).'],
+  'NN factor-neutral off': ['Verdelhan (2018) dollar factor; ablation', 'Weights only basket-neutral; the 2 PCA factor loadings are NOT hedged out.'],
+  'stack V+M': ['Stack', 'Vol filter + momentum guard.'],
+  'stack V+M+VAL': ['Stack', 'Vol + momentum + value.'],
+  'stack V+M+VAL+C': ['Stack', 'All four guards.'],
+};
+const COLORS = ['#5fb4ff', '#d29922', '#3fb950', '#f85149', '#b083f0', '#199e70', '#d95926', '#9da7b3', '#e3c27a', '#ff8a5c'];
+let S, st = {v: 'base', cmp: '', pnl: 'net_carry', per: 'all', v10: false, log: false}, trPage = 0, tvIdx = 0, tvList = [];
+let eqChart, ddChart, tvChart;
+
+const fmt = (v, d = 2) => v == null || !isFinite(v) ? '—' : (+v).toFixed(d);
+const sgn = (v, d = 2) => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + (+v).toFixed(d);
+const cls = v => v > 0 ? 'pos' : v < 0 ? 'neg' : 'mut';
+
+function periodRange() {
+  const n = S.dates.length, h = Math.floor(n / 2);
+  return st.per === 'IS' ? [0, h] : st.per === 'OOS' ? [h, n] : [0, n];
+}
+function series(v) { return S.series_bp[v][st.pnl]; }
+function stats(arr) {
+  const n = arr.length; if (!n) return {};
+  const m = arr.reduce((a, b) => a + b, 0) / n;
+  const sd = Math.sqrt(arr.reduce((a, b) => a + (b - m) ** 2, 0) / (n - 1));
+  let eq = 1, pk = 1, mdd = 0;
+  for (const b of arr) { eq *= 1 + b / 1e4; pk = Math.max(pk, eq); mdd = Math.min(mdd, eq / pk - 1); }
+  return {sharpe: sd > 0 ? m / sd * Math.sqrt(252) : NaN, ann: m * 252 / 100, vol: sd * Math.sqrt(252) / 100, mdd: mdd * 100, total: (eq - 1) * 100};
+}
+function scaleFor(v) {
+  if (!st.v10) return 1;
+  const s = stats(series(v));
+  return s.vol > 0 ? 10 / s.vol : 1;
+}
+
+// ------------------------------------------------------------------ rules + controls
+function buildStatic() {
+  const R = S.variants;
+  $('rules').innerHTML = Object.keys(PAPERS).filter(k => k !== 'base' && !k.startsWith('stack')).map(k => {
+    const c = R[k].vs_base_net_carry;
+    const cc = c.call === 'better' ? 'call-better' : c.call === 'worse' ? 'call-worse' : 'call-none';
+    return `<div class="rule"><b>${k}</b><br><span class="mut">${PAPERS[k][0]}</span><br>${PAPERS[k][1]}
+      <div class="res">Δ Sharpe vs base (+carry): <b class="${cls(c.d_full)}">${sgn(c.d_full)}</b> [${sgn(c.ci90[0])}, ${sgn(c.ci90[1])}] · halves ${sgn(c.d_IS)} / ${sgn(c.d_OOS)} · <span class="${cc}">${c.call}</span></div></div>`;
+  }).join('');
+  const opts = Object.keys(S.variants).map(k => `<option value="${k}">${k}</option>`).join('');
+  $('selVar').innerHTML = opts;
+  $('selCmp').innerHTML = '<option value="">— none —</option>' + opts;
+  $('selCmp').value = '';
+  const m = S.meta;
+  $('chipRange').textContent = `${m.first_pnl_day} → ${m.last_pnl_day} · K=${m.K}`;
+  const b = R.base.net;
+  const ok = Math.abs(b.IS.sharpe - 0.432) < 0.002 && Math.abs(b.OOS.sharpe - 0.378) < 0.002;
+  $('chipRepro').className = 'chip ' + (ok ? 'ok' : 'bad');
+  $('chipRepro').textContent = `base repro ${ok ? '✓' : '✗'} ${fmt(b.IS.sharpe, 3)} / ${fmt(b.OOS.sharpe, 3)}`;
+  $('fCcy').innerHTML = '<option value="">all</option>' + Object.keys(S.ccy).map(c => `<option>${c}</option>`).join('');
+  $('dataNote').innerHTML = `<b>Prices:</b> OANDA 17:00 New York daily closes for the 7 USD pairs (<code>analysis/output/residual-pca-family/panel_daily.csv</code>),
+    ${m.first_pnl_day} → ${m.last_pnl_day}; the lockbox (after 2026-08-21) is not used. NOK and SEK are not in the panel, so this is FX8, not the full G10.<br>
+    <b>Rates:</b> FRED OECD 3-month interbank (monthly), month M used only from the first day of M+2 (no lookahead). EUR uses the euro-area rate. Carry ignores broker financing mark-up.<br>
+    <b>Costs:</b> house round-trip spread per currency (EUR 0.8bp … NZD 1.3bp) × turnover / 2.<br>
+    <b>Leg P&amp;L:</b> a trade's P&amp;L is its currency leg's contribution to the gross-1 book (w × next-day return vs the 8-currency basket), in bp. Because the weights sum to zero this adds up to the book's gross return, and USD trades get their share. Spread and carry are booked at book level. The win rate here is in bp of the book, not in residual-sd units as in residual-pca-stops (65–70% there), so the two differ;
+    and the factor hedge spreads small weights to currencies outside trades, so the legs don't sum exactly to the book.<br>
+    <b>Halves:</b> split at ${m.oos_start}. <b>Seed</b> ${m.seed}. Files: <code>analysis/output/residual-fx8-paper-layers/</code> (RESULTS.md, results.json, site.json).`;
+}
+
+function setSizeNote() {
+  $('sizeNote').innerHTML = st.v10
+    ? `<b>Scaled to 10% annual vol (display only):</b> each variant's whole history is multiplied by one constant chosen after the fact (10% ÷ its realised vol). Sharpe is unchanged; returns and drawdowns are what a levered version would have shown, before margin and financing on the extra leverage.`
+    : `<b>Gross 1 as tested:</b> the sum of absolute currency weights is 1, so a 1% move in one currency against the basket moves the book by at most ~0.4%. That is why returns look small; Sharpe is the comparable number.`;
+}
+
+// ------------------------------------------------------------------ KPIs
+function renderKpis() {
+  const [a, b] = periodRange();
+  const k = scaleFor(st.v);
+  const arr = series(st.v).slice(a, b).map(x => x * k);
+  const s = stats(arr);
+  const tr = S.trades[st.v].filter(t => t.entry >= S.dates[a] && t.entry <= S.dates[b - 1] && !t.open);
+  const w = tr.filter(t => t.pnl_bp > 0);
+  const avg = tr.length ? tr.reduce((x, t) => x + t.pnl_bp, 0) / tr.length : NaN;
+  const hold = tr.length ? tr.map(t => t.days).sort((x, y) => x - y)[Math.floor(tr.length / 2)] : NaN;
+  const pct = S.variants[st.v].net.share_days_in_position;
+  const d = st.v === 'base' ? null : S.variants[st.v][st.pnl === 'gross' ? 'vs_base_net' : 'vs_base_' + st.pnl];
+  const K = [
+    ['Sharpe', fmt(s.sharpe), 'annualised, 252 days'],
+    ['Return / yr', sgn(s.ann) + '%', `vol ${fmt(s.vol)}%`],
+    ['Total', sgn(s.total, 1) + '%', 'compounded'],
+    ['Max DD', fmt(s.mdd) + '%', ''],
+    ['Trades', tr.length, `${S.variants[st.v].net.trades} in all periods`],
+    ['Win rate', tr.length ? fmt(100 * w.length / tr.length, 0) + '%' : '—', 'leg P&L > 0'],
+    ['Avg trade', sgn(avg, 1) + ' bp', 'leg P&L, gross-1 book'],
+    ['Median hold', isFinite(hold) ? hold + ' d' : '—', 'trading days'],
+    ['Days in market', fmt(100 * pct, 0) + '%', 'any position'],
+    ['Δ Sharpe vs base', d ? sgn(d.d_full) : '—', d ? `90% [${sgn(d.ci90[0])}, ${sgn(d.ci90[1])}] · ${d.call}` : 'this is the base'],
+  ];
+  $('kpiTitle').textContent = `Performance · ${st.v} · ${$('selPnl').selectedOptions[0].text} · ${$('selPer').selectedOptions[0].text}`;
+  $('kpis').innerHTML = K.map(([l, v, s2]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s2}</div></div>`).join('');
+}
+
+// ------------------------------------------------------------------ equity + drawdown
+function mkChart(el, h) {
+  return LightweightCharts.createChart(el, {height: h, layout: {background: {color: '#161b22'}, textColor: '#9da7b3'},
+    grid: {vertLines: {color: '#21262d'}, horzLines: {color: '#21262d'}}, rightPriceScale: {borderColor: '#30363d'},
+    timeScale: {borderColor: '#30363d'}, crosshair: {mode: 0}, autoSize: true});
+}
+function curve(v) {
+  const [a, b] = periodRange();
+  const k = scaleFor(v);
+  const arr = series(v);
+  let eq = 1, pk = 1;
+  const e = [], dd = [];
+  for (let i = a; i < b; i++) {
+    eq *= 1 + arr[i] * k / 1e4; pk = Math.max(pk, eq);
+    e.push({time: S.dates[i], value: st.log ? eq : (eq - 1) * 100});
+    dd.push({time: S.dates[i], value: (eq / pk - 1) * 100});
+  }
+  return {e, dd};
+}
+function renderEquity() {
+  if (eqChart) { eqChart.remove(); ddChart.remove(); }
+  eqChart = mkChart($('eq'), 380); ddChart = mkChart($('dd'), 130);
+  eqChart.applyOptions({rightPriceScale: {mode: st.log ? 1 : 0}});
+  const list = [st.v]; if (st.cmp && st.cmp !== st.v) list.push(st.cmp);
+  if (st.v !== 'base' && st.cmp !== 'base') list.push('base');
+  const leg = [];
+  list.forEach((v, j) => {
+    const c = j === 0 ? '#5fb4ff' : j === 1 && st.cmp ? '#d29922' : '#6e7681';
+    const {e, dd} = curve(v);
+    eqChart.addLineSeries({color: c, lineWidth: j === 0 ? 2 : 1.5, priceLineVisible: false}).setData(e);
+    ddChart.addAreaSeries({lineColor: c, topColor: 'rgba(0,0,0,0)', bottomColor: c + '44', lineWidth: 1, priceLineVisible: false}).setData(dd);
+    leg.push(`<span><span class="sw" style="background:${c}"></span>${v}</span>`);
+  });
+  $('eqLegend').innerHTML = leg.join('') + `<span class="mut">${st.log ? 'growth of 1 (log)' : 'cumulative % (compounded)'}</span>`;
+  $('eqTitle').textContent = 'Equity curve · ' + $('selPnl').selectedOptions[0].text;
+  eqChart.timeScale().fitContent(); ddChart.timeScale().fitContent();
+  eqChart.timeScale().subscribeVisibleLogicalRangeChange(r => r && ddChart.timeScale().setVisibleLogicalRange(r));
+}
+
+// ------------------------------------------------------------------ ladder
+function renderLadder() {
+  const col = st.pnl === 'gross' ? 'net' : st.pnl;
+  const rows = Object.keys(S.variants).map(k => {
+    const v = S.variants[k], p = v[col], d = v['vs_base_' + col];
+    const cc = !d ? '' : d.call === 'better' ? 'call-better' : d.call === 'worse' ? 'call-worse' : 'call-none';
+    const step = v.vs_previous_step_net ? `${sgn(v.vs_previous_step_net.d_full)}` : '';
+    return `<tr class="click ${k === st.v ? 'sel' : ''}" data-v="${k}"><td>${k}<br><span class="mut" style="font-size:10.5px">${PAPERS[k][0]}</span></td>
+      <td>${v.net.trades}</td><td>${fmt(100 * v.net.share_days_in_position, 0)}%</td>
+      <td class="${cls(p.IS.sharpe)}">${fmt(p.IS.sharpe)}</td><td class="${cls(p.OOS.sharpe)}">${fmt(p.OOS.sharpe)}</td><td class="${cls(p.full.sharpe)}"><b>${fmt(p.full.sharpe)}</b></td>
+      <td>${sgn(p.full.ann_ret_pct)}%</td><td>${fmt(p.full.max_dd_pct)}%</td>
+      <td class="${d ? cls(d.d_full) : ''}">${d ? sgn(d.d_full) : '—'}</td><td>${d ? `[${sgn(d.ci90[0])}, ${sgn(d.ci90[1])}]` : '—'}</td>
+      <td>${d ? sgn(d.d_IS) + ' / ' + sgn(d.d_OOS) : '—'}</td><td class="${cc}">${d ? d.call : '—'}</td><td>${step}</td></tr>`;
+  }).join('');
+  $('ladder').innerHTML = `<tr><th>Variant</th><th>Trades</th><th>In mkt</th><th>Sharpe 1st half</th><th>2nd half</th><th>All</th><th>Ret/yr</th><th>Max DD</th>
+    <th>Δ vs base</th><th>90% CI</th><th>Δ halves</th><th>Call</th><th>Δ vs prev step</th></tr>` + rows;
+  $('ladder').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { st.v = tr.dataset.v; $('selVar').value = st.v; trPage = 0; renderAll(); });
+}
+
+// ------------------------------------------------------------------ year + monthly
+function renderYears() {
+  const keys = Object.keys(S.variants);
+  const years = [...new Set(S.dates.map(d => d.slice(0, 4)))];
+  const head = '<tr><th>Year</th>' + keys.map(k => `<th title="${k}">${k.replace(/^\+|^stack /, '').split(' ')[0]}</th>`).join('') + '</tr>';
+  const body = years.map(y => {
+    const ix = S.dates.map((d, i) => d.startsWith(y) ? i : -1).filter(i => i >= 0);
+    return `<tr><td>${y}</td>` + keys.map(k => {
+      const arr = ix.map(i => series(k)[i]);
+      const s = stats(arr).sharpe;
+      const better = k !== 'base' && isFinite(s) && s > stats(ix.map(i => series('base')[i])).sharpe;
+      return `<td class="${cls(s)}" style="${k === st.v ? 'font-weight:700' : ''}${k !== 'base' ? (better ? ';background:#13261a' : ';background:#2a1717') : ''}">${fmt(s)}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+  $('yrTable').innerHTML = head + body;
+}
+function renderMonthly() {
+  const k = scaleFor(st.v), arr = series(st.v), m = {};
+  S.dates.forEach((d, i) => { const y = d.slice(0, 4), mo = +d.slice(5, 7); m[y] = m[y] || {}; m[y][mo] = (m[y][mo] || 1) * (1 + arr[i] * k / 1e4); });
+  const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  $('monTitle').textContent = `Monthly returns (%) · ${st.v}${st.v10 ? ' · scaled to 10% vol' : ' · gross 1'}`;
+  $('monTable').innerHTML = '<tr><th>Year</th>' + MN.map(x => `<th>${x}</th>`).join('') + '<th>Year</th></tr>' + Object.keys(m).map(y => {
+    let yr = 1;
+    const cells = MN.map((_, j) => { const g = m[y][j + 1]; if (g == null) return '<td class="mut">·</td>'; yr *= g; const p = (g - 1) * 100; return `<td class="${cls(p)}">${sgn(p)}</td>`; }).join('');
+    return `<tr><td>${y}</td>${cells}<td class="${cls(yr - 1)}"><b>${sgn((yr - 1) * 100)}</b></td></tr>`;
+  }).join('');
+}
+
+// ------------------------------------------------------------------ trade analytics
+function closedTrades(v) {
+  const [a, b] = periodRange();
+  return S.trades[v].filter(t => !t.open && t.entry >= S.dates[a] && t.entry <= S.dates[b - 1]);
+}
+function renderHist() {
+  const tr = closedTrades(st.v), svg = $('hist'), W = svg.clientWidth || 600, H = 210, pad = 28;
+  if (!tr.length) { svg.innerHTML = ''; return; }
+  const v = tr.map(t => t.pnl_bp), lo = Math.floor(Math.min(...v) / 10) * 10, hi = Math.ceil(Math.max(...v) / 10) * 10;
+  const nb = 30, bw = (hi - lo) / nb || 1, bins = new Array(nb).fill(0);
+  v.forEach(x => bins[Math.min(nb - 1, Math.floor((x - lo) / bw))]++);
+  const mx = Math.max(...bins), X = x => pad + (x - lo) / (hi - lo) * (W - 2 * pad), Y = c => H - pad - c / mx * (H - 2 * pad);
+  let s = '';
+  bins.forEach((c, i) => { const x0 = lo + i * bw; s += `<rect x="${X(x0) + 1}" y="${Y(c)}" width="${Math.max(1, X(x0 + bw) - X(x0) - 2)}" height="${H - pad - Y(c)}" fill="${x0 + bw / 2 >= 0 ? '#5fb4ff' : '#ff8a5c'}" opacity=".85"/>`; });
+  s += `<line x1="${X(0)}" x2="${X(0)}" y1="${pad / 2}" y2="${H - pad}" stroke="#9da7b3" stroke-dasharray="3 3"/>`;
+  [lo, 0, hi].forEach(t => s += `<text x="${X(t)}" y="${H - 8}" text-anchor="middle">${t}</text>`);
+  svg.innerHTML = s;
+  const w = v.filter(x => x > 0), l = v.filter(x => x <= 0), med = a => a.length ? a.slice().sort((p, q) => p - q)[Math.floor(a.length / 2)] : NaN;
+  const pf = l.length ? w.reduce((a, b) => a + b, 0) / -l.reduce((a, b) => a + b, 0) : NaN;
+  $('histNote').innerHTML = `${tr.length} closed trades · winners ${w.length} (median ${sgn(med(w), 1)} bp) · losers ${l.length} (median ${sgn(med(l), 1)} bp) · profit factor ${fmt(pf)} · worst ${sgn(Math.min(...v), 1)} bp`;
+}
+function renderMae() {
+  const tr = closedTrades(st.v), svg = $('mae'), W = svg.clientWidth || 600, H = 230, pad = 30;
+  if (!tr.length) { svg.innerHTML = ''; return; }
+  const xs = tr.map(t => t.mae_bp), ys = tr.map(t => t.pnl_bp);
+  const x0 = Math.min(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const X = x => pad + (x - x0) / (0 - x0 || 1) * (W - 2 * pad), Y = y => H - pad - (y - y0) / (y1 - y0 || 1) * (H - 2 * pad);
+  let s = `<line x1="${pad}" x2="${W - pad}" y1="${Y(0)}" y2="${Y(0)}" stroke="#30363d"/>`;
+  tr.forEach(t => s += `<circle cx="${X(t.mae_bp)}" cy="${Y(t.pnl_bp)}" r="3" fill="${t.pnl_bp > 0 ? '#5fb4ff' : '#ff8a5c'}" opacity=".7"><title>${t.ccy} ${t.entry} MAE ${t.mae_bp} final ${t.pnl_bp}</title></circle>`);
+  s += `<text x="${pad}" y="${H - 8}">${x0.toFixed(0)} bp MAE</text><text x="${W - pad}" y="${H - 8}" text-anchor="end">0</text>`;
+  s += `<text x="4" y="${Y(y1) + 4}">${y1.toFixed(0)}</text><text x="4" y="${Y(y0)}">${y0.toFixed(0)}</text>`;
+  svg.innerHTML = s;
+}
+function renderCcy() {
+  const tr = closedTrades(st.v), by = {};
+  tr.forEach(t => { (by[t.ccy] = by[t.ccy] || []).push(t); });
+  $('ccyTable').innerHTML = '<tr><th>Currency</th><th>Trades</th><th>Win %</th><th>Avg bp</th><th>Total bp</th><th>Worst bp</th><th>Median hold</th><th>Avg carry (pp)</th></tr>' +
+    Object.keys(S.ccy).map(c => {
+      const a = by[c] || []; if (!a.length) return `<tr><td>${c}</td><td>0</td><td colspan="6" class="mut">—</td></tr>`;
+      const tot = a.reduce((x, t) => x + t.pnl_bp, 0), cr = a.filter(t => t.carry_pp != null);
+      return `<tr><td>${c}</td><td>${a.length}</td><td>${fmt(100 * a.filter(t => t.pnl_bp > 0).length / a.length, 0)}</td>
+        <td class="${cls(tot)}">${sgn(tot / a.length, 1)}</td><td class="${cls(tot)}">${sgn(tot, 0)}</td><td>${fmt(Math.min(...a.map(t => t.pnl_bp)), 1)}</td>
+        <td>${a.map(t => t.days).sort((x, y) => x - y)[Math.floor(a.length / 2)]}</td><td class="${cr.length ? cls(cr.reduce((x, t) => x + t.carry_pp, 0)) : ''}">${cr.length ? sgn(cr.reduce((x, t) => x + t.carry_pp, 0) / cr.length) : '—'}</td></tr>`;
+    }).join('');
+}
+
+// ------------------------------------------------------------------ trade list + viewer
+function filtered() {
+  const [a, b] = periodRange();
+  return S.trades[st.v].filter(t => t.entry >= S.dates[a] && t.entry <= S.dates[b - 1]
+    && (!$('fCcy').value || t.ccy === $('fCcy').value)
+    && (!$('fRes').value || ($('fRes').value === 'w' ? t.pnl_bp > 0 : t.pnl_bp <= 0))
+    && (!$('fDir').value || t.dir === +$('fDir').value));
+}
+function renderTrades() {
+  tvList = filtered();
+  const per = 50, pages = Math.ceil(tvList.length / per);
+  trPage = Math.min(trPage, Math.max(0, pages - 1));
+  $('trTitle').textContent = `Trade list · ${st.v} · ${tvList.length} trades`;
+  $('trTable').innerHTML = '<tr><th>#</th><th>Currency</th><th>Dir</th><th>Entry</th><th>Exit</th><th>Days</th><th>z in</th><th>z out</th><th>Leg P&amp;L bp</th><th>MAE bp</th><th>MFE bp</th><th>Carry pp</th></tr>' +
+    tvList.slice(trPage * per, trPage * per + per).map((t, j) => {
+      const i = trPage * per + j;
+      return `<tr class="click ${i === tvIdx ? 'sel' : ''}" data-i="${i}"><td>${i + 1}</td><td>${t.ccy}</td><td class="${t.dir > 0 ? 'pos' : 'neg'}">${t.dir > 0 ? 'long' : 'short'}</td>
+        <td>${t.entry}</td><td>${t.exit}${t.open ? ' <span class="mut">(open)</span>' : ''}</td><td>${t.days}</td><td>${fmt(t.z0)}</td><td>${fmt(t.z1)}</td>
+        <td class="${cls(t.pnl_bp)}"><b>${sgn(t.pnl_bp, 1)}</b></td><td class="neg">${fmt(t.mae_bp, 1)}</td><td class="pos">${fmt(t.mfe_bp, 1)}</td><td class="${cls(t.carry_pp)}">${sgn(t.carry_pp)}</td></tr>`;
+    }).join('');
+  $('trPager').innerHTML = `<button class="btn" id="pp">‹</button> page ${trPage + 1} / ${pages || 1} <button class="btn" id="pn">›</button>`;
+  $('pp').onclick = () => { trPage = Math.max(0, trPage - 1); renderTrades(); };
+  $('pn').onclick = () => { trPage = Math.min(pages - 1, trPage + 1); renderTrades(); };
+  $('trTable').querySelectorAll('tr.click').forEach(tr => tr.onclick = () => { tvIdx = +tr.dataset.i; renderTv(); renderTrades(); $('tv').scrollIntoView({behavior: 'smooth', block: 'center'}); });
+}
+function renderTv() {
+  if (tvChart) { tvChart.remove(); tvChart = null; }
+  if (!tvList.length) { $('tvTitle').textContent = 'No trades for this filter.'; $('tvInfo').innerHTML = ''; return; }
+  tvIdx = Math.max(0, Math.min(tvIdx, tvList.length - 1));
+  const t = tvList[tvIdx], sd = S.sig_dates, C = S.ccy[t.ccy];
+  const i0 = sd.indexOf(t.entry), i1 = sd.indexOf(t.exit);
+  const a = Math.max(0, i0 - 60), b = Math.min(sd.length, i1 + 30);
+  tvChart = mkChart($('tv'), 420);
+  tvChart.applyOptions({leftPriceScale: {visible: true, borderColor: '#30363d'}});
+  const lvl = tvChart.addLineSeries({color: '#5fb4ff', lineWidth: 2, priceScaleId: 'right', priceLineVisible: false});
+  const inT = tvChart.addAreaSeries({lineColor: 'rgba(0,0,0,0)', topColor: t.pnl_bp > 0 ? 'rgba(63,185,80,.18)' : 'rgba(248,81,73,.18)', bottomColor: 'rgba(0,0,0,0)', priceScaleId: 'right', priceLineVisible: false, lastValueVisible: false});
+  const z = tvChart.addLineSeries({color: '#d29922', lineWidth: 1.5, priceScaleId: 'left', priceLineVisible: false});
+  const L = [], Z = [], A = [];
+  for (let i = a; i < b; i++) {
+    if (C.level[i] == null) continue;
+    L.push({time: sd[i], value: C.level[i]}); Z.push({time: sd[i], value: C.z[i]});
+    if (i >= i0 && i <= i1) A.push({time: sd[i], value: C.level[i]});
+  }
+  lvl.setData(L); inT.setData(A); z.setData(Z);
+  [[1.5, 'entry +1.5'], [-1.5, 'entry −1.5'], [0, 'exit 0']].forEach(([p, ttl]) => z.createPriceLine({price: p, color: p ? '#d2992288' : '#9da7b388', lineStyle: 2, lineWidth: 1, title: ttl}));
+  lvl.setMarkers([
+    {time: t.entry, position: t.dir > 0 ? 'belowBar' : 'aboveBar', color: t.dir > 0 ? '#3fb950' : '#f85149', shape: t.dir > 0 ? 'arrowUp' : 'arrowDown', text: (t.dir > 0 ? 'LONG ' : 'SHORT ') + t.ccy},
+    {time: t.exit, position: 'inBar', color: '#e6edf3', shape: 'circle', text: t.open ? 'open' : 'exit'}]);
+  tvChart.timeScale().fitContent();
+  $('tvTitle').innerHTML = `<b>${tvIdx + 1} / ${tvList.length}</b> · ${t.ccy} ${t.dir > 0 ? 'long' : 'short'} vs the basket · ${st.v}`;
+  $('tvInfo').innerHTML = [['Entry', t.entry], ['Exit', t.exit + (t.open ? ' (open)' : '')], ['Days', t.days], ['z in → out', `${fmt(t.z0)} → ${fmt(t.z1)}`],
+    ['Leg P&L', `<span class="${cls(t.pnl_bp)}">${sgn(t.pnl_bp, 1)} bp</span>`], ['MAE / MFE', `${fmt(t.mae_bp, 1)} / ${sgn(t.mfe_bp, 1)}`], ['Carry at entry', t.carry_pp == null ? '—' : sgn(t.carry_pp) + ' pp']]
+    .map(([l, v]) => `<div>${l}<b>${v}</b></div>`).join('');
+}
+
+// ------------------------------------------------------------------ CSV
+function csv(name, rows) {
+  const blob = new Blob([rows.map(r => r.join(',')).join('\n')], {type: 'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+}
+$('csvEq').onclick = () => {
+  const ks = Object.keys(S.variants);
+  csv(`residual-fx8-layers-daily-${st.pnl}.csv`, [['date', ...ks]].concat(S.dates.map((d, i) => [d, ...ks.map(k => S.series_bp[k][st.pnl][i])])));
+};
+$('csvTr').onclick = () => {
+  const f = ['ccy', 'dir', 'entry', 'exit', 'days', 'z0', 'z1', 'pnl_bp', 'mae_bp', 'mfe_bp', 'carry_pp', 'open'];
+  csv(`residual-fx8-layers-trades-${st.v.replace(/[^a-z0-9]+/gi, '_')}.csv`, [f].concat(filtered().map(t => f.map(k => t[k]))));
+};
+
+// ------------------------------------------------------------------ wiring
+function renderAll() {
+  setSizeNote(); renderKpis(); renderEquity(); renderLadder(); renderYears(); renderMonthly();
+  renderHist(); renderMae(); renderCcy(); tvIdx = 0; renderTrades(); renderTv();
+}
+$('selVar').onchange = e => { st.v = e.target.value; trPage = 0; renderAll(); };
+$('selCmp').onchange = e => { st.cmp = e.target.value; renderEquity(); };
+$('selPnl').onchange = e => { st.pnl = e.target.value; renderAll(); };
+$('selPer').onchange = e => { st.per = e.target.value; trPage = 0; renderAll(); };
+[['bG1', false], ['bV10', true]].forEach(([id, v]) => $(id).onclick = () => { st.v10 = v; $('bG1').classList.toggle('on', !v); $('bV10').classList.toggle('on', v); renderAll(); });
+[['bLin', false], ['bLog', true]].forEach(([id, v]) => $(id).onclick = () => { st.log = v; $('bLin').classList.toggle('on', !v); $('bLog').classList.toggle('on', v); renderEquity(); });
+['fCcy', 'fRes', 'fDir'].forEach(id => $(id).onchange = () => { trPage = 0; tvIdx = 0; renderTrades(); renderTv(); });
+function stepTv(d) { tvIdx = Math.max(0, Math.min(tvList.length - 1, tvIdx + d)); trPage = Math.floor(tvIdx / 50); renderTv(); renderTrades(); }
+$('tvPrev').onclick = () => stepTv(-1);
+$('tvNext').onclick = () => stepTv(1);
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'SELECT') return;
+  if (e.key === 'ArrowLeft') stepTv(-1);
+  if (e.key === 'ArrowRight') stepTv(1);
+});
+
+(async () => {
+  S = await (await fetch('analysis/output/residual-fx8-paper-layers/site.json', {cache: 'no-store'})).json();
+  buildStatic(); renderAll();
+})();
+</script>
+</body>
+</html>
