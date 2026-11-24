@@ -1,6 +1,6 @@
 """Record Jarvis's MORNING BROADCAST as a vertical 1080x1920 MP4 (picture AND sound) and upload it to YouTube as UNLISTED.
 
-Runs on the laptop from Windows Task Scheduler at 07:15 UK (after the 06:30 OI pull has finished), see run_daily.bat and README.md.
+Runs on the laptop from Windows Task Scheduler at 07:00 UK (after the 06:30 OI pull has finished), see run_daily.bat and README.md.
 
 How it records, and why this way:
   * The browser is the same kind as the CME pull (oi_recon/recon.py): real Chrome with a saved, logged-in profile, its window parked off-screen.
@@ -11,7 +11,7 @@ How it records, and why this way:
     js/terminal/jarvisModBroadcast.js). No sound card, no Stereo Mix, no "share tab audio" tick. The page hands back the audio and its start time.
   * ffmpeg lines the two up (broadcast_core.concat_list) and writes H.264 + AAC. A recording whose loudest moment is near silence is NOT uploaded.
 
-FRAME-BY-FRAME (--frames; the MORNING run's default from 24 Nov 2026, on trial; the evening run stays --live until it is judged): the live way above drops frames whenever the laptop is busy (short freezes at the heavy 3D changes).
+FRAME-BY-FRAME (--frames; the MORNING run (Task Scheduler stop-after limit raised to 1 h 30 min for it)'s default from 24 Nov 2026, on trial; the evening run stays --live until it is judged): the live way above drops frames whenever the laptop is busy (short freezes at the heavy 3D changes).
   vclock.js is injected before the page's scripts; just before the broadcast starts the page's clock is FROZEN, and the job moves it on 1/30 s at a time, taking a
   screenshot after each step. Timers, animation frames, CSS animations and the audio clock all follow that virtual clock, so every frame is complete however slow the
   machine is (a slow machine just takes longer). The sound (voice, ambient, whooshes) is scheduled on an offline audio context on the same clock and rendered to a WAV
@@ -295,7 +295,7 @@ def main() -> None:
         if not a.no_upload:
             from youtube_upload import upload
             today = datetime.now().date()
-            part = part_of_day(datetime.now().hour)          # 07:15 -> the morning briefing, 21:00 -> the evening one (the page picks its programme by the same London clock)
+            part = part_of_day(datetime.now().hour)          # 07:00 -> the morning briefing, 21:00 -> the evening one (the page picks its programme by the same London clock)
             vid = upload(mp4, title_for(today, part), description_for(today, cap['voice'], cap['seconds'], part), privacy='unlisted')
             result.update({'videoId': vid, 'url': f'https://youtube.com/shorts/{vid}', 'privacy': 'unlisted'})
             log(f"uploaded (unlisted): {result['url']}")

@@ -6,7 +6,7 @@ REM  Records Jarvis's MORNING BROADCAST (picture + voice, 1080x1920) from the de
 REM  site and uploads it to your channel as UNLISTED. ~4-6 minutes.
 REM  The link is written to out\last_run.json and out\run.log.
 REM
-REM  WHEN: 07:15 UK, after the 06:30 OI pull (oi_recon\run_daily.bat) has finished,
+REM  WHEN: 07:00 UK, after the 06:30 OI pull (oi_recon\run_daily.bat) has finished,
 REM  so the gamma views have today's option books.
 REM
 REM  Set up in Task Scheduler (same as the OI pull):
