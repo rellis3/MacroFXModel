@@ -11,12 +11,18 @@ How it records, and why this way:
     js/terminal/jarvisModBroadcast.js). No sound card, no Stereo Mix, no "share tab audio" tick. The page hands back the audio and its start time.
   * ffmpeg lines the two up (broadcast_core.concat_list) and writes H.264 + AAC. A recording whose loudest moment is near silence is NOT uploaded.
 
+FRAME-BY-FRAME (--frames; the MORNING run's default from 24 Nov 2026, on trial; the evening run stays --live until it is judged): the live way above drops frames whenever the laptop is busy (short freezes at the heavy 3D changes).
+  vclock.js is injected before the page's scripts; just before the broadcast starts the page's clock is FROZEN, and the job moves it on 1/30 s at a time, taking a
+  screenshot after each step. Timers, animation frames, CSS animations and the audio clock all follow that virtual clock, so every frame is complete however slow the
+  machine is (a slow machine just takes longer). The sound (voice, ambient, whooshes) is scheduled on an offline audio context on the same clock and rendered to a WAV
+  at the end. The server voice is asked for at the broadcast's speed, so its pitch is unchanged. --live records the old way.
+
 Usage:
   python record_broadcast.py --login            one-off: opens a visible window; log into the desk site, then close it
   python record_broadcast.py --youtube-auth     one-off: sign in to YouTube (opens a browser), saves token.json
   python record_broadcast.py                    the daily run (record + upload unlisted)
   python record_broadcast.py --no-upload --show record only, with the window on screen (to watch a test run)
-Options: --len short|quick|full  --voice server|kokoro  --base URL  --out DIR
+Options: --len short|quick|full  --voice server|kokoro  --rate 1.1  --live (real-time capture)  --fps 30  --base URL  --out DIR
 """
 from __future__ import annotations
 
@@ -39,6 +45,7 @@ BASE = 'https://macrofxmodel-production.up.railway.app'
 PROFILE = Path(os.environ.get('JARVIS_PROFILE', HERE / '.profile'))                     # the saved, logged-in browser profile (git-ignored)
 OUT = HERE / 'out'                              # recordings and logs (git-ignored)
 W, H, DPR = 540, 960, 2                         # a phone-shaped page (Jarvis's portrait layout) at 2x = 1080 x 1920
+VCLOCK = HERE / 'vclock.js'                     # the virtual clock for frame-by-frame recording
 
 
 def log(msg: str) -> None:
@@ -95,7 +102,82 @@ def do_login(base: str) -> None:
     print('Saved. The daily run will reuse this login.')
 
 
+def open_broadcast(ctx, base: str):
+    """The desk terminal with Jarvis open on the broadcast panel. Returns the page."""
+    page = ctx.pages[0] if ctx.pages else ctx.new_page()
+    page.set_default_timeout(120_000)
+    log(f'opening {base}/desk-terminal.html')
+    page.goto(base + '/desk-terminal.html', wait_until='domcontentloaded')
+    if '/login' in page.url:
+        raise RuntimeError('the saved browser profile is logged out: run  python record_broadcast.py --login  once')
+    try:
+        page.wait_for_load_state('networkidle', timeout=45_000)
+    except Exception:
+        pass                                        # the terminal polls live feeds, so the network may never go quiet; carry on
+    log('page loaded; opening the HUD')
+    page.evaluate("""async () => { window.__jarvisNoBoot = true; const m = await import('/js/terminal/jarvisView.js'); m.openJarvis(window); }""")
+    page.wait_for_function('() => !!window.__jarvisApi', timeout=60_000)
+    page.wait_for_function("() => { try { window.__jarvisApi.setMod('broadcast'); return typeof window.__jarvisBroadcastAuto === 'function'; } catch (e) { return false; } }", timeout=60_000, polling=1000)
+    log('HUD open on the broadcast panel')
+    time.sleep(8)                                   # let the HUD load its chain, candles and module data
+    return page
+
+
+def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: Path, rate: float = 1.1, fps: int = 30) -> dict:
+    """FRAME-BY-FRAME: freeze the page clock, then step it 1/fps s at a time with a screenshot after each step (see the module notes)."""
+    from playwright.sync_api import sync_playwright
+    stamp = datetime.now().strftime('%Y-%m-%d_%H%M')
+    work = out_dir / stamp
+    frames_dir = work / 'frames'
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    frames: list[tuple[str, float]] = []
+    dt = 1000.0 / fps
+    with sync_playwright() as pw:
+        ctx = launch(pw, visible)
+        ctx.add_init_script(path=str(VCLOCK))
+        page = open_broadcast(ctx, base)
+        if not page.evaluate('() => !!window.__vclock'):
+            raise RuntimeError('the virtual clock did not load (vclock.js)')
+        cdp = ctx.new_cdp_session(page)
+        page.evaluate('() => window.__vclock.freeze()')
+        page.evaluate("""o => { window.__vcRes = null; window.__vcOnAir = 0;
+            window.__jarvisBroadcastAuto(o).then(r => { window.__vcRes = r; }, e => { window.__vcRes = { ok: false, error: String(e && e.message || e) }; }); }""",
+                      {'len': length, 'engine': engine, 'rate': rate})
+        log(f'recording the {length} broadcast frame by frame at {fps} fps (voice: {engine}, speed {rate}x)')
+        started, last_note, n = time.time(), time.time(), 0
+        while True:
+            st = page.evaluate('async ms => { const v = await window.__vclock.step(ms); return { v, air: window.__vcOnAir || 0, done: !!window.__vcRes }; }', dt)
+            if st['done']:
+                break
+            if st['air'] and st['v'] >= st['air'] - dt:
+                n += 1
+                shot = cdp.send('Page.captureScreenshot', {'format': 'jpeg', 'quality': 90})
+                name = f'f{n:06d}.jpg'
+                (frames_dir / name).write_bytes(base64.b64decode(shot['data']))
+                frames.append((name, st['v'] / 1000.0))
+            if time.time() - last_note > 60:
+                last_note = time.time()
+                on_air = (st['v'] - st['air']) / 1000 if st['air'] else 0
+                log(f'  {n} frames so far, {on_air:.0f} s of broadcast, {time.time() - started:.0f} s elapsed')
+            if time.time() - started > 75 * 60:
+                raise RuntimeError('the frame-by-frame recording ran past 75 minutes: stopped')
+        res = page.evaluate('() => window.__vcRes')
+        if res and res.get('ok'):
+            total, chunk, parts = res['wavChars'], 4_000_000, []
+            for i in range(0, total, chunk):
+                parts.append(page.evaluate('([i, n]) => window.__vclock.wav.slice(i, i + n)', [i, chunk]))
+            audio = work / 'audio.wav'
+            audio.write_bytes(base64.b64decode(''.join(parts)))
+        ctx.close()
+    if not res or not res.get('ok'):
+        raise RuntimeError(f'the broadcast did not run: {res}')
+    t0, t1 = res['t0'] / 1000.0, res['t1'] / 1000.0
+    log(f"captured {len(frames)} frames and {audio.stat().st_size // 1024} KB of sound over {t1 - t0:.1f} s in {time.time() - started:.0f} s; voice: {res.get('voice')}")
+    return {'work': work, 'frames': frames, 'audio': audio, 't0': t0, 't1': t1, 'voice': res.get('voice')}
+
+
 def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, rate: float = 1.1) -> dict:
+    """LIVE (--live): Chrome's screencast in real time; the sound recorded from the page's audio bus."""
     from playwright.sync_api import sync_playwright
     stamp = datetime.now().strftime('%Y-%m-%d_%H%M')
     work = out_dir / stamp
@@ -104,21 +186,7 @@ def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, ra
     frames: list[tuple[str, float]] = []
     with sync_playwright() as pw:
         ctx = launch(pw, visible)
-        page = ctx.pages[0] if ctx.pages else ctx.new_page()
-        page.set_default_timeout(120_000)
-        log(f'opening {base}/desk-terminal.html')
-        page.goto(base + '/desk-terminal.html', wait_until='domcontentloaded')
-        if '/login' in page.url:
-            raise RuntimeError('the saved browser profile is logged out: run  python record_broadcast.py --login  once')
-        try:
-            page.wait_for_load_state('networkidle', timeout=45_000)
-        except Exception:
-            pass                                        # the terminal polls live feeds, so the network may never go quiet; carry on
-        # open Jarvis straight into the broadcast panel (no boot animation)
-        page.evaluate("""async () => { window.__jarvisNoBoot = true; const m = await import('/js/terminal/jarvisView.js'); m.openJarvis(window); }""")
-        page.wait_for_function('() => !!window.__jarvisApi', timeout=60_000)
-        page.wait_for_function("() => { try { window.__jarvisApi.setMod('broadcast'); return typeof window.__jarvisBroadcastAuto === 'function'; } catch (e) { return false; } }", timeout=60_000, polling=1000)
-        time.sleep(8)                                   # let the HUD load its chain, candles and module data
+        page = open_broadcast(ctx, base)
         cdp = ctx.new_cdp_session(page)
         n = {'i': 0}
 
@@ -143,7 +211,7 @@ def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, ra
         ctx.close()
     if not res or not res.get('ok'):
         raise RuntimeError(f'the broadcast did not run: {res}')
-    ext = 'ogg' if 'ogg' in res['mime'] else 'webm'
+    ext = 'ogg' if 'ogg' in res['mime'] else 'wav' if 'wav' in res['mime'] else 'webm'
     audio = work / f'audio.{ext}'
     audio.write_bytes(base64.b64decode(res['audio']))
     t0, t1 = res['t0'] / 1000.0, res['t1'] / 1000.0
@@ -156,7 +224,7 @@ def encode(cap: dict) -> Path:
     work = cap['work']
     text, secs = concat_list(cap['frames'], cap['t0'], cap['t1'])
     (work / 'frames' / 'list.ffconcat').write_text(text, encoding='utf-8')
-    mp4 = work / f"jarvis-morning-{work.name[:10]}.mp4"
+    mp4 = work / f"jarvis-{part_of_day(datetime.now().hour)}-{work.name[:10]}.mp4"
     vf = f'scale={W * DPR}:{H * DPR}:force_original_aspect_ratio=decrease,pad={W * DPR}:{H * DPR}:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p'
     cmd = [ff, '-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', str(work / 'frames' / 'list.ffconcat'),
            '-i', str(cap['audio']), '-map', '0:v:0', '-map', '1:a:0', '-vf', vf, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20',
@@ -193,6 +261,9 @@ def main() -> None:
     ap.add_argument('--len', choices=['short', 'quick', 'full'], default='short', help='short (default: kept under 3 min so YouTube files it as a Short), quick or full')
     ap.add_argument('--voice', choices=['server', 'kokoro'], default='server', help='server (steady) or kokoro (open-source, needs a fast machine)')
     ap.add_argument('--rate', type=float, choices=[0.9, 1.0, 1.1, 1.15, 1.3], default=1.1, help='voice speed: 0.9 calm, 1 normal, 1.1 steady (default), 1.15 brisk, 1.3 fast')
+    ap.add_argument('--live', action='store_true', help='record in real time (the old way; drops frames on a busy machine)')
+    ap.add_argument('--frames', action='store_true', help='record frame by frame (the morning default)')
+    ap.add_argument('--fps', type=int, choices=[24, 25, 30], default=30, help='frame-by-frame: frames per second (default 30)')
     ap.add_argument('--base', default=os.environ.get('JARVIS_SITE', BASE))
     ap.add_argument('--out', default=str(OUT))
     a = ap.parse_args()
@@ -204,10 +275,12 @@ def main() -> None:
         print('YouTube sign-in saved.')
         return
     out_dir = Path(a.out)
+    if not a.live and not a.frames and part_of_day(datetime.now().hour) != 'morning':
+        a.live = True                                       # on trial: frame by frame for the morning run only, until it has been judged
     try:
-        cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate)
+        cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate) if a.live else record_frames(a.base, a.len, a.voice, a.show, out_dir, a.rate, a.fps)
         mp4 = encode(cap)
-        result = {'ok': True, 'file': str(mp4), 'seconds': round(cap['seconds'], 1), 'voice': cap['voice'], 'at': datetime.now().isoformat(timespec='seconds')}
+        result = {'ok': True, 'mode': 'live' if a.live else 'frames', 'file': str(mp4), 'seconds': round(cap['seconds'], 1), 'voice': cap['voice'], 'at': datetime.now().isoformat(timespec='seconds')}
         if not a.no_upload:
             from youtube_upload import upload
             today = datetime.now().date()

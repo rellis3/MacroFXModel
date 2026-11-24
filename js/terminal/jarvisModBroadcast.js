@@ -311,7 +311,20 @@ registerJarvisModule({
     // picture from Chrome's own frame feed. Returns the audio (base64) with the wall-clock start/end so the job can line the two up. engine: 'server' (default, steady) or 'kokoro'.
     api.win.__jarvisBroadcastAuto = async ({ len = 'quick', engine = 'server', kokoroWaitMs = 180000, rate = 1 } = {}) => {
       const bus = api.audioBus?.(); if (!bus?.stream) throw new Error('the HUD has no audio bus');
-      q('len').value = ['full', 'short'].includes(len) ? len : 'quick'; q('rate').value = String([0.9, 1, 1.1, 1.15, 1.3].includes(+rate) ? +rate : 1);      // one of the panel's speeds (calm, normal, steady, brisk, fast); the planner's short budget scales with it lsPut({ voice: true }); st.voice = true; st.neural = true; st.sound = true;
+      q('len').value = ['full', 'short'].includes(len) ? len : 'quick'; q('rate').value = String([0.9, 1, 1.1, 1.15, 1.3].includes(+rate) ? +rate : 1);      // one of the panel's speeds (calm, normal, steady, brisk, fast); the planner's short budget scales with it
+      lsPut({ voice: true }); st.voice = true; st.neural = true; st.sound = true;
+      // FRAME-BY-FRAME (the recorder froze the page clock, jarvis_broadcast/vclock.js): no live recorder; the sound is rendered offline at the end, in step with the frames
+      const vc = api.win.__vclock?.frozen ? api.win.__vclock : null;
+      if (vc) {
+        api.voiceBake?.(+q('rate').value || 1);                 // the server voice is asked for at the broadcast's speed (pitch kept), not sped up afterwards
+        if (engine === 'kokoro') { api.voiceBegin?.(); const t0 = Date.now(); while (!api.voiceInfo?.()?.kokoro?.ready && Date.now() - t0 < kokoroWaitMs) await sleep(1000); }
+        const root = api.doc.getElementById(api.ID); root?.classList.add('jv-rec');
+        stop(); let t0 = 0; const onAir = async () => { await sleep(400); t0 = Date.now(); api.win.__vcOnAir = t0; };
+        try { await run(onAir); } finally { root?.classList.remove('jv-rec'); api.voiceBake?.(1); }
+        if (!t0) throw new Error('the broadcast never went on air (is the HUD open?)');
+        const t1 = Date.now(), wav = await vc.render(t0, t1);
+        return { ok: true, mime: 'audio/wav', t0, t1, audio: null, wavChars: wav.chars, voice: api.voiceLabel?.() ?? null, voiceInfo: api.voiceInfo?.() ?? null, status: q('status')?.textContent ?? '' };
+      }
       try { localStorage.setItem('jarvisVoice:v1', JSON.stringify({ ...(JSON.parse(localStorage.getItem('jarvisVoice:v1') || '{}') || {}), engine })); } catch (e) { /* private window */ }
       if (engine === 'kokoro') { api.voiceBegin?.(); const t0 = Date.now(); while (!api.voiceInfo?.()?.kokoro?.ready && Date.now() - t0 < kokoroWaitMs) await sleep(1000); }
       await bus.ctx.resume?.();

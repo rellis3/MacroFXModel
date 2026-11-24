@@ -190,7 +190,8 @@ export async function openJarvis(win = window) {
   let ac = null, bus = null, tap = null;
   // ONE audio bus for everything Jarvis plays (sound effects, the natural voice): it goes to the speakers AND to a tap a recorder can read, so a recording
   // (RECORD AS VIDEO, the laptop's daily broadcast job) gets the sound straight from the page: no "share tab audio" tick, no sound device needed.
-  const audioCtx = () => { ac ??= new (win.AudioContext || win.webkitAudioContext)(); if (!bus) { bus = ac.createGain(); bus.connect(ac.destination); tap = ac.createMediaStreamDestination(); bus.connect(tap); } return ac; };
+  // FRAME-BY-FRAME recording (jarvis_broadcast/vclock.js froze the page clock): a context made before the freeze is dropped, so the next one is the recorder's offline, virtual-clock one
+  const audioCtx = () => { if (ac && win.__vclock?.frozen && !ac.__virtual) { ac = null; bus = null; tap = null; amb = null; } ac ??= new (win.AudioContext || win.webkitAudioContext)(); if (!bus) { bus = ac.createGain(); bus.connect(ac.destination); tap = ac.createMediaStreamDestination(); bus.connect(tap); } return ac; };
   const busIn = () => { audioCtx(); return bus; };
   const blip = (f = 660, d = 0.08, type = 'sine', g = 0.03, at = 0) => {
     if (!st.sound) return; try { audioCtx(); const o = ac.createOscillator(), v = ac.createGain(), t = ac.currentTime + at; o.type = type; o.frequency.setValueAtTime(f, t); v.gain.setValueAtTime(g, t); v.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(v); v.connect(busIn()); o.start(t); o.stop(t + d + 0.02); } catch (e) { /* no audio */ }
@@ -201,7 +202,7 @@ export async function openJarvis(win = window) {
   const sfx = {
     ambient(on) {
       try {
-        if (!on) { if (amb) { const a = amb; amb = null; a.g.gain.cancelScheduledValues(ac.currentTime); a.g.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 1.2); win.setTimeout(() => { try { a.nodes.forEach(n => n.stop?.()); } catch (e) { /* done */ } }, 1400); } return; }
+        if (!on) { if (amb) { const a = amb; amb = null; a.g.gain.cancelScheduledValues(ac.currentTime); a.g.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 1.2); win.setTimeout(() => { try { a.nodes.forEach(n => n.stop?.(ac.currentTime)); } catch (e) { /* done */ } }, 1400); } return; }
         if (!st.sound || amb) return; audioCtx();
         const g = ac.createGain(), lp = ac.createBiquadFilter(), o1 = ac.createOscillator(), o2 = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), nz = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();
         o1.type = 'sine'; o1.frequency.value = 55; o2.type = 'triangle'; o2.frequency.value = 82.6; lp.type = 'lowpass'; lp.frequency.value = 420; lfo.frequency.value = 0.12; lg.gain.value = 0.012; lfo.connect(lg); lg.connect(g.gain);
@@ -437,7 +438,7 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
     const it = e.target.closest('button[data-i]'); if (it) { goNav(it.dataset.k, it.dataset.i); return; }
     if (e.target.closest('button[data-side]')) { const comp = COMPANION[st.view]; if (comp) { const open = st.mod === comp; lsPut({ side: !open }); setMod(open ? 'chain' : comp); } }
   };
-  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), voicePrefetch: t => voicePrefetch(t), voiceInfo: () => neural.info(), voiceBegin: () => neural.begin(), audioBus: () => audioBus(), voiceLabel: () => (st.voice ? (st.neural ? neural.label() : 'built-in voice') : 'voice off'), voiceOn: () => speakPref(lsGet()), setVoiceOn: on => setSpeak(on), voicePanel: () => { if (vpop.hidden) $('vbtn').click(); }, caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
+  const xapi = { ID, st, $, jf, esc, say, blip, names, doc, win, setGraph: (g, sum) => setGraph(g, sum), sfx, setView: v => switchView(v), candles: () => ensureCandles(), speak: (t, rate) => speakAsync(t, rate), voicePrefetch: t => voicePrefetch(t), voiceInfo: () => neural.info(), voiceBegin: () => neural.begin(), voiceBake: r => neural.bakeRate(r), audioBus: () => audioBus(), voiceLabel: () => (st.voice ? (st.neural ? neural.label() : 'built-in voice') : 'voice off'), voiceOn: () => speakPref(lsGet()), setVoiceOn: on => setSpeak(on), voicePanel: () => { if (vpop.hidden) $('vbtn').click(); }, caption: (t, title) => setCaption(t, title), cinema: (on, stop, ctl) => setCinema(on, stop, ctl), cineLabel: (rate, paused) => { $('crate').textContent = `${rate.toFixed(2).replace(/0$/, '')}×`; $('cpause').textContent = paused ? '▶ RESUME' : '⏸ PAUSE'; },
     globeTo: (lat, lon, zoom = 1) => { Object.assign(st.gl, { tlat: lat, tlon: lon, tzoom: zoom }); st.spin = false; }, flyTo: (x, z) => { st.cdTarget = { x, z }; }, setMod: m => setMod(m), ask: q => { setMod('ask'); R.ask(q, true); }, tcol: t => tcol(t), colours: () => C };
   const pageOverflow = doc.documentElement.style.overflow; doc.documentElement.style.overflow = 'hidden';   // no page scrollbar beside the HUD (it showed down the edge of recorded broadcasts)
   win.__jarvisApi = xapi;          // the laptop's daily broadcast job (jarvis_broadcast/record_broadcast.py) drives Jarvis through this; the page is owner-only
