@@ -3558,6 +3558,13 @@ export const DESK_EVIDENCE = [
     instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'BRENT', 'CADCHF', 'CADJPY', 'CHFJPY', 'COPPER', 'DE30', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'GOLD', 'NQ', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'PALLADIUM', 'PLATINUM', 'SILVER', 'SPX500', 'UK100', 'US2000', 'US30', 'USDCAD', 'USDCHF', 'USDJPY', 'WTI'],
   },
   {
+    id: 'ladder-qlike-per-line-fut', domain: 'volatility', verdict: 'underpowered', date: '2026-11-24', doc: 'forge/LADDER_QLIKE_PER_LINE_FUT_PREREG.md', also: ['analysis/output/ladder-qlike-per-line-fut/RESULTS.md'],
+    claim: 'On the NT8 futures, giving each line (HL, OH, OL, OC, Close+, Close-) of each contract its own QLIKE-best site-computable sigma beats each contract live sigma (Jordan per-line method, 25 futures)',
+    result: 'Pre-registered (A1 post-hoc fix: US2000 was not scored on the first run, harness fault). 25 futures, walk-forward per-line picks, test 2020-2026.08, date-aligned bootstrap. HL+OH+OL -2.39% [-4.04, -0.01]; 2020-22 -0.16% (CI crosses 0), 2023-26 -4.34% [-5.69, -3.14]. HL -10.39% and OH -3.34%, both halves. 24/25 better (ES -7.7%, YM -7.3%, FDAX -5.5%); CL +23.4% worse (+7.5% without the April 2020 negative-price days), as on the CFD. NQ/GC/6E/6J reproduce their existing picks exactly. Graded weight: leaning overall, strong on HL and OH.',
+    use: 'Futures QLIKE per-line export grows from 4 to 18 contracts (ES, YM, RTY, FDAX, 6B, 6A, 6N, 6C, 6S, SI, HG, PL, CL, BZ added; original four unchanged). Rates and grains research only (no twin feed). Treat CL lines with care.',
+    instruments: ['NQ', 'GOLD', 'EURUSD', 'USDJPY', 'SPX500', 'US30', 'US2000', 'DE30', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'SILVER', 'COPPER', 'PLATINUM', 'WTI', 'BRENT', 'NATGAS', 'CORN', 'WHEAT', 'ZN', 'ZB', 'ZF', 'ZT'],
+  },
+  {
     id: 'ladder-event-layer-cb-fomc', domain: 'volatility', verdict: 'null', date: '2026-11-24', doc: 'forge/LADDER_EVENT_LAYER_CB_FOMC_PREREG.md', also: ['analysis/output/ladder-event-layer-cb-fomc/RESULTS.md'],
     claim: 'Layer 2 on the CFD QLIKE per-line base (wider levels on own-central-bank and FOMC decision days only) improves the exhaustion levels forward, on sessions no part of it had seen',
     result: 'Pre-registered, one forward look 2026-08-24 to 2026-11-23, 40 CFDs, base = the site levels, 12 decision dates. Mean of instrument-line cell ratios +3.36% [-0.20, +15.05]: NULL. Descriptive: pooled loss on event days -7.3%; central-bank days -13.6% (HL -22.6%; base p90 beaten 27% vs layer 18%, target 10%); FOMC days +3.5% (base already wide enough, close lines over-widened). Helped on lively decisions (BoC/RBNZ 2 Sep, BoJ 18 Sep), hurt on quiet ones (BoJ 30 Oct, RBA 3 Nov). Graded weight: weak, mixed.',
@@ -4860,6 +4867,7 @@ const POWER = {
   'fqt-nam-lines-tp': { n: '1,417 NQ trades', note: 'NULL bar +1 bp; CI upper -2.04 bp' },
   'futures-oc-tp-fade-p75': { n: '3,377 trades on ~6,600 sessions (4 futures)', note: 'NULL bar +0.05R; CI upper -0.043R' },
   'futures-oc-tp-fade-p90': { n: '1,364 trades', note: 'NULL bar +0.05R; CI upper -0.064R' },
+  'ladder-qlike-per-line-fut': { n: '~1,650 test sessions per contract x 25 futures, date-aligned 63-session blocks', note: 'observed -2.39% [-4.04, -0.01]; 2020-22 half CI [-2.97, +4.23] crosses 0' },
   'ladder-event-layer-cb-fomc': { n: '632 event rows (190 instrument x line cells) on 12 decision dates, 2026-08-24 to 2026-11-23; date-resampling bootstrap', note: 'observed +3.36% [-0.20, +15.05]; 12 dates, very wide' },
   'ladder-pinball-per-line-cfd': { n: '~1,700 test sessions per instrument x 40 CFDs x 5 lines, date-aligned 63-session blocks', note: 'observed -0.12% [-0.20, -0.05] vs 0.5% NULL bar' },
   'ladder-event-layer-per-line-cfd': { n: '~1,700 test sessions per instrument x 40 CFDs x 5 lines (unknown-calendar sessions excluded), date-aligned 63-session blocks', note: 'observed -0.45% [-0.65, -0.24]; 2020-22 CI [-0.37, +0.01] crosses 0' },
