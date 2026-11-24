@@ -8,6 +8,7 @@
 // and 5- or 15-minute closes for the last 45 days). Cached 10 minutes.
 import { oandaCandles } from './volStateRoutes.js';
 import { qlikeParams, qlikeInstruments, qlikeSeries, qlikeDayLevels, qlikeText } from './ladderV2Qlike.js';
+import { eventLayerRows } from './ladderV2EventLayer.js';
 import { PARAMS, nqSigma, harcjSigma, buildText, sessionDate, nyKey, nqSigmaSeries, harcjSigmaSeries, sigmaForSession, dayLevels, rolloutSigmaSeries } from './ladderV2Shadow.js';
 
 const TTL_MS = 10 * 60e3;
@@ -183,7 +184,9 @@ async function qlikeExportText(track = 'fut') {
   await pool(qlikeInstruments(track), 4, async sym => {
     try { lv[sym] = qlikeDayLevels(sym, qlikeSeries(sym, await qlikeInputs(sym, null, null, track), track), session, track); } catch { lv[sym] = null; }
   });
-  qExport[track] = { session, text: qlikeText(lv, session, track) }; qExportAt[track] = Date.now();
+  // Layer 2 (event days, CFD only): extra 'EV2' rows on decision days; the base rows above them are unchanged.
+  const extra = track === 'cfd' ? Object.fromEntries(Object.keys(lv).map(s => [s, eventLayerRows(s, lv[s], session)])) : {};
+  qExport[track] = { session, text: qlikeText(lv, session, track, extra) }; qExportAt[track] = Date.now();
   return qExport[track].text;
 }
 

@@ -1,0 +1,258 @@
+AUDCAD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 69% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->HARCJ, cup HARCJ->HARCJ, cdn HARCJ->HARCJ
+AUDCHF: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 77% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol SHAR->R5, cup HARCJ->HARCJ, cdn SHAR->R5
+AUDJPY: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 54% of line-years, unknown sessions 321; hl SHAR->SHAR, oh HARCJ->HARCJ, ol SHAR->SHAR, cup HARCJ->HARCJ, cdn HARCJ->SHAR
+AUDNZD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 43% of line-years, unknown sessions 321; hl E_har_rv_log->HARCJ, oh B_har_garcht->E_har_rv_log, ol R15->HARCJ, cup B_har_garcht->G_egarch, cdn B_har_garcht->R15
+AUDUSD: 2238 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 60% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh R15->E_har_rv_log, ol HARCJ->HARCJ, cup HARCJ->SHAR, cdn SHAR->SHAR
+BRENT: 2230 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 57% of line-years, unknown sessions 0; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->HARCJ, cup HARCJ->R15, cdn HARCJ->HARCJ
+CADCHF: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 57% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol R15->R15, cup HARCJ->HARCJ, cdn R15->R15
+CADJPY: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 63% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol B_har_garcht->SHAR, cup HARCJ->HARCJ, cdn G_gjr->SHAR
+CHFJPY: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 54% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh E_har_rv_log->HARCJ, ol HARCJ->R5, cup B_har_garcht->B_har_garcht, cdn HARCJ->G_garch_t
+COPPER: 2229 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 63% of line-years, unknown sessions 0; hl SHAR->HARCJ, oh R15->HARCJ, ol SHAR->HARCJ, cup SHAR->HARCJ, cdn SHAR->HARCJ
+DE30: 2195 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 69% of line-years, unknown sessions 0; hl SHAR->SHAR, oh SHAR->SHAR, ol HARCJ->HARCJ, cup SHAR->HARCJ, cdn HARCJ->HARCJ
+EURAUD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 74% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->HARCJ, cup HARCJ->HARCJ, cdn HARCJ->HARCJ
+EURCAD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 80% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->HARCJ, cup HARCJ->HARCJ, cdn HARCJ->HARCJ
+EURCHF: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 31% of line-years, unknown sessions 321; hl R15->R15, oh SHAR->B_har_garcht, ol B_har_garcht->B_har_garcht, cup SHAR->E_har_rv_log, cdn A0->B_har_garcht
+EURGBP: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 80% of line-years, unknown sessions 0; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->HARCJ, cup HARCJ->HARCJ, cdn HARCJ->HARCJ
+EURJPY: 2239 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 66% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->R15, ol R5->R5, cup HARCJ->HARCJ, cdn B_har_garcht->R5
+EURNZD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 69% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->HARCJ, cup R15->HARCJ, cdn HARCJ->HARCJ
+EURUSD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 66% of line-years, unknown sessions 0; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->HARCJ, cup HARCJ->R15, cdn HARCJ->HARCJ
+GBPAUD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 80% of line-years, unknown sessions 321; hl R15->R15, oh R15->R15, ol HARCJ->HARCJ, cup R15->B_har_garcht, cdn HARCJ->HARCJ
+GBPCAD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 57% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh R15->R15, ol HARCJ->HARCJ, cup R15->R15, cdn SHAR->HARCJ
+GBPCHF: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 60% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->B_har_garcht, ol HARCJ->HARCJ, cup R15->R15, cdn HARCJ->HARCJ
+GBPJPY: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 57% of line-years, unknown sessions 321; hl R5->HARCJ, oh HARCJ->R15, ol R5->HARCJ, cup R15->R15, cdn HARCJ->HARCJ
+GBPNZD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 49% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh R15->B_har_garcht, ol HARCJ->HARCJ, cup B_har_garcht->B_har_garcht, cdn E_har_rv_log->E_har_rv_log
+GBPUSD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 57% of line-years, unknown sessions 0; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->HARCJ, cup HARCJ->HARCJ, cdn HARCJ->HARCJ
+GOLD: 2229 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 49% of line-years, unknown sessions 0; hl HARCJ->HARCJ, oh R15->HARCJ, ol HARCJ->HARCJ, cup R15->HARCJ, cdn HARCJ->R5
+NQ: 2229 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 74% of line-years, unknown sessions 0; hl SHAR->SHAR, oh SHAR->SHAR, ol HARCJ->HARCJ, cup SHAR->SHAR, cdn HARCJ->HARCJ
+NZDCAD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 74% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->A0, cup E_har_rv_log->HARCJ, cdn HARCJ->HARCJ
+NZDJPY: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 89% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol SHAR->SHAR, cup HARCJ->HARCJ, cdn R15->R15
+NZDUSD: 2239 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 66% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh R15->HARCJ, ol A0->HARCJ, cup E_har_rv_log->E_har_rv_log, cdn HARCJ->HARCJ
+PALLADIUM: 2185 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 51% of line-years, unknown sessions 0; hl R5->R5, oh R5->SHAR, ol R5->R5, cup HARCJ->HARCJ, cdn R5->SHAR
+PLATINUM: 2206 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 37% of line-years, unknown sessions 0; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->HARCJ, cup B_har_garcht->G_egarch, cdn HARCJ->HARCJ
+SILVER: 2225 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 40% of line-years, unknown sessions 0; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->R5, cup HARCJ->R5, cdn HARCJ->R15
+SPX500: 2218 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 71% of line-years, unknown sessions 0; hl SHAR->SHAR, oh SHAR->SHAR, ol SHAR->SHAR, cup SHAR->SHAR, cdn SHAR->HARCJ
+UK100: 2168 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 69% of line-years, unknown sessions 0; hl HARCJ->HARCJ, oh HARCJ->SHAR, ol HARCJ->HARCJ, cup HARCJ->SHAR, cdn HARCJ->HARCJ
+US2000: 2225 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 54% of line-years, unknown sessions 0; hl SHAR->SHAR, oh HARCJ->SHAR, ol SHAR->SHAR, cup HARCJ->SHAR, cdn SHAR->HARCJ
+US30: 2229 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 54% of line-years, unknown sessions 0; hl SHAR->HARCJ, oh HARCJ->HARCJ, ol SHAR->HARCJ, cup R15->HARCJ, cdn SHAR->HARCJ
+USDCAD: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 83% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol HARCJ->HARCJ, cup R5->R5, cdn HARCJ->HARCJ
+USDCHF: 2237 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 34% of line-years, unknown sessions 321; hl HARCJ->HARCJ, oh HARCJ->HARCJ, ol R15->HARCJ, cup R15->HARCJ, cdn R15->HARCJ
+USDJPY: 2240 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 29% of line-years, unknown sessions 321; hl SHAR->HARCJ, oh R15->HARCJ, ol R15->HARCJ, cup R15->HARCJ, cdn R15->R15
+WTI: 2229 sessions, control1 100.00%, control3 QL picks match prior 100%, PB=QL 46% of line-years, unknown sessions 0; hl HARCJ->HARCJ, oh SHAR->HARCJ, ol HARCJ->HARCJ, cup SHAR->HARCJ, cdn R15->HARCJ
+
+controls: 40 pass control 1; control 3 (QL picks = prior export) mean 100.0%; PB=QL picks on 60.3% of line-years
+
+H1 pinball pick vs QLIKE pick, pinball (% change, negative = pinball pick better)
+  all      -0.12% [-0.20, -0.05]
+  2020-22  -0.18% [-0.31, -0.03]
+  2023-26  -0.05% [-0.10, +0.00]
+  VERDICT H1: NULL
+
+H2 event layer vs none on the QLIKE pick (known sessions)
+  all      -0.45% [-0.65, -0.24]
+  2020-22  -0.18% [-0.37, +0.01]
+  2023-26  -0.79% [-1.09, -0.44]
+  placebo (tags +5 sessions):
+  all      +0.15% [+0.06, +0.24]
+  2020-22  +0.25% [+0.12, +0.36]
+  2023-26  +0.01% [-0.07, +0.10]
+  VERDICT H2: UNDERPOWERED
+
+descriptive:
+  h2_on_pb_pick          all -0.46% [-0.65, -0.26]  2020-22 -0.20% [-0.39, -0.03]  2023-26 -0.79% [-1.07, -0.46]
+  h2_bucket_FOMC         all -1.55% [-2.07, -0.92]  2020-22 -1.06% [-1.50, -0.60]  2023-26 -2.09% [-2.96, -0.86]
+  h2_bucket_NFP          all -0.08% [-0.51, +0.43]  2020-22 +0.15% [-0.48, +0.79]  2023-26 -0.16% [-0.78, +0.56]
+  h2_bucket_USCPI        all +0.05% [-0.60, +1.06]  2020-22 +0.77% [+0.02, +2.06]  2023-26 -0.68% [-1.64, +1.08]
+  h2_bucket_CB           all -6.13% [-6.79, -4.99]  2020-22 -5.91% [-6.65, -4.56]  2023-26 -5.92% [-7.15, -2.88]
+  h2_bucket_TIER1        all +0.12% [+0.03, +0.21]  2020-22 +0.13% [+0.00, +0.27]  2023-26 +0.11% [+0.01, +0.22]
+  h2_bucket_POST         all +0.58% [-0.32, +1.23]  2020-22 +1.05% [-0.17, +1.73]  2023-26 -0.26% [-1.46, +0.61]
+  h2_bucket_none         all -0.23% [-0.61, +0.07]  2020-22 +0.18% [-0.26, +0.49]  2023-26 -0.80% [-1.34, -0.42]
+
+per line (mean over instruments): hl H1 +0.01% H2 -1.40%  oh H1 -0.10% H2 -0.27%  ol H1 -0.19% H2 -0.18%  cup H1 -0.18% H2 -0.18%  cdn H1 -0.17% H2 -0.24%
+
+per instrument [H1, H2, placebo, H2 on CB days, H2 on FOMC days]:
+  AUDNZD      +0.3   -2.6   +0.1  -15.8   -0.2
+  AUDCAD      +0.1   -1.8   -0.0   -6.7   -5.6
+  GBPNZD      +0.1   -1.4   +0.3   -9.6   +0.1
+  AUDUSD      -1.0   -1.3   -0.1   -3.9   -9.0
+  NZDUSD      -0.7   -1.3   +0.2  -11.7   -8.3
+  NZDCAD      +0.1   -1.3   -0.0   -9.1   -4.3
+  GBPAUD      +0.2   -1.2   -0.0   -8.1   -0.4
+  EURAUD      -0.4   -1.0   -0.1   -6.8   -0.2
+  EURNZD      +0.3   -0.9   +0.4  -11.3   -1.0
+  GBPCAD      -0.1   -0.9   -0.1   -7.1   -2.1
+  EURUSD      +0.3   -0.8   +0.2   -5.2   -7.9
+  EURJPY      -1.1   -0.7   +0.2   -8.1   +1.1
+  CADJPY      +0.0   -0.6   +0.2   -6.1   +0.8
+  CHFJPY      -0.4   -0.5   +0.3   -7.1   +1.1
+  USDJPY      +0.0   -0.5   +0.2   -3.5   -1.3
+  GBPUSD      +0.1   -0.5   +0.2   -8.5   -0.9
+  EURGBP      -0.4   -0.5   +0.3   -6.1   -0.3
+  USDCAD      -0.1   -0.4   +0.3   -3.9   -4.9
+  AUDJPY      +0.1   -0.3   +0.3   -3.1   +0.7
+  USDCHF      -0.5   -0.3   +0.2   -2.8   -4.9
+  CADCHF      +0.1   -0.2   +0.2   -3.5   +0.2
+  GBPCHF      -0.3   -0.2   +0.4   -4.8   -2.4
+  NZDJPY      -0.3   -0.2   +0.3   -5.1   +1.5
+  EURCAD      +0.3   -0.2   +0.1   -7.7   +0.4
+  GBPJPY      -0.0   -0.2   +0.3   -6.8   +0.8
+  EURCHF      -1.5   -0.1   -0.0   -2.7   -0.7
+  GOLD        +0.5   -0.1   +0.2    n/a   -4.7
+  US2000      -0.1   -0.1   -0.0    n/a   -2.6
+  AUDCHF      -0.1   -0.1   -0.3   -4.0   -0.1
+  SILVER      +0.0   -0.0   +0.3    n/a   -3.2
+  PLATINUM    -1.1   -0.0   +0.1    n/a   +1.0
+  SPX500      +0.2   +0.0   -0.1    n/a   -3.0
+  NQ          -0.7   +0.0   -0.2    n/a   -2.6
+  COPPER      +0.6   +0.1   +0.3    n/a   -0.4
+  US30        +0.2   +0.2   +0.1    n/a   -0.6
+  WTI         -0.9   +0.2   -0.0    n/a   -0.7
+  PALLADIUM   +0.1   +0.3   +0.2    n/a   +0.7
+  BRENT       +1.0   +0.4   +0.1    n/a   +0.9
+  UK100       -0.3   +0.4   +0.4   -0.1   +0.8
+  DE30        +0.4   +0.6   +0.3   +1.4   +0.2
+
+pooled event widths (median over instruments, p50/p90 width on bucket days / all-day width):
+                            x50    x90  mean_ratio      n
+klass        bucket line                                 
+fx           CB     cdn   1.449  1.310       1.436   1334
+                    cup   1.513  1.358       1.451   1283
+                    hl    1.327  1.356       1.363   2620
+                    oh    1.303  1.337       1.383   2620
+                    ol    1.358  1.341       1.403   2620
+             FOMC   cdn   1.218  1.082       1.192    793
+                    cup   1.105  1.061       1.050    838
+                    hl    1.104  1.034       1.092   1632
+                    oh    1.127  0.983       1.046   1632
+                    ol    1.097  1.013       1.081   1632
+             NFP    cdn   1.064  1.027       1.076   1218
+                    cup   1.037  1.045       1.157   1206
+                    hl    1.093  1.026       1.099   2428
+                    oh    1.051  1.091       1.079   2428
+                    ol    1.055  1.047       1.085   2428
+             POST   cdn   0.892  0.913       0.995   2329
+                    cup   0.875  0.877       0.943   2197
+                    hl    0.916  0.951       1.005   4536
+                    oh    0.862  0.894       0.966   4536
+                    ol    0.972  0.981       1.068   4536
+             TIER1  cdn   1.025  1.004       1.011  11678
+                    cup   1.013  0.997       1.011  11780
+                    hl    1.013  0.988       1.016  23484
+                    oh    1.024  0.999       1.004  23484
+                    ol    1.021  0.998       1.024  23484
+             USCPI  cdn   1.085  1.062       1.142   1144
+                    cup   1.085  1.144       1.137   1232
+                    hl    1.130  1.138       1.114   2377
+                    oh    1.097  1.153       1.126   2377
+                    ol    1.082  1.056       1.067   2377
+             none   cdn   0.905  0.906       0.900   7409
+                    cup   0.935  0.914       0.919   7769
+                    hl    0.935  0.917       0.930  15193
+                    oh    0.939  0.926       0.930  15193
+                    ol    0.938  0.913       0.920  15193
+index        CB     cdn   1.233  1.106       1.375     61
+                    cup   0.832  0.983       0.945     63
+                    hl    1.082  1.108       1.180    124
+                    oh    1.070  1.051       1.047    124
+                    ol    1.122  1.101       1.306    124
+             FOMC   cdn   1.180  1.118       1.170    211
+                    cup   1.342  1.117       1.145    198
+                    hl    1.206  1.107       1.145    409
+                    oh    1.250  1.164       1.213    409
+                    ol    1.027  1.047       1.054    409
+             NFP    cdn   1.150  1.081       1.295    280
+                    cup   1.307  1.089       1.125    322
+                    hl    1.119  1.052       1.120    603
+                    oh    1.157  1.130       1.078    603
+                    ol    1.135  1.068       1.150    603
+             POST   cdn   0.840  0.984       1.211    515
+                    cup   0.945  0.958       0.993    697
+                    hl    0.930  0.948       1.030   1213
+                    oh    1.002  1.017       1.038   1213
+                    ol    0.869  0.882       0.990   1213
+             TIER1  cdn   1.015  0.976       1.002   2242
+                    cup   1.034  0.996       1.029   2689
+                    hl    1.015  1.001       1.017   4937
+                    oh    1.031  1.009       1.019   4937
+                    ol    1.008  1.012       1.012   4937
+             USCPI  cdn   0.930  0.982       1.118    283
+                    cup   1.211  1.153       1.066    315
+                    hl    1.164  1.076       1.123    598
+                    oh    1.154  1.154       1.089    598
+                    ol    1.149  0.981       1.113    598
+             none   cdn   0.963  0.986       0.891   2434
+                    cup   0.923  0.930       0.945   2764
+                    hl    0.954  0.970       0.937   5202
+                    oh    0.909  0.945       0.927   5202
+                    ol    1.003  0.984       0.946   5202
+metal/energy FOMC   cdn   1.037  1.117       1.287    228
+                    cup   1.262  1.044       1.171    257
+                    hl    1.124  1.050       1.137    485
+                    oh    1.198  1.034       1.161    485
+                    ol    1.038  1.210       1.141    485
+             NFP    cdn   0.996  1.181       1.144    313
+                    cup   1.156  1.096       1.103    388
+                    hl    1.045  1.143       1.075    701
+                    oh    1.139  1.108       1.149    701
+                    ol    0.855  1.000       0.965    701
+             POST   cdn   0.922  0.971       1.030    708
+                    cup   1.113  0.998       1.102    786
+                    hl    0.996  1.026       1.046   1494
+                    oh    0.982  0.988       1.042   1494
+                    ol    0.946  0.934       1.007   1494
+             TIER1  cdn   1.038  1.003       0.982   2643
+                    cup   0.990  0.972       0.962   2713
+                    hl    1.007  0.976       0.991   5357
+                    oh    1.018  0.975       0.974   5357
+                    ol    1.039  1.009       1.011   5357
+             USCPI  cdn   0.868  0.911       0.879    274
+                    cup   1.168  1.017       1.031    415
+                    hl    1.040  0.989       0.985    689
+                    oh    1.306  1.121       1.147    689
+                    ol    0.826  0.876       0.814    689
+             none   cdn   0.996  1.003       0.982   3282
+                    cup   0.922  0.995       0.961   3377
+                    hl    0.985  0.988       0.991   6659
+                    oh    0.945  0.972       0.966   6659
+                    ol    1.005  0.996       0.998   6659
+
+final picks per line (QLIKE -> pinball):
+  AUDCAD    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->HARCJ  cup:HARCJ->HARCJ  cdn:HARCJ->HARCJ
+  AUDCHF    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:SHAR->R5  cup:HARCJ->HARCJ  cdn:SHAR->R5
+  AUDJPY    hl:SHAR->SHAR  oh:HARCJ->HARCJ  ol:SHAR->SHAR  cup:HARCJ->HARCJ  cdn:HARCJ->SHAR
+  AUDNZD    hl:E_har_rv_log->HARCJ  oh:B_har_garcht->E_har_rv_log  ol:R15->HARCJ  cup:B_har_garcht->G_egarch  cdn:B_har_garcht->R15
+  AUDUSD    hl:HARCJ->HARCJ  oh:R15->E_har_rv_log  ol:HARCJ->HARCJ  cup:HARCJ->SHAR  cdn:SHAR->SHAR
+  BRENT     hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->HARCJ  cup:HARCJ->R15  cdn:HARCJ->HARCJ
+  CADCHF    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:R15->R15  cup:HARCJ->HARCJ  cdn:R15->R15
+  CADJPY    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:B_har_garcht->SHAR  cup:HARCJ->HARCJ  cdn:G_gjr->SHAR
+  CHFJPY    hl:HARCJ->HARCJ  oh:E_har_rv_log->HARCJ  ol:HARCJ->R5  cup:B_har_garcht->B_har_garcht  cdn:HARCJ->G_garch_t
+  COPPER    hl:SHAR->HARCJ  oh:R15->HARCJ  ol:SHAR->HARCJ  cup:SHAR->HARCJ  cdn:SHAR->HARCJ
+  DE30      hl:SHAR->SHAR  oh:SHAR->SHAR  ol:HARCJ->HARCJ  cup:SHAR->HARCJ  cdn:HARCJ->HARCJ
+  EURAUD    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->HARCJ  cup:HARCJ->HARCJ  cdn:HARCJ->HARCJ
+  EURCAD    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->HARCJ  cup:HARCJ->HARCJ  cdn:HARCJ->HARCJ
+  EURCHF    hl:R15->R15  oh:SHAR->B_har_garcht  ol:B_har_garcht->B_har_garcht  cup:SHAR->E_har_rv_log  cdn:A0->B_har_garcht
+  EURGBP    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->HARCJ  cup:HARCJ->HARCJ  cdn:HARCJ->HARCJ
+  EURJPY    hl:HARCJ->HARCJ  oh:HARCJ->R15  ol:R5->R5  cup:HARCJ->HARCJ  cdn:B_har_garcht->R5
+  EURNZD    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->HARCJ  cup:R15->HARCJ  cdn:HARCJ->HARCJ
+  EURUSD    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->HARCJ  cup:HARCJ->R15  cdn:HARCJ->HARCJ
+  GBPAUD    hl:R15->R15  oh:R15->R15  ol:HARCJ->HARCJ  cup:R15->B_har_garcht  cdn:HARCJ->HARCJ
+  GBPCAD    hl:HARCJ->HARCJ  oh:R15->R15  ol:HARCJ->HARCJ  cup:R15->R15  cdn:SHAR->HARCJ
+  GBPCHF    hl:HARCJ->HARCJ  oh:HARCJ->B_har_garcht  ol:HARCJ->HARCJ  cup:R15->R15  cdn:HARCJ->HARCJ
+  GBPJPY    hl:R5->HARCJ  oh:HARCJ->R15  ol:R5->HARCJ  cup:R15->R15  cdn:HARCJ->HARCJ
+  GBPNZD    hl:HARCJ->HARCJ  oh:R15->B_har_garcht  ol:HARCJ->HARCJ  cup:B_har_garcht->B_har_garcht  cdn:E_har_rv_log->E_har_rv_log
+  GBPUSD    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->HARCJ  cup:HARCJ->HARCJ  cdn:HARCJ->HARCJ
+  GOLD      hl:HARCJ->HARCJ  oh:R15->HARCJ  ol:HARCJ->HARCJ  cup:R15->HARCJ  cdn:HARCJ->R5
+  NQ        hl:SHAR->SHAR  oh:SHAR->SHAR  ol:HARCJ->HARCJ  cup:SHAR->SHAR  cdn:HARCJ->HARCJ
+  NZDCAD    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->A0  cup:E_har_rv_log->HARCJ  cdn:HARCJ->HARCJ
+  NZDJPY    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:SHAR->SHAR  cup:HARCJ->HARCJ  cdn:R15->R15
+  NZDUSD    hl:HARCJ->HARCJ  oh:R15->HARCJ  ol:A0->HARCJ  cup:E_har_rv_log->E_har_rv_log  cdn:HARCJ->HARCJ
+  PALLADIUM hl:R5->R5  oh:R5->SHAR  ol:R5->R5  cup:HARCJ->HARCJ  cdn:R5->SHAR
+  PLATINUM  hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->HARCJ  cup:B_har_garcht->G_egarch  cdn:HARCJ->HARCJ
+  SILVER    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->R5  cup:HARCJ->R5  cdn:HARCJ->R15
+  SPX500    hl:SHAR->SHAR  oh:SHAR->SHAR  ol:SHAR->SHAR  cup:SHAR->SHAR  cdn:SHAR->HARCJ
+  UK100     hl:HARCJ->HARCJ  oh:HARCJ->SHAR  ol:HARCJ->HARCJ  cup:HARCJ->SHAR  cdn:HARCJ->HARCJ
+  US2000    hl:SHAR->SHAR  oh:HARCJ->SHAR  ol:SHAR->SHAR  cup:HARCJ->SHAR  cdn:SHAR->HARCJ
+  US30      hl:SHAR->HARCJ  oh:HARCJ->HARCJ  ol:SHAR->HARCJ  cup:R15->HARCJ  cdn:SHAR->HARCJ
+  USDCAD    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:HARCJ->HARCJ  cup:R5->R5  cdn:HARCJ->HARCJ
+  USDCHF    hl:HARCJ->HARCJ  oh:HARCJ->HARCJ  ol:R15->HARCJ  cup:R15->HARCJ  cdn:R15->HARCJ
+  USDJPY    hl:SHAR->HARCJ  oh:R15->HARCJ  ol:R15->HARCJ  cup:R15->HARCJ  cdn:R15->R15
+  WTI       hl:HARCJ->HARCJ  oh:SHAR->HARCJ  ol:HARCJ->HARCJ  cup:SHAR->HARCJ  cdn:R15->HARCJ

@@ -60,7 +60,7 @@ const LABEL = { hl: 'High to Low range', oc: 'Open to Close move', oh: 'Open Hig
 const div = name => { const pre = `──── ${name} `; return pre + '─'.repeat(Math.max(0, 30 - pre.length)); };
 
 /** Paste text: one block per instrument, each line with its own model. lv = { SYM: qlikeDayLevels(...) | null }. */
-export function qlikeText(lv, session, track = 'fut') {
+export function qlikeText(lv, session, track = 'fut', extra = {}) {   // extra: { SYM: [rows] } from layers on top (base rows untouched)
   const sl = new Date(session + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).replace(/,/g, '');
   const cfd = track === 'cfd';
   const out = ['**VOL & RANGE FORECAST — SHADOW QLIKE per-line ladder (not live)**',
@@ -74,6 +74,7 @@ export function qlikeText(lv, session, track = 'fut') {
       if (o[`${q}_p50`] == null) continue;
       out.push(`${LABEL[q].padEnd(24)}: ${o[`${q}_p50`].toFixed(2)}% median · ${o[`${q}_p75`].toFixed(2)}% 75th · ${o[`${q}_p90`].toFixed(2)}% 90th  [${o.arms[q]}, ${(o.sigmas[q] * SQRT252).toFixed(1)}% ann.]`);
     }
+    for (const r of extra[sym] ?? []) out.push(r);
     out.push('');
   }
   return out.join('\n');
