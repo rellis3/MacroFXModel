@@ -15,7 +15,7 @@ Generated 2026-11-24.
 | null | 229 |
 | underpowered | 172 |
 | context (base rates, descriptions: not counted as tests) | 85 |
-| pre-registrations with no banked verdict (below) | 88 |
+| pre-registrations with no banked verdict (below) | 92 |
 
 **What the count says (Lesson 02 §05).** If none of the 600 claims were real, tests at the usual 5% size would still pass
 about **30** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
@@ -805,3 +805,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/VMC_DIVERGENCE_INDICES_PREREG.md`: VuManChu Cipher B divergence at the vol lines (NQ first) — pre-registration
 - `forge/VOTE_DIRECTION_DAY_PREREG.md`: Does the direction vote predict the DAY, and can a time-exit geometry carry it? (S7)
 - `forge/VRP_FORECAST_PREREG.md`: Your vol forecast vs the market's — variance risk premium (pre-registration)
+- `oi_research_book/GEX_LADDER_CONFLUENCE_PREREG.md`: Pre-registration — does a forecast-ladder line that sits on a GEX level react more than one that doesn't?
+- `oi_research_book/LEVEL_TYPES_PLACEBO_PREREG.md`: Pre-registration: do the OTHER level types beat placebo, and how long does a level last?
+- `oi_research_book/OI_TOUCH_ORDER_PREREG.md`: oi-touch-order — Does the reaction at an OI level depend on how many times it has already been tested today, b
+- `oi_research_book/RIPPLE_BOOK_PREREG.md`: Pre-registration — does the gamma-weighted full book (the "ripple") read the tape better than the book the bot
