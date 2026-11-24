@@ -72,6 +72,11 @@ use_close_split = input.bool(true, "Close+ / Close- from their own calcs",
      tooltip="Uses the Close+ (days that close above the open) and Close- (days that close below) rows of the QLIKE per-line export for the close lines. Older pastes without those rows keep the symmetric Open to Close lines.")
 show_close_90   = input.bool(true, "Close 90th lines (Close+ / Close- paste)")
 col_oc_90       = input.color(color.new(color.teal, 0), "Close 90th Colour")
+// 2026-11-24: LAYER 2 (event days) on top of the base. On a central-bank / FOMC decision day the CFD QLIKE export adds
+// "EV2 ..." rows below the base rows. Off: the base rows are used, exactly as before. On: the EV2 numbers replace them
+// for that day only (ordinary days have no EV2 rows, so nothing changes). Removing the layer = untick.
+use_event_layer = input.bool(false, "Event layer (central bank / FOMC days)",
+     tooltip="Layer 2 on the QLIKE per-line base: wider levels on the instrument's own central-bank decision days and FOMC days (EV2 rows in the CFD export). Unticked = base levels only. The export header says the layer's current verdict.")
 openSource  = input.string("London Midnight (00:00)", "Session Open Source",
      options=["London Midnight (00:00)", "Pre-Session (23:00 prev night)"],
      tooltip="Midnight: standard FX day open at 00:00 London time.\nPre-Session 23:00: day/open resets at 23:00 London (post-market session open — recommended for indices like SPX500, DE30, UK100, US30, US2000).\nChanging this option redraws all levels from the new open time.")
@@ -404,6 +409,9 @@ var float vol_cup_90     = na
 var float vol_cdn_med    = na
 var float vol_cdn_75     = na
 var float vol_cdn_90     = na
+// Layer 2 event rows (EV2 HL / OH / OL / C+ / C-), 3 numbers each: index = line * 3 + (0 median, 1 75th, 2 90th)
+var array<float> ev2 = array.new_float(15, na)
+var string ev2_label = ""
 // Drift d=μ/σ
 var float drift_val      = na
 // The human-readable drift readout the export now carries after the arrow, e.g.
@@ -553,6 +561,16 @@ if barstate.isfirst
                  str.contains(rowUp, "WHEAT")    or str.contains(rowUp, "CORN")    or
                  str.contains(rowUp, "SUGAR")
 
+            // Layer 2 rows: read only, never mixed into the base values here (applied below when the box is ticked)
+            if insideVolBlock and str.contains(rowUp, "LAYER 2 TODAY")
+                ev2_label := rowRaw
+            if insideVolBlock and str.contains(rowUp, "EV2 ")
+                li = str.contains(rowUp, "EV2 HL") ? 0 : str.contains(rowUp, "EV2 OH") ? 1 : str.contains(rowUp, "EV2 OL") ? 2 :
+                     str.contains(rowUp, "EV2 C+") ? 3 : str.contains(rowUp, "EV2 C-") ? 4 : -1
+                if li >= 0 and na(array.get(ev2, li * 3))
+                    array.set(ev2, li * 3,     f_firstNumAfter(rowRaw, ": "))
+                    array.set(ev2, li * 3 + 1, f_lastNumBefore(rowRaw, "75th"))
+                    array.set(ev2, li * 3 + 2, f_lastNumBefore(rowRaw, "90th"))
             if not isDataLine and isKnownTicker
                 insideVolBlock := str.contains(rowUp, symUp)
             else if insideVolBlock and isDataLine
@@ -616,6 +634,28 @@ if barstate.isfirst
                         drift_val := d
                     if str.contains(rowRaw, "→") and na(drift_text)
                         drift_text := str.trim(array.get(str.split(rowRaw, "→"), 1))
+
+// Layer 2 switch: on a decision day (EV2 rows present) and with the box ticked, the EV2 numbers replace the base for
+// this paste; otherwise the base values above are kept untouched.
+if barstate.isfirst and use_event_layer and not na(array.get(ev2, 0))
+    vol_hl_med  := nz(array.get(ev2, 0),  vol_hl_med)
+    vol_hl_75   := nz(array.get(ev2, 1),  vol_hl_75)
+    vol_oh_med  := nz(array.get(ev2, 3),  vol_oh_med)
+    vol_oh_75   := nz(array.get(ev2, 4),  vol_oh_75)
+    vol_oh_90   := nz(array.get(ev2, 5),  vol_oh_90)
+    vol_ol_med  := nz(array.get(ev2, 6),  vol_ol_med)
+    vol_ol_75   := nz(array.get(ev2, 7),  vol_ol_75)
+    vol_ol_90   := nz(array.get(ev2, 8),  vol_ol_90)
+    vol_cup_med := nz(array.get(ev2, 9),  vol_cup_med)
+    vol_cup_75  := nz(array.get(ev2, 10), vol_cup_75)
+    vol_cup_90  := nz(array.get(ev2, 11), vol_cup_90)
+    vol_cdn_med := nz(array.get(ev2, 12), vol_cdn_med)
+    vol_cdn_75  := nz(array.get(ev2, 13), vol_cdn_75)
+    vol_cdn_90  := nz(array.get(ev2, 14), vol_cdn_90)
+    if not na(drift_text) and str.length(drift_text) > 0
+        drift_text := drift_text + " · " + ev2_label
+    else
+        drift_text := ev2_label
 
 // Inverted FX futures (6J/6S/6C): the export's up-side is this chart's down-side.
 // Swap the Open-High / Open-Low rungs and flip the drift sign. H-L and O-C are
