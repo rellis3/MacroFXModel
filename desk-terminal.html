@@ -340,6 +340,18 @@ const getJson = u => {
   if (A && A.role === 'viewer' && !A.mayCall('GET', u)) return Promise.resolve({ ok: false, error: 'owner only' });
   return fetch(u, { cache: 'no-store' }).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
 };
+// The page's first load in ONE request (owner 2026-11-24: fewer round trips on a phone): GET /api/terminal-bundle runs each route on the
+// server with this session's own cookie, so every route's access rules and viewer copies apply exactly as they would from here. Anything
+// the bundle cannot give falls back to the routes one by one.
+async function getMany(urls) {
+  const A = globalThis.deskAccessState, may = u => !(A && A.role === 'viewer' && !A.mayCall('GET', u)), ask = urls.filter(may);
+  if (globalThis.__deskAsof?.requested || globalThis.__deskAsof?.active) return Promise.all(urls.map(getJson));   // the Time Machine answers route by route
+  try {
+    const r = await fetch(`/api/terminal-bundle?u=${ask.map(encodeURIComponent).join(',')}`, { cache: 'no-store' }).then(x => x.json());
+    if (r?.ok && r.results) return Promise.all(urls.map(u => (!may(u) ? { ok: false, error: 'owner only' } : r.results[u] !== undefined ? r.results[u] : getJson(u))));
+  } catch { /* the routes one by one */ }
+  return Promise.all(urls.map(getJson));
+}
 function whenDeskAccess(fn) {
   if (globalThis.deskAccessState) { fn(); return; }
   addEventListener('deskaccess', () => fn(), { once: true });
@@ -710,10 +722,10 @@ async function load() {
   // the bias engine (GET /api/bias-engine: today's stored issue, else a live read). Asked for with the others but not waited on, since a live read can take
   // a few seconds to gather; the cards that show it are drawn again when it lands. No answer, or not ok: nothing of the engine is drawn (fail soft).
   getJson('/api/bias-engine').then(be => { D.be = be?.ok && be.currencies ? be : null; beArrived(); }).catch(() => {});
-  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk, news, pr, cbx, dfc, ps] = await Promise.all([
-    getJson('/api/desk-run'), getJson('/api/desk-score/record'), getJson('/api/desk-update'), getJson('/api/desk-quality'),
-    getJson('/api/macro-scorecard'), getJson('/api/rate-diff'), getJson('/api/real-yield'), getJson('/api/rates'),
-    getJson('/api/cot-state'), getJson('/api/oanda-book/history'), getJson('/api/gpr'), getJson('/api/events'), getJson('/api/trade-watch'), getJson('/api/desk-weekly'), getJson('/api/desk-news?hours=24&tier=2'), getJson('/api/policy-rates'), getJson('/api/cb-expectations'), getJson('/api/desk-dayfc'), getJson('/api/pair-select')]);
+  const [run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, ev, tw, wk, news, pr, cbx, dfc, ps] = await getMany([
+    '/api/desk-run', '/api/desk-score/record', '/api/desk-update', '/api/desk-quality',
+    '/api/macro-scorecard', '/api/rate-diff', '/api/real-yield', '/api/rates',
+    '/api/cot-state', '/api/oanda-book/history', '/api/gpr', '/api/events', '/api/trade-watch', '/api/desk-weekly', '/api/desk-news?hours=24&tier=2', '/api/policy-rates', '/api/cb-expectations', '/api/desk-dayfc', '/api/pair-select']);
   D = { run, rec, upd, dq, sc, rd, ry, rates, cot, book, gpr, tw, wk, pr, cbx, dfc, ps, be: D.be, news: news?.ok ? news.items : [], ev: Array.isArray(ev) ? ev : (ev?.events ?? []) };
   const ok = run?.ok && run.head?.ok;
   D.cards = ok ? run.head.book.instruments : {};
@@ -1286,7 +1298,7 @@ function assetCard(n, c, full = false) {
   return `<div class="${full ? '' : 'card click'}" ${full ? '' : `tabindex="0" data-inst="${esc(n)}"`}><div class="ch"><span class="chip">${esc(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${esc(n)}</span><span class="r">${full ? '' : (globalThis.assetFav?.starHtml(n, nice(n)) ?? '')}${gradeChip(c)}${full ? '<button class="x" aria-label="Close">✕</button>' : ''}</span></div>
 <h3 style="margin:0 0 8px;font-size:${full ? 22 : 17}px">Analysis of ${esc(nice(n))}</h3>
 <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="lbl" title="The day's one lean: the morning desk run's call, fixed once issued. The bar beside it is the same call as a score (direction × the card's conviction), not a second view (plans/ONE_DESK_BIAS.md).">Desk call</span>${rateChipC(c)}${scoreBar(s, '220px', assetWordV(c))}<span data-twchip="${esc(n)}">${twChip(n)}</span>${sf('panel.asset.enginefallback', beTry(() => (be ? BEV().fallbackChip(be, c.rating) : '')))}${full && live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(`An intraday desk note, not a change of call: the day's call stays ${ratingWord(c.rating)}. ${live.why ?? ''}`)}">intraday note → ${esc(live.rating)}</span>` : ''}</div>
-${globalThis.ttUnreviewedNote?.(c) || `<div class="thesis">“${esc(full ? firstSentence(c.why) : c.why)}”</div>`}
+${globalThis.ttUnreviewedNote?.(c) || `<div class="thesis" title="${esc(c.why)}">“${esc(firstSentence(c.why))}”</div>`}
 <div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="The card's own conviction (the Head's), not the global ruling's or a currency's">card conviction ${esc(c.conviction ?? '–')}</span><span class="sfc" data-surface="panel.asset.size"><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap})` : ''}</span></span></div>
 <div class="lv" data-lv-asset="${esc(n)}"></div>${full ? `${c.levels ? '' : noLevels()}<div class="tfp-host" id="achart-tf"></div><div class="achart" id="achart"></div>` : (c.levels ? ladder(c, n) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n, c.rating) ?? '')}
 ${full ? `<p>${esc(c.why)}</p><div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Target</b><span class="mono">${Math.sign(DIR[c.rating] ?? 0) >= 0 ? `up p50 ${c.levels.up.p50} · p75 ${c.levels.up.p75} · p90 ${c.levels.up.p90}` : `down p50 ${c.levels.down.p50} · p75 ${c.levels.down.p75} · p90 ${c.levels.down.p90}`}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${esc(c.plan.timing)}</span></div>` : ''}</div></div>

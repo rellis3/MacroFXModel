@@ -8,8 +8,10 @@
  * boxHtml(inst) is the empty card; mount(box) fills it (reads [data-aa] for the market).
  */
 import { stateOf, controlsHtml, confirmReplace, pollWhile } from './sharedRead.js';
+import { tidyText, details } from './cardTidy.js';
 
-const h = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// every string from the read goes through tidyText first: the data pack's field names and raw timestamps in words (owner 2026-11-24)
+const h = s => tidyText(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const FIT = { supports: ['up', 'supports'], contradicts: ['dn', 'contradicts'], mixed: ['gold', 'mixed'], 'no data': ['', 'no data'] };
 const AGREE = { agree: ['up', 'agrees with the card'], disagree: ['dn', 'disagrees with the card'], partly: ['gold', 'partly agrees with the card'] };
 // the shared read (every desk user) states a lean, never a position: what the data leans towards today, an observation
@@ -20,6 +22,13 @@ export function boxHtml(inst) {
 }
 
 const list = xs => (xs?.length ? `<ul style="margin:4px 0 0;padding-left:18px">${xs.map(x => `<li>${h(x)}</li>`).join('')}</ul>` : '<span class="muted">none</span>');
+/** A case as short bullets, one per sentence, with each price in bold: the read writes it as one paragraph. */
+export function caseBullets(text) {
+  const t = String(text ?? '').trim(); if (!t) return '<span class="muted">–</span>';
+  const parts = t.split(/(?<=[.;])\s+(?=[A-Z(])/).map(x => x.trim()).filter(Boolean);
+  const bold = x => h(x).replace(/(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+\.\d+)/g, '<b>$1</b>');
+  return parts.length > 1 ? `<ul class="ct-bul">${parts.map(x => `<li>${bold(x)}</li>`).join('')}</ul>` : `<p style="margin:4px 0 0">${bold(t)}</p>`;
+}
 
 export function analysisHtml(r) {
   const a = r.analysis, shared = a.audience === 'shared', ag = shared ? (BIAS[a.bias] ?? BIAS.mixed) : (AGREE[a.card?.agree] ?? AGREE.partly);
@@ -30,11 +39,11 @@ ${shared ? (a.biasWhy ? `<p class="muted" style="margin:0 0 10px">${h(a.biasWhy)
 <div class="scroll"><table><thead><tr><th>Driver</th><th>Today</th><th></th></tr></thead><tbody>${a.drivers.map(d => { const f = FIT[d.fits] ?? FIT.mixed; return `<tr><td style="min-width:120px"><b>${h(d.driver)}</b></td><td class="muted" style="font-size:12.5px">${h(d.reading)}</td><td><span class="chip ${f[0]}" style="font-size:10px">${f[1]}</span></td></tr>`; }).join('')}</tbody></table></div>
 ${a.contradictions.length ? `<div class="lbl" style="margin-top:12px">What does not fit</div>${list(a.contradictions)}` : ''}
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px">
-<div><div class="lbl" style="color:var(--up)">Bull case</div><p style="margin:4px 0 0">${h(a.bull || '–')}</p></div>
-<div><div class="lbl" style="color:var(--dn)">Bear case</div><p style="margin:4px 0 0">${h(a.bear || '–')}</p></div></div>
-${a.levels ? `<div class="lbl" style="margin-top:12px">${shared ? 'Reference levels' : 'Levels'}</div><p class="mono" style="margin:4px 0 0;font-size:12.5px">${h(a.levels)}</p>` : ''}
+<div><div class="lbl" style="color:var(--up)">Bull case</div>${caseBullets(a.bull)}</div>
+<div><div class="lbl" style="color:var(--dn)">Bear case</div>${caseBullets(a.bear)}</div></div>
 <div class="lbl" style="margin-top:12px">Watch</div>${list(a.watch)}
-${a.gaps.length ? `<div class="lbl" style="margin-top:12px">Gaps</div>${list(a.gaps)}` : ''}
+${a.levels ? details(`${shared ? 'Reference levels' : 'Levels'} as the read wrote them <span class="muted">(the level ladder above has them sorted)</span>`, `<p style="margin:0;font-size:12.5px;line-height:1.6">${h(a.levels)}</p>`) : ''}
+${a.gaps.length ? details(`Data gaps <span class="muted">· ${a.gaps.length} missing input${a.gaps.length === 1 ? '' : 's'}</span>`, list(a.gaps)) : ''}
 <p class="tt-note">${h(r.provider ?? '')} ${h(r.model ?? '')} · ${r.at ? new Date(r.at).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) + ' London' : ''}${r.bookDate ? ` · book of ${h(r.bookDate)}` : ' · no morning book today'}. One market read against its own drivers, the analysts, its pack data, headlines and the Evidence Book. ${shared ? 'Educational context: not advice and not a trade signal.' : 'Private desk version, with the morning card. Context, untested: it never changes a card.'}</p>`;
 }
 

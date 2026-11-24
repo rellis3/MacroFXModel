@@ -8402,6 +8402,11 @@ async function _mlBook(date) {
   }
   return null;
 }
+async function _mlRefs(ML, cards, date) {   // yesterday's high / low / close and the week open, once a day, 4 at a time
+  const list = Object.keys(cards).filter(n => _dsOanda[n]); let next = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => { while (next < list.length) { const n = list[next++];
+    try { cards[n].ref = ML.refLevels(await _btFetchD1(_dsOanda[n], 8), date); } catch (e) { console.warn(`[market-live] ref ${n}: ${e.message}`); } } }));
+}
 async function _mlExtraUnits(cards) {   // half the median daily range of 20 days, for the markets the book has no lines for
   await Promise.all(Object.entries(cards).filter(([, c]) => c.extra && !(c.unit > 0)).map(async ([n, c]) => {
     try { const r = (await _btFetchD1(_dsOanda[n], 21)).map(b => (b.high - b.low) / 2).filter(v => v > 0).sort((x, y) => x - y); if (r.length >= 5) c.unit = r[Math.floor(r.length / 2)]; }
@@ -8446,6 +8451,7 @@ async function _mlTick() {
       const keep = _ml.date === date ? { tapeHist: _ml.tapeHist, fired: _ml.fired, saved: _ml.saved } : {};
       _ml = { date, runKey, cards, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: b.runDate, tapeHist: [], fired: new Set(), saved: false, retail: null, retailAt: 0, reactions: [], tiltAt: 0, ...keep };
       await _mlExtraUnits(_ml.cards);
+      await _mlRefs(ML, _ml.cards, date);
     }
     const names = Object.keys(_ml.cards).filter(n => _dsOanda[n]);
     if (!_ml.state || (names.some(n => !_ml.state.markets[n]) && now - _ml.seededAt > 15 * 60_000)) {
@@ -8492,6 +8498,29 @@ app.get('/api/market-live', async (req, res) => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d !== _ml.date) { const raw = await kv.get(_ML_DAY_KEY(d)).catch(() => null); return res.json(raw ? { ...JSON.parse(raw), stored: true } : { ok: false, date: d, error: 'no stored record for that day (written at 21:05 London on days the live layer ran)' }); }
     if (!_ml.at) await _mlTick().catch(() => {});
     res.json({ ..._mlPayload(), ...(_ml.at ? {} : { error: 'the live layer has not run yet (the FX week is shut, or no desk book)' }) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// GET /api/terminal-bundle?u=<path>,<path>,...  (owner 2026-11-24: the Desk Terminal's first load in one request)
+// Each path is fetched from this same server with the caller's own cookie, so every route's login, desk-login rules and viewer copies apply
+// exactly as if the page had asked for it. Only the terminal's own load routes are accepted, at most 25, and never this route itself.
+const _TB_ALLOWED = new Set(['/api/desk-run', '/api/desk-score/record', '/api/desk-update', '/api/desk-quality', '/api/macro-scorecard', '/api/rate-diff', '/api/real-yield',
+  '/api/rates', '/api/cot-state', '/api/oanda-book/history', '/api/gpr', '/api/events', '/api/trade-watch', '/api/desk-weekly', '/api/desk-news', '/api/policy-rates',
+  '/api/cb-expectations', '/api/desk-dayfc', '/api/pair-select', '/api/market-live', '/api/bias-engine']);
+app.get('/api/terminal-bundle', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const list = [...new Set(String(req.query.u ?? '').split(',').map(x => x.trim()).filter(Boolean))].slice(0, 25);
+    const results = {};
+    await Promise.all(list.map(async u => {
+      const path = u.split('?')[0];
+      if (!u.startsWith('/api/') || !_TB_ALLOWED.has(path)) { results[u] = { ok: false, error: 'not a terminal load route' }; return; }
+      try {
+        const r = await fetch(`http://127.0.0.1:${PORT}${u}`, { headers: { cookie: req.headers.cookie ?? '', accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(45_000) });
+        const txt = await r.text();
+        try { results[u] = JSON.parse(txt); } catch { results[u] = { ok: false, error: `HTTP ${r.status}` }; }
+      } catch (e) { results[u] = { ok: false, error: e.message }; }
+    }));
+    res.json({ ok: true, results });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/policy-rates: each central bank's policy rate from its own published series (js/policyRates.js), with its as-of
