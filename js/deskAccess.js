@@ -59,7 +59,7 @@ export const VIEWER_SURFACE_ROUTES = [
   ['/api/desk-score', ['panel.ov.record', 'panel.ana.track', 'panel.ana.fall', 'panel.ana.days']],
   ['/api/thesis-reality', ['panel.charts.ranking', 'panel.changed.thesis']],
   ['/api/desk-paper', ['panel.changed.paper']],
-  ['/api/trade-watch', ['strip.zone', 'panel.ov.tradewatch']],
+  ['/api/trade-watch', ['panel.ov.tradewatch']],   // strip.zone retired 2026-11-24: the tape no longer carries the watcher's notes
   ['/api/pair-select', ['panel.ov.bestpairs']],
   ['/api/desk-quality', ['widget.dqchip']],
   ['/api/desk-alerts', ['panel.ov.alerts']],

@@ -1000,14 +1000,14 @@ function upcoming(hours = 48) {
 }
 const lt = ms => new Date(ms).toLocaleString('en-GB', { timeZone: LONDON, weekday: 'short', hour: '2-digit', minute: '2-digit' });
 
+// the news tape: headlines, the regime, events, desk updates and geopolitical risk. The trade watcher's zone / target / invalid notes and the
+// book's risk lines are not on it (owner 2026-11-24): they live on the cards, the Trade watch board and Telegram.
 function ticker() {
   const items = [];
   for (const h of D.news.filter(h => (h.read?.tier ?? h.tier) === 1).slice(0, 8)) items.push(`<span data-surface="strip.news"><b>📰 ${new Date(h.ms).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</b> ${esc(h.title)}${impactTxt(h)}</span>`);
-  for (const e of (D.tw?.events ?? []).slice(-6).reverse()) items.push(`<span data-surface="strip.zone"><b>${e.kind === 'zone' ? '🎯 IN ZONE' : e.kind === 'target' ? '✅ TARGET' : '⛔ INVALID'}</b> ${esc(e.inst)} @ ${px(e.price)} · ${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })}</span>`);
   const g = D.run?.head?.book?.global; if (g) items.push(`<span data-surface="strip.regime"><b>REGIME</b> ${esc(String(g.tone).replace('_', '-').toUpperCase())}</span>`);
   for (const e of upcoming(36).filter(e => /high/i.test(e.impact)).slice(0, 10)) items.push(`<span data-surface="strip.events"><b>${esc(e.country)}</b> ${esc(e.event)} · ${lt(e.ms)}${e.estimate ? ` · est ${esc(e.estimate)}` : ''}</span>`);
   for (const s of Object.values(D.upd?.slots ?? {})) if (s?.view?.headline) items.push(`<span data-surface="strip.update"><b>UPDATE</b> ${esc(s.view.headline)}</span>`);
-  for (const r of (D.run?.head?.book?.risks ?? []).slice(0, 4)) items.push(`<span data-surface="strip.risk"><b>RISK</b> ${esc(firstSentence(r))}</span>`);
   if (D.gpr?.ok) items.push(`<span data-surface="strip.gpr"><b>GEOPOLITICAL RISK</b> ${D.gpr.level} · z ${f(D.gpr.z, 1)} · ${esc(D.gpr.trend)}</span>`);
   const html = items.join('') || '<span>No headlines.</span>';
   $('tk').innerHTML = html + html;   // twice, so the scroll loops
