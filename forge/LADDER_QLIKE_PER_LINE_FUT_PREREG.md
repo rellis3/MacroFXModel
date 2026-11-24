@@ -43,3 +43,13 @@ their existing picks (`js/ladderV2QlikeParams.json`).
   with this verdict. Contracts with no twin feed (ZN, ZB, ZF, ZT, ZC, ZW, NG) stay research-only.
 
 ## Amendments
+
+- **A1, 2026-11-24, POST-HOC (results seen): implementation fault fixed, nothing else changed.** As first run, US2000
+  (RTY, history from 2017-07) was never scored: 2019 has no fitted scale for any arm, and the walk-forward pick's
+  "≤ 2% missing in training" check rejected every arm in every year, so no pick existed and the pooled point estimate
+  was NaN. The check now ignores training sessions where no arm has a QLIKE yet (`race.py` `wf_pick`). Every other
+  contract's picks are unchanged by this (checked). The study is re-run in full with the same seed; the first run's
+  output is kept in `analysis/output/ladder-qlike-per-line-fut/first_run/`.
+- **Data note (descriptive only, cannot change the verdict):** CL (WTI) on 2020-04-20/21 traded at or below zero;
+  measured as % of an open near zero, one session's QLIKE is ~850 vs a typical ~1.5. The verdict includes it as
+  registered; WTI without those two sessions is reported beside it.

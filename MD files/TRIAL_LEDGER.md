@@ -10,14 +10,14 @@ Generated 2026-11-24.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **603** |
+| claims tested (validated + null + underpowered) | **604** |
 | validated | 199 |
 | null | 231 |
-| underpowered | 173 |
+| underpowered | 174 |
 | context (base rates, descriptions: not counted as tests) | 85 |
 | pre-registrations with no banked verdict (below) | 88 |
 
-**What the count says (Lesson 02 §05).** If none of the 603 claims were real, tests at the usual 5% size would still pass
+**What the count says (Lesson 02 §05).** If none of the 604 claims were real, tests at the usual 5% size would still pass
 about **30.2** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
 **roughly 30 of the 199 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
@@ -715,6 +715,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-24 | ladder-event-layer-per-line-cfd | volatility | underpowered | forge/LADDER_EXHAUSTION_EVENTS_PREREG.md |
 | 2026-11-24 | ladder-pinball-per-line-cfd | volatility | null | forge/LADDER_EXHAUSTION_EVENTS_PREREG.md |
 | 2026-11-24 | ladder-qlike-per-line-cfd | volatility | underpowered | forge/LADDER_QLIKE_PER_LINE_CFD_PREREG.md |
+| 2026-11-24 | ladder-qlike-per-line-fut | volatility | underpowered | forge/LADDER_QLIKE_PER_LINE_FUT_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
