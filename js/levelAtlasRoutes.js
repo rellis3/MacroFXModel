@@ -345,7 +345,14 @@ function boundPackedSince(packed, sinceSec) {
 // touches + pending, UNMATCHED (matching against the book happens outside
 // the cache, every call, so a fresh /run's book reaches a poll immediately
 // without needing to also invalidate this cache).
+// Diagnostic (2026-11-23): how many live walks run and what they cost, read by /api/services memory.liveAtlas. Each walk replays ~125 days and leaves tens of MB of garbage; with many warm pairs and a new bar a minute that adds up.
+export const liveWalkStats = { walks: 0, ms: 0, since: Date.now(), byPair: {} };
 function computeLiveContext(pair, packed) {
+  const _t0 = Date.now();
+  try { return _computeLiveContext(pair, packed); }
+  finally { const dt = Date.now() - _t0; liveWalkStats.walks++; liveWalkStats.ms += dt; const b = (liveWalkStats.byPair[pair] ??= { n: 0, ms: 0 }); b.n++; b.ms += dt; }
+}
+function _computeLiveContext(pair, packed) {
   const sym = pair.toUpperCase();
   const assetClass = assetClassFor(pair);
   const { touches, pending, coverage } = atlasWalk(packed, { instrument: sym, assetClass, rearmFracs: [DEFAULT_REARM], pendingRearmFrac: DEFAULT_REARM });

@@ -151,7 +151,12 @@ ok('A14 no production reads: only V2\'s own files, its server section, its panel
   const allowed = new Set(['js/biasEngineV2.js', 'js/biasEngineV2.test.mjs', 'js/biasEngineV2.econ.test.mjs', 'js/biasEngineV2.fixture.mjs', 'server.js', 'js/biasForecasters.js',
     'js/terminal/biasEngineV2View.js', 'js/terminal/biasEngineV2View.test.mjs', 'js/terminal/terminalTabs.js', 'js/terminal/tabRegistry.js', 'js/deskAccess.js', 'js/serviceFlags.js', 'js/storeRegistry.js', 'js/deskSnapshot.js', 'kv.js', '_worker.js', 'desk-terminal.html', 'js/biasForecasters.test.mjs',
     // owner 2026-11-22: V2 sits next to V1 in the Desk Bias Process head to head (scoring display only, not a consumer of its calls)
-    'js/deskBiasH2H.js', 'js/deskBiasH2H.test.mjs', 'js/terminal/deskBiasProcessView.js']);
+    'js/deskBiasH2H.js', 'js/deskBiasH2H.test.mjs', 'js/terminal/deskBiasProcessView.js',
+    // 2026-11-23: the hourly "Through the day" re-run of V2's own panel (display only, produces V2's intraday record, read by the V2 view); not a production consumer
+    'js/biasIntraday.js', 'js/biasIntraday.test.mjs',
+    // owner 2026-11-24 (tier 2 of the live layer): the asset cards' TILT row shows the hourly re-run's v1r (V1's logic on fresh data) beside the
+    // morning issue, owner only as the route is; display only, it feeds no call, size or score
+    'js/terminal/liveLayer.js', 'js/terminal/liveLayer.test.mjs']);
   const hits = [];
   const walkDir = d => { for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
     const rel = path.join(d, e.name);

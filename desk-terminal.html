@@ -123,6 +123,7 @@ td.n{font-family:var(--mono);white-space:nowrap}
 .ladder{position:relative;height:30px;margin:10px 0 2px}
 .ladder .rail{position:absolute;left:0;right:0;top:13px;height:4px;border-radius:9px;background:linear-gradient(90deg,var(--dnbg),var(--bg3) 45%,var(--bg3) 55%,var(--upbg))}
 .ladder .tick{position:absolute;top:6px;width:1px;height:18px;background:var(--line2)}
+.ladder .tick.now{background:var(--gold);height:26px;top:2px;width:3px;border-radius:2px;box-shadow:0 0 8px rgba(var(--goldrgb),.7)}
 .ladder .tick.o{background:var(--tx);height:22px;top:4px;width:2px}
 .ladder .zone{position:absolute;top:9px;height:12px;border-radius:4px;background:var(--purbg);border:1px solid rgba(var(--purrgb),.6)}
 .ladlab{display:flex;justify-content:space-between;font:10.5px var(--mono);color:var(--tx3)}
@@ -251,7 +252,7 @@ html[data-role="owner"] .disclaimer{display:none}
   <div class="topin">
     <div class="brand"><i></i>DESK <span>TERMINAL</span></div>
     <div class="clocks" id="clocks" data-surface="widget.clocks"></div>
-    <div class="tright" id="hdrsheet"><input type="text" id="cmdbtn" class="cmdbar" data-surface="widget.cmdline" placeholder="Command  /" aria-label="Command line: type a market, a board or a command. Press / anywhere." title="Command line: type a market, a board or a command. Press / anywhere." autocomplete="off" spellcheck="false" hidden><button type="button" id="alertsbtn" class="btn" data-surface="widget.alerts" title="Alerts: set a note for the desk when a number does something" hidden>Alerts</button><button type="button" id="linkchip" class="chip" data-surface="widget.linked" hidden></button><span id="mktchip" class="chip mkt-chip" data-surface="widget.mktchip" hidden></span><button type="button" id="asofchip" class="chip" data-surface="widget.asof" title="Live. Click to show or hide the time bar" aria-label="Live. Show or hide the time bar." hidden>LIVE</button><button type="button" id="asofbtn" class="btn" data-surface="widget.asof" title="Time machine: see the whole terminal as the saved records showed it at an earlier moment" aria-haspopup="dialog" aria-expanded="false" hidden>Time machine</button><span id="bookchip" class="chip" data-surface="widget.bookchip">book…</span><span id="dqchip" class="chip" data-surface="widget.dqchip">data…</span><button id="themebtn" class="btn" data-surface="widget.themepicker" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="themepop" title="Change the colour theme"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7" r="1"/></svg><span id="themename">Deep navy</span></button><button id="signout" class="btn" data-surface="widget.signout" type="button" style="display:none">Sign out</button><a class="btn" data-surface="nav.access" href="desk-admin.html" title="Which tabs, links and panels the desk login sees">Access</a><a class="btn" data-surface="nav.research" href="research.html">Research</a><a class="btn" data-surface="nav.deskoffice" href="desk-office.html">Desk Office</a><a class="btn" data-surface="nav.deskrun" href="desk-run.html">Desk Run</a><div id="themepop" class="tpop" role="menu" aria-label="Colour theme" hidden></div></div>
+    <div class="tright" id="hdrsheet"><input type="text" id="cmdbtn" class="cmdbar" data-surface="widget.cmdline" placeholder="Command  /" aria-label="Command line: type a market, a board or a command. Press / anywhere." title="Command line: type a market, a board or a command. Press / anywhere." autocomplete="off" spellcheck="false" hidden><button type="button" id="alertsbtn" class="btn" data-surface="widget.alerts" title="Alerts: set a note for the desk when a number does something" hidden>Alerts</button><button type="button" id="linkchip" class="chip" data-surface="widget.linked" hidden></button><span id="mktchip" class="chip mkt-chip" data-surface="widget.mktchip" hidden></span><button type="button" id="asofchip" class="chip" data-surface="widget.asof" title="Live. Click to show or hide the time bar" aria-label="Live. Show or hide the time bar." hidden>LIVE</button><button type="button" id="asofbtn" class="btn" data-surface="widget.asof" title="Time machine: see the whole terminal as the saved records showed it at an earlier moment" aria-haspopup="dialog" aria-expanded="false" hidden>Time machine</button><span id="lvstamp" class="chip gold" data-surface="widget.livestamp" title="The live layer: prices every minute, the macro tilt hourly">live –</span><span id="bookchip" class="chip" data-surface="widget.bookchip">book…</span><span id="dqchip" class="chip" data-surface="widget.dqchip">data…</span><button id="themebtn" class="btn" data-surface="widget.themepicker" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="themepop" title="Change the colour theme"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.7 1.8-1.7H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7" r="1"/></svg><span id="themename">Deep navy</span></button><button id="signout" class="btn" data-surface="widget.signout" type="button" style="display:none">Sign out</button><a class="btn" data-surface="nav.access" href="desk-admin.html" title="Which tabs, links and panels the desk login sees">Access</a><a class="btn" data-surface="nav.research" href="research.html">Research</a><a class="btn" data-surface="nav.deskoffice" href="desk-office.html">Desk Office</a><a class="btn" data-surface="nav.deskrun" href="desk-run.html">Desk Run</a><div id="themepop" class="tpop" role="menu" aria-label="Colour theme" hidden></div></div>
     <button type="button" id="hdrmore" class="btn hm-more" data-surface="widget.phonemenu" aria-expanded="false" aria-controls="hdrsheet" aria-label="More: menu, theme, links and status" title="More"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   </div>
   <div class="ticker" aria-label="headlines"><div class="tk" id="tk"><span>Loading the desk…</span></div></div>
@@ -699,7 +700,7 @@ try { const t = localStorage.getItem('deskTerminalTab'); if (t) document.querySe
 if (/^#macro/.test(location.hash)) document.querySelector('#tabs [data-t="macro"]')?.click();   // a shared #macro/rates link lands on that section
 
 // ── modal ──
-function openModal(html) { const m = $('modal'); m.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`; m.hidden = false; m.querySelectorAll('[data-aa]').forEach(b => globalThis.mountAnalyse?.(b)); m.querySelector('.x')?.focus(); m.querySelector('.x')?.addEventListener('click', closeModal); }
+function openModal(html) { const m = $('modal'); m.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`; m.hidden = false; m.querySelectorAll('[data-aa]').forEach(b => globalThis.mountAnalyse?.(b)); m.querySelector('.x')?.focus(); globalThis.liveLayer?.patch(); m.querySelector('.x')?.addEventListener('click', closeModal); }
 function closeModal() { $('modal').hidden = true; $('modal').innerHTML = ''; }
 $('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
@@ -1146,7 +1147,7 @@ function overviewNoBook() {
 function overview() {
   if (!D.run?.ok) { overviewNoBook(); return; }
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
-  $('overview').innerHTML = `<div class="sfc" data-surface="panel.ov.hero">${heroCard(`The desk's world · ${esc(D.run.date)}`, `${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest`, true)}</div>
+  $('overview').innerHTML = `<div data-lv-strip></div><div class="sfc" data-surface="panel.ov.hero">${heroCard(`The desk's world · ${esc(D.run.date)}`, `${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest`, true)}</div>
 <div class="sfc" data-surface="panel.ov.book">${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}</div><div class="sfc" data-surface="panel.ov.bookintel"><div id="bkintel" style="margin-bottom:14px"></div></div>
 <div class="grid g2"><div class="sfc" data-surface="panel.ov.regime">${regimeCard()}</div><div class="grid" style="align-content:start"><div class="sfc" data-surface="panel.ov.strength">${strengthStrip()}</div><div class="sfc" data-surface="panel.ov.engine"><div id="beov"></div></div><div class="sfc" data-surface="panel.ov.exposure">${sh(exposureChart)}</div><div class="sfc" data-surface="panel.ov.record">${sh(recordCard)}</div></div></div>
 <div class="sfc" data-surface="panel.ov.week">${sh(weekSection)}</div><div class="sfc" data-surface="panel.ov.bestpairs">${sh(bestPairs)}</div><div id="xo"></div><div class="sfc" data-surface="panel.ov.dayshape">${dayShape()}</div>
@@ -1226,10 +1227,11 @@ ${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}<
   wire($('modal'));
 }
 function currencies() {
-  $('ccy').innerHTML = `<div class="card hero" style="margin-bottom:14px"><div class="hhead"><span class="lbl">Currency bias by country</span></div><div class="map" id="ccymap"></div></div><div class="grid g4">${D.ranking.map(c => { const v = D.ccy[c] ?? {}, cb = D.sc?.cbSentiment?.[c];
-    return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:22px">${FLAG[c] ?? ''}</span><h3>${c}</h3>${biasChip(v.bias)}<span class="r">${ring(ccyScore(v.bias), 52, ccyWord(v.bias))}${sf('panel.ccy.engine', beTry(() => beCcyRing(c)))}</span></div><div class="muted" style="margin-top:4px">${esc(firstSentence(v.why))}</div>${globalThis.ccyMacro?.miniHtml(c, D.sc) ?? ''}<div class="drv">${cb ? `<span>${BANKSHORT[c]} ${esc(cb.regime.toLowerCase())}</span>` : ''}${pol(c) ? `<span>policy ${pct(pol(c).rate)}</span>` : ''}</div></div>`; }).join('')}</div>`;
+  $('ccy').innerHTML = `<div data-lv-strip></div><div class="card hero" style="margin-bottom:14px"><div class="hhead"><span class="lbl">Currency bias by country</span></div><div class="map" id="ccymap"></div></div><div class="grid g4">${D.ranking.map(c => { const v = D.ccy[c] ?? {}, cb = D.sc?.cbSentiment?.[c];
+    return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:22px">${FLAG[c] ?? ''}</span><h3>${c}</h3>${biasChip(v.bias)}<span class="r">${ring(ccyScore(v.bias), 52, ccyWord(v.bias))}${sf('panel.ccy.engine', beTry(() => beCcyRing(c)))}</span></div><div class="muted" style="margin-top:4px">${esc(firstSentence(v.why))}</div><div class="lv" data-lv-ccy="${c}"></div>${globalThis.ccyMacro?.miniHtml(c, D.sc) ?? ''}<div class="drv">${cb ? `<span>${BANKSHORT[c]} ${esc(cb.regime.toLowerCase())}</span>` : ''}${pol(c) ? `<span>policy ${pct(pol(c).rate)}</span>` : ''}</div></div>`; }).join('')}</div>`;
   wire($('ccy'));
   drawMap($('ccymap'), 'bias');
+  globalThis.liveLayer?.patch();
 }
 
 // ── ASSETS ──
@@ -1239,21 +1241,48 @@ const priceNums = s => (String(s ?? '').replace(/(\d),(?=\d{3}(?!\d))/g, '$1').m
 // a card without forecast lines says why, instead of drawing nothing: a run made before the session opens (a weekend or pre-open run) has no open to hang them on
 const noLevels = () => { const at = D.run?.startedAt ? new Date(D.run.startedAt) : null, wk = at ? at.toLocaleDateString('en-GB', { weekday: 'long', timeZone: LONDON }) : '';
   return `<div class="muted" style="margin-top:6px;font-size:12px">No forecast lines on this card: this run${at ? ` was made ${esc(wk)} ${esc(at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: LONDON }))}` : ''}${/Saturday|Sunday/.test(wk) ? ', before the next session opened, so there was no open to hang them on' : ' without today\'s session open from the forecaster'}. The weekday morning run carries them.</div>`; };
-function ladder(c) {
+function ladder(c, n) {
   const L = c.levels; if (!L?.up?.p90 || !L?.down?.p90) return '';
   const lo = L.down.p90, hi = L.up.p90, x = v => ((v - lo) / (hi - lo)) * 100;
   const nums = priceNums(c.plan?.zone).filter(v => v > lo * 0.9 && v < hi * 1.1);
   const z = nums.length >= 2 ? [Math.min(...nums), Math.max(...nums)] : nums.length === 1 ? [nums[0], nums[0]] : null;   // one price is a one-price zone, as the trade watcher reads it
-  return `<div class="ladder"><div class="rail"></div>${['p90', 'p75', 'p50'].flatMap(q => [L.down[q], L.up[q]]).map(v => `<i class="tick" style="left:${x(v)}%"></i>`).join('')}<i class="tick o" style="left:${x(L.open)}%"></i>${z ? `<i class="zone" style="left:${Math.max(0, x(z[0]))}%;width:${Math.max(1.5, Math.min(100, x(z[1])) - Math.max(0, x(z[0])))}%" title="entry zone"></i>` : ''}</div><div class="ladlab"><span>${lo}</span><span>open ${L.open}</span><span>${hi}</span></div>`;
+  return `<div class="ladder" data-lo="${lo}" data-hi="${hi}"><div class="rail"></div>${['p90', 'p75', 'p50'].flatMap(q => [L.down[q], L.up[q]]).map(v => `<i class="tick" style="left:${x(v)}%"></i>`).join('')}<i class="tick o" style="left:${x(L.open)}%"></i>${z ? `<i class="zone" style="left:${Math.max(0, x(z[0]))}%;width:${Math.max(1.5, Math.min(100, x(z[1])) - Math.max(0, x(z[0])))}%" title="entry zone"></i>` : ''}${n ? `<i class="tick now" data-twpx="${esc(n)}" hidden></i>` : ''}</div><div class="ladlab"><span>${lo}</span><span>open ${L.open}</span><span>${hi}</span></div>`;
+}
+// ── the card's live plan state (the trade watcher, /api/trade-watch: OANDA mids every 2 minutes, 07:00-21:00 London) ──
+// The desk call stays the morning's (plans/ONE_DESK_BIAS.md); this says, on the card face, whether that call's own plan still stands:
+// waiting for its entry, entry zone reached, first target reached, or invalidated. Polled every minute and patched in place.
+const twHhmm = at => (at ? new Date(at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' }) : '');
+function twState(n) {
+  const t = D.tw; if (!t?.ok || !t.plan?.[n]) return null;
+  const f = t.fired?.[n] ?? [], k = f.includes('invalid') ? 'invalid' : f.includes('target') ? 'target' : f.includes('zone') ? 'zone' : 'wait';
+  return { k, ev: [...(t.events ?? [])].reverse().find(e => e.inst === n && e.kind === k) ?? null, px: t.last?.[n], plan: t.plan[n], live: !!t.live };
+}
+function twChip(n) {
+  const s = twState(n); if (!s) return '';
+  const p = s.plan, at = s.ev ? ` ${twHhmm(s.ev.at)}` : '', now = Number.isFinite(s.px) ? ` · now ${px(s.px)}` : '';
+  const lv = `${p.zone ? `zone ${px(Math.min(...p.zone))}${p.zone[0] !== p.zone[1] ? `–${px(Math.max(...p.zone))}` : ''}, ` : ''}target ${px(p.target)}, invalid ${px(p.invalid)}`;
+  const [cls, txt, why] = s.k === 'invalid' ? ['dn', `⛔ invalidation hit${at}`, `Price traded through the plan's invalidation level (${px(p.invalid)}) at${at || ' some point today'} (the watcher counts a touch; read the plan's own wording for a close rule). The morning call is not changed (one call a day), but on its own terms it is in doubt or no longer stands.`]
+    : s.k === 'target' ? ['up', `✅ first target hit${at}`, `Price reached the first target (${px(p.target)}) after the entry.`]
+      : s.k === 'zone' ? ['gold', `🎯 in play since${at}`, `Price reached the entry zone; the plan is live until target or invalidation.`]
+        : ['', '⏳ waiting for entry', `Price has not reached the entry yet. A call that is waiting is not a position.`];
+  return `<span class="chip ${cls}" title="${esc(`Live plan state (trade watcher, OANDA mid every 2 min${s.live ? '' : ', not running now'}). ${why} Plan: ${lv}.${now ? ` Last price ${px(s.px)}.` : ''}`)}">${esc(txt)}${esc(now)}</span>`;
+}
+function applyTw() {
+  document.querySelectorAll('[data-twchip]').forEach(el => { const h = twChip(el.dataset.twchip); if (el.innerHTML !== h) el.innerHTML = h; });
+  document.querySelectorAll('[data-twpx]').forEach(el => {
+    const lad = el.closest('.ladder'), lo = +lad?.dataset.lo, hi = +lad?.dataset.hi, v = globalThis.liveLayer?.last(el.dataset.twpx) ?? D.tw?.last?.[el.dataset.twpx];
+    if (!Number.isFinite(v) || !(hi > lo)) { el.hidden = true; return; }
+    el.hidden = false; el.style.left = `${Math.max(0, Math.min(100, ((v - lo) / (hi - lo)) * 100))}%`; el.title = `live ${px(v)}`;
+  });
 }
 function assetCard(n, c, full = false) {
   const s = assetScore(c), live = D.live?.[n], be = beOf(n);
   return `<div class="${full ? '' : 'card click'}" ${full ? '' : `tabindex="0" data-inst="${esc(n)}"`}><div class="ch"><span class="chip">${esc(GROUPS[groupOf(n)] ?? '')}</span><span class="chip">${esc(n)}</span><span class="r">${full ? '' : (globalThis.assetFav?.starHtml(n, nice(n)) ?? '')}${gradeChip(c)}${full ? '<button class="x" aria-label="Close">✕</button>' : ''}</span></div>
 <h3 style="margin:0 0 8px;font-size:${full ? 22 : 17}px">Analysis of ${esc(nice(n))}</h3>
-<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="lbl" title="The day's one lean: the morning desk run's call, fixed once issued. The bar beside it is the same call as a score (direction × the card's conviction), not a second view (plans/ONE_DESK_BIAS.md).">Desk call</span>${rateChipC(c)}${scoreBar(s, '220px', assetWordV(c))}${sf('panel.asset.enginefallback', beTry(() => (be ? BEV().fallbackChip(be, c.rating) : '')))}${full && live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(`An intraday desk note, not a change of call: the day's call stays ${ratingWord(c.rating)}. ${live.why ?? ''}`)}">intraday note → ${esc(live.rating)}</span>` : ''}</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="lbl" title="The day's one lean: the morning desk run's call, fixed once issued. The bar beside it is the same call as a score (direction × the card's conviction), not a second view (plans/ONE_DESK_BIAS.md).">Desk call</span>${rateChipC(c)}${scoreBar(s, '220px', assetWordV(c))}<span data-twchip="${esc(n)}">${twChip(n)}</span>${sf('panel.asset.enginefallback', beTry(() => (be ? BEV().fallbackChip(be, c.rating) : '')))}${full && live && live.rating !== c.rating ? `<span class="chip gold" title="${esc(`An intraday desk note, not a change of call: the day's call stays ${ratingWord(c.rating)}. ${live.why ?? ''}`)}">intraday note → ${esc(live.rating)}</span>` : ''}</div>
 ${globalThis.ttUnreviewedNote?.(c) || `<div class="thesis">“${esc(full ? firstSentence(c.why) : c.why)}”</div>`}
 <div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="The card's own conviction (the Head's), not the global ruling's or a currency's">card conviction ${esc(c.conviction ?? '–')}</span><span class="sfc" data-surface="panel.asset.size"><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap})` : ''}</span></span></div>
-${full ? `${c.levels ? '' : noLevels()}<div class="tfp-host" id="achart-tf"></div><div class="achart" id="achart"></div>` : (c.levels ? ladder(c) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n, c.rating) ?? '')}
+<div class="lv" data-lv-asset="${esc(n)}"></div>${full ? `${c.levels ? '' : noLevels()}<div class="tfp-host" id="achart-tf"></div><div class="achart" id="achart"></div>` : (c.levels ? ladder(c, n) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n, c.rating) ?? '')}
 ${full ? `<p>${esc(c.why)}</p><div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Target</b><span class="mono">${Math.sign(DIR[c.rating] ?? 0) >= 0 ? `up p50 ${c.levels.up.p50} · p75 ${c.levels.up.p75} · p90 ${c.levels.up.p90}` : `down p50 ${c.levels.down.p50} · p75 ${c.levels.down.p75} · p90 ${c.levels.down.p90}`}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${esc(c.plan.timing)}</span></div>` : ''}</div></div>
 ${sf('panel.asset.engine', beTry(() => (be ? BEV().fullBlockHtml(be, { title: `Macro tilt · ${nice(n)} (context: back-test found no direction skill)`, desk: BEV().deskSign({ rating: c.rating }), rec: D.be }) : '')))}${deskView(n)}${globalThis.analyseBoxHtml?.(n) ?? ''}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="muted">Read full analysis →</span>${/LONG|SHORT/.test(c.rating ?? '') && (c.size > 0 || globalThis.deskIsViewer?.()) ? `<button class="btn" type="button" data-analyse="${esc(n)}" style="padding:3px 10px" title="A deep read of this market against its own drivers, on DeepSeek (about a cent)">✦ Analyse</button>` : ''}</div>`}</div>`;
 }
@@ -1266,11 +1295,13 @@ function assets() {
   const inGroup = Object.entries(D.cards).filter(([n]) => assetFilter === 'all' || groupOf(n) === assetFilter);
   const entries = AF ? AF.filter(inGroup, D.cards) : inGroup;
   const keepOpen = $('assets').querySelector('.fav-tools')?.open;
-  $('assets').innerHTML = `<div class="filters">${[['all', 'All'], ...Object.entries(GROUPS)].map(([k, l]) => `<button aria-pressed="${k === assetFilter}" data-g="${k}">${l}</button>`).join('')}${AF?.pillHtml(D.cards) ?? ''}</div>${AF?.toolsHtml() ?? ''}
+  $('assets').innerHTML = `<div data-lv-strip></div><div class="filters">${[['all', 'All'], ...Object.entries(GROUPS)].map(([k, l]) => `<button aria-pressed="${k === assetFilter}" data-g="${k}">${l}</button>`).join('')}${AF?.pillHtml(D.cards) ?? ''}</div>${AF?.toolsHtml() ?? ''}
 <div class="grid g3">${entries.sort((a, b) => Math.abs(assetScore(b[1]) ?? -1) - Math.abs(assetScore(a[1]) ?? -1)).map(([n, c]) => assetCard(n, c)).join('') || (AF?.on(D.cards) ? AF.emptyHtml(GROUPS[assetFilter]) : '<div class="card muted">No cards.</div>')}</div>`;
   $('assets').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { assetFilter = b.dataset.g; assets(); });
   wire($('assets'));
   AF?.wire($('assets'));
+  applyTw();
+  globalThis.liveLayer?.patch();
   if (keepOpen) $('assets').querySelector('.fav-tools')?.setAttribute('open', '');
 }
 // a star on the Pair tab, a STAR / UNSTAR / FAV command or a Paste redraws this tab (the stars, the filter and the count)
@@ -1684,10 +1715,13 @@ $('askbtn').onclick = () => {
 };
 
 whenDeskAccess(load);
+// the live layer: the trade watcher's state every minute, patched into the cards in place (no re-render, so an open card and its chart stay put)
+setInterval(() => { if (!document.hidden && D.cards) getJson('/api/trade-watch').then(tw => { if (tw?.ok) { D.tw = tw; applyTw(); } }); }, 60_000);
 setInterval(() => { if (!document.hidden) { ANA = null; ASC = null; load(); if (!$('ana').hidden) analytics(); } }, 5 * 60_000);   // the Charts tab's sources change daily at most: drawn once per visit
 </script>
 <script type="module" src="js/terminal/dataAge.js"></script>
 <script type="module" src="js/terminal/ccyMacroStrip.js"></script>
+<script type="module" src="js/terminal/liveLayer.js"></script>
 <script type="module" src="js/terminal/access.js"></script>
 <script type="module" src="js/terminal/terminalTabs.js"></script>
 <script type="module" src="js/terminal/bookPanels.js"></script>

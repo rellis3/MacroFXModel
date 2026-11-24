@@ -142,7 +142,7 @@ import { createFeed } from './js/feedRoutes.js';
 import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
-  getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
+  getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, liveWalkStats as _laWalkStats, PREFIX as _LA_PREFIX,
   DEFAULT_REARM as _LA_DEFAULT_REARM, loadLocalVoteTrades as _laLoadLocalVoteTrades, loadLocalP90VoteTrades as _laLoadLocalP90VoteTrades, pickFresher as _laPickFresher,
   saveAllLiveSnapshots as _laSaveAllLiveSnapshots,
 } from './js/levelAtlasRoutes.js';
@@ -8376,6 +8376,57 @@ app.get('/api/trade-watch', async (_req, res) => {
     const date = _dpLondonDate(Date.now());
     if (_tw.date !== date) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); const j = raw ? JSON.parse(raw) : {}; return res.json({ ok: true, date, live: false, events: j.events ?? [], fired: j.fired ?? {}, plan: {} }); }
     res.json({ ok: true, date, live: true, events: _tw.events, fired: _tw.state.fired, last: _tw.state.last, plan: _tw.plan });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── The live layer (js/marketLive.js; owner 2026-11-23: the terminal should move with the day) ──
+// Every minute while the FX week is open: every market on the latest desk book against OANDA mids, one batch pricing call. The day so far is
+// seeded once from M1 bars since 00:00 London (again when a new book lands, and every 15 minutes while a market is still missing). No model
+// call, nothing stored: a restart re-seeds from the bars. GET /api/market-live serves the view and the currency strength.
+let _ml = { date: null, runKey: null, cards: {}, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: null };
+let _mlBusy = false;
+async function _mlBook(date) {
+  for (let i = 0; i < 6; i++) {   // today's book, else the latest within the week (a Monday before the morning run reads Friday's)
+    const d = new Date(Date.parse(`${date}T12:00:00Z`) - i * 86400e3).toISOString().slice(0, 10), run = await _drLoad(d);
+    if (run?.head?.ok) return { run, runDate: d };
+  }
+  return null;
+}
+async function _mlTick() {
+  const now = Date.now();
+  if (_mlBusy || !_fxWeekOpen(now)) return;
+  _mlBusy = true;
+  try {
+    const ML = await import('./js/marketLive.js'), date = _dpLondonDate(now), b = await _mlBook(date);
+    if (!b) return;
+    const runKey = `${b.runDate}|${b.run.finishedAt}`;
+    if (_ml.date !== date || _ml.runKey !== runKey) {
+      const { unitOf } = await import('./js/deskScore.js'), cards = {};
+      for (const [n, c] of Object.entries(b.run.head.book.instruments ?? {})) cards[n] = b.runDate === date ? { levels: c.levels ?? null } : { unit: unitOf(c.levels) };   // an earlier day's lines do not apply today
+      _ml = { date, runKey, cards, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: b.runDate };
+    }
+    const names = Object.keys(_ml.cards).filter(n => _dsOanda[n]);
+    if (!_ml.state || (names.some(n => !_ml.state.markets[n]) && now - _ml.seededAt > 15 * 60_000)) {
+      const bars = await _dsBars(names, date, { entryMs: _dsLondonMs(date, 0), exitMs: now });
+      _ml.state = ML.seed(_ml.cards, bars, date); _ml.seededAt = now;
+    }
+    const q = await _fetchSpreads(names.map(n => _dsOanda[n]));
+    if (q.ok) {
+      const prices = {};
+      for (const n of names) { const p = q.pairs[_dsOanda[n]]; if (p?.tradeable !== false && Number.isFinite(p?.bid) && Number.isFinite(p?.ask)) prices[n] = (p.bid + p.ask) / 2; }
+      ML.step(_ml.state, prices, now);
+    }
+    _ml.view = ML.view(_ml.state, _ml.cards); _ml.ccy = ML.ccyStrength(_ml.view); _ml.at = new Date(now).toISOString();
+  } finally { _mlBusy = false; }
+}
+svcInterval('marketLive', () => _mlTick().catch(e => console.warn('[market-live]', e.message)), 60_000);
+// GET /api/market-live: every market on the book now (move since the open in u and %, the day's range, lines touched, a 15-minute path) and
+// the currency strength since the open. Market data, no trade levels: the desk login reads it too.
+app.get('/api/market-live', async (_req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    if (!_ml.at) await _mlTick().catch(() => {});
+    res.json({ ok: !!_ml.at, date: _ml.date, runDate: _ml.runDate, at: _ml.at, open: _fxWeekOpen(Date.now()), markets: _ml.view, ccy: _ml.ccy,
+      note: 'Where each market is now against the open, in u (the day\'s p50 distance). A description, not a forecast or a call.', ...(_ml.at ? {} : { error: 'the live layer has not run yet (the FX week is shut, or no desk book)' }) });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // GET /api/policy-rates: each central bank's policy rate from its own published series (js/policyRates.js), with its as-of
@@ -46012,7 +46063,10 @@ app.get('/api/services', (req, res) => {
       trace: _memTrace,
       kvBig: kv.kvBigReads(),
       bootProfile: _bootProfile,
+      heapAlloc: _heapAlloc,
+      heapGc: _heapGc,
       intlCache: intlCacheStats,
+      liveAtlas: { warmPairs: _laLiveCache.size, warming: _laLiveWarming.size, walks: _laWalkStats.walks, walkSec: +(_laWalkStats.ms / 1000).toFixed(1), sinceMin: +((Date.now() - _laWalkStats.since) / 60000).toFixed(1), top: Object.entries(_laWalkStats.byPair).sort((a, b) => b[1].ms - a[1].ms).slice(0, 8).map(([p, v]) => `${p}:${v.n}/${(v.ms / 1000).toFixed(1)}s`) },
       mappings: _memShots.list,
       sampledAt: new Date().toISOString(),
       note: 'This process only, not the container total (start.sh bots run as separate OS processes with their own RSS Railway meters separately). '
@@ -47739,6 +47793,60 @@ if (process.platform === 'linux' && process.env.BOOT_PROFILE !== '0') {
       }, 240_000); stop.unref?.();
     }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
   }).catch(e => { _bootProfile.state = 'error: ' + e.message; });
+}
+// ── Heap cap by forced collection (2026-11-23). The Level Atlas live walk allocates ~0.7 GB a minute of short-lived arrays (31 warm pairs x a walk per new bar). V8 sizes its old generation to the machine, so it lets that
+// garbage pile up to ~2 GB before a full collection, and Railway bills the resulting RSS high-water mark although the live data is ~0.5 GB. When the JS heap passes HEAP_GC_MB (default 800; 0 turns this off) a full
+// collection runs, at most once per 20 s; if the heap is still above the line afterwards (a genuinely big job such as the nightly book rebuild) the line moves up to 300 MB above that so it does not collect in a loop.
+// Needs no startup flag: --expose-gc is switched on at runtime. Stats in /api/services -> memory.heapGc. ──
+const _heapGc = { thresholdMB: Number(process.env.HEAP_GC_MB ?? 800), line: 0, runs: 0, freedMB: 0, lastAt: null, lastMs: 0, state: 'off' };
+if (_heapGc.thresholdMB > 0) {
+  try {
+    const v8 = await import('node:v8'), vm = await import('node:vm');
+    v8.setFlagsFromString('--expose-gc');
+    const gcFn = vm.runInNewContext('gc');
+    if (typeof gcFn === 'function') {
+      _heapGc.state = 'on'; _heapGc.line = _heapGc.thresholdMB; let last = 0;
+      const t = setInterval(() => {
+        const used = process.memoryUsage().heapUsed / 1048576;
+        if (used < _heapGc.line) { if (_heapGc.line > _heapGc.thresholdMB && used < _heapGc.thresholdMB) _heapGc.line = _heapGc.thresholdMB; return; }
+        if (Date.now() - last < 20_000) return;
+        const t0 = Date.now(); gcFn(); last = Date.now();
+        const after = process.memoryUsage().heapUsed / 1048576;
+        _heapGc.runs++; _heapGc.freedMB += Math.max(0, Math.round(used - after)); _heapGc.lastAt = new Date().toISOString().slice(11, 19); _heapGc.lastMs = last - t0;
+        _heapGc.line = after > _heapGc.thresholdMB ? Math.round(after + 300) : _heapGc.thresholdMB;
+      }, 3000); t.unref?.();
+    } else _heapGc.state = 'gc unavailable';
+  } catch (e) { _heapGc.state = 'error: ' + e.message; }
+}
+
+// ── Heap allocation sample (2026-11-23, diagnostic): from 15 min after boot, 150 s of V8 sampling-heap-profiler data (counting objects the GC has already freed too) names which functions allocate the ~1 GB/minute
+// that makes the JS heap sawtooth 0.7-2 GB and sets Railway's memory high-water mark. Answer in /api/services -> memory.heapAlloc ({state, totalMB, top[{mb, fn, chain}]}). Runs once per boot; BOOT_PROFILE=0 skips. ──
+const _heapAlloc = { state: 'off', totalMB: 0, top: [] };
+if (process.platform === 'linux' && process.env.BOOT_PROFILE !== '0') {
+  const startAt = setTimeout(() => import('node:inspector').then(({ default: insp }) => {
+    const ses = new insp.Session(); ses.connect();
+    const post = (m, p) => new Promise((res, rej) => ses.post(m, p ?? {}, (e, r) => e ? rej(e) : res(r)));
+    post('HeapProfiler.startSampling', { samplingInterval: 32768, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true }).then(() => {
+      _heapAlloc.state = 'running since ' + new Date().toISOString().slice(11, 19);
+      const stop = setTimeout(async () => {
+        try {
+          const { profile } = await post('HeapProfiler.stopSampling');
+          const rows = [], walk = (n, chain) => {
+            const f = n.callFrame, lab = `${f.functionName || '(anon)'} ${String(f.url).split('/').slice(-2).join('/')}:${f.lineNumber + 1}`;
+            if (n.selfSize > 0) rows.push({ b: n.selfSize, fn: lab, chain: chain.slice(-5).reverse() });
+            for (const c of n.children ?? []) walk(c, [...chain, lab]);
+          };
+          walk(profile.head, []);
+          const total = rows.reduce((a, r) => a + r.b, 0);
+          // roll the leaf allocator up by function, keeping the busiest call chain for it
+          const by = new Map(); for (const r of rows) { const e = by.get(r.fn) ?? { b: 0, best: 0, chain: [] }; e.b += r.b; if (r.b > e.best) { e.best = r.b; e.chain = r.chain; } by.set(r.fn, e); }
+          _heapAlloc.totalMB = Math.round(total / 1048576);
+          _heapAlloc.top = [...by.entries()].sort((a, b) => b[1].b - a[1].b).slice(0, 25).map(([fn, e]) => ({ mb: Math.round(e.b / 1048576), fn, chain: e.chain }));
+          _heapAlloc.state = 'done'; ses.disconnect();
+        } catch (e) { _heapAlloc.state = 'error: ' + e.message; }
+      }, 150_000); stop.unref?.();
+    }).catch(e => { _heapAlloc.state = 'error: ' + e.message; });
+  }).catch(e => { _heapAlloc.state = 'error: ' + e.message; }), 900_000); startAt.unref?.();
 }
 // every second for the first 90 s (where the boot jump happens, so it can be matched to the jobs running at that second), every 5 s after, until 10 min
 { let n = 0; const fast = setInterval(() => { const up = Date.now() - _serverBootedAt; if (up > 600_000) { clearInterval(fast); return; } if (up < 90_000 || ++n % 5 === 0) _memTracePush(); }, 1000); fast.unref?.(); }
