@@ -52,3 +52,8 @@ its p50/p75/p90 lines; Δ per line and per instrument; OC, Close+ and Close− p
   QLIKE-best calc, labelled with this verdict; the live CFD ladder is unchanged either way.
 
 ## Amendments
+
+- **A1, 2026-11-24, PRE-RESULTS** (H1 not computed; a first run crashed on NQ after printing the descriptive per-line
+  picks of nine FX instruments). NQ's rollout folder (`ladder-v2-nq`) is the pilot build without the 5-min regression
+  features and GARCH columns, so NQ uses its full track-C build in `analysis/output/ladder-per-line/build/nq` (same
+  sessions, same CFD data). Nothing else changes.
