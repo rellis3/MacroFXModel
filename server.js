@@ -48425,7 +48425,7 @@ if (process.env.OANDA_KEY) {
 }
 
 if (process.env.OANDA_KEY) {
-  const _referenceEngineRebuildTick = async () => {
+  const _referenceEngineRebuildTick = async ({ resumeSinceMs = 0 } = {}) => {
     let enabled = process.env.REFERENCE_ENGINE_REBUILD !== '0';   // env opt-OUT, defaults on
     try {
       const raw = await kv.get('caps');
@@ -48462,7 +48462,18 @@ if (process.env.OANDA_KEY) {
     // Session Handoff, below) can tell "never touched tonight" apart from
     // "touched tonight, just early" — see that pass's own doc.
     const _rebuildTickStartedAt = Date.now();
-    await runSeq('Level Atlas', () => _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+    // Resume (2026-11-24): a catch-up boot after a mid-run restart used to redo all of Level Atlas from M1 (a ~3 GB boot burst, repeated on every overnight deploy). Skip any pair whose stored book
+    // was already generated since the due slot; only the unfinished ones are rebuilt.
+    let _laPairs = REFERENCE_ENGINE_PAIRS;
+    if (resumeSinceMs) {
+      const _fresh = new Set();
+      for (const p of REFERENCE_ENGINE_PAIRS) {
+        try { const bk = await _r2GetJSON(`level-atlas/${p.toLowerCase()}.json`); if (bk?.generatedAt && Date.parse(bk.generatedAt) >= resumeSinceMs) _fresh.add(p); } catch (e) { /* unreadable: rebuild it */ }
+      }
+      _laPairs = REFERENCE_ENGINE_PAIRS.filter(p => !_fresh.has(p));
+      console.log(`[reference-engine-rebuild] resume: Level Atlas ${_fresh.size}/${REFERENCE_ENGINE_PAIRS.length} pairs already rebuilt since the due slot, ${_laPairs.length} left`);
+    }
+    await runSeq('Level Atlas', () => _startLevelAtlasRunJob({ instruments: _laPairs }));
     // Fib Atlas (Asia+Monday) moved to run 2nd/3rd, right after Level Atlas —
     // was 4th/5th, after Session Path + Session Handoff (2026-09-18, direct
     // owner request once fib_atlas_bot_v2 made Fib Atlas freshness load-
@@ -48624,7 +48635,8 @@ if (process.env.OANDA_KEY) {
         return;
       }
       console.log(`[reference-engine-rebuild] catch-up: last successful run was ${lastRun ?? 'never'}, due slot ${dueDate} missing -- running now (boot within the safe overnight window)`);
-      await _referenceEngineRebuildTick();
+      const _slotMs = (() => { let m = _btLondonMidnightSec(new Date(nowMs)) * 1000; if (m + 30 * 60_000 > nowMs) m -= 24 * 3600_000; return m + 30 * 60_000; })();
+      await _referenceEngineRebuildTick({ resumeSinceMs: _slotMs });
       await kv.put(_REF_ENGINE_SCHED_KEY, dueDate).catch(e => console.error('[reference-engine-rebuild] catch-up stamp write failed:', e.message));
     } catch (e) {
       console.error('[reference-engine-rebuild] catch-up check failed:', e.message);
