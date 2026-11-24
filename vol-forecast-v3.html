@@ -882,6 +882,10 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
         <input type="checkbox" id="vfRuleA" onchange="toggleRuleA(this.checked)">
         Trade lines
       </label>
+      <label class="v2-auto-toggle" title="QLIKE per-line levels (Jordan&#39;s method; the same numbers as the &#39;QLIKE per-line · CFD&#39; export): each line uses the σ model with the best QLIKE for that line on that instrument. Drawn ON TOP of the chosen chart lines, daily views only: violet = Open High / Open Low (Q OH / Q OL p50 dotted, p75 dashed, p90 solid), lime = Close+ / Close- (where the close lands on up / down days), purple solid = projected high/low from the QLIKE High-to-Low median (running low + HL, running high − HL). Off = the chart is unchanged.">
+        <input type="checkbox" id="vfQlike" onchange="toggleQlikeLines(this.checked)">
+        QLIKE lines
+      </label>
       <button class="dark-btn" id="vfRefreshBtn" onclick="triggerRefresh()">↻ Refresh</button>
       <div class="live-pill" id="vfLivePill"><div class="live-dot"></div>Live</div>
     </div>
@@ -4427,6 +4431,43 @@ function loadIvAdj() {
 // the chosen forecast (persistence + IV), as in the backtest (forecast-line-backtest.html).
 const _RULE_A_KEY = { EURUSD: 'eurusd', GBPUSD: 'gbpusd', AUDUSD: 'audusd', USDCAD: 'usdcad', USDCHF: 'usdchf', USDJPY: 'usdjpy',
   GOLD: 'gold', NQ: 'nq', SPX500: 'spx', US30: 'dow', US2000: 'us2000' };
+// ── QLIKE per-line overlay (owner 2026-11-24: see the QLIKE levels on the charts together with the chosen lines) ──
+let _qlikeOn = (() => { try { return localStorage.getItem('vf_qlike_lines') === '1'; } catch { return false; } })();
+let _qlikeToday = null;   // { session, levels: { SYM: { oh_p50, ... , arms } } } from /api/vol-forecast/ladder-v2/qlike-today
+async function loadQlikeToday() {
+  const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
+  if (_qlikeToday && _qlikeToday.session === today && Date.now() - _qlikeToday.at < 10 * 60e3) return _qlikeToday;
+  try {
+    const r = await fetch('/api/vol-forecast/ladder-v2/qlike-today?track=cfd').then(x => x.json());
+    if (r?.ok) _qlikeToday = { session: r.session, levels: r.levels || {}, at: Date.now() };
+  } catch (_) {}
+  return _qlikeToday;
+}
+function toggleQlikeLines(on) {
+  _qlikeOn = !!on;
+  try { localStorage.setItem('vf_qlike_lines', on ? '1' : '0'); } catch (_) {}
+  if (on) loadQlikeToday().then(_redrawCogCharts); else _redrawCogCharts();
+}
+document.addEventListener('DOMContentLoaded', () => { const cb = document.getElementById('vfQlike'); if (cb) cb.checked = _qlikeOn; if (_qlikeOn) loadQlikeToday().then(_redrawCogCharts); });
+// QLIKE line defs for one instrument (daily views only). bars = today's bars for the projected high/low, or null.
+function _qlikeLineDefs(name, LS, bars, anchorOpen) {
+  const q = _qlikeOn && _qlikeToday?.levels?.[String(name).toUpperCase()];
+  if (!q) return [];
+  const V = '#a78bfa', G = '#a3e635', st = [LS.Dotted, LS.Dashed, LS.Solid];
+  const out = [];
+  [50, 75, 90].forEach((t, i) => {
+    out.push({ pct: q[`oh_p${t}`], side:  1, color: V, style: st[i], title: `Q OH p${t}`, axis: true },
+             { pct: q[`ol_p${t}`], side: -1, color: V, style: st[i], title: `Q OL p${t}`, axis: true },
+             { pct: q[`cup_p${t}`], side:  1, color: G, style: st[i], title: `Q C+ p${t}`, axis: true },
+             { pct: q[`cdn_p${t}`], side: -1, color: G, style: st[i], title: `Q C- p${t}`, axis: true });
+  });
+  if (bars && bars.length && anchorOpen && q.hl_p50 > 0) {
+    const hi = Math.max(...bars.map(b => b.high)), lo = Math.min(...bars.map(b => b.low)), r = anchorOpen * q.hl_p50 / 100;
+    if (isFinite(hi) && isFinite(lo)) out.push({ price: lo + r, side: 1, color: '#c084fc', style: LS.Solid, title: 'Q Proj H (Lo+HL)', axis: true },
+                                               { price: hi - r, side: -1, color: '#c084fc', style: LS.Solid, title: 'Q Proj L (Hi−HL)', axis: true });
+  }
+  return out.filter(d => d.price != null || (d.pct != null && d.pct > 0));
+}
 let _ruleAOn = (() => { try { return localStorage.getItem('vf_rule_a') === '1'; } catch { return false; } })();
 let _ruleAFlags = null, _ruleAAt = 0;
 const _ldnFmt = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -4908,6 +4949,7 @@ async function loadM5Chart(name, f) {
         return out;
       })();
       lineDefs.push(..._proj);
+      if (!weekly && !monthly) lineDefs.push(..._qlikeLineDefs(name, LS, todayBarsRaw ? hitsData : null, anchorOpen));   // QLIKE overlay (tick box)
       // Price of any line: an explicit absolute `price`, else anchorOpen × (1 ± pct%).
       const _linePrice = d => (d.price != null ? d.price : (anchorOpen != null && d.pct ? anchorOpen * (1 + d.side * d.pct / 100) : null));
       const levelPrices = lineDefs.map(_linePrice).filter(p => p != null);
@@ -5210,6 +5252,7 @@ function _buildModalChart(name) {
   const L = _chartLevels(name, f);   // original / COG / BOT levels per the top-bar toggle
   if (L._botOpen > 0) anchorOpen = L._botOpen;   // BOT mode: anchor lines at the bot's FROZEN open
   const lineDefs = _forecastLineDefs(L, LS);
+  if (!_modeCtx().weekly && !_modeCtx().monthly) lineDefs.push(..._qlikeLineDefs(name, LS, null, anchorOpen));   // QLIKE overlay (tick box)
   const levelPrices = lineDefs.filter(d => d.pct && anchorOpen).map(d => anchorOpen * (1 + d.side * d.pct / 100));
 
   const chart = LightweightCharts.createChart(body, {
