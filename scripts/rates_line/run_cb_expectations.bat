@@ -25,9 +25,15 @@ echo  RUN STARTED %date% %time% >> "%LOGFILE%"
 set RC=%ERRORLEVEL%
 REM the cross-currency basis inputs (CME FX futures + spot) ride the same scheduled run (plan §9ag)
 "%PY%" refresh_xccy_basis.py --push >> "%LOGFILE%" 2>&1
+set RCX=%ERRORLEVEL%
 REM the options skew (risk reversals, butterflies, ATM vol) from the futures options, same run (owner, 2026-11-04)
 "%PY%" refresh_options_skew.py --push >> "%LOGFILE%" 2>&1
+set RCS=%ERRORLEVEL%
+REM 25 Nov 2026: the skew step crashed on every run from 17 Nov (a missing module) and nothing said so. Each step now reports its own result.
 echo [%date% %time%] finished with exit code %RC% >> "%LOGFILE%"
 findstr /C:"HTTP" /C:"Could not connect" /C:"not found" /C:"no prices" /C:"wrote" "%LOGFILE%"
 if %RC% NEQ 0 (echo RESULT: NOT UPDATED ^(exit %RC%^)) else (echo RESULT: OK)
+if %RCX% NEQ 0 (echo CROSS-CURRENCY BASIS: FAILED ^(exit %RCX%^)) else (echo CROSS-CURRENCY BASIS: OK)
+if %RCS% NEQ 0 (echo OPTIONS SKEW: FAILED ^(exit %RCS%^)) else (echo OPTIONS SKEW: OK)
+echo [%date% %time%] basis exit %RCX%, skew exit %RCS% >> "%LOGFILE%"
 endlocal & exit /b %RC%
