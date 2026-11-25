@@ -101,3 +101,28 @@ trade), not from the lines. It also confirms that his FX units are pips.
    less often. There is no extra pull toward VWAP at the lines.
 3. **For stops, use the winners' MAE.** Winners rarely go past about 80% of Jordan's stop. A stop much tighter than
    about 0.6–0.8 of his size would cut winners; a wider one only adds to losers.
+
+## F. Previous line as the target, and what target fits Jordan's table (POST-HOC, exploratory)
+
+Owner 2026-11-25. Script `prev_line_tp.py`; tables `F_prev_line_*.csv`.
+
+**Setup:** fade every touch of Jordan's lines, with his stops and a 22:00 hard close. Target the previous line, two
+ways:
+- **A, same family:** 90th → 75th → median → open.
+- **B, nearest line:** the nearest of his lines inside the entry on that side.
+
+**Result:**
+- With his stop sizes, the previous line is a median 1.2–3.2R away and is hit 18–36% of the time.
+- The trade is −0.03R gross (net −0.13R).
+- Against the whole ladder scaled, it's −0.014R (A) and −0.010R (B), and both CIs cross 0.
+- Its MAE fits his table worse than a fixed target does (gold median 63–74 against his 33.8).
+
+**Fixed-target fit:** the same trades with targets of 0.25–2R, or no target (`scratchpad tp_fit`, numbers on the MAE
+Book page).
+- Gold matches his table at **0.5R** (34.8 / 76.5 / 87.0 against 33.8 / 76.3 / 86.8).
+- NQ matches at **0.75R** (108 / 161 / 184 against 114 / 161 / 185).
+- USDJPY matches at 1R.
+- EURUSD matches a hard close or 2R.
+
+So his target looks closer than the previous line: about half to three-quarters of his stop on GC and NQ. This is
+inferred from the shape of his MAE, not confirmed.
