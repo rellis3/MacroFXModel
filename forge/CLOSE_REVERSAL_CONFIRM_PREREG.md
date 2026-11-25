@@ -82,4 +82,12 @@ Order flow, VWAP, macro or vol filters at the touch; other stop or target sizes;
 
 ## Amendments
 
+### A1 — 2026-11-25 — PRE-RESULTS
+- **C0:** the touch bar counts toward the stop, but not toward the target. The fill is inside that bar and the rest
+  of the bar can run through, so this is conservative for the baseline and matches the `jordan-lines-mae` race.
+- **C1 / C2:** the stop is checked from the bar after entry, as registered.
+- **C2:** the entry fills at the bar's open if that bar opens beyond the 0.05σ price.
+- **Disclosure:** decided while writing the script. It was recorded after a one-instrument mechanics check (gold
+  futures) that showed counts by exit type only, with no line-vs-placebo or R comparison.
+
 ## RESULTS
