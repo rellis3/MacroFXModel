@@ -118,7 +118,7 @@ function drawCurve(cv, rb) {
 const GROUP = k => (/^[A-Z]{6}$/.test(k) ? 'FX' : ['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'].includes(k) ? 'INDICES' : ['GOLD', 'SILVER', 'COPPER', 'PLATINUM', 'PALLADIUM'].includes(k) ? 'METALS' : 'ENERGY');
 /** The markets with a lean: [{ key, dir 'up'|'dn', strength, score, driver }], strongest first. */
 export function biasCalls(bev2) {
-  const m = bev2?.variants?.v2?.markets ?? {};
+  const m = bev2?.variants?.v2?.markets ?? bev2?.markets ?? {};      // V2's record (variants.v2) or V1's (/api/bias-engine: markets at the top)
   return Object.entries(m).filter(([, x]) => x && (x.dir === 'BULLISH' || x.dir === 'BEARISH')).map(([key, x]) => {
     const dr = (Array.isArray(x.drivers) ? x.drivers : []).filter(d => fin(d.contrib) && d.contrib !== 0).sort((a, b) => Math.abs(b.contrib) - Math.abs(a.contrib))[0];
     return { key, dir: x.dir === 'BULLISH' ? 'up' : 'dn', strength: fin(x.strength) ? x.strength : 0, score: fin(x.score) ? x.score : 0, driver: dr?.label ?? '', group: GROUP(key) };
@@ -137,7 +137,7 @@ export function biasText(calls, issuedAt) {
 function biasHtml(calls, issuedAt) {
   const col = (dir, title) => { const a = calls.filter(c => c.dir === dir); return `<section class="bp-box"><h3 class="bp-${dir}">${title} · ${a.length}</h3>${a.map((c, i) => `<div class="bp-call" style="--i:${i}"><span class="g">${c.group}</span><b>${esc(label(c.key))}</b><span class="pips">${Array.from({ length: 6 }, (_, k) => `<i class="${k < c.strength ? `on ${dir}` : ''}"></i>`).join('')}</span><small>${esc(c.driver)}</small></div>`).join('') || '<div class="bp-foot">none</div>'}</section>`; };
   return `<div class="bp-grid bp-g2">${col('up', '▲ LEANS HIGHER')}${col('dn', '▼ LEANS LOWER')}</div>
-  <div class="bp-foot">Bias Engine V2 · issued ${issuedAt ? londonHM(Date.parse(issuedAt)) : ''} London · strength 0–6 · main driver shown · the engine's lean, unproven, scored nightly · not advice</div>`;
+  <div class="bp-foot">Bias Engine V1 · issued ${issuedAt ? londonHM(Date.parse(issuedAt)) : ''} London · strength 0–6 · main driver shown · the engine's lean, unproven, scored nightly · not advice</div>`;
 }
 
 // ───────────────────────── THE BIAS AGAINST THE DAY (evening) ─────────────────────────
@@ -147,7 +147,7 @@ export function biasDay(call, bars, u, intraMarket, fromMs) {
   const open = b[0].o, last = b[b.length - 1].c, move = last - open, moveU = fin(u) && u > 0 ? move / u : null;
   const s = call.dir === 'up' ? 1 : -1, big = moveU != null ? Math.abs(moveU) >= 0.25 : Math.abs(move / open) >= 0.001;
   const verdict = !big ? 'flat' : Math.sign(move) === s ? 'with' : 'against';
-  const v2 = intraMarket?.calls?.v2 ?? [], changes = []; let prev = v2[0]?.[1];
+  const v2 = intraMarket?.calls?.v1r ?? intraMarket?.calls?.v2 ?? [], changes = []; let prev = v2[0]?.[1];      // V1's intraday track (v1r) when the engine is V1
   for (const p of v2.slice(1)) { if (p[1] !== prev) changes.push([p[0], p[1] === 'BULLISH' ? 'up' : p[1] === 'BEARISH' ? 'dn' : 'flat']); prev = p[1]; }
   return { ...call, bars: b, open, last, movePct: move / open * 100, moveU, verdict, changes };
 }
@@ -210,13 +210,14 @@ registerShowScene({
 });
 registerShowScene({
   id: 'biasboard', after: 'ahead',
-  async prepare(api) { const b = await ok(api.jf('/api/bias-engine-v2')); return b ? { calls: biasCalls(b), issuedAt: b.issuedAt } : null; },
-  build(inp, d) { const text = biasText(d?.calls ?? [], d?.issuedAt); if (!text) return null; return { title: 'The bias engine', view: 'globe', cam: { region: 'world' }, text, figure: { value: String(d.calls.length), label: 'markets with a lean' }, panel: panel('bias', 'THE BIAS', "Bias Engine V2: the engine's lean for today, unproven", biasHtml(d.calls, d.issuedAt)) }; },
+  // V1, not V2 (owner, 25 Nov 2026: on the interim scoreboard V1 is ahead of V2); the desk run's call takes over once it is wired in
+  async prepare(api) { const b = await ok(api.jf('/api/bias-engine')); return b ? { calls: biasCalls(b), issuedAt: b.issuedAt } : null; },
+  build(inp, d) { const text = biasText(d?.calls ?? [], d?.issuedAt); if (!text) return null; return { title: 'The bias engine', view: 'globe', cam: { region: 'world' }, text, figure: { value: String(d.calls.length), label: 'markets with a lean' }, panel: panel('bias', 'THE BIAS', "Bias Engine V1: the engine's lean for today, unproven", biasHtml(d.calls, d.issuedAt)) }; },
 });
 registerShowScene({
   id: 'biasday', after: 'biasboard',
   async prepare(api) {
-    const now = Date.now(), [b, it, ml] = await Promise.all([ok(api.jf('/api/bias-engine-v2')), ok(api.jf('/api/bias-engine-v2/intraday')), ok(api.jf('/api/market-live'))]); if (!b) return null;
+    const now = Date.now(), [b, it, ml] = await Promise.all([ok(api.jf('/api/bias-engine')), ok(api.jf('/api/bias-engine-v2/intraday')), ok(api.jf('/api/market-live'))]); if (!b) return null;
     const calls = biasCalls(b).filter(c => intradayAsset(c.key)).slice(0, 8), from = sevenLondon(now);
     const days = await Promise.all(calls.map(async c => { try { return biasDay(c, await bars15(api, c.key), ml?.markets?.[c.key]?.u, (it?.markets ?? []).find(m => m.market === c.key), from); } catch (e) { return null; } }));
     return days.filter(Boolean);
@@ -224,6 +225,41 @@ registerShowScene({
   build(inp, days) { const text = biasDayText(days ?? []); if (!text) return null; const w = days.filter(d => d.verdict === 'with').length;
     return { title: 'The bias against the day', view: 'globe', cam: { region: 'world' }, text, figure: { value: `${w} / ${days.length}`, label: 'went the called way' },
       panel: panel('biasday', 'THE BIAS · HOW IT WENT', 'Each call against its market, 07:00 to now', biasDayHtml(days), el => el.querySelectorAll('[data-draw="day"]').forEach(cv => { const d = days[+cv.dataset.i]; if (d) drawDay(cv, d); })) }; },
+});
+
+// ───────────────────────── STRESS: credit, liquidity, positioning ─────────────────────────
+/** { credit: [{label, oas, pct, chg}], liq: [{label, value, chg, pct, asOf}], cot: [{key, label, state, pct}] } or null. */
+export function stressData(cr, lq, cot) {
+  const credit = (cr?.rows ?? []).filter(r => fin(r.oas)).map(r => ({ label: r.label, oas: r.oas, pct: fin(r.pctile1y) ? r.pctile1y : null, chg: fin(r.chg20d) ? r.chg20d : null, asOf: r.asOf }));
+  const liq = (lq?.items ?? []).filter(x => fin(x.value)).map(x => ({ label: x.label, value: x.value, chg: fin(x.chg4w) ? x.chg4w : null, pct: fin(x.pctile) ? x.pctile : null, asOf: x.asOf }));
+  const RANK = { A: 0, trimmed: 1, leaningWith: 2, leaningAgainst: 3, neutral: 9 };
+  const pos = Object.entries(cot?.instruments ?? {}).map(([key, x]) => ({ key, label: x.label ?? '', state: x.key ?? 'neutral', pct: x.pct })).filter(x => x.state !== 'neutral').sort((a, b) => (RANK[a.state] ?? 5) - (RANK[b.state] ?? 5));
+  if (!credit.length && !liq.length && !pos.length) return null;
+  return { credit, liq, cot: pos, cotDate: cot?.reportDate ?? null };
+}
+export function stressText(d) {
+  if (!d) return '';
+  const t = [], hy = d.credit.find(r => /high yield/i.test(r.label) && /US/.test(r.label)) ?? d.credit[0];
+  const top = d.credit.filter(r => r.pct != null && r.pct >= 95).length;
+  if (hy) t.push(`Credit. ${top >= 3 ? `${cap1(numWord(top))} of ${numWord(d.credit.length)} spread measures sit at the top of their one-year range. ` : ''}US high yield is ${hy.oas} basis points${hy.chg ? `, ${hy.chg > 0 ? 'wider' : 'tighter'} by ${Math.abs(hy.chg)} over the month` : ''}.`);
+  const nl = d.liq.find(x => /net liquidity/i.test(x.label)); if (nl && nl.chg != null) t.push(`Net dollar liquidity is ${nl.chg >= 0 ? 'up' : 'down'} ${Math.abs(nl.chg).toFixed(0)} billion over four weeks.`);
+  const crowded = d.cot.filter(x => x.state === 'A'), trimmed = d.cot.filter(x => x.state === 'trimmed');
+  if (crowded.length) t.push(`Speculators are crowded, with the trend still running, in ${list(crowded.slice(0, 3).map(x => say(x.key)))}.`);
+  if (trimmed.length) t.push(`In ${list(trimmed.slice(0, 2).map(x => say(x.key)))} they hold the smallest position in years.`);
+  return t.join(' ');
+}
+function stressHtml(d) {
+  const st = p => (p == null ? 'tx' : p >= 90 ? 'dn' : p <= 10 ? 'up' : 'tx');
+  return `<div class="bp-grid bp-g3">
+  <section class="bp-box"><h3>CREDIT SPREADS · vs PAST YEAR</h3>${d.credit.map((r, i) => `<div class="bp-slope" style="--i:${i}"><div><b>${esc(r.label)}</b><small>${r.chg != null ? `${r.chg > 0 ? '+' : ''}${r.chg} bp in 20 days` : ''}</small></div><strong class="bp-${st(r.pct)}">${r.oas}</strong><div class="bp-pct"><i style="left:${r.pct ?? 50}%"></i></div><em>${r.pct != null ? `${ordinal(r.pct)} pct` : ''}</em></div>`).join('')}</section>
+  <section class="bp-box"><h3>DOLLAR LIQUIDITY · $BN</h3>${d.liq.map((x, i) => `<div class="bp-slope" style="--i:${i}"><div><b>${esc(x.label)}</b><small>${x.chg != null ? `${x.chg > 0 ? '+' : ''}${x.chg.toFixed(0)} in 4 weeks` : ''}</small></div><strong>${x.value >= 100 ? x.value.toFixed(0) : x.value.toFixed(1)}</strong><div class="bp-pct"><i style="left:${x.pct ?? 50}%"></i></div><em>${x.pct != null ? `${ordinal(x.pct)} pct` : ''}</em></div>`).join('')}</section>
+  <section class="bp-box"><h3>SPECULATIVE POSITIONING · COT ${esc(d.cotDate ?? '')}</h3>${d.cot.map((x, i) => `<div class="bp-flag ${x.state === 'A' || x.state === 'trimmed' ? 'on' : ''}" style="--i:${i}"><i></i><div><b>${esc(label(x.key))}</b><small>${esc(x.label)}</small></div></div>`).join('') || '<div class="bp-foot">nothing at an extreme</div>'}</section>
+</div><div class="bp-foot">Spreads: ICE BofA option-adjusted, bp · liquidity: Fed assets less the Treasury's cash and reverse repo, weekly · COT: CFTC, weekly · context, not a signal</div>`;
+}
+registerShowScene({
+  id: 'stress', after: 'net',
+  async prepare(api) { const [cr, lq, cot] = await Promise.all([ok(api.jf('/api/credit-board')), ok(api.jf('/api/liquidity-board')), ok(api.jf('/api/cot-state'))]); return stressData(cr, lq, cot); },
+  build(inp, d) { const text = stressText(d); if (!text) return null; const hy = d.credit.find(r => /high yield/i.test(r.label)); return { title: 'Credit, liquidity, positioning', view: 'globe', cam: { region: 'world' }, text, figure: hy ? { value: `${hy.oas} bp`, label: 'US high yield' } : null, panel: panel('stress', 'STRESS & POSITIONING', 'Credit, dollar liquidity and where speculators sit', stressHtml(d)) }; },
 });
 
 /** The panel CSS (the broadcast overlay adds it; R = the overlay's id). Sized for the wide 1920x1080 page; the phone layout scales it down. */

@@ -13,7 +13,7 @@ const rows = candleRows(vol, {});
 const sum = { holding: 5, broken: 2, quiet: 18, judged: 7, brokenShort: ['real yields → dollar', 'oil → inflation pricing'], headline: '2 of 7 testable links broken: real yields → dollar, oil → inflation pricing. That is where the story is.' };
 const events = [{ time: '13:30', ccy: 'USD', event: 'CPI m/m' }, { time: '15:00', ccy: 'USD', event: 'Fed Chair Powell Speaks' }, { time: '09:30', ccy: 'GBP', event: 'Retail Sales m/m' }];
 const NOW = new Date('2026-11-20T07:30:00Z');
-const inp = { now: NOW, rows, movers: topMovers(rows, 6), board: boardSummary(rows), chain: sum, events, extra: {} };
+const inp = { now: NOW, rows, movers: topMovers(rows, 6), board: boardSummary(rows), chain: sum, events, extra: {}, leadAll: true };
 const FORECASTY = /\b(will|expect|target|should rise|should fall|going to)\b/i;
 
 test('numbers are rounded and said naturally', () => {
@@ -211,9 +211,9 @@ test('wantedSceneIds: every hook scene the programme may ask for, no built-ins',
   const w = wantedSceneIds();
   for (const id of ['reactor', 'chainfly', 'moneyglobe', 'surprise', 'cycle', 'cbpaths', 'yields', 'fxgrid', 'ccy', 'ivsurf', 'vol', 'gpillar', 'gterrain', 'cot', 'gamma', 'dayahead', 'shockwave', 'wx', 'daymove', 'dayreview', 'shocktoday', 'tomorrow']) assert.ok(w.includes(id), id);
   assert.ok(!w.includes('candles') && !w.includes('chain') && !w.includes('ahead') && !w.includes('rangeused'));
-  assert.equal(SEGMENTS.length, 16);
+  assert.equal(SEGMENTS.length, 17);
   assert.equal(SEGMENTS.filter(x => x.evening).length, 4);
-  assert.equal(SEGMENTS.filter(x => x.wide).length, 5, 'the wide programme market-wide sections');
+  assert.equal(SEGMENTS.filter(x => x.wide).length, 6, 'the wide programme market-wide sections');
 });
 
 test('the ticker: biggest against its usual move first, arrows and signs, quiet markets marked, junk dropped', () => {
@@ -293,4 +293,11 @@ test('THE OUTLOOK: today\'s typical ranges (sizes, not direction) join the calen
   assert.match(used.text, /^The day, looking back\. This morning's typical ranges, against the day\. (Gold|Nasdaq): [\d.]+ percent expected, [\d.]+ percent travelled\./, used.text);
   assert.equal(planBroadcast({ ...inp, now: new Date('2026-11-20T09:00:00Z'), rows }, { hooks: HOOKS, have: new Set(['ahead', 'vol']), mode: 'quick' }).segments.some(x => x.id === 'day'), false, 'the evening segments stay out of the morning');
   for (const x of P.items) assert.doesNotMatch(x.text, FORECASTY, x.text);
+});
+
+test('the lead: only Nasdaq, gold and the FX majors, unless another market moves 4x its usual (owner, 25 Nov 2026)', () => {
+  const mv = [{ key: 'SUGAR', ratio: 3.2, oc: 4.5, tone: 'up' }, { key: 'GBPCHF', ratio: -2.0, oc: -0.54, tone: 'dn' }, { key: 'GOLD', ratio: -1.6, oc: -1.1, tone: 'dn' }, { key: 'WHEAT', ratio: 4.4, oc: 6, tone: 'up' }];
+  const keys = pickLead({ movers: mv }).filter(x => x.kind === 'mover').map(x => x.key);
+  assert.deepEqual(keys, ['WHEAT', 'GOLD'], 'sugar at 3.2x and a cross are left out; wheat at 4.4x is extraordinary');
+  assert.ok(pickLead({ movers: mv, leadAll: true }).some(x => x.key === 'SUGAR'));
 });

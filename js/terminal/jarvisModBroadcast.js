@@ -176,7 +176,7 @@ function makeOverlay(api) {
   const clock = () => { try { $('clk').textContent = `LDN ${dateWords(new Date()).hm}`; } catch (e) { /* label only */ } };
   const O = {
     el,
-    on() { clock(); clockId = api.win.setInterval(clock, 15000); requestAnimationFrame(() => el.classList.add('on')); doc.documentElement.classList.add('jvbc-on'); if (api.st.compact) root.dataset.fontFloor = '13'; },
+    on() { clock(); clockId = api.win.setInterval(clock, 15000); requestAnimationFrame(() => el.classList.add('on')); doc.documentElement.classList.add('jvbc-on'); root.dataset.fontFloor = api.st.compact ? '13' : '15'; },      // wide: no HUD label under 15 px on a 1080p video (owner, 25 Nov 2026)
     cards(which) {
       for (const c of ['open', 'head', 'panel', 'lead', 'bump', 'close']) card(c).classList.toggle('on', c === which);
       if (which === 'open' && !hxStop) { try { hxStop = helixLogo($('hx'), { calm: !!api.win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches }); } catch (e) { /* decoration */ } }

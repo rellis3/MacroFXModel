@@ -78,12 +78,17 @@ const evName = e => (e.where && !e.event.toLowerCase().startsWith(e.where.toLowe
  * Each item: { kind 'mover'|'chain'|'event'|'quiet', score, figure (the big number), figLabel, headline, sub, tone 'up'|'dn'|'gold'|'tx', text (spoken), key? }.
  * At most two movers, one chain item and one event, so the lead is never three versions of the same story.
  */
+/** The markets the owner trades (25 Nov 2026: "Nasdaq, gold, FX majors really, unless anything insane has happened on an asset"): only these lead, unless another moves INSANE x its usual. */
+export const LEAD_CORE = new Set(['NQ', 'GOLD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD']), LEAD_INSANE = 4;
 export function pickLead(inp = {}, n = 3) {
   const cand = [], mv = (inp.movers ?? []).filter(m => m && fin(m.ratio) && fin(m.oc) && m.tone !== 'quiet'), ch = inp.chain, ev = (inp.events ?? []).map(normEvent).filter(Boolean);
   let nm = 0;
   const told = new Set(inp.headKeys ?? []);          // markets THE HEADLINE already named: the lead does not repeat them
   for (const m of mv) {
-    const a = Math.abs(m.ratio); if (a < 1.2 || told.has(m.key)) continue; const up = m.ratio > 0, tw = timesWords(m.ratio), k = nm++;
+    const a = Math.abs(m.ratio); if (a < 1.2 || told.has(m.key)) continue;
+    // an obscure cross or a soft commodity leads only on an extraordinary day
+    if (!inp.leadAll && !LEAD_CORE.has(m.key) && a < LEAD_INSANE) continue;
+    const up = m.ratio > 0, tw = timesWords(m.ratio), k = nm++;
     // two phrasings, so two movers in one lead never share a sentence
     const say = k === 0 ? `${spokenName(m.key)} is ${up ? 'up' : 'down'} ${pctWords(m.oc)}. That is ${tw === 'about' ? 'about its usual move' : `${tw} its usual move`}.`
       : `${spokenName(m.key)}, ${up ? 'up' : 'down'} ${pctWords(m.oc)}: ${tw === 'about' ? 'a normal-sized day' : `${tw} a normal day's travel`}.`;
@@ -221,6 +226,7 @@ export const SEGMENTS = [
   { id: 'bias', name: 'The Bias', wide: true, morning: true, segue: '', tiers: [['biasboard']] },
   { id: 'biasday', name: 'The Bias, Scored', wide: true, evening: true, segue: '', tiers: [['biasday']] },
   { id: 'curve', name: 'The Curve', wide: true, segue: '', tiers: [['curve']] },
+  { id: 'stress', name: 'Stress & Positioning', wide: true, segue: '', tiers: [['stress']] },
   { id: 'cross', name: 'Cross-Asset', wide: true, segue: 'What is moving together.', tiers: [['net']] },
   // THE EVENING programme (after 18:00 London) opens on THE DAY and THE RELEASES and closes on TOMORROW, and drops THE OUTLOOK. evening: true = only in the evening.
   { id: 'day', name: 'The Day', evening: true, keep: 2, segue: 'The day, looking back.', tiers: [['daymove', 'rangeused'], ['rangeused']], say: () => 'The day, looking back.' },
@@ -292,7 +298,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
   const segs = [];
   const pod = partOfDay(date.hour), seg = id => SEGMENTS.find(s => s.id === id), day = SEGMENTS.filter(s => !s.evening && !s.wide && s.id !== 'ahead'), w = id => (short ? null : seg(id));
   day.splice(day.findIndex(s => s.id === 'rates') + 1, 0, ...[w('curve')].filter(Boolean));      // wide: the Treasury curve straight after rates
-  day.splice(day.findIndex(s => s.id === 'vol'), 0, ...[w('cross')].filter(Boolean));      // wide: cross-asset before volatility
+  day.splice(day.findIndex(s => s.id === 'vol'), 0, ...[w('cross'), w('stress')].filter(Boolean));      // wide: cross-asset before volatility
   // morning: the outlook first; afternoon: the outlook last; evening: the day and its releases first, tomorrow last, no outlook (the day is done)
   const order = (pod === 'morning' ? [w('tone'), seg('ahead'), w('bias'), ...day] : pod === 'evening' ? [w('tone'), seg('day'), seg('releases'), w('biasday'), ...day, seg('next')] : [w('tone'), ...day, seg('ahead')]).filter(Boolean);
   for (const s of order) {
