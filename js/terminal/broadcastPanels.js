@@ -40,7 +40,7 @@ export function toneText(d) {
   if (!d) return '';
   const t = [];
   t.push(d.label ? `Market tone: ${d.label === 'mixed' ? 'mixed, no clear risk direction' : d.label}.` : 'Market tone.');
-  if (d.flagsTotal) t.push(d.flagsOn.length ? `${cap1(numWord(d.flagsOn.length))} of ${numWord(d.flagsTotal)} stress flags are on: ${list(d.flagsOn.slice(0, 3).map(f => f.label.toLowerCase()))}.` : `None of the ${numWord(d.flagsTotal)} stress flags is on.`);
+  if (d.flagsTotal) t.push(d.flagsOn.length ? `${cap1(numWord(d.flagsOn.length))} of ${numWord(d.flagsTotal)} stress flag${d.flagsTotal === 1 ? '' : 's'} ${d.flagsOn.length === 1 ? 'is' : 'are'} on: ${list(d.flagsOn.slice(0, 3).map(f => (/^[A-Z]{2,}/.test(f.label) ? f.label : f.label[0].toLowerCase() + f.label.slice(1))))}.` : `None of the ${numWord(d.flagsTotal)} stress flags is on.`);
   if (d.ccy.length >= 4) t.push(`The strongest currency today is ${CCY[d.ccy[0].ccy] ?? d.ccy[0].ccy}, the weakest ${CCY[d.ccy[d.ccy.length - 1].ccy] ?? d.ccy[d.ccy.length - 1].ccy}.`);
   return t.join(' ');
 }
