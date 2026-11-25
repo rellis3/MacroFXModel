@@ -44,7 +44,9 @@ from broadcast_core import concat_list, max_volume, is_silent, title_for, descri
 BASE = 'https://macrofxmodel-production.up.railway.app'
 PROFILE = Path(os.environ.get('JARVIS_PROFILE', HERE / '.profile'))                     # the saved, logged-in browser profile (git-ignored)
 OUT = HERE / 'out'                              # recordings and logs (git-ignored)
-W, H, DPR = 1920, 1080, 1                       # WIDE (the default from 25 Nov 2026, owner: "the full brief wider in a professional setting"): the desk layout at 1920 x 1080
+W, H, DPR = 1600, 900, 1                        # WIDE: drawn at 1600x900 and scaled to 1080p when encoded (25 Nov 2026: 40% faster on the laptop's Intel GPU, 4.8 vs 3.4 frames/s in the 3D scenes)
+OUT_W, OUT_H = 1920, 1080                       # the video's size
+# WIDE (the default from 25 Nov 2026, owner: "the full brief wider in a professional setting"): the desk layout at 1920 x 1080
 SHORT_PAGE = (540, 960, 2)                      # --format short: the phone-shaped page at 2x = 1080 x 1920 for a YouTube Short
 FRAMES_SHORT_SEC = 125                          # frame by frame has no waits between lines, but a real run still lands ~1.2x the estimate at speed 1.1: 145 gave 3 min 14 s on 24 Nov (over the 3-min Shorts limit); 125 aims for ~2 min 45 s
 VCLOCK = HERE / 'vclock.js'                     # the virtual clock for frame-by-frame recording
@@ -251,7 +253,7 @@ def encode(cap: dict) -> Path:
     text, secs = concat_list(cap['frames'], cap['t0'], cap['t1'])
     (work / 'frames' / 'list.ffconcat').write_text(text, encoding='utf-8')
     mp4 = work / f"jarvis-{part_of_day(datetime.now().hour)}-{work.name[:10]}.mp4"
-    vf = f'scale={W * DPR}:{H * DPR}:force_original_aspect_ratio=decrease,pad={W * DPR}:{H * DPR}:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p'
+    vf = f'scale={OUT_W}:{OUT_H}:force_original_aspect_ratio=decrease:flags=lanczos,pad={OUT_W}:{OUT_H}:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p'
     cmd = [ff, '-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', str(work / 'frames' / 'list.ffconcat'),
            '-i', str(cap['audio']), '-map', '0:v:0', '-map', '1:a:0', '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',   # veryfast: 2 min not 15 on the laptop (24 Nov 2026), same crf; YouTube re-encodes anyway
            '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-t', f'{secs:.3f}', '-movflags', '+faststart', str(mp4)]
@@ -316,8 +318,10 @@ def main() -> None:
     ap.add_argument('--out', default=str(OUT))
     a = ap.parse_args()
     global W, H, DPR
+    global OUT_W, OUT_H
     if a.format == 'short':
         W, H, DPR = SHORT_PAGE
+        OUT_W, OUT_H = W * DPR, H * DPR
     if a.len is None:
         a.len = 'short' if a.format == 'short' else 'quick'
     if a.login:
