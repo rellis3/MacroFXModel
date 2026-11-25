@@ -278,6 +278,27 @@ def keep_last(out_dir: Path, n: int = 7) -> None:
         shutil.rmtree(p / 'frames', ignore_errors=True)   # the MP4 is kept; the frames are not needed once encoded
 
 
+def end_stuck_run(out_dir: Path) -> None:
+    """One recorder at a time (25 Nov 2026: a stopped evening task left its recorder alive, holding the browser profile, so the restart fell back to the live way twice).
+    The running recorder writes its process id to out/recorder.pid; a new run ends that process tree (by id, only if it is still a record_broadcast run) before it starts."""
+    pid_file = out_dir / 'recorder.pid'
+    try:
+        old = int(pid_file.read_text().strip()) if pid_file.exists() else 0
+    except Exception:
+        old = 0
+    if old and old != os.getpid():
+        try:
+            q = subprocess.run(['powershell', '-NoProfile', '-Command', f'(Get-CimInstance Win32_Process -Filter "ProcessId={old}").CommandLine'], capture_output=True, text=True, timeout=30)
+            if 'record_broadcast' in (q.stdout or ''):
+                log(f'an earlier recorder (process {old}) is still running: ending it and its browser first')
+                subprocess.run(['taskkill', '/PID', str(old), '/T', '/F'], capture_output=True, timeout=60)
+                time.sleep(5)
+        except Exception as e:
+            log(f'could not check the earlier recorder ({e}); carrying on')
+    out_dir.mkdir(parents=True, exist_ok=True)
+    pid_file.write_text(str(os.getpid()))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--login', action='store_true', help='one-off: log into the desk site in a visible window')
@@ -307,6 +328,7 @@ def main() -> None:
         print('YouTube sign-in saved.')
         return
     out_dir = Path(a.out)
+    end_stuck_run(out_dir)
     try:
         if a.live:
             cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate)
