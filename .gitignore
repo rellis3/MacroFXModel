@@ -813,3 +813,4 @@ analysis/output/futures-*/**/*.parquet
 analysis/output/level-touch-excursions/touches/
 analysis/output/level-stack-stop/touches/
 analysis/output/close-level-reversal/touches/
+analysis/output/jordan-lines-mae/touches/
