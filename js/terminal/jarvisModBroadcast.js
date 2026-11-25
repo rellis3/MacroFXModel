@@ -13,6 +13,7 @@ import { planBroadcast, wantedSceneIds, subtitleChunks, chunkAt, itemSeconds, du
 import { boardSummary, topMovers } from './jarvisCandles.js';
 import { enterScene, sceneMotion, makeRecorder, voiceButton, voiceWord } from './jarvisModShow.js';
 import { buildHeadline } from './broadcastHeadline.js';
+import { PANEL_CSS } from './broadcastPanels.js';
 import { chartCommand } from './jarvisViewSession.js';
 
 const LS = 'jarvisBroadcast:v1';
@@ -156,9 +157,10 @@ function makeOverlay(api) {
   const doc = api.doc, root = doc.getElementById(api.ID); if (!root) return null;
   doc.getElementById(`${api.ID}-bc`)?.remove();
   const el = doc.createElement('div'); el.className = 'bc'; el.id = `${api.ID}-bc`; el.setAttribute('aria-live', 'polite');
-  el.innerHTML = `<style>${css(api.ID)}</style><div class="bc-veil"></div>
+  el.innerHTML = `<style>${css(api.ID)}${PANEL_CSS(api.ID)}</style><div class="bc-veil"></div>
 <div class="bc-card bc-open"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-line"></div><div class="bc-tc bc-reveal"><canvas class="bc-helix" data-b="hx" aria-hidden="true"></canvas><div class="bc-kick">H.E.L.I.X.</div><h1 class="bc-h1">THE <b data-b="part">MORNING</b> BRIEFING</h1><div class="bc-date" data-b="odate"></div></div></div>
 <div class="bc-card bc-head"><div class="bc-hw"><div class="bc-hk" data-b="hk"></div><div class="bc-tag">THE HEADLINE</div><div class="bc-hh" data-b="hh"></div><div class="bc-hf" data-b="hf"><b data-b="hfv"></b><small data-b="hfl"></small></div><div class="bc-hm" data-b="hm"></div></div></div>
+<div class="bc-card bc-panel"><div class="bc-pw"><div class="bc-pk" data-b="pk"></div><div class="bc-pt" data-b="pt"></div><div class="bc-pb" data-b="pb"></div></div></div>
 <div class="bc-card bc-lead"><div class="bc-ghost" data-b="ghost"></div><div class="bc-lw"><div class="bc-tag">THE LEAD <span data-b="lnum"></span></div><div class="bc-fig" data-b="fig"></div><div class="bc-figl" data-b="figl"></div><div class="bc-hl" data-b="hl"></div><div class="bc-hs" data-b="hs"></div><div class="bc-pips" data-b="pips"></div></div></div>
 <div class="bc-card bc-bump"><div class="bc-scan"></div><div class="bc-tc"><div class="bc-bn" data-b="bn"></div><div class="bc-bname" data-b="bname"></div><div class="bc-bar"></div></div></div>
 <div class="bc-card bc-close"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-tc"><div class="bc-h1">That is the briefing.</div><div class="bc-not">Description, not advice.</div><div class="bc-date" data-b="cdate"></div><div class="bc-sig" data-b="sig">J.A.R.V.I.S. · THE MORNING BRIEFING</div></div></div>
@@ -176,7 +178,7 @@ function makeOverlay(api) {
     el,
     on() { clock(); clockId = api.win.setInterval(clock, 15000); requestAnimationFrame(() => el.classList.add('on')); doc.documentElement.classList.add('jvbc-on'); if (api.st.compact) root.dataset.fontFloor = '13'; },
     cards(which) {
-      for (const c of ['open', 'head', 'lead', 'bump', 'close']) card(c).classList.toggle('on', c === which);
+      for (const c of ['open', 'head', 'panel', 'lead', 'bump', 'close']) card(c).classList.toggle('on', c === which);
       if (which === 'open' && !hxStop) { try { hxStop = helixLogo($('hx'), { calm: !!api.win.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches }); } catch (e) { /* decoration */ } }
       else if (which !== 'open' && hxStop) api.win.setTimeout(() => { if (!card('open').classList.contains('on')) { hxStop?.(); hxStop = null; } }, 700);      // after the card has faded
     },
@@ -197,6 +199,10 @@ function makeOverlay(api) {
       const f = $('hf'); f.hidden = !h.figure?.value; f.style.setProperty('--tc', TONE[h.tone] ?? TONE.tx);
       if (h.figure?.value) { $('hfv').textContent = h.figure.value; $('hfl').textContent = h.figure.label ?? ''; }
       $('hm').textContent = h.means ?? '';
+    },
+    panel(p) {      // a wide-programme panel (broadcastPanels.js): its HTML, then its canvases drawn
+      if (!p) return; $('pk').textContent = p.kicker ?? ''; $('pt').textContent = p.title ?? ''; const b = $('pb'); b.innerHTML = p.html ?? '';
+      try { p.draw?.(b); } catch (e) { /* a panel's drawing must never stop the show */ }
     },
     bump(seg) { $('bn').innerHTML = `${pad2(seg.num)} <span>/ ${pad2(seg.total)}</span>`; $('bname').textContent = seg.name; },
     l3(seg, title, fig) {
@@ -314,9 +320,10 @@ registerJarvisModule({
         }
         prevView = it.view;
         // the graphics for this item
-        ov.cards(it.kind === 'open' ? 'open' : it.kind === 'headline' ? 'head' : it.kind === 'lead' ? 'lead' : it.kind === 'bumper' ? 'bump' : it.kind === 'close' ? 'close' : null);
+        ov.cards(it.kind === 'scene' && it.scene?.panel ? 'panel' : it.kind === 'open' ? 'open' : it.kind === 'headline' ? 'head' : it.kind === 'lead' ? 'lead' : it.kind === 'bumper' ? 'bump' : it.kind === 'close' ? 'close' : null);
         if (it.kind === 'lead') ov.lead(it.lead, it.idx, it.n);
         if (it.kind === 'headline') ov.head(it.head);
+        if (it.kind === 'scene' && it.scene?.panel) ov.panel(it.scene.panel);
         if (it.kind === 'bumper') ov.bump(it.seg);
         if (it.kind === 'scene') ov.l3(it.seg, it.title, it.figure); else ov.l3(null);
         ov.sub(null);

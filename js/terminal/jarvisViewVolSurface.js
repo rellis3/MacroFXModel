@@ -309,6 +309,9 @@ registerShowScene({
   id: ID, after: 'gterrain',
   prepare: async api => {
     await loadIndex(api); const key = S.key && S.list.some(m => m.key === S.key) ? S.key : pickStart(api); if (!key) return null;
+    // never an old surface passed off as today's: the 25 Nov 2026 brief said "volatility is priced at 29 percent" from a 12-19 Nov archive. The latest held day must be recent.
+    const mm = S.list.find(x => x.key === key), last = mm?.src === 'cboe' ? recentDays(S.held.get(mm.sym), 1)[0] : null;
+    if (last && (Date.now() - Date.parse(`${last}T21:00:00Z`)) / 864e5 > 4) return null;
     const e = await loadMarket(api, key); return e?.status === 'ok' ? { key, facts: e.facts, label: e.label, src: e.src } : null;
   },
   build: (inp, data) => {

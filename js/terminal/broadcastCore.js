@@ -216,6 +216,12 @@ export const SEGMENTS = [
       return big ? `Over to volatility. ${cap1(numWord(big))} of ${rows.length} markets are moving at least twice their usual size.` : fig ? `Over to volatility: ${fig}.` : null;
     } },
   { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', tiers: [['gpillar', 'gterrain', 'cot'], ['gamma']], say: ({ fig }) => (fig ? `Positioning, and where the options sit: ${fig}.` : null) },
+  // THE WIDE programme's market-wide sections (25 Nov 2026; not in the phone Short): the tone and the news first, the bias after the outlook (morning) or the releases (evening)
+  { id: 'tone', name: 'Market Tone', wide: true, keep: 2, segue: '', tiers: [['tone', 'wire'], ['wire']] },
+  { id: 'bias', name: 'The Bias', wide: true, morning: true, segue: '', tiers: [['biasboard']] },
+  { id: 'biasday', name: 'The Bias, Scored', wide: true, evening: true, segue: '', tiers: [['biasday']] },
+  { id: 'curve', name: 'The Curve', wide: true, segue: '', tiers: [['curve']] },
+  { id: 'cross', name: 'Cross-Asset', wide: true, segue: 'What is moving together.', tiers: [['net']] },
   // THE EVENING programme (after 18:00 London) opens on THE DAY and THE RELEASES and closes on TOMORROW, and drops THE OUTLOOK. evening: true = only in the evening.
   { id: 'day', name: 'The Day', evening: true, keep: 2, segue: 'The day, looking back.', tiers: [['daymove', 'rangeused'], ['rangeused']], say: () => 'The day, looking back.' },
   { id: 'releases', name: 'The Releases', evening: true, keep: 2, words: 75, segue: '', tiers: [['shocktoday', 'dayreview'], ['dayreview']] },      // the scene opens with its own words
@@ -277,16 +283,18 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     if (id in built) return built[id];
     let x = null; const h = hooks.find(k => k.id === id);
     try {
-      if (h) { const r = h.build(inp, inp.extra?.[id] ?? null); if (r && r.text) x = { id, title: r.title ?? id, view: r.view ?? 'globe', cam: r.cam ?? null, text: clean(r.text), enter: r.enter, motion: r.motion, figure: r.figure ?? r.key ?? null }; }
+      if (h) { const r = h.build(inp, inp.extra?.[id] ?? null); if (r && r.text) x = { id, title: r.title ?? id, view: r.view ?? 'globe', cam: r.cam ?? null, text: clean(r.text), enter: r.enter, motion: r.motion, figure: r.figure ?? r.key ?? null, panel: r.panel ?? null }; }
       else if (BUILTIN[id]) { const r = BUILTIN[id](inp); if (r) x = { id, ...r }; }
     } catch (e) { x = null; }
     if (x && !viewOk(x.view)) x = null;
     return (built[id] = x);
   };
   const segs = [];
-  const pod = partOfDay(date.hour), seg = id => SEGMENTS.find(s => s.id === id), day = SEGMENTS.filter(s => !s.evening && s.id !== 'ahead');
+  const pod = partOfDay(date.hour), seg = id => SEGMENTS.find(s => s.id === id), day = SEGMENTS.filter(s => !s.evening && !s.wide && s.id !== 'ahead'), w = id => (short ? null : seg(id));
+  day.splice(day.findIndex(s => s.id === 'rates') + 1, 0, ...[w('curve')].filter(Boolean));      // wide: the Treasury curve straight after rates
+  day.splice(day.findIndex(s => s.id === 'vol'), 0, ...[w('cross')].filter(Boolean));      // wide: cross-asset before volatility
   // morning: the outlook first; afternoon: the outlook last; evening: the day and its releases first, tomorrow last, no outlook (the day is done)
-  const order = pod === 'morning' ? [seg('ahead'), ...day] : pod === 'evening' ? [seg('day'), seg('releases'), ...day, seg('next')] : [...day, seg('ahead')];
+  const order = (pod === 'morning' ? [w('tone'), seg('ahead'), w('bias'), ...day] : pod === 'evening' ? [w('tone'), seg('day'), seg('releases'), w('biasday'), ...day, seg('next')] : [w('tone'), ...day, seg('ahead')]).filter(Boolean);
   for (const s of order) {
     let scenes = [];
     for (const tier of s.tiers) { scenes = tier.map(sceneFor).filter(Boolean); if (scenes.length) break; }

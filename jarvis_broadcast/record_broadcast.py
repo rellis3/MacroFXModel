@@ -44,7 +44,8 @@ from broadcast_core import concat_list, max_volume, is_silent, title_for, descri
 BASE = 'https://macrofxmodel-production.up.railway.app'
 PROFILE = Path(os.environ.get('JARVIS_PROFILE', HERE / '.profile'))                     # the saved, logged-in browser profile (git-ignored)
 OUT = HERE / 'out'                              # recordings and logs (git-ignored)
-W, H, DPR = 540, 960, 2                         # a phone-shaped page (Jarvis's portrait layout) at 2x = 1080 x 1920
+W, H, DPR = 1920, 1080, 1                       # WIDE (the default from 25 Nov 2026, owner: "the full brief wider in a professional setting"): the desk layout at 1920 x 1080
+SHORT_PAGE = (540, 960, 2)                      # --format short: the phone-shaped page at 2x = 1080 x 1920 for a YouTube Short
 FRAMES_SHORT_SEC = 125                          # frame by frame has no waits between lines, but a real run still lands ~1.2x the estimate at speed 1.1: 145 gave 3 min 14 s on 24 Nov (over the 3-min Shorts limit); 125 aims for ~2 min 45 s
 VCLOCK = HERE / 'vclock.js'                     # the virtual clock for frame-by-frame recording
 
@@ -243,7 +244,7 @@ def encode(cap: dict) -> Path:
     log(f'encoded {mp4.name}: {secs:.1f} s, loudest moment {db} dB')
     if is_silent(db):
         raise RuntimeError(f'the recording has no sound on it (loudest {db} dB): not uploading. Check the voice (H.E.L.I.X. OPTIONS / /api/jarvis/voice/info).')
-    w = short_warning(secs)
+    w = short_warning(secs) if H > W else None          # the 3-minute limit is for Shorts only
     if w:
         log('note: ' + w)
     cap['seconds'] = secs
@@ -265,7 +266,8 @@ def main() -> None:
     ap.add_argument('--youtube-auth', action='store_true', help='one-off: sign in to YouTube and save token.json')
     ap.add_argument('--no-upload', action='store_true', help='record and encode only')
     ap.add_argument('--show', action='store_true', help='keep the browser window on screen')
-    ap.add_argument('--len', choices=['short', 'quick', 'full'], default='short', help='short (default: kept under 3 min so YouTube files it as a Short), quick or full')
+    ap.add_argument('--format', choices=['wide', 'short'], default='wide', help='wide (default): 1920x1080, the full programme, a normal video; short: 1080x1920 under 3 min, a YouTube Short')
+    ap.add_argument('--len', choices=['short', 'quick', 'full'], default=None, help='the programme cut (default: quick for wide, short for a Short)')
     ap.add_argument('--voice', choices=['server', 'kokoro'], default='server', help='server (steady) or kokoro (open-source, needs a fast machine)')
     ap.add_argument('--rate', type=float, choices=[0.9, 1.0, 1.1, 1.15, 1.3], default=1.1, help='voice speed: 0.9 calm, 1 normal, 1.1 steady (default), 1.15 brisk, 1.3 fast')
     ap.add_argument('--live', action='store_true', help='record in real time (the old way; drops frames on a busy machine)')
@@ -274,6 +276,11 @@ def main() -> None:
     ap.add_argument('--base', default=os.environ.get('JARVIS_SITE', BASE))
     ap.add_argument('--out', default=str(OUT))
     a = ap.parse_args()
+    global W, H, DPR
+    if a.format == 'short':
+        W, H, DPR = SHORT_PAGE
+    if a.len is None:
+        a.len = 'short' if a.format == 'short' else 'quick'
     if a.login:
         return do_login(a.base)
     if a.youtube_auth:
@@ -300,8 +307,9 @@ def main() -> None:
             from youtube_upload import upload
             today = datetime.now().date()
             part = part_of_day(datetime.now().hour)          # 07:00 -> the morning briefing, 21:00 -> the evening one (the page picks its programme by the same London clock)
-            vid = upload(mp4, title_for(today, part), description_for(today, cap['voice'], cap['seconds'], part), privacy='unlisted')
-            result.update({'videoId': vid, 'url': f'https://youtube.com/shorts/{vid}', 'privacy': 'unlisted'})
+            title = title_for(today, part) if a.format == 'short' else title_for(today, part).replace(' #Shorts', '')
+            vid = upload(mp4, title, description_for(today, cap['voice'], cap['seconds'], part), privacy='unlisted')
+            result.update({'videoId': vid, 'url': f'https://youtube.com/shorts/{vid}' if a.format == 'short' else f'https://youtu.be/{vid}', 'privacy': 'unlisted', 'format': a.format})
             log(f"uploaded (unlisted): {result['url']}")
         (out_dir / 'last_run.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
         keep_last(out_dir)
