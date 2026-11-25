@@ -91,3 +91,5 @@ Order flow, VWAP, macro or vol filters at the touch; other stop or target sizes;
   futures) that showed counts by exit type only, with no line-vs-placebo or R comparison.
 
 ## RESULTS
+
+Verdicts and numbers: `analysis/output/close-reversal-confirm/RESULTS.md` (banked 2026-11-25).

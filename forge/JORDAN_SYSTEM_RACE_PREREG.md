@@ -85,3 +85,5 @@ Other trades, other lines (Close± calcs stay on QLIKE), stop or target sizes, s
 ## Amendments
 
 ## RESULTS
+
+Verdicts and numbers: `analysis/output/jordan-system-race/RESULTS.md` (banked 2026-11-25).
