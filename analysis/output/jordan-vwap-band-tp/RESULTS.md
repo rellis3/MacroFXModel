@@ -102,27 +102,40 @@ trade), not from the lines. It also confirms that his FX units are pips.
 3. **For stops, use the winners' MAE.** Winners rarely go past about 80% of Jordan's stop. A stop much tighter than
    about 0.6–0.8 of his size would cut winners; a wider one only adds to losers.
 
-## F. Previous line as the target, and what target fits Jordan's table (POST-HOC, exploratory)
+## G. Line-to-line MAE: Jordan's diagram (POST-HOC, exploratory; `next_line_mae.py`)
 
-Owner 2026-11-25. Script `prev_line_tp.py`; tables `F_prev_line_*.csv`.
+On 2026-11-25 Jordan sketched how he measures MAE. MAE for L1 runs from the touch of L1 and **stops when price reaches L2, the next line out**. From there the excursion belongs to L2. So the next line out works as the stop, and L1's MAE is capped at the L1→L2 gap.
 
-**Setup:** fade every touch of Jordan's lines, with his stops and a 22:00 hard close. Target the previous line, two
-ways:
-- **A, same family:** 90th → 75th → median → open.
-- **B, nearest line:** the nearest of his lines inside the entry on that side.
+Setup:
+- Every touch of Close± and the HL projections is faded.
+- The outer line is either the same family (median → 75th → 90th; the 90th has no outer line) or the nearest of all his lines beyond the entry (B).
+- If L2 is never reached, the trade ends at 22:00 or at the previous line in.
 
-**Result:**
-- With his stop sizes, the previous line is a median 1.2–3.2R away and is hit 18–36% of the time.
-- The trade is −0.03R gross (net −0.13R).
-- Against the whole ladder scaled, it's −0.014R (A) and −0.010R (B), and both CIs cross 0.
-- Its MAE fits his table worse than a fixed target does (gold median 63–74 against his 33.8).
+Best fit (B, nearest line, previous-line target), median / P75 / P90:
 
-**Fixed-target fit:** the same trades with targets of 0.25–2R, or no target (`scratchpad tp_fit`, numbers on the MAE
-Book page).
-- Gold matches his table at **0.5R** (34.8 / 76.5 / 87.0 against 33.8 / 76.3 / 86.8).
-- NQ matches at **0.75R** (108 / 161 / 184 against 114 / 161 / 185).
-- USDJPY matches at 1R.
-- EURUSD matches a hard close or 2R.
+| | Ours | Jordan | Gap to L2 (median) |
+|---|---|---|---|
+| GC (ticks) | 42 / 79 / 132 | 34 / 76 / 87 | 76 (≈ his 75-tick stop) |
+| NQ (ticks) | 130 / 250 / 394 | 114 / 161 / 185 | 249 |
+| EURUSD (pips) | 8.8 / 16.6 / 23.1 | 12.2 / 14.5 / 18.2 | 16.8 |
+| USDJPY (pips) | 11.8 / 22.1 / 36.1 | 12.0 / 13.8 / 16.8 | 21.0 |
 
-So his target looks closer than the previous line: about half to three-quarters of his stop on GC and NQ. This is
-inferred from the shape of his MAE, not confirmed.
+- **The median matches.** The tails run wider because our line gaps vary from day to day, while his stop is fixed.
+- Gold's median gap to the next line equals his 75-tick stop, which suggests his stop sizes may be typical line gaps.
+- The same-family outer line (A) is too far away (1.3–2.8× his stop), and its fit is worse.
+
+Trade (fade at L1, stop at L2, target the previous line in):
+
+| | Gross R | Net R | Line minus placebo | Notes |
+|---|---|---|---|---|
+| A | −0.027 [−0.042, −0.012] | −0.076 | +0.002 [−0.008, +0.013] | |
+| B | −0.022 [−0.036, −0.008] | −0.115 | +0.008 [−0.004, +0.022] gross; +0.015 [+0.002, +0.029] net | Net is positive in both halves (+0.019 / +0.011) |
+
+L2 is hit 45–56% of the time and the target 35%.
+
+**Graded weight:** a faint pointer for B. Real lines beat a scaled ladder by about 0.01R per trade. The trade itself loses before costs. It is exploratory and post-hoc, so nothing is banked as a verdict.
+
+Files:
+- `G_next_line_mae.csv`
+- `G_next_line_by_tier.csv`
+- `G_next_line_edge.csv`
