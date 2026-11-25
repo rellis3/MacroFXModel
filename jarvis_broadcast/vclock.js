@@ -46,7 +46,7 @@
   };
 
   // after freeze(), the HUD's audio context is offline and runs on the virtual clock (its currentTime counts from when it was made)
-  const AUDIO_SECONDS = 420, RATE = 48000;
+  const AUDIO_SECONDS = 900, RATE = 48000;      // 15 min: the wide programme runs 5-8 min (was 7 min for the Short)
   let offline = null;
   function VAudioContext() {
     if (!VC.frozen || !R.OAC) return new R.AC();
