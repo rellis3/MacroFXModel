@@ -227,7 +227,7 @@ export const SEGMENTS = [
   { id: 'bias', name: 'The Bias', wide: true, morning: true, segue: '', tiers: [['biasboard']] },
   { id: 'biasday', name: 'The Bias, Scored', wide: true, evening: true, segue: '', tiers: [['biasday']] },
   { id: 'curve', name: 'The Curve', wide: true, segue: '', tiers: [['curve']] },
-  { id: 'stress', name: 'Stress & Positioning', wide: true, segue: '', tiers: [['stress']] },
+  { id: 'stress', name: 'Stress & Positioning', wide: true, keep: 2, segue: '', tiers: [['stress', 'skew'], ['skew']] },
   { id: 'cross', name: 'Cross-Asset', wide: true, segue: 'What is moving together.', tiers: [['net']] },
   // THE EVENING programme (after 18:00 London) opens on THE DAY and THE RELEASES and closes on TOMORROW, and drops THE OUTLOOK. evening: true = only in the evening.
   { id: 'day', name: 'The Day', evening: true, keep: 2, segue: 'The day, looking back.', tiers: [['daymove', 'rangeused'], ['rangeused']], say: () => 'The day, looking back.' },

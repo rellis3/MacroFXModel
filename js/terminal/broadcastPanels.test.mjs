@@ -58,6 +58,14 @@ test("the desk: today's run only; its calls with the owner's markets first; its 
   assert.equal(verdictOf('dn', { open: 100, last: 98, moveU: -1 }), 'with'); assert.equal(verdictOf('up', { open: 100, last: 98, moveU: -1 }), 'against'); assert.equal(verdictOf('up', { open: 100, last: 100.1, moveU: 0.1 }), 'flat');
 });
 
+test('options skew: dropped when the pull is old; the biggest leans first; stocks and currencies said apart', async () => {
+  const { skewData, skewText } = await import('./broadcastPanels.js');
+  const j = { asOf: '2026-11-25T21:14:23Z', ageH: 0.1, rows: [{ id: 'JPY', label: 'Japanese yen (6J)', rr: 2.17, atm: 6.42, lean: 'paying for JPY strength' }, { id: 'NQ', label: 'Nasdaq 100 (NQ)', rr: -9.88, atm: 32.6, lean: 'paying for downside' }, { id: 'ES', label: 'S&P 500 (ES)', rr: -8.05, atm: 24.3, lean: 'paying for downside' }, { id: 'EUR', label: 'Euro', rr: null, atm: 5 }] };
+  assert.equal(skewData({ ...j, ageH: 506.8 }), null, 'a three-week-old pull is not shown');
+  const d = skewData(j); assert.deepEqual(d.rows.map(r => r.id), ['NQ', 'ES', 'JPY']);
+  assert.equal(skewText(d), 'Options skew: where the hedging money leans. In stocks, traders are paying up for downside protection: Nasdaq 9.9 vol points and S&P 8.1 vol points. In currencies the biggest leans are JPY strength.');
+});
+
 test('the bias against the day: from 07:00, judged against a quarter of the usual move, changes listed', () => {
   const from = Date.parse('2026-11-25T07:00:00Z'), bar = (k, o, c) => ({ t: from + k * 9e5, o, h: Math.max(o, c) + 0.1, l: Math.min(o, c) - 0.1, c });
   const bars = [{ t: from - 9e5, o: 9, h: 9, l: 9, c: 9 }, bar(0, 100, 100.5), bar(1, 100.5, 99), bar(2, 99, 98)];

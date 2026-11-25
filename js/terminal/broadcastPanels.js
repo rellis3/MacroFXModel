@@ -322,6 +322,34 @@ registerShowScene({
   build(inp, dr) { const text = deskViewText(dr); if (!text) return null; return { title: "The desk's view", view: 'globe', cam: { region: 'world' }, text, figure: { value: String(dr.head.book.global?.tone ?? '').replace('_', '-').toUpperCase(), label: 'desk tone' }, panel: panel('deskview', "THE DESK'S VIEW", "This morning's desk run: the book, the currency views, the risks", deskViewHtml(dr)) }; },
 });
 
+// ───────────────────────── OPTIONS SKEW (/api/options-skew: the laptop's IBKR futures-options pull, 06:30 and 17:30) ─────────────────────────
+/** The rows with a 25-delta risk reversal, the biggest lean first; null when the pull is older than 30 hours (never an old skew passed off as today's). */
+export function skewData(j, maxAgeH = 30) {
+  if (!j?.rows || !(fin(j.ageH) && j.ageH <= maxAgeH)) return null;
+  const rows = j.rows.filter(r => fin(r.rr) && fin(r.atm)).map(r => ({ id: r.id, label: r.label, pair: r.pair ?? null, rr: r.rr, atm: r.atm, bf: r.bf, lean: r.lean ?? '' })).sort((a, b) => Math.abs(b.rr) - Math.abs(a.rr));
+  return rows.length ? { rows, asOf: j.asOf, ageH: j.ageH } : null;
+}
+const SKN = { NQ: 'Nasdaq', ES: 'S&P', CL: 'crude', GOLD: 'gold', EUR: 'the euro', GBP: 'sterling', JPY: 'the yen', AUD: 'the Aussie', CAD: 'the Loonie', CHF: 'the franc' };
+export function skewText(d) {
+  if (!d) return '';
+  const eq = d.rows.filter(r => r.id === 'NQ' || r.id === 'ES'), fx = d.rows.filter(r => !['NQ', 'ES', 'CL', 'GOLD'].includes(r.id));
+  const t = ['Options skew: where the hedging money leans.'];
+  if (eq.length) t.push(`In stocks, traders are paying ${eq.every(r => r.rr < 0) ? 'up for downside protection' : 'for upside'}: ${list(eq.map(r => `${SKN[r.id] ?? r.label} ${Math.abs(r.rr).toFixed(1)} vol points`))}.`);
+  const top = fx.slice(0, 2); if (top.length) t.push(`In currencies the biggest leans are ${list(top.map(r => `${r.lean.replace(/^paying for /, '')}`))}.`);
+  return t.join(' ');
+}
+function skewHtml(d) {
+  const mx = Math.max(1, ...d.rows.map(r => Math.abs(r.rr)));
+  return `<div class="bp-grid bp-g2"><section class="bp-box"><h3>25-DELTA RISK REVERSAL · VOL POINTS · 1 MONTH</h3>${d.rows.map((r, i) => `<div class="bp-bar" style="--i:${i}"><span style="width:auto">${esc(r.id)}</span><div class="bp-track"><i class="${r.rr >= 0 ? 'up' : 'dn'}" style="${r.rr >= 0 ? 'left:50%' : `left:${(50 - Math.abs(r.rr) / mx * 50).toFixed(1)}%`};width:${(Math.abs(r.rr) / mx * 50).toFixed(1)}%"></i></div><b class="bp-${r.rr >= 0 ? 'up' : 'dn'}">${r.rr > 0 ? '+' : ''}${r.rr.toFixed(2)}</b></div>`).join('')}</section>
+  <section class="bp-box"><h3>WHAT THE OPTIONS SAY</h3>${d.rows.map((r, i) => `<div class="bp-slope" style="--i:${i}"><div><b>${esc(r.label)}</b><small>${esc(r.lean)}</small></div><strong>${r.atm.toFixed(1)}</strong><div></div><em>ATM vol</em></div>`).join('')}</section></div>
+  <div class="bp-foot">CME futures options via IBKR (delayed) · pulled ${esc(String(d.asOf ?? '').slice(0, 16).replace('T', ' '))} UTC · risk reversal = 25-delta call vol minus put vol, for the pair's base currency · context, not a signal</div>`;
+}
+registerShowScene({
+  id: 'skew', after: 'stress',
+  async prepare(api) { return skewData(await ok(api.jf('/api/options-skew'))); },
+  build(inp, d) { const text = skewText(d); if (!text) return null; const nq = d.rows.find(r => r.id === 'NQ'); return { title: 'Options skew', view: 'globe', cam: { region: 'world' }, text, figure: nq ? { value: `${nq.rr.toFixed(1)}`, label: 'Nasdaq risk reversal' } : null, panel: panel('skew', 'OPTIONS SKEW', 'Where the hedging money leans, from the futures options', skewHtml(d)) }; },
+});
+
 /** The panel CSS (the broadcast overlay adds it; R = the overlay's id). Sized for the wide 1920x1080 page; the phone layout scales it down. */
 export const PANEL_CSS = R => `
 #${R} .bc-panel{background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--bg) 78%,transparent),color-mix(in srgb,var(--bg) 94%,transparent))}
