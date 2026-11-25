@@ -7,6 +7,7 @@
 // (HAR-CJ); for the ladder-v2-rollout instruments, whatever their banked sigma needs (NY-close daily bars from 2015-12,
 // and 5- or 15-minute closes for the last 45 days). Cached 10 minutes.
 import { oandaCandles } from './volStateRoutes.js';
+import { getJSON as r2Get, putJSON as r2Put, r2Configured } from './r2Store.js';
 import { qlikeParams, qlikeInstruments, qlikeSeries, qlikeDayLevels, qlikeText } from './ladderV2Qlike.js';
 import { eventLayerRows } from './ladderV2EventLayer.js';
 import { PARAMS, nqSigma, harcjSigma, buildText, sessionDate, nyKey, nqSigmaSeries, harcjSigmaSeries, sigmaForSession, dayLevels, rolloutSigmaSeries } from './ladderV2Shadow.js';
@@ -175,36 +176,56 @@ export async function qlikeLevelsRange(pair, from, to, track = 'fut') {
   return { ok: true, pair: String(pair).toLowerCase(), symbol: sym, track, calc: 'qlike', lines: qlikeParams(sym, track).lines,
            note: `shadow QLIKE per-line ladder; widths fitted on ${track === 'cfd' ? 'CFD' : 'futures'} sessions to 2026-08-21, so earlier dates are partly in-sample`, days };
 }
-const qExport = {}, qExportAt = {};
-async function qlikeExportText(track = 'fut') {
+// The board is a function of the session date only: every line comes from completed NY-close daily bars and prior 5/15-minute closes, so it does not move during the session. It is therefore built ONCE per
+// session and stored in R2 (qlike-lines/<track>/<session>.json); a request or a reboot loads the stored board instead of re-fetching ~65 instruments' history from OANDA (2026-11-25, memory).
+const Q_PREFIX = 'qlike-lines', Q_RETRY_MS = 2 * 60e3;
+const qExport = {}, qBuilding = {};
+async function qlikeBoard(track = 'fut') {
   const session = sessionDate();
-  const c = qExport[track];
-  if (c && c.session === session && Date.now() - (qExportAt[track] ?? 0) < TTL_MS) return c.text;
-  const lv = {};
-  const one = async sym => {
-    try { lv[sym] = qlikeDayLevels(sym, qlikeSeries(sym, await qlikeInputs(sym, null, null, track), track), session, track); } catch { lv[sym] = null; }
-  };
-  await pool(qlikeInstruments(track), 4, one);
-  // A transient OANDA failure under the parallel fetch (seen 2026-11-24 on NQ, 18 futures) would otherwise be cached as
-  // 'unavailable' for the TTL: retry the failures once, one at a time, and only cache a partial board briefly.
-  const failed = qlikeInstruments(track).filter(s => !lv[s]);
-  for (const s of failed) await one(s);
+  const names = qlikeInstruments(track);
+  let c = qExport[track];
+  if (!c || c.session !== session) {
+    c = { session, lv: {}, lastTry: 0, stored: false };
+    if (r2Configured()) {
+      try { const st = await r2Get(`${Q_PREFIX}/${track}/${session}.json`); if (st?.session === session && st.lv) { c.lv = st.lv; c.stored = true; } } catch { /* no stored board yet */ }
+    }
+    qExport[track] = c;
+  }
+  const missing = () => names.filter(s => !c.lv[s]);
+  if (missing().length && Date.now() - c.lastTry > Q_RETRY_MS) {
+    if (!qBuilding[track]) qBuilding[track] = (async () => {
+      c.lastTry = Date.now();
+      const one = async sym => { try { c.lv[sym] = qlikeDayLevels(sym, qlikeSeries(sym, await qlikeInputs(sym, null, null, track), track), session, track); } catch { c.lv[sym] = null; } };
+      await pool(missing(), 4, one);
+      // a transient OANDA failure under the parallel fetch (seen 2026-11-24 on NQ, 18 futures): retry the failures once, one at a time
+      for (const s of missing()) await one(s);
+      if (r2Configured() && names.some(s => c.lv[s])) {
+        try { await r2Put(`${Q_PREFIX}/${track}/${session}.json`, { session, track, builtAt: new Date().toISOString(), lv: c.lv }); c.stored = true; } catch (e) { console.warn(`[qlike-board] ${track} store failed: ${e.message}`); }
+      }
+    })().finally(() => { qBuilding[track] = null; });
+    await qBuilding[track];
+  } else if (qBuilding[track]) await qBuilding[track];
+  return c;
+}
+async function qlikeExportText(track = 'fut') {
+  const c = await qlikeBoard(track);
   // Layer 2 (event days, CFD only): extra 'EV2' rows on decision days; the base rows above them are unchanged.
-  const extra = track === 'cfd' ? Object.fromEntries(Object.keys(lv).map(s => [s, eventLayerRows(s, lv[s], session)])) : {};
-  const partial = qlikeInstruments(track).some(s => !lv[s]);
-  qExport[track] = { session, lv, text: qlikeText(lv, session, track, extra) };
-  qExportAt[track] = Date.now() - (partial ? TTL_MS - 60e3 : 0);   // partial: expires after ~1 min instead of 10
-  return qExport[track].text;
+  const extra = track === 'cfd' ? Object.fromEntries(Object.keys(c.lv).map(s => [s, eventLayerRows(s, c.lv[s], c.session)])) : {};
+  return qlikeText(c.lv, c.session, track, extra);
 }
 
-// Today's per-line levels for every instrument (the vol-forecast-v3 charts overlay them); same cached board as the export.
+// Today's per-line levels for every instrument (the vol-forecast-v3 charts overlay them); same stored board as the export.
 async function qlikeTodayLevels(track = 'fut') {
-  await qlikeExportText(track);
-  const c = qExport[track];
+  const c = await qlikeBoard(track);
   return { ok: true, track, session: c.session, levels: c.lv ?? {} };
 }
 
 export function mountLadderV2Shadow(app) {
+  // Warm the stored board when the session flips (22:00 London): checked every 30 min, a no-op once today's board is complete. First check 3 min after boot, so a reboot just loads the stored copy.
+  if (process.env.LADDER_QLIKE_WARM !== '0') {
+    const warm = async () => { for (const t of ['fut', 'cfd']) { try { await qlikeBoard(t); } catch (e) { console.warn(`[qlike-board] warm ${t}: ${e.message}`); } } };
+    const first = setTimeout(() => { warm(); setInterval(warm, 30 * 60e3).unref?.(); }, 180e3); first.unref?.();
+  }
   // which instruments have a validated v2 ladder on each track (the reversion page reads this)
   app.get('/api/vol-forecast/ladder-v2/instruments', (req, res) => {
     const pick = t => Object.keys(PARAMS.instruments).filter(s => PARAMS.instruments[s][t]).map(s => s.toLowerCase());
