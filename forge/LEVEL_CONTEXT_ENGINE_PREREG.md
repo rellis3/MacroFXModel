@@ -134,4 +134,15 @@ These parameters are fixed here: u = 0.25σ, the 120-minute cap, the buckets, th
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-11-25 — PRE-RESULTS (no outcome computed)
+
+These change how the outcome is timed and add two context fields that are only reported.
+
+- **Race timing.** The through side (further in the approach direction) is counted from the touch bar itself. Price
+  beyond the line on that bar comes after the touch, and leaving it out would flatter the fades. The back side is
+  counted from bar t+1, because the touch bar's opposite extreme may have come before the touch. The MFE (through)
+  follows the same timing, and so does the MAE (back).
+- **Prior move.** It is measured from the close 30 bars before the touch to the level price.
+- **Two context fields** are added to the descriptive matrix only. They feed no gate:
+  - **minutes since the inner tier's first touch:** the ladder speed, which H5 uses;
+  - **the ladder race at the first inside P75 touch:** P90 reached before price returns to the median, line vs placebo.
