@@ -179,7 +179,7 @@ def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: P
     if not res or not res.get('ok'):
         raise RuntimeError(f'the broadcast did not run: {res}')
     t0, t1 = res['t0'] / 1000.0, res['t1'] / 1000.0
-    log(f"captured {len(frames)} frames and {audio.stat().st_size // 1024} KB of sound over {t1 - t0:.1f} s in {time.time() - started:.0f} s; voice: {res.get('voice')} ({(res.get('voiceInfo') or {}).get('provider') or '?'}, no robot finish)")
+    log(f"captured {len(frames)} frames and {audio.stat().st_size // 1024} KB of sound over {t1 - t0:.1f} s in {time.time() - started:.0f} s; voice: {res.get('voice')} ({((res.get('voiceInfo') or {}).get('server') or {}).get('provider') or '?'}, no robot finish)")
     return {'work': work, 'frames': frames, 'audio': audio, 't0': t0, 't1': t1, 'voice': res.get('voice')}
 
 
