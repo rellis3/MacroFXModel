@@ -382,6 +382,26 @@ class Copier:
             return self.apply_missed(trans, catchup)
         self.apply(trans, execute)
 
+    def reparse(self, msg_id, text, posted: datetime, tally) -> bool:
+        """Catch-up meets a message it has seen before whose first parse had
+        "Unparsed" lines. If today's parser reads it differently, add the trades
+        it missed (Book.add_missing_opens), as missed signals for Send to MT5 or
+        entered if still fresh. 25 Nov 2026: three "SELL X again now at" trades."""
+        key = str(msg_id)
+        old = self.book.seen.get(key) or ""
+        if "'review'" not in old:
+            return False
+        events = parse_message(text)
+        sig = repr(events)
+        if sig == old:
+            return False
+        self.book.seen[key] = sig
+        self.dirty["state"] = True
+        trans = self.book.add_missing_opens(events, msg_id, posted.astimezone(timezone.utc))
+        self.apply_missed(trans, tally)
+        tally["reparsed"] = tally.get("reparsed", 0) + 1
+        return bool(trans)
+
     def apply_missed(self, transitions, tally):
         """A message read back after the bot was off (catch-up). His cancels and
         closes act on our orders as usual. A new signal is entered only while it
@@ -1092,6 +1112,8 @@ async def catch_up(cp: Copier, client, chat, ok, since_ts: float | None, why: st
                 continue
             scanned += 1
             if str(msg.id) in cp.book.seen:
+                if cp.reparse(msg.id, msg.message or "", msg.date, tally):
+                    new += 1
                 continue
             new += 1
             cp.apply(cp.book.tick(msg.date.astimezone(timezone.utc)))
