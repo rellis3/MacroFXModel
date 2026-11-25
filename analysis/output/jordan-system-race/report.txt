@@ -1,0 +1,16 @@
+futures (net) S1: SYS - QL -0.0101R [-0.0402, +0.0221] p 0.610 (n 3539); halves 2021-23 -0.0162 [-0.0576,+0.0273], 2024-26 -0.0023 [-0.0529,+0.0483]
+   QL pick net R -0.0108 [-0.0774, +0.0536]; halves 2021-23 -0.0213, 2024-26 +0.0013
+   hindsight best calc - QL mean +0.0991R; SD across calcs (median sym) 0.0612R; SYS = QL 7%; SYS same as last year 54%
+futures (net) S2: SYS - QL -0.0033R [-0.0201, +0.0117] p 0.718 (n 7888); halves 2021-23 +0.0062 [-0.0135,+0.0256], 2024-26 -0.0156 [-0.0384,+0.0085]
+   QL pick net R -0.1010 [-0.1257, -0.0750]; halves 2021-23 -0.1005, 2024-26 -0.1016
+   hindsight best calc - QL mean +0.0599R; SD across calcs (median sym) 0.0312R; SYS = QL 8%; SYS same as last year 58%
+CFDs (gross) S1: SYS - QL -0.0131R [-0.0362, +0.0107] p 0.334 (n 6115); halves 2021-23 -0.0155 [-0.0479,+0.0150], 2024-26 -0.0105 [-0.0454,+0.0251]
+   QL pick net R +0.0282 [-0.0366, +0.0909]; halves 2021-23 +0.0156, 2024-26 +0.0424
+   hindsight best calc - QL mean +0.0938R; SD across calcs (median sym) 0.0587R; SYS = QL 5%; SYS same as last year 50%
+CFDs (gross) S2: SYS - QL -0.0082R [-0.0213, +0.0037] p 0.290 (n 13579); halves 2021-23 -0.0102 [-0.0271,+0.0068], 2024-26 -0.0059 [-0.0236,+0.0118]
+   QL pick net R -0.0135 [-0.0337, +0.0096]; halves 2021-23 -0.0099, 2024-26 -0.0177
+   hindsight best calc - QL mean +0.0507R; SD across calcs (median sym) 0.0292R; SYS = QL 8%; SYS same as last year 52%
+F_S1: BH fail -> UNDERPOWERED
+F_S2: BH fail -> NULL
+C_S1: BH fail -> NULL
+C_S2: BH fail -> NULL

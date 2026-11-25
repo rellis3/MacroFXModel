@@ -2547,10 +2547,12 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/broadcastHeadline.js",
      "js/terminal/dayAheadCore.js",
      "js/terminal/jarvisCandles.js",
      "js/terminal/jarvisCcyCore.js",
      "js/terminal/jarvisMarkets.js",
+     "js/terminal/jarvisModBroadcast.js",
      "js/terminal/jarvisModMarkets.js",
      "js/terminal/jarvisSessionCore.js",
      "js/terminal/jarvisView.js",
@@ -3196,7 +3198,9 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/analogueView.js",
+     "js/terminal/broadcastHeadline.js",
      "js/terminal/dayAheadCore.js",
+     "js/terminal/jarvisModBroadcast.js",
      "js/terminal/jarvisViewDayAhead.js",
      "js/terminal/monitorView.js",
      "js/terminal/tabGroupsCore.js",
@@ -3355,9 +3359,11 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/broadcastHeadline.js",
      "js/terminal/calendarDrillsCore.js",
      "js/terminal/calendarDrillsView.js",
      "js/terminal/dayAheadCore.js",
+     "js/terminal/jarvisModBroadcast.js",
      "js/terminal/jarvisViewDayAhead.js",
      "js/terminal/releasesBoardView.js",
      "js/terminal/tabGroupsCore.js",
@@ -4029,11 +4035,13 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/analogueView.js",
+     "js/terminal/broadcastHeadline.js",
      "js/terminal/chainBoard.js",
      "js/terminal/dayAheadCore.js",
      "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
      "js/terminal/insightSeries.js",
+     "js/terminal/jarvisModBroadcast.js",
      "js/terminal/jarvisViewDayAhead.js",
      "js/terminal/jarvisViewYields.js",
      "js/terminal/matrixCore.js",
@@ -4119,11 +4127,13 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/analogueView.js",
+     "js/terminal/broadcastHeadline.js",
      "js/terminal/commandCore.js",
      "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
      "js/terminal/insightSeries.js",
      "js/terminal/insightView.js",
+     "js/terminal/jarvisModBroadcast.js",
      "js/terminal/matrixCore.js",
      "js/terminal/spreadsCore.js",
      "js/terminal/spreadsDerived.js",
@@ -4231,10 +4241,12 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "js/terminal/analogueView.js",
+     "js/terminal/broadcastHeadline.js",
      "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
      "js/terminal/insightSeries.js",
      "js/terminal/insightView.js",
+     "js/terminal/jarvisModBroadcast.js",
      "js/terminal/matrixCore.js",
      "js/terminal/rocCore.js",
      "js/terminal/rocView.js",
@@ -4346,6 +4358,7 @@ export const DERIVED = {
      "js/terminal/assetFavourites.js",
      "js/terminal/boePathView.js",
      "js/terminal/bookPanels.js",
+     "js/terminal/broadcastHeadline.js",
      "js/terminal/calendarDrillsView.js",
      "js/terminal/chainBoard.js",
      "js/terminal/commandCore.js",
@@ -4353,6 +4366,7 @@ export const DERIVED = {
      "js/terminal/goldCore.js",
      "js/terminal/insightData.js",
      "js/terminal/insightSeries.js",
+     "js/terminal/jarvisModBroadcast.js",
      "js/terminal/jarvisViewMoneyGlobe.js",
      "js/terminal/links.js",
      "js/terminal/macroSubtabs.js",
@@ -5445,6 +5459,7 @@ export const DERIVED = {
    ],
    "names": {
     "terminal": [
+     "js/terminal/broadcastHeadline.js",
      "js/terminal/commandCore.js"
     ],
     "today": [],
@@ -5528,5 +5543,5 @@ export const DERIVED = {
  "unclassified": [],
  "rootPageCount": 265,
  "packFeeds": 115,
- "generatedAt": "2026-11-24"
+ "generatedAt": "2026-11-25"
 };

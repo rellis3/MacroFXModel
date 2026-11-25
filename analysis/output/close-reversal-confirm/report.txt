@@ -1,0 +1,32 @@
+
+== futures (net) ==
+Close± C0: trades 165130 (100% of touches); stop p50 0.200σ; adverse after entry 60m p50 0.169σ p75 0.327σ; win1 46.7%
+     1R line -0.2187 [-0.2274,-0.2101]; line - placebo +0.0171 [+0.0098,+0.0245]; halves (vs placebo / line) 2020-22 +0.0264/-0.2444, 2023-26 +0.0083/-0.1948; 2R line -0.2222, vs placebo +0.0183
+Close± C1: trades 140108 (85% of touches); stop p50 0.147σ; adverse after entry 60m p50 0.165σ p75 0.310σ; win1 46.6%
+     1R line -0.3007 [-0.3100,-0.2923]; line - placebo +0.0132 [+0.0040,+0.0221]; halves (vs placebo / line) 2020-22 +0.0291/-0.3196, 2023-26 -0.0020/-0.2829; 2R line -0.2981, vs placebo +0.0192
+Close± C2: trades 136543 (83% of touches); stop p50 0.152σ; adverse after entry 60m p50 0.169σ p75 0.320σ; win1 48.1%
+     1R line -0.2519 [-0.2618,-0.2422]; line - placebo +0.0133 [+0.0036,+0.0237]; halves (vs placebo / line) 2020-22 +0.0224/-0.2845, 2023-26 +0.0046/-0.2212; 2R line -0.2518, vs placebo +0.0236
+HL proj C0: trades 85323 (100% of touches); stop p50 0.200σ; adverse after entry 60m p50 0.194σ p75 0.382σ; win1 45.0%
+     1R line -0.2154 [-0.2249,-0.2060]; line - placebo +0.0071 [-0.0034,+0.0182]; halves (vs placebo / line) 2020-22 +0.0227/-0.2327, 2023-26 -0.0073/-0.1991; 2R line -0.2177, vs placebo +0.0133
+HL proj C1: trades 71921 (84% of touches); stop p50 0.164σ; adverse after entry 60m p50 0.187σ p75 0.357σ; win1 45.1%
+     1R line -0.2724 [-0.2836,-0.2609]; line - placebo +0.0062 [-0.0054,+0.0188]; halves (vs placebo / line) 2020-22 +0.0285/-0.2866, 2023-26 -0.0146/-0.2588; 2R line -0.2639, vs placebo +0.0155
+HL proj C2: trades 71827 (84% of touches); stop p50 0.158σ; adverse after entry 60m p50 0.192σ p75 0.373σ; win1 47.1%
+     1R line -0.2278 [-0.2389,-0.2169]; line - placebo +0.0062 [-0.0063,+0.0184]; halves (vs placebo / line) 2020-22 +0.0282/-0.2431, 2023-26 -0.0142/-0.2131; 2R line -0.2253, vs placebo +0.0128
+
+== CFDs (gross) ==
+Close± C0: trades 286603 (100% of touches); stop p50 0.200σ; adverse after entry 60m p50 0.158σ p75 0.301σ; win1 46.6%
+     1R line -0.0047 [-0.0100,+0.0008]; line - placebo +0.0021 [-0.0025,+0.0061]; halves (vs placebo / line) 2020-22 +0.0034/-0.0005, 2023-26 +0.0010/-0.0085; 2R line -0.0097, vs placebo +0.0045
+Close± C1: trades 243773 (85% of touches); stop p50 0.138σ; adverse after entry 60m p50 0.151σ p75 0.284σ; win1 47.8%
+     1R line +0.0003 [-0.0046,+0.0049]; line - placebo +0.0007 [-0.0041,+0.0050]; halves (vs placebo / line) 2020-22 +0.0013/+0.0024, 2023-26 +0.0002/-0.0016; 2R line +0.0005, vs placebo -0.0013
+Close± C2: trades 234710 (82% of touches); stop p50 0.146σ; adverse after entry 60m p50 0.155σ p75 0.293σ; win1 48.7%
+     1R line +0.0236 [+0.0186,+0.0285]; line - placebo +0.0039 [-0.0010,+0.0085]; halves (vs placebo / line) 2020-22 +0.0039/+0.0263, 2023-26 +0.0039/+0.0211; 2R line +0.0207, vs placebo +0.0056
+HL proj C0: trades 144208 (100% of touches); stop p50 0.200σ; adverse after entry 60m p50 0.176σ p75 0.343σ; win1 45.4%
+     1R line -0.0026 [-0.0096,+0.0050]; line - placebo -0.0006 [-0.0071,+0.0056]; halves (vs placebo / line) 2020-22 +0.0059/+0.0040, 2023-26 -0.0065/-0.0087; 2R line -0.0021, vs placebo +0.0022
+HL proj C1: trades 122294 (85% of touches); stop p50 0.151σ; adverse after entry 60m p50 0.168σ p75 0.323σ; win1 46.8%
+     1R line +0.0017 [-0.0053,+0.0093]; line - placebo +0.0019 [-0.0047,+0.0091]; halves (vs placebo / line) 2020-22 +0.0059/+0.0027, 2023-26 -0.0017/+0.0008; 2R line +0.0060, vs placebo +0.0028
+HL proj C2: trades 120138 (83% of touches); stop p50 0.152σ; adverse after entry 60m p50 0.172σ p75 0.334σ; win1 48.0%
+     1R line +0.0306 [+0.0239,+0.0377]; line - placebo +0.0039 [-0.0029,+0.0107]; halves (vs placebo / line) 2020-22 +0.0105/+0.0403, 2023-26 -0.0020/+0.0217; 2R line +0.0330, vs placebo +0.0064
+F_C1: BH pass -> UNDERPOWERED
+F_C2: BH pass -> UNDERPOWERED
+C_C1: BH fail -> NULL
+C_C2: BH fail -> NULL

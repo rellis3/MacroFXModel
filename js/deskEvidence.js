@@ -2772,63 +2772,72 @@ export const DESK_EVIDENCE = [
     claim: "A trade opened at 00:00 London on the V1 bias engine's side (point-in-time replay, issued 00:00) and closed at 21:00 London makes money after the real spread on the 27 FX pairs, beyond a random-side placebo that keeps each pair's long/short mix",
     result: "NULL. 2016-10-24 to 2026-08-20, OANDA bid/ask M1, 11,788 calls: gross -0.002 R (placebo pct 68), net with the bias -0.059 R [-0.093, -0.028], against it -0.055 R; both halves negative; MDE 0.026 vs bar 0.04. Median round-trip cost from 00:00 0.048 R: no direction, the spread is the result. Negative after costs in every year 2016-2026; 0 of 64 market x side BH passes.",
     use: "The engine's FX side is not a midnight-to-21:00 trade, followed or faded. Never present it as a day trade in FX.",
-  },
+  },
+
   {
     id: 'bias-day-trade-gold', domain: 'price', verdict: 'underpowered', date: '2026-11-24', doc: 'forge/BIAS_DAY_TRADE_PREREG.md', also: ['analysis/output/bias-day-trade/RESULTS.md'],
     instruments: ['GOLD'],
     claim: "The same 00:00-to-21:00 bias trade makes money after costs on gold",
     result: "UNDERPOWERED. 979 calls (42% long): gross +0.048 R (placebo pct 91), net with +0.019 R [-0.058, +0.090], halves +0.002 / +0.031; against -0.076 R [-0.145, -0.002]; MDE 0.104 vs bar 0.04. Positive in 7 of 11 years. With V1 and the 4-hour trend agreeing: +0.046 vs -0.037 when they disagree (descriptive).",
     use: "Candidate only: gold on the bias side leans positive but cannot be called on ~1,000 days. Fading the gold bias loses. Forward record (bias scoreboard) or a lockbox prereg.",
-  },
+  },
+
   {
     id: 'bias-day-trade-idx', domain: 'price', verdict: 'null', date: '2026-11-24', doc: 'forge/BIAS_DAY_TRADE_PREREG.md', also: ['analysis/output/bias-day-trade/RESULTS.md'],
     instruments: ['NQ', 'SPX500', 'US30', 'US2000'],
     claim: "The same 00:00-to-21:00 bias trade makes money after costs on the US indices (DE30 / UK100 have no 00:00 bid/ask bars)",
     result: "NULL. 5,286 calls (66% long): gross +0.023 R vs random-side placebo +0.013 (pct 75): mostly drift; net with +0.009 R [-0.043, +0.059], against -0.036 R; MDE 0.036 vs bar 0.04. By year +0.20 to -0.10 with the market. Strength 7+ +0.072 R (n 458, descriptive).",
     use: "The index side is drift (long two-thirds of the time), not timing. Not a day trade.",
-  },
+  },
+
   {
     id: 'bias-day-trade-fx-24h', domain: 'price', verdict: 'null', date: '2026-11-24', doc: 'forge/BIAS_DAY_TRADE_PREREG.md', also: ['analysis/output/bias-day-trade/RESULTS.md'],
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'EURJPY', 'GBPJPY', 'AUDJPY', 'NZDJPY', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURNZD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPNZD', 'AUDCAD', 'AUDCHF', 'AUDNZD', 'CADCHF', 'NZDCAD'],
     claim: "The V1 bias trade held 00:00 to 24:00 London makes money after costs on FX",
     result: "NULL. 11,569 calls: gross -0.010 R (placebo pct 55), net with -0.086 R [-0.119, -0.057], against -0.066 R; MDE 0.029 vs bar 0.05.",
     use: "Holding a full day does not help FX: still no direction and the spread.",
-  },
+  },
+
   {
     id: 'bias-day-trade-gold-24h', domain: 'price', verdict: 'underpowered', date: '2026-11-24', doc: 'forge/BIAS_DAY_TRADE_PREREG.md', also: ['analysis/output/bias-day-trade/RESULTS.md'],
     instruments: ['GOLD'],
     claim: "The V1 bias trade held 00:00 to 24:00 London makes money after costs on gold",
     result: "UNDERPOWERED. 982 calls: gross +0.053 R (placebo pct 94), net with +0.016 R [-0.056, +0.082], halves -0.005 / +0.032; against -0.089 R; MDE 0.109 vs bar 0.05.",
     use: "As the 21:00 cell: a lean, not a result.",
-  },
+  },
+
   {
     id: 'bias-day-trade-idx-24h', domain: 'price', verdict: 'null', date: '2026-11-24', doc: 'forge/BIAS_DAY_TRADE_PREREG.md', also: ['analysis/output/bias-day-trade/RESULTS.md'],
     instruments: ['NQ', 'SPX500', 'US30', 'US2000'],
     claim: "The V1 bias trade held 00:00 to 24:00 London makes money after costs on the US indices",
     result: "NULL. 5,296 calls: gross +0.008 R, below the random-side placebo (pct 23); net with -0.007 R [-0.059, +0.045], against -0.024 R; MDE 0.037 vs bar 0.05.",
     use: "No index edge over a full day.",
-  },
+  },
+
   {
     id: 'bias-day-trade-h4-fx', domain: 'price', verdict: 'null', date: '2026-11-24', doc: 'forge/BIAS_DAY_TRADE_PREREG.md', also: ['analysis/output/bias-day-trade/RESULTS.md'],
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'EURJPY', 'GBPJPY', 'AUDJPY', 'NZDJPY', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURNZD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPNZD', 'AUDCAD', 'AUDCHF', 'AUDNZD', 'CADCHF', 'NZDCAD'],
     claim: "The 4-hour trend (h4-trend: EMA20 slope of 4h closes, the bias scoreboard's competitor) at 00:00 London, traded to 21:00 / 24:00, makes money after costs on FX",
     result: "NULL. 67,595 calls: gross -0.004 R (placebo pct 13), net with -0.060 R [-0.076, -0.043] to 21:00 and -0.083 R to 24:00, against -0.052 / -0.067 R; MDE 0.011-0.012. V1 minus h4-trend on shared days +0.005 R [-0.036, +0.044].",
     use: "The price trend is no better than V1 in FX and V1 adds nothing over it; both lose the spread.",
-  },
+  },
+
   {
     id: 'bias-day-trade-h4-gold', domain: 'price', verdict: 'underpowered', date: '2026-11-24', doc: 'forge/BIAS_DAY_TRADE_PREREG.md', also: ['analysis/output/bias-day-trade/RESULTS.md'],
     instruments: ['GOLD'],
     claim: "The 4-hour trend at 00:00 London, traded to 21:00 / 24:00, makes money after costs on gold",
     result: "UNDERPOWERED. 2,413 calls: gross +0.031 R (placebo pct 88), net with +0.002 R [-0.038, +0.043] to 21:00, -0.015 R to 24:00; against -0.060 R; MDE 0.065 / 0.061. V1 minus h4-trend -0.007 R [-0.096, +0.075].",
     use: "Same lean as V1 on gold, smaller. Not a trade.",
-  },
+  },
+
   {
     id: 'bias-day-trade-h4-idx', domain: 'price', verdict: 'null', date: '2026-11-24', doc: 'forge/BIAS_DAY_TRADE_PREREG.md', also: ['analysis/output/bias-day-trade/RESULTS.md'],
     instruments: ['NQ', 'SPX500', 'US30', 'US2000'],
     claim: "The 4-hour trend at 00:00 London, traded to 21:00 / 24:00, makes money after costs on the US indices",
     result: "NULL. 9,298 calls: gross +0.004 R (placebo pct 37), net with -0.010 R [-0.045, +0.026] to 21:00, -0.022 R to 24:00; MDE 0.029 / 0.031.",
     use: "No index edge from the 4-hour trend either.",
-  },
+  },
+
   {
     id: 'bias-day-trade-lines', domain: 'price', verdict: 'null', date: '2026-11-24', doc: 'forge/BIAS_DAY_TRADE_PREREG.md', also: ['analysis/output/bias-day-trade/RESULTS.md'],
     instruments: ['NQ', 'GOLD', 'EURUSD'],
@@ -3675,6 +3684,20 @@ export const DESK_EVIDENCE = [
     result: 'Pre-registered, 40 CFDs (28 FX, 6 indices, 6 metals/energy), walk-forward per-line picks, test 2020-2026.08, date-aligned bootstrap. HL+OH+OL -2.48% [-3.90, -0.82]; 2020-22 -0.65% (CI crosses 0), 2023-26 -3.99% [-5.39, -2.64]. HL -10.05% [-12.72, -7.23] in both halves. 34/40 better (indices most, SPX500 -9.7%); worse WTI +6.7%, PALLADIUM +6.0%, AUDCAD, NZDCAD. HAR-CJ wins most lines; IV models best on gold/WTI/US2000 but not on the site. Graded weight: leaning (strong on HL).',
     use: 'Shadow CFD export, each line its own calc (vol-forecast-v3). An IV feed would help gold and WTI most.',
     instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'BRENT', 'CADCHF', 'CADJPY', 'CHFJPY', 'COPPER', 'DE30', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'GOLD', 'NQ', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'PALLADIUM', 'PLATINUM', 'SILVER', 'SPX500', 'UK100', 'US2000', 'US30', 'USDCAD', 'USDCHF', 'USDJPY', 'WTI'],
+  },
+  {
+    id: 'jordan-system-race', domain: 'volatility', verdict: 'null', date: '2026-11-25', doc: 'forge/JORDAN_SYSTEM_RACE_PREREG.md', also: ['analysis/output/jordan-system-race/RESULTS.md'],
+    claim: 'Jordan clue (best forecaster is not the best system): choosing each instrument HL calc by trailing trade result (S1 follow the HL p90 moving projection, S2 fade the HL p75 projection to the Close+/- median) beats choosing it by QLIKE, next year out of sample',
+    result: 'Pre-registered. 16 site calcs per instrument, 25 futures (net 2.5 ticks) + 40 CFDs (gross), test 2021-2026.08, date-clustered bootstrap. SYS minus QL: futures S1 -0.010R [-0.040, +0.022] (UNDERPOWERED, upper CI just over +0.02), futures S2 -0.003 [-0.020, +0.012], CFD S1 -0.013, CFD S2 -0.008 (NULL); negative in both halves everywhere. Hindsight-best calc looks +0.10R (S1) / +0.05R (S2) better but the trade-picked calc differs from QLIKE 92-95% of years, changes half the time and keeps none of it: calc spread = sampling noise. Systems on the QLIKE pick: S1 futures -0.011R net, CFDs +0.028 gross (CIs span 0); S2 futures -0.101R net (narrow p90-p75 stop), CFDs -0.014 gross. Graded weight: against.',
+    use: 'Keep the QLIKE per-line picks; picking calcs by trade result is overfitting. Jordan clue points at entry / timing / context, not the calc. The HL-projection p90 follow is ~0 net (not the banked +0.054R of the fixed OH/OL p90 break).',
+    instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'BRENT', 'CADCHF', 'CADJPY', 'CHFJPY', 'COPPER', 'CORN', 'DE30', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'GOLD', 'NATGAS', 'NQ', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'PALLADIUM', 'PLATINUM', 'SILVER', 'SPX500', 'UK100', 'US2000', 'US30', 'USDCAD', 'USDCHF', 'USDJPY', 'WHEAT', 'WTI', 'ZB', 'ZF', 'ZN', 'ZT'],
+  },
+  {
+    id: 'close-reversal-confirm', domain: 'volatility', verdict: 'underpowered', date: '2026-11-25', doc: 'forge/CLOSE_REVERSAL_CONFIRM_PREREG.md', also: ['analysis/output/close-reversal-confirm/RESULTS.md'],
+    claim: 'At Jordan Close+/Close- lines (every touch, own QLIKE calc), waiting for the turn (C1 5-min close back inside, C2 0.05 sigma back inside, within 60 min; stop past the extreme; 1R) gives positive net R and beats the same rule at placebo levels',
+    result: 'Pre-registered (A1 pre-results: C0 touch bar counts for the stop). 25 futures net 2.5 ticks, 40 CFDs gross, 2020-2026.08, ~140k futures / ~240k CFD confirmed trades. Futures C1 -0.301R [-0.310, -0.292], line - placebo +0.013 [+0.004, +0.022]; C2 -0.252R, +0.013 [+0.004, +0.024] (both UNDERPOWERED by the gate: line edge leans, trade loses); CFDs C1 +0.000 gross, +0.001 vs placebo; C2 +0.024 gross but placebo the same (+0.004) (both NULL). Waiting does not shrink the overshoot: adverse move after entry 60m p50 0.165-0.169 sigma vs 0.169 at the touch; stop tightens to ~0.15 sigma, win 47-48%. Futures gross ~0 for every entry; at 0.15-0.20 sigma stops costs are 0.1-0.3R on most contracts (rates/grains 0.4-1.2R), only NQ/US30/US2000 light (0.02-0.06R). Pointers not repeated on CFDs: futures 00-07 London +0.05R vs placebo, 4th+ touch +0.04-0.05R. Graded weight: against the trade; weak for the line vs placebo on futures (present at the touch too).',
+    use: 'A price-only turn confirmation neither makes Close+/- reversing points nor cuts the overshoot; the line needs ~0.3 sigma (p75) room whatever the entry, and tight stops die on costs except on equity indices. A reversing-point edge must come from context (flow, day state) or Jordan own trigger.',
+    instruments: ['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'BRENT', 'CADCHF', 'CADJPY', 'CHFJPY', 'COPPER', 'CORN', 'DE30', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD', 'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'GOLD', 'NATGAS', 'NQ', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'PALLADIUM', 'PLATINUM', 'SILVER', 'SPX500', 'UK100', 'US2000', 'US30', 'USDCAD', 'USDCHF', 'USDJPY', 'WHEAT', 'WTI', 'ZB', 'ZF', 'ZN', 'ZT'],
   },
   {
     id: 'close-level-reversal', domain: 'volatility', verdict: 'null', date: '2026-11-24', doc: 'forge/CLOSE_LEVEL_REVERSAL_PREREG.md', also: ['analysis/output/close-level-reversal/RESULTS.md'],
@@ -5010,6 +5033,8 @@ const POWER = {
   'fqt-nam-lines-tp': { n: '1,417 NQ trades', note: 'NULL bar +1 bp; CI upper -2.04 bp' },
   'futures-oc-tp-fade-p75': { n: '3,377 trades on ~6,600 sessions (4 futures)', note: 'NULL bar +0.05R; CI upper -0.043R' },
   'futures-oc-tp-fade-p90': { n: '1,364 trades', note: 'NULL bar +0.05R; CI upper -0.064R' },
+  'jordan-system-race': { n: '25 futures + 40 CFDs x 16 calcs, test 2021-2026.08; SYS-picked trades 3,539 (fut S1), 7,888 (fut S2), 6,115 / 13,579 (CFD); date-clustered bootstrap', note: 'SYS - QL fut S1 -0.010R [-0.040, +0.022], S2 -0.003 [-0.020, +0.012]; CFD S1 -0.013 [-0.036, +0.011], S2 -0.008 [-0.021, +0.004]' },
+  'close-reversal-confirm': { n: '~140,000 futures and ~240,000 CFD confirmed Close+/- trades (line) plus placebo, 2020-2026.08, date-clustered bootstrap B 1000', note: 'line - placebo fut C1 +0.013R [+0.004, +0.022], C2 +0.013 [+0.004, +0.024]; CFD C1 +0.001 [-0.004, +0.005], C2 +0.004 [-0.001, +0.009]; fut net C1 -0.301R, C2 -0.252R' },
   'close-level-reversal': { n: '~65,000 resolved Close+/- first touches on 25 futures, ~113,000 on 40 CFDs, date-aligned 63-session blocks', note: 'H1 futures +0.30 pp [-0.09, +0.72], CFDs +0.10 pp [-0.17, +0.32]; H2 futures +0.33 [+0.03, +0.66], CFDs -0.14 [-0.53, +0.23]' },
   'ladder-qlike-per-line-fut': { n: '~1,650 test sessions per contract x 25 futures, date-aligned 63-session blocks', note: 'observed -2.39% [-4.04, -0.01]; 2020-22 half CI [-2.97, +4.23] crosses 0' },
   'ladder-event-layer-cb-fomc': { n: '632 event rows (190 instrument x line cells) on 12 decision dates, 2026-08-24 to 2026-11-23; date-resampling bootstrap', note: 'observed +3.36% [-0.20, +15.05]; 12 dates, very wide' },

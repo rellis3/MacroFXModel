@@ -511,6 +511,31 @@ def test_poll_picks_up_messages_telegram_did_not_push():
     assert len(cp.alerts) == n and cp.catchup_last["new_messages"] == 2 and cp.tg["last_poll_at"]
 
 
+def test_catch_up_rereads_a_message_the_old_parser_missed():
+    """25 Nov 2026: three "SELL X again now at …" trades went to "Unparsed"; only the first trade was taken."""
+    import asyncio
+    from test_parser import AGAIN
+    cp, kv = make({"tg_topic": 6319})
+    cp.push_status = lambda: None
+    cp.prices.update({"BTCUSD": 49990, "NAS100": 19995, "SP500": 6000.0, "USDJPY": 150.08})
+    posted = datetime.now(timezone.utc) - timedelta(minutes=20)
+    # what the old parser stored: USDJPY placed, the rest review
+    cp.book.seen["11140"] = repr([{"kind": "review", "text": "SELL BTCUSD again now at 50,000"}])
+    cp.book._add({"kind": "open", "symbol": "USDJPY", "side": "SELL", "order": "market", "entry": 150.10,
+                  "sl": 150.4, "tp": None}, "11140:0", 11140, posted)
+    asyncio.run(sc.catch_up(cp, _Client([_Msg(11140, AGAIN, posted)]), 0, lambda m: True, None, "button", limit=30))
+    ids = sorted(o["id"] for o in cp.book.orders.values() if o["msg_id"] == 11140)
+    assert ids == ["11140:0", "11140:1", "11140:2", "11140:3"], ids
+    st = statuses(cp)
+    assert [st[f"11140:{n}"] for n in (1, 2, 3)] == ["skipped"] * 3 and "11140:0" not in st
+    assert "missed while the bot was off" in cp.execs["11140:1"]["reason"]
+    assert cp.catchup_last["reparsed"] == 1 and cp.catchup_last["missed"] == 3
+    assert cp.send_manual("11140:2")["ok"]          # Send to MT5 still works on them
+    # a second catch-up does nothing more
+    asyncio.run(sc.catch_up(cp, _Client([_Msg(11140, AGAIN, posted)]), 0, lambda m: True, None, "button", limit=30))
+    assert len([o for o in cp.book.orders.values() if o["msg_id"] == 11140]) == 4
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for f in fns:

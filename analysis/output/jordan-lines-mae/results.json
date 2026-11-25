@@ -1,0 +1,14 @@
+{
+ "seed": 20261125,
+ "label": "exploratory, not pre-registered",
+ "lines": "HL projections, Close+, Close- (no OH/OL)",
+ "files": [
+  "mae_table.csv",
+  "mae_pooled.csv",
+  "stacks.csv",
+  "stacked_vs_isolated.csv",
+  "stack_share_by_instrument.csv",
+  "noise_threshold.csv",
+  "stops.csv"
+ ]
+}

@@ -4,21 +4,21 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-24.
+Generated 2026-11-25.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **622** |
+| claims tested (validated + null + underpowered) | **624** |
 | validated | 199 |
-| null | 244 |
-| underpowered | 179 |
+| null | 245 |
+| underpowered | 180 |
 | context (base rates, descriptions: not counted as tests) | 85 |
 | pre-registrations with no banked verdict (below) | 91 |
 
-**What the count says (Lesson 02 §05).** If none of the 622 claims were real, tests at the usual 5% size would still pass
-about **31.1** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 624 claims were real, tests at the usual 5% size would still pass
+about **31.2** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
 **roughly 31 of the 199 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -734,6 +734,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-24 | ladder-pinball-per-line-cfd | volatility | null | forge/LADDER_EXHAUSTION_EVENTS_PREREG.md |
 | 2026-11-24 | ladder-qlike-per-line-cfd | volatility | underpowered | forge/LADDER_QLIKE_PER_LINE_CFD_PREREG.md |
 | 2026-11-24 | ladder-qlike-per-line-fut | volatility | underpowered | forge/LADDER_QLIKE_PER_LINE_FUT_PREREG.md |
+| 2026-11-25 | close-reversal-confirm | volatility | underpowered | forge/CLOSE_REVERSAL_CONFIRM_PREREG.md |
+| 2026-11-25 | jordan-system-race | volatility | null | forge/JORDAN_SYSTEM_RACE_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
