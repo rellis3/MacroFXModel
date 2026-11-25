@@ -1,0 +1,9 @@
+B z>=2 share of line touches: 46.7%; z median 1.90
+C1: trades 116939; TP hit 29.2%; TP distance median 1.51R; net -0.1550 [-0.1702,-0.1397] gross -0.0184; line - placebo +0.0019 [-0.0077,+0.0109]; halves 2020-22 -0.0109/-0.1824, 2023-26 +0.0132/-0.1307; mirror Close± +0.0064 HL -0.0026; z<2 net -0.1480 (n 85865)
+   by z: [2.0, 2.5) n38240 line -0.154 plc -0.152; [2.5, 3.0) n29243 line -0.142 plc -0.142; [3.0, 4.0) n31279 line -0.160 plc -0.159; [4.0, inf) n18177 line -0.170 plc -0.189
+C2: trades 116939; TP hit 17.2%; TP distance median 2.36R; net -0.1591 [-0.1776,-0.1412] gross -0.0226; line - placebo +0.0036 [-0.0074,+0.0138]; halves 2020-22 -0.0091/-0.1819, 2023-26 +0.0149/-0.1390; mirror Close± +0.0094 HL -0.0022; z<2 net -0.1504 (n 124800)
+   by z: [2.0, 2.5) n38240 line -0.155 plc -0.160; [2.5, 3.0) n29243 line -0.150 plc -0.152; [3.0, 4.0) n31279 line -0.165 plc -0.163; [4.0, inf) n18177 line -0.171 plc -0.188
+D: trades 267553; TP hit 46.6%; net -0.1775 [-0.1863,-0.1687] gross -0.0170; real - placebo bands +0.0160 [+0.0102,+0.0227]; halves 2020-22 +0.0192/-0.2015, 2023-26 +0.0132/-0.1563
+C1: BH fail -> NULL
+C2: BH fail -> NULL
+D: BH pass -> UNDERPOWERED
