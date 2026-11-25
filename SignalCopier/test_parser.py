@@ -274,6 +274,41 @@ def test_hold_option_and_set_and_forget_tp():
     assert o['tp'] is None and o['targets'] == [] and o['tp_option'] == 1.3312 and o['risk_usd'] == 2.29
 
 
+AGAIN = """Trades, Monday 2 March
+\u2800
+Correlated: the two index trades are the same bet. They win or lose together.
+\u2800
+\U0001f534 SELL USDJPY now at 150.10
+Stop loss (SL) 150.40
+\u2800
+\U0001f534 SELL BTCUSD again now at 50,000
+Extra BTCUSD trade, separate from the earlier one. Keep that one open.
+Stop loss (SL) 51,000
+\u2800
+\U0001f534 SELL NAS100 again now at 20,000
+Extra NAS100 trade, separate from the earlier one. Keep that one open.
+Stop loss (SL) 20,200
+\u2800
+\U0001f534 SELL SP500 again now at 6,000.5
+Extra SP500 trade, separate from the earlier ones. Keep those open.
+Stop loss (SL) 6,040.0"""
+
+
+def test_again_spacers_and_notes():
+    """25 Nov 2026 shape, invented text and prices: "again" before "now at", U+2800 spacer lines and notes
+    about a trade were all sent to review; the first trade swallowed the other trades' SL lines."""
+    ev = parse_message(AGAIN)
+    opens = [e for e in ev if e['kind'] == 'open']
+    assert [(o['symbol'], o['entry'], o['sl']) for o in opens] == [
+        ('USDJPY', 150.10, 150.40), ('BTCUSD', 50000, 51000), ('NAS100', 20000, 20200), ('SP500', 6000.5, 6040.0)], opens
+    assert all(o['order'] == 'market' for o in opens)
+    assert not [e for e in ev if e['kind'] in ('review', 'close')], ev
+    assert parse_message("Extra NAS100 trade, separate from the earlier SELL from 20,500. Keep that one open.")[0]['kind'] == 'info'
+    assert parse_message("CLOSE the BTCUSD SELL from 52,000, keep that one open")[0]['kind'] == 'close'
+    (o,) = parse_message("BUY LIMIT XAUUSD again at 3,990\nSL 3,970")
+    assert (o['order'], o['entry']) == ('limit', 3990)
+
+
 if __name__ == '__main__':
     fns = [v for k, v in sorted(globals().items()) if k.startswith('test_')]
     for f in fns:

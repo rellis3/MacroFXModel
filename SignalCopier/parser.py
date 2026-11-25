@@ -65,10 +65,10 @@ SIDE = r'(buy|sell)'
 # entries ────────────────────────────────────────────────────────────────
 # "Limit SELL NAS100 at 28,965" · "SELL SP500(normal, NOT futures) now at 7,640.6"
 RE_ENTRY = re.compile(r'\b(?:(limit|stop)\s+)?' + SIDE + r'\s+' + SYM +
-                      r'\s*(?:\([^)]*\))?\s+(now\s+)?at\s+' + NUM, re.I)
+                      r'\s*(?:\([^)]*\))?\s+(?:again\s+)?(now\s+)?at\s+' + NUM, re.I)   # "SELL BTCUSD again now at …"
 # "SELL STOP GOLD at 4,000" · "BUY LIMIT XAUUSD at 3,990"
 RE_ENTRY_AFTER = re.compile(r'\b' + SIDE + r'\s+(limit|stop)\s+' + SYM +
-                            r'\s*(?:\([^)]*\))?\s+at\s+' + NUM, re.I)
+                            r'\s*(?:\([^)]*\))?\s+(?:again\s+)?at\s+' + NUM, re.I)
 # "XAUUSD buy" · "XAUUSD instant BUY" · "Instant XAUUSD SELL" · "BTCUSD sell again" · "CL-OIL sell"
 # · "XAUUSD SELL LIMIT @ 4344.00" · "NAS100 buy at 29,100" — the whole line
 RE_ENTRY_SYM_FIRST = re.compile(r'^\W*(?:instant\s+)?([A-Za-z][A-Za-z0-9-]{2,9})\s*(?:-\s*)?(?:instant\s+)?' + SIDE +
@@ -98,6 +98,12 @@ RE_RESULT_WORD = re.compile(r'(target\s+hit|tp\s+hit|take\s*profit\s+hit|profit\
 # notices that need no action: a fill, or "has already moved. If you are not in, do not enter now"
 RE_FILLED = re.compile(r'^\W*filled\b|\bis\s+now\s+open\b|\balready\s+moved\b|\bdo\s+not\s+enter\b', re.I)
 
+# His notes about a trade, not instructions: a line saying a trade is separate from an earlier one and to keep
+# that one open, or a "Correlated: … same bet" line. Inside a trade they are skipped (the trade's SL lines
+# follow); on their own they are info. They used to raise "Unparsed".
+RE_NOTE = re.compile(r'\bseparate\s+from\s+the\b|\bkeep\s+(?:that|those|it|them|both)\s+(?:ones?\s+)?open\b'
+                     r'|^\W*correlated\s*:|\bsame\s+bet\b', re.I)
+
 RE_HEADER = re.compile(
     r'trades,\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+(\d{1,2})\s+([a-z]+)', re.I)
 RE_RISK_R = re.compile(r'risk\s+([\d.]+)\s*R\b', re.I)
@@ -121,7 +127,13 @@ def hhmm(s):
     return s.replace('.', ':').zfill(5)
 
 
+# Invisible "blank" characters he uses as spacer lines (25 Nov 2026: U+2800 BRAILLE PATTERN BLANK between
+# trades). Left in, a spacer line isn't blank, trades run together and one trade swallows the next one's SL.
+BLANKS = '\u2800\u3164\u115f\u1160\uffa0\u200b\u2060\ufeff'
+
+
 def _clean(text):
+    text = text.translate({ord(c): None for c in BLANKS})
     text = text.replace('\r', '').replace(' ', ' ').replace(' ', '\n').replace(' ', '\n')
     return re.sub(r'[​-‍️⁠]', '', text)
 
@@ -270,6 +282,12 @@ def parse_message(text):
         if (h := RE_HOLDING.search(line)):
             flush_trade(); flush_loose()
             events.append({'kind': 'holding', 'text': h.group(1).strip()})
+            continue
+
+        if RE_NOTE.search(line) and not (RE_CLOSE.search(line) or RE_CANCEL.search(line)):
+            if trade is None:
+                flush_loose()
+                events.append({'kind': 'info', 'text': line})
             continue
 
         standalone = _line_events(line)

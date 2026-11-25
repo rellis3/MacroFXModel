@@ -100,17 +100,7 @@ class Book:
                 n_open += 1
                 if oid in self.orders:
                     continue
-                o = dict(ev)
-                o.update({
-                    'id': oid, 'msg_id': msg_id, 'posted_at': _iso(posted_utc),
-                    'status': 'open' if ev['order'] == 'market' else 'working',
-                    'cancel_at_utc': _iso(_uk_time_after(posted_utc, ev['cancel_at'])) if ev.get('cancel_at') else None,
-                    'close_at_utc': _iso(_uk_time_after(posted_utc, ev['close_at'])) if ev.get('close_at') else None,
-                    'ended_at': None, 'end_reason': None,
-                })
-                o.pop('kind', None)
-                self.orders[oid] = o
-                out.append(('place', o, None))
+                out.append(('place', self._add(ev, oid, msg_id, posted_utc), None))
             elif k in ('cancel', 'close'):
                 hits = self._match(ev)
                 if not hits:
@@ -124,6 +114,34 @@ class Book:
                     out.append((k, o, reason))
             elif k == 'review':
                 out.append(('warn', None, 'Unparsed instruction — check manually:\n' + ev['text']))
+        return out
+
+    def _add(self, ev, oid, msg_id, posted_utc):
+        o = dict(ev)
+        o.update({
+            'id': oid, 'msg_id': msg_id, 'posted_at': _iso(posted_utc),
+            'status': 'open' if ev['order'] == 'market' else 'working',
+            'cancel_at_utc': _iso(_uk_time_after(posted_utc, ev['cancel_at'])) if ev.get('cancel_at') else None,
+            'close_at_utc': _iso(_uk_time_after(posted_utc, ev['close_at'])) if ev.get('close_at') else None,
+            'ended_at': None, 'end_reason': None,
+        })
+        o.pop('kind', None)
+        self.orders[oid] = o
+        return o
+
+    def add_missing_opens(self, events, msg_id, posted_utc):
+        """A message re-read after a parser fix: place only the trades it now
+        yields that the book doesn't already hold from that message (same symbol,
+        side and entry). Its cancels and closes were handled, or flagged, the
+        first time and are not replayed."""
+        have = [o for o in self.orders.values() if str(o.get('msg_id')) == str(msg_id)]
+        out = []
+        for i, ev in enumerate(e for e in events if e['kind'] == 'open'):
+            if any(o['symbol'] == ev['symbol'] and o['side'] == ev['side'] and o.get('entry') == ev.get('entry')
+                   for o in have):
+                continue
+            oid = f'{msg_id}:{i}' if f'{msg_id}:{i}' not in self.orders else f'{msg_id}:r{i}'
+            out.append(('place', self._add(ev, oid, msg_id, posted_utc), None))
         return out
 
     def tick(self, now_utc):
