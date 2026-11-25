@@ -760,7 +760,9 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
   function raise(ev) {
     for (const e of ev) { st.alerts.unshift({ ...e, time: stamp() }); }
     st.alerts = st.alerts.slice(0, 40); if (!ev.length) return;
-    alertChime(); say(ev.map(e => e.text).join(' '));
+    // ON AIR: a broadcast owns the voice. An alert spoken over it ("gold up 0.9%" across the AUD/JPY line, 25 Nov 2026 video at 42 s) is kept in the list, not said
+    const onAir = root.classList.contains('jv-bcast') || doc.documentElement.classList.contains('jvbc-on') || !!win.__vclock?.frozen;
+    if (!onAir) { alertChime(); say(ev.map(e => e.text).join(' ')); }
     try { if (win.Notification?.permission === 'granted') new win.Notification('H.E.L.I.X.', { body: ev[0].text }); } catch (e) { /* no notifications */ }
     dockRender(true); if (st.mod === 'alerts') R.alerts();
   }
