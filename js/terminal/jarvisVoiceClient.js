@@ -114,7 +114,7 @@ export function makeNeuralVoice(win, opts = {}) {
     }
     const u = await server.fetch(text); return u ? { u, by: 'server' } : null;
   }
-  const fxLevel = () => (FX_PARAMS[lsGet().fx ?? 'subtle'] ? (lsGet().fx ?? 'subtle') : 'off');
+  const fxLevel = () => (FX_PARAMS[lsGet().fx ?? 'off'] ? (lsGet().fx ?? 'off') : 'off');      // HUMAN by default (owner, 25 Nov 2026: "just Daniel, without the robotic twang")
   /** The robot finish from a source node to dest. at = when it starts (the offline context needs real times); live, the cleanup disconnects it, offline it only stops the carrier. */
   function fxGraph(ac, src, dest, at = null) {
     const P = FX_PARAMS[fxLevel()];

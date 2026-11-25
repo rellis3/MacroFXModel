@@ -124,6 +124,11 @@ def open_broadcast(ctx, base: str):
     return page
 
 
+def voice_plain(page):
+    """The voice as it is, no robot finish (owner, 25 Nov 2026: "just Daniel, without the robotic twang")."""
+    page.evaluate("() => { try { const k = 'jarvisVoice:v1'; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || '{}'), fx: 'off' })); } catch (e) {} }")
+
+
 def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: Path, rate: float = 1.1, fps: int = 30) -> dict:
     """FRAME-BY-FRAME: freeze the page clock, then step it 1/fps s at a time with a screenshot after each step (see the module notes)."""
     from playwright.sync_api import sync_playwright
@@ -140,6 +145,7 @@ def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: P
         if not page.evaluate('() => !!window.__vclock'):
             raise RuntimeError('the virtual clock did not load (vclock.js)')
         cdp = ctx.new_cdp_session(page)
+        voice_plain(page)
         page.evaluate('() => window.__vclock.freeze()')
         page.evaluate("""o => { window.__vcRes = null; window.__vcOnAir = 0;
             window.__jarvisBroadcastAuto(o).then(r => { window.__vcRes = r; }, e => { window.__vcRes = { ok: false, error: String(e && e.message || e) }; }); }""",
@@ -173,7 +179,7 @@ def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: P
     if not res or not res.get('ok'):
         raise RuntimeError(f'the broadcast did not run: {res}')
     t0, t1 = res['t0'] / 1000.0, res['t1'] / 1000.0
-    log(f"captured {len(frames)} frames and {audio.stat().st_size // 1024} KB of sound over {t1 - t0:.1f} s in {time.time() - started:.0f} s; voice: {res.get('voice')}")
+    log(f"captured {len(frames)} frames and {audio.stat().st_size // 1024} KB of sound over {t1 - t0:.1f} s in {time.time() - started:.0f} s; voice: {res.get('voice')} ({(res.get('voiceInfo') or {}).get('provider') or '?'}, no robot finish)")
     return {'work': work, 'frames': frames, 'audio': audio, 't0': t0, 't1': t1, 'voice': res.get('voice')}
 
 
