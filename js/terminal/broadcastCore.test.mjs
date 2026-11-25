@@ -211,9 +211,9 @@ test('wantedSceneIds: every hook scene the programme may ask for, no built-ins',
   const w = wantedSceneIds();
   for (const id of ['reactor', 'chainfly', 'moneyglobe', 'surprise', 'cycle', 'cbpaths', 'yields', 'fxgrid', 'ccy', 'ivsurf', 'vol', 'gpillar', 'gterrain', 'cot', 'gamma', 'dayahead', 'shockwave', 'wx', 'daymove', 'dayreview', 'shocktoday', 'tomorrow']) assert.ok(w.includes(id), id);
   assert.ok(!w.includes('candles') && !w.includes('chain') && !w.includes('ahead') && !w.includes('rangeused'));
-  assert.equal(SEGMENTS.length, 17);
+  assert.equal(SEGMENTS.length, 18);
   assert.equal(SEGMENTS.filter(x => x.evening).length, 4);
-  assert.equal(SEGMENTS.filter(x => x.wide).length, 6, 'the wide programme market-wide sections');
+  assert.equal(SEGMENTS.filter(x => x.wide).length, 7, 'the wide programme market-wide sections');
 });
 
 test('the ticker: biggest against its usual move first, arrows and signs, quiet markets marked, junk dropped', () => {

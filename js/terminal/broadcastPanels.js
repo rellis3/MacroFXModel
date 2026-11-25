@@ -124,20 +124,20 @@ export function biasCalls(bev2) {
     return { key, dir: x.dir === 'BULLISH' ? 'up' : 'dn', strength: fin(x.strength) ? x.strength : 0, score: fin(x.score) ? x.score : 0, driver: dr?.label ?? '', group: GROUP(key) };
   }).sort((a, b) => (b.strength - a.strength) || (Math.abs(b.score) - Math.abs(a.score)));
 }
-export function biasText(calls, issuedAt) {
+export function biasText(calls, issuedAt, source = 'v1') {
   if (!calls.length) return '';
   const up = calls.filter(c => c.dir === 'up'), dn = calls.filter(c => c.dir === 'dn');
   const names = a => list(a.slice(0, 5).map(c => say(c.key))) + (a.length > 5 ? `, and ${numWord(a.length - 5)} more` : '');
-  const t = [`The bias engine. This is its lean, not a forecast we stand behind: it is unproven, and it is scored every night.`];
-  if (dn.length) t.push(`It leans lower on ${names(dn)}.`);
-  if (up.length) t.push(`It leans higher on ${names(up)}.`);
-  t.push(`${cap1(numWord(calls.length))} markets have a lean; the rest are neutral.`);
+  const t = [source === 'desk' ? `The desk's calls. These come from this morning's desk run: untested, and scored every night.` : `The bias engine. The desk run is not in yet, so this is the engine's lean, not a forecast we stand behind: it is unproven, and it is scored every night.`];
+  if (dn.length) t.push(source === 'desk' ? `Short: ${names(dn)}.` : `It leans lower on ${names(dn)}.`);
+  if (up.length) t.push(source === 'desk' ? `Long: ${names(up)}.` : `It leans higher on ${names(up)}.`);
+  t.push(source === 'desk' ? `${cap1(numWord(calls.length))} markets have a call; the rest are flat.` : `${cap1(numWord(calls.length))} markets have a lean; the rest are neutral.`);
   return t.join(' ');
 }
-function biasHtml(calls, issuedAt) {
-  const col = (dir, title) => { const a = calls.filter(c => c.dir === dir); return `<section class="bp-box"><h3 class="bp-${dir}">${title} · ${a.length}</h3>${a.map((c, i) => `<div class="bp-call" style="--i:${i}"><span class="g">${c.group}</span><b>${esc(label(c.key))}</b><span class="pips">${Array.from({ length: 6 }, (_, k) => `<i class="${k < c.strength ? `on ${dir}` : ''}"></i>`).join('')}</span><small>${esc(c.driver)}</small></div>`).join('') || '<div class="bp-foot">none</div>'}</section>`; };
+function biasHtml(calls, issuedAt, source = 'v1') {
+  const col = (dir, title) => { const a = calls.filter(c => c.dir === dir); return `<section class="bp-box"><h3 class="bp-${dir}">${title} · ${a.length}</h3>${a.map((c, i) => `<div class="bp-call" style="--i:${i}"><span class="g">${c.group}</span><b>${esc(label(c.key))}</b><span class="pips">${Array.from({ length: source === 'desk' ? 3 : 6 }, (_, k) => `<i class="${k < c.strength ? `on ${dir}` : ''}"></i>`).join('')}</span><small>${esc(c.driver)}</small></div>`).join('') || '<div class="bp-foot">none</div>'}</section>`; };
   return `<div class="bp-grid bp-g2">${col('up', '▲ LEANS HIGHER')}${col('dn', '▼ LEANS LOWER')}</div>
-  <div class="bp-foot">Bias Engine V1 · issued ${issuedAt ? londonHM(Date.parse(issuedAt)) : ''} London · strength 0–6 · main driver shown · the engine's lean, unproven, scored nightly · not advice</div>`;
+  <div class="bp-foot">${source === 'desk' ? 'Desk run' : 'Bias Engine V1 (the desk run was not in)'} · ${issuedAt ? londonHM(Date.parse(issuedAt)) : ''} London · ${source === 'desk' ? 'conviction 1–3' : 'strength 0–6'} · main reason shown · untested, scored nightly · not advice</div>`;
 }
 
 // ───────────────────────── THE BIAS AGAINST THE DAY (evening) ─────────────────────────
@@ -151,8 +151,19 @@ export function biasDay(call, bars, u, intraMarket, fromMs) {
   for (const p of v2.slice(1)) { if (p[1] !== prev) changes.push([p[0], p[1] === 'BULLISH' ? 'up' : p[1] === 'BEARISH' ? 'dn' : 'flat']); prev = p[1]; }
   return { ...call, bars: b, open, last, movePct: move / open * 100, moveU, verdict, changes };
 }
+/** A call's verdict on a day already measured by biasDay: 'with' | 'against' | 'flat'. */
+export const verdictOf = (dir, d) => { const big = d.moveU != null ? Math.abs(d.moveU) >= 0.25 : Math.abs(d.movePct) >= 0.1; if (!big) return 'flat'; return Math.sign(d.last - d.open) === (dir === 'up' ? 1 : -1) ? 'with' : 'against'; };
 export function biasDayText(days) {
   if (!days.length) return '';
+  if (days.some(d => d.desk || d.v1)) {
+    const sc = k => { const a = days.filter(d => d[k]); return { n: a.length, w: a.filter(d => d[k].verdict === 'with').length, x: a.filter(d => d[k].verdict === 'against').length }; }, D = sc('desk'), V = sc('v1');
+    const t = ['The calls against the day, from seven this morning.'];
+    if (D.n) t.push(`The desk run: ${numWord(D.w)} of ${numWord(D.n)} went the called way, ${numWord(D.x)} against.`);
+    if (V.n) t.push(`Bias Engine V1: ${numWord(V.w)} of ${numWord(V.n)} the called way, ${numWord(V.x)} against.`);
+    const big = [...days].sort((x, y) => Math.abs(y.moveU ?? 0) - Math.abs(x.moveU ?? 0))[0];
+    if (big && big.moveU != null) t.push(`The biggest mover of them, ${say(big.key)}, ${big.last >= big.open ? 'rose' : 'fell'} ${Math.abs(big.moveU).toFixed(1)} times its usual move.`);
+    return t.join(' ');
+  }
   const w = days.filter(d => d.verdict === 'with'), a = days.filter(d => d.verdict === 'against'), f = days.filter(d => d.verdict === 'flat');
   const t = [`The bias engine against the day, from seven this morning. Of ${numWord(days.length)} calls, ${numWord(w.length)} went the called way, ${numWord(a.length)} went against it${f.length ? `, and ${numWord(f.length)} barely moved` : ''}.`];
   const best = [...w].sort((x, y) => Math.abs(y.moveU ?? 0) - Math.abs(x.moveU ?? 0))[0], worst = [...a].sort((x, y) => Math.abs(y.moveU ?? 0) - Math.abs(x.moveU ?? 0))[0];
@@ -164,11 +175,12 @@ export function biasDayText(days) {
 }
 function biasDayHtml(days) {
   const V = { with: ['✓', 'WITH THE CALL', 'up'], against: ['✗', 'AGAINST', 'dn'], flat: ['–', 'FLAT', 'tx'] };
-  return `<div class="bp-mini">${days.map((d, i) => `<section class="bp-box bp-mc" style="--i:${i}"><div class="bp-mh"><b>${esc(label(d.key))}</b><span class="bp-${d.dir}">CALLED ${d.dir === 'up' ? '▲ HIGHER' : '▼ LOWER'}</span></div>
+  const tag = (who, c) => (c ? `<span class="bp-tag bp-${V[c.verdict][2]}">${who} ${c.dir === 'up' ? '▲' : '▼'} ${V[c.verdict][0]}</span>` : `<span class="bp-tag bp-tx">${who} –</span>`);
+  return `<div class="bp-mini">${days.map((d, i) => `<section class="bp-box bp-mc" style="--i:${i}"><div class="bp-mh"><b>${esc(label(d.key))}</b>${d.desk || d.v1 ? `<span>${tag('DESK', d.desk)} ${tag('V1', d.v1)}</span>` : `<span class="bp-${d.dir}">CALLED ${d.dir === 'up' ? '▲ HIGHER' : '▼ LOWER'}</span>`}</div>
     <canvas class="bp-cv" data-draw="day" data-i="${i}" width="420" height="230"></canvas>
-    <div class="bp-mv"><strong class="bp-${V[d.verdict][2]}">${V[d.verdict][0]} ${V[d.verdict][1]}</strong><span>${d.movePct >= 0 ? '+' : ''}${d.movePct.toFixed(2)}%${d.moveU != null ? ` · ${d.moveU >= 0 ? '+' : ''}${d.moveU.toFixed(1)}× usual` : ''}</span></div>
+    <div class="bp-mv">${d.desk || d.v1 ? '<strong></strong>' : `<strong class="bp-${V[d.verdict][2]}">${V[d.verdict][0]} ${V[d.verdict][1]}</strong>`}<span>${d.movePct >= 0 ? '+' : ''}${d.movePct.toFixed(2)}%${d.moveU != null ? ` · ${d.moveU >= 0 ? '+' : ''}${d.moveU.toFixed(1)}× usual` : ''}</span></div>
     ${d.changes.length ? `<small class="bp-ch">changed: ${d.changes.slice(0, 3).map(([s, x]) => `${esc(s)} ${x === 'up' ? '▲' : x === 'dn' ? '▼' : '–'}`).join(' · ')}</small>` : '<small class="bp-ch">held all day</small>'}</section>`).join('')}</div>
-  <div class="bp-foot">15-minute candles from 07:00 London · dashed line = the 07:00 price · ✓ moved the called way by at least a quarter of its usual daily move · the engine's lean, unproven</div>`;
+  <div class="bp-foot">15-minute candles from 07:00 London · dashed line = the 07:00 price · DESK = the desk run's call, V1 = Bias Engine V1 · ✓ moved the called way by at least a quarter of its usual daily move · untested, not advice</div>`;
 }
 function drawDay(cv, d) {
   const g = cv.getContext('2d'), W = cv.width, H = cv.height, P = 10, b = d.bars;
@@ -210,16 +222,28 @@ registerShowScene({
 });
 registerShowScene({
   id: 'biasboard', after: 'ahead',
-  // V1, not V2 (owner, 25 Nov 2026: on the interim scoreboard V1 is ahead of V2); the desk run's call takes over once it is wired in
-  async prepare(api) { const b = await ok(api.jf('/api/bias-engine')); return b ? { calls: biasCalls(b), issuedAt: b.issuedAt } : null; },
-  build(inp, d) { const text = biasText(d?.calls ?? [], d?.issuedAt); if (!text) return null; return { title: 'The bias engine', view: 'globe', cam: { region: 'world' }, text, figure: { value: String(d.calls.length), label: 'markets with a lean' }, panel: panel('bias', 'THE BIAS', "Bias Engine V1: the engine's lean for today, unproven", biasHtml(d.calls, d.issuedAt)) }; },
+  // the DESK RUN's calls when today's run is in (owner, 25 Nov 2026); else Bias Engine V1 (ahead of V2 on the interim scoreboard), said as the fallback
+  async prepare(api) {
+    const dr = deskToday(await ok(api.jf('/api/desk-run')));
+    if (dr) return { calls: deskCalls(dr), issuedAt: dr.finishedAt, source: 'desk' };
+    const b = await ok(api.jf('/api/bias-engine')); return b ? { calls: biasCalls(b), issuedAt: b.issuedAt, source: 'v1' } : null;
+  },
+  build(inp, d) { const text = biasText(d?.calls ?? [], d?.issuedAt, d?.source); if (!text) return null; return { title: d.source === 'desk' ? "The desk's calls" : 'The bias engine', view: 'globe', cam: { region: 'world' }, text, figure: { value: String(d.calls.length), label: 'markets with a lean' }, panel: panel('bias', 'THE BIAS', d.source === 'desk' ? "The desk run's calls for today: untested" : "The desk run is not in yet: Bias Engine V1's lean, unproven", biasHtml(d.calls, d.issuedAt, d.source)) }; },
 });
 registerShowScene({
   id: 'biasday', after: 'biasboard',
   async prepare(api) {
     const now = Date.now(), [b, it, ml] = await Promise.all([ok(api.jf('/api/bias-engine')), ok(api.jf('/api/bias-engine-v2/intraday')), ok(api.jf('/api/market-live'))]); if (!b) return null;
-    const calls = biasCalls(b).filter(c => intradayAsset(c.key)).slice(0, 8), from = sevenLondon(now);
-    const days = await Promise.all(calls.map(async c => { try { return biasDay(c, await bars15(api, c.key), ml?.markets?.[c.key]?.u, (it?.markets ?? []).find(m => m.market === c.key), from); } catch (e) { return null; } }));
+    // the desk run's calls and V1's, side by side on the same candles (owner, 25 Nov 2026); markets: the desk's calls first (the markets the owner trades lead), then V1's
+    const dr = deskToday(await ok(api.jf('/api/desk-run')), now), desk = dr ? deskCalls(dr) : [], v1 = biasCalls(b), from = sevenLondon(now);
+    const keys = [...new Set([...desk.map(c => c.key), ...v1.map(c => c.key)])].filter(k => intradayAsset(k)).slice(0, 8);
+    const days = await Promise.all(keys.map(async k => {
+      try {
+        const call = desk.find(c => c.key === k) ?? v1.find(c => c.key === k), d = biasDay(call, await bars15(api, k), ml?.markets?.[k]?.u, (it?.markets ?? []).find(m => m.market === k), from); if (!d) return null;
+        const v = v1.find(c => c.key === k), dk = desk.find(c => c.key === k);
+        return { ...d, desk: dk ? { dir: dk.dir, verdict: verdictOf(dk.dir, d) } : null, v1: v ? { dir: v.dir, verdict: verdictOf(v.dir, d) } : null };
+      } catch (e) { return null; }
+    }));
     return days.filter(Boolean);
   },
   build(inp, days) { const text = biasDayText(days ?? []); if (!text) return null; const w = days.filter(d => d.verdict === 'with').length;
@@ -262,6 +286,42 @@ registerShowScene({
   build(inp, d) { const text = stressText(d); if (!text) return null; const hy = d.credit.find(r => /high yield/i.test(r.label)); return { title: 'Credit, liquidity, positioning', view: 'globe', cam: { region: 'world' }, text, figure: hy ? { value: `${hy.oas} bp`, label: 'US high yield' } : null, panel: panel('stress', 'STRESS & POSITIONING', 'Credit, dollar liquidity and where speculators sit', stressHtml(d)) }; },
 });
 
+// ───────────────────────── THE DESK (the morning desk run: /api/desk-run) ─────────────────────────
+// Owner, 25 Nov 2026: the desk run is the brief's main source (automated after the OI pull, ~06:50); Bias Engine V1 is the fallback when it is not in.
+const CORE_ORDER = ['NQ', 'GOLD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'];
+/** Today's desk run (London date) or null. */
+export const deskToday = (dr, nowMs = Date.now()) => (dr?.ok !== false && dr?.head?.book && dr.date === londonDate(nowMs) ? dr : null);
+/** The desk's calls with a direction: [{ key, dir, conviction, why, group, strength }], the markets the owner trades first, then by conviction. */
+export function deskCalls(dr) {
+  const I = dr?.head?.book?.instruments ?? {}, CV = { high: 3, medium: 2, low: 1 };
+  return Object.entries(I).filter(([, x]) => x && /^(LONG|SHORT)$/.test(x.rating)).map(([key, x]) => ({ key, dir: x.rating === 'LONG' ? 'up' : 'dn', conviction: x.conviction ?? '', strength: CV[x.conviction] ?? 1,
+    why: String(x.why ?? '').split(/(?<=[.;])\s/)[0].slice(0, 140), driver: String(x.why ?? '').split(/[,.;(]/)[0].slice(0, 60), group: GROUP(key) }))
+    .sort((a, b) => ((CORE_ORDER.indexOf(a.key) + 1 || 99) - (CORE_ORDER.indexOf(b.key) + 1 || 99)) || (b.strength - a.strength));
+}
+const CCYN = { USD: 'the dollar', EUR: 'the euro', GBP: 'sterling', JPY: 'the yen', CHF: 'the franc', AUD: 'the Aussie', NZD: 'the Kiwi', CAD: 'the Loonie' };
+export function deskViewText(dr) {
+  const b = dr?.head?.book; if (!b?.headline) return '';
+  const t = [`The desk's view, from this morning's desk run. ${String(b.headline).replace(/\s+/g, ' ').replace(/[.!?]?$/, '.')}`];
+  const cc = Object.entries(b.currencies ?? {}).filter(([, v]) => fin(v?.bias) && v.bias !== 0).sort((a, b2) => b2[1].bias - a[1].bias);
+  const up = cc.filter(([, v]) => v.bias > 0).map(([k]) => CCYN[k] ?? k), dn = cc.filter(([, v]) => v.bias < 0).map(([k]) => CCYN[k] ?? k);
+  if (up.length || dn.length) t.push(`On currencies it favours ${up.length ? list(up.slice(0, 3)) : 'none'}${dn.length ? `, against ${list(dn.slice(0, 4))}` : ''}.`);
+  t.push('That is the desk run, untested, not advice.');
+  return t.join(' ');
+}
+function deskViewHtml(dr) {
+  const b = dr.head.book, tone = String(b.global?.tone ?? '').replace('_', '-');
+  const cc = Object.entries(b.currencies ?? {}).filter(([, v]) => fin(v?.bias)).sort((a, b2) => b2[1].bias - a[1].bias);
+  return `<div class="bp-grid bp-g2"><section class="bp-box"><h3>THE DESK'S BOOK · ${esc(tone.toUpperCase())}</h3><div class="bp-deskh">${esc(b.headline)}</div>
+    ${(b.risks ?? []).slice(0, 2).map((r, i) => `<p class="bp-risk" style="--i:${i}">${esc(String(r).slice(0, 220))}</p>`).join('')}</section>
+  <section class="bp-box"><h3>CURRENCY VIEWS · −2 TO +2</h3>${cc.map(([k, v], i) => `<div class="bp-bar" style="--i:${i}"><span>${esc(k)}</span><div class="bp-track"><i class="${v.bias >= 0 ? 'up' : 'dn'}" style="${v.bias >= 0 ? 'left:50%' : `left:${50 - Math.abs(v.bias) * 25}%`};width:${Math.abs(v.bias) * 25}%"></i></div><b class="bp-${v.bias > 0 ? 'up' : v.bias < 0 ? 'dn' : 'tx'}">${v.bias > 0 ? '+' : ''}${v.bias}</b></div><small class="bp-why">${esc(String(v.why ?? '').slice(0, 120))}</small>`).join('')}</section></div>
+  <div class="bp-foot">Desk run ${dr.finishedAt ? `finished ${londonHM(Date.parse(dr.finishedAt))} London` : ''} · ${esc(dr.label ?? 'context, untested')} · not advice</div>`;
+}
+registerShowScene({
+  id: 'deskview', after: 'ahead',
+  async prepare(api) { return deskToday(await ok(api.jf('/api/desk-run'))); },
+  build(inp, dr) { const text = deskViewText(dr); if (!text) return null; return { title: "The desk's view", view: 'globe', cam: { region: 'world' }, text, figure: { value: String(dr.head.book.global?.tone ?? '').replace('_', '-').toUpperCase(), label: 'desk tone' }, panel: panel('deskview', "THE DESK'S VIEW", "This morning's desk run: the book, the currency views, the risks", deskViewHtml(dr)) }; },
+});
+
 /** The panel CSS (the broadcast overlay adds it; R = the overlay's id). Sized for the wide 1920x1080 page; the phone layout scales it down. */
 export const PANEL_CSS = R => `
 #${R} .bc-panel{background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--bg) 78%,transparent),color-mix(in srgb,var(--bg) 94%,transparent))}
@@ -300,6 +360,9 @@ export const PANEL_CSS = R => `
 #${R} .bp-mini{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:14px;flex:1;min-height:0}
 #${R} .bp-mc{display:flex;flex-direction:column;gap:6px;padding:12px 14px}#${R} .bp-mh{display:flex;justify-content:space-between;align-items:baseline}#${R} .bp-mh b{font-size:20px;font-weight:500;color:var(--tx)}#${R} .bp-mh span{font:600 13px var(--mono,monospace);letter-spacing:.12em}
 #${R} .bp-mc .bp-cv{flex:1;min-height:0;object-fit:contain}#${R} .bp-mv{display:flex;justify-content:space-between;align-items:baseline;font:500 15px var(--mono,monospace);color:var(--tx2)}#${R} .bp-mv strong{font-size:16px;letter-spacing:.1em}
+#${R} .bp-tag{font:600 13px var(--mono,monospace);letter-spacing:.08em;padding:3px 7px;border-radius:5px;border:1px solid currentColor;margin-left:6px}
+#${R} .bp-deskh{font:600 clamp(22px,2vw,34px)/1.3 Georgia,serif;color:var(--tx);margin:6px 0 18px}#${R} .bp-risk{font-size:16px;line-height:1.45;color:var(--tx2);margin:0 0 10px;opacity:0;animation:bp-in .6s ease both;animation-delay:calc(1s + var(--i,0) * .3s)}
+#${R} .bp-why{display:block;font-size:13px;color:var(--tx2);margin:-4px 0 6px 66px;line-height:1.3}
 #${R} .bp-ch{font:500 12px var(--mono,monospace);letter-spacing:.08em;color:var(--tx2)}
 #${R}.jv-compact .bp-g3,#${R}.jv-compact .bp-g2,#${R}.jv-compact .bp-wire{grid-template-columns:1fr}#${R}.jv-compact .bp-mini{grid-template-columns:1fr 1fr}
 `;

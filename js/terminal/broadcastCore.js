@@ -223,6 +223,7 @@ export const SEGMENTS = [
   { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', tiers: [['gpillar', 'gterrain', 'cot'], ['gamma']], say: ({ fig }) => (fig ? `Positioning, and where the options sit: ${fig}.` : null) },
   // THE WIDE programme's market-wide sections (25 Nov 2026; not in the phone Short): the tone and the news first, the bias after the outlook (morning) or the releases (evening)
   { id: 'tone', name: 'Market Tone', wide: true, keep: 2, segue: '', tiers: [['tone', 'wire'], ['wire']] },
+  { id: 'deskview', name: "The Desk's View", wide: true, morning: true, segue: '', tiers: [['deskview']] },
   { id: 'bias', name: 'The Bias', wide: true, morning: true, segue: '', tiers: [['biasboard']] },
   { id: 'biasday', name: 'The Bias, Scored', wide: true, evening: true, segue: '', tiers: [['biasday']] },
   { id: 'curve', name: 'The Curve', wide: true, segue: '', tiers: [['curve']] },
@@ -300,7 +301,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
   day.splice(day.findIndex(s => s.id === 'rates') + 1, 0, ...[w('curve')].filter(Boolean));      // wide: the Treasury curve straight after rates
   day.splice(day.findIndex(s => s.id === 'vol'), 0, ...[w('cross'), w('stress')].filter(Boolean));      // wide: cross-asset before volatility
   // morning: the outlook first; afternoon: the outlook last; evening: the day and its releases first, tomorrow last, no outlook (the day is done)
-  const order = (pod === 'morning' ? [w('tone'), seg('ahead'), w('bias'), ...day] : pod === 'evening' ? [w('tone'), seg('day'), seg('releases'), w('biasday'), ...day, seg('next')] : [w('tone'), ...day, seg('ahead')]).filter(Boolean);
+  const order = (pod === 'morning' ? [w('tone'), seg('ahead'), w('deskview'), w('bias'), ...day] : pod === 'evening' ? [w('tone'), seg('day'), seg('releases'), w('biasday'), ...day, seg('next')] : [w('tone'), ...day, seg('ahead')]).filter(Boolean);
   for (const s of order) {
     let scenes = [];
     for (const tier of s.tiers) { scenes = tier.map(sceneFor).filter(Boolean); if (scenes.length) break; }

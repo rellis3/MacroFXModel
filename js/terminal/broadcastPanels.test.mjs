@@ -40,9 +40,22 @@ test('the bias: only markets with a lean, strongest first, said as the engine\'s
   const c = biasCalls(bev2);
   assert.deepEqual(c.map(x => [x.key, x.dir, x.driver]), [['USDCAD', 'up', ''], ['GOLD', 'dn', 'Real yield']]);
   const t = biasText(c);
-  assert.match(t, /^The bias engine\. This is its lean, not a forecast we stand behind: it is unproven, and it is scored every night\./);
+  assert.match(t, /^The bias engine\. The desk run is not in yet, so this is the engine's lean, not a forecast we stand behind: it is unproven, and it is scored every night\./);
+  assert.match(biasText(c, null, 'desk'), /^The desk's calls\. These come from this morning's desk run: untested, and scored every night\. Short: gold\. Long: Dollar Loonie\. Two markets have a call; the rest are flat\.$/);
   assert.match(t, /leans lower on gold\./); assert.match(t, /Two markets have a lean; the rest are neutral\.$/);
   assert.equal(biasText([]), '');
+});
+
+test("the desk: today's run only; its calls with the owner's markets first; its view spoken with the untested label", async () => {
+  const { deskToday, deskCalls, deskViewText, verdictOf } = await import('./broadcastPanels.js');
+  const dr = { date: '2026-11-25', label: 'context, untested', head: { book: { headline: 'Risk-off with the dollar as the only haven', global: { tone: 'risk_off' },
+    currencies: { USD: { bias: 2 }, EUR: { bias: -1 }, JPY: { bias: 0 } },
+    instruments: { EURGBP: { rating: 'LONG', conviction: 'high', why: 'x' }, GOLD: { rating: 'SHORT', conviction: 'medium', why: 'Real yields up, dollar bid. More.' }, NQ: { rating: 'FLAT' } } } } };
+  assert.equal(deskToday(dr, Date.parse('2026-11-26T08:00:00Z')), null, "yesterday's run is not today's");
+  assert.ok(deskToday(dr, Date.parse('2026-11-25T08:00:00Z')));
+  assert.deepEqual(deskCalls(dr).map(c => [c.key, c.dir, c.why]), [['GOLD', 'dn', 'Real yields up, dollar bid.'], ['EURGBP', 'up', 'x']]);
+  assert.equal(deskViewText(dr), "The desk's view, from this morning's desk run. Risk-off with the dollar as the only haven. On currencies it favours the dollar, against the euro. That is the desk run, untested, not advice.");
+  assert.equal(verdictOf('dn', { open: 100, last: 98, moveU: -1 }), 'with'); assert.equal(verdictOf('up', { open: 100, last: 98, moveU: -1 }), 'against'); assert.equal(verdictOf('up', { open: 100, last: 100.1, moveU: 0.1 }), 'flat');
 });
 
 test('the bias against the day: from 07:00, judged against a quarter of the usual move, changes listed', () => {
