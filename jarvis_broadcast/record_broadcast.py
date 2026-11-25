@@ -125,6 +125,22 @@ def open_broadcast(ctx, base: str):
     return page
 
 
+def wait_desk_run(page, limit_s: int = 720):
+    """The morning brief leads with the desk run's call: if one is still running (desk_run.py starts it after the OI pull), wait for it, up to 12 minutes."""
+    t0 = time.time()
+    while time.time() - t0 < limit_s:
+        st = page.evaluate("() => fetch('/api/desk-run/status').then(r => r.json()).catch(() => null)") or {}
+        job = st.get('job') or {}
+        if job.get('status') != 'running':
+            if time.time() - t0 > 1:
+                log(f"desk run finished ({job.get('status')}) after {time.time() - t0:.0f} s of waiting")
+            return
+        if time.time() - t0 < 1:
+            log(f"a desk run is still running ({job.get('stage', '')}): waiting for it, up to {limit_s // 60} min")
+        time.sleep(15)
+    log('desk run still running after 12 min: recording without it (the brief falls back to Bias Engine V2)')
+
+
 def voice_plain(page):
     """The voice as it is, no robot finish (owner, 25 Nov 2026: "just Daniel, without the robotic twang")."""
     page.evaluate("() => { try { const k = 'jarvisVoice:v1'; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || '{}'), fx: 'off' })); } catch (e) {} }")
@@ -146,6 +162,8 @@ def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: P
         if not page.evaluate('() => !!window.__vclock'):
             raise RuntimeError('the virtual clock did not load (vclock.js)')
         cdp = ctx.new_cdp_session(page)
+        if part_of_day(datetime.now().hour) == 'morning':
+            wait_desk_run(page)
         voice_plain(page)
         page.evaluate('() => window.__vclock.freeze()')
         page.evaluate("""o => { window.__vcRes = null; window.__vcOnAir = 0;
