@@ -89,4 +89,19 @@ Chart timeframes other than 1-minute bars for the band arithmetic, other look-ba
 
 ## Amendments
 
+### A1 — 2026-11-25 — POST-HOC (results of C/D seen)
+**Part E (descriptive only)** reproduces Jordan's own MAE method from `Misc/mae_analysis.py`, which the owner shared
+after the run:
+- MAE is measured only while the trade is open.
+- Fixed stops: GC 75 ticks, NQ 150 ticks, EURUSD and USDJPY 12 pips.
+- Exit at the stop, a 1R target, or the 22:00 hard close.
+- Results are split by tier and by win or loss.
+
+It does not change any verdict.
+
+**Part A note:** every fresh touch is counted. The indicator itself allows one active event per band while its
+window runs.
+
 ## RESULTS
+
+Verdicts and numbers: `analysis/output/jordan-vwap-band-tp/RESULTS.md` (banked 2026-11-25).
