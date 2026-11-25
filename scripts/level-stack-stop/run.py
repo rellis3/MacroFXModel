@@ -279,8 +279,9 @@ def summarise():
         stop_px = np.full(len(A), np.nan)
         for (tr, sy, sd), g in A.groupby(["track", "sym", "side"]):
             ln = g[g.kind == "line"]
-            daily = ln.groupby("date")["mae60_px"].apply(list)
-            ds = daily.index
+            ds = pd.Index(sorted(g["date"].unique()))   # every session with any touch, line or placebo
+            daily = ln.groupby("date")["mae60_px"].apply(list).reindex(ds)
+            daily = daily.apply(lambda v: v if isinstance(v, list) else [])
             vals = []
             for k in range(len(ds)):
                 lo_k = max(0, k - W)

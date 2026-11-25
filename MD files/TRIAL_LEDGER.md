@@ -10,15 +10,15 @@ Generated 2026-11-24.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **612** |
+| claims tested (validated + null + underpowered) | **622** |
 | validated | 199 |
-| null | 237 |
-| underpowered | 176 |
+| null | 244 |
+| underpowered | 179 |
 | context (base rates, descriptions: not counted as tests) | 85 |
-| pre-registrations with no banked verdict (below) | 92 |
+| pre-registrations with no banked verdict (below) | 91 |
 
-**What the count says (Lesson 02 §05).** If none of the 612 claims were real, tests at the usual 5% size would still pass
-about **30.6** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 622 claims were real, tests at the usual 5% size would still pass
+about **31.1** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
 **roughly 31 of the 199 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -714,6 +714,16 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-24 | asia-day-bias-jpy | price | null | forge/ASIA_DAY_BIAS_PREREG.md |
 | 2026-11-24 | asia-day-bias-oneway | price | null | forge/ASIA_DAY_BIAS_PREREG.md |
 | 2026-11-24 | asia-day-bias-usd | price | null | forge/ASIA_DAY_BIAS_PREREG.md |
+| 2026-11-24 | bias-day-trade-fx | price | null | forge/BIAS_DAY_TRADE_PREREG.md |
+| 2026-11-24 | bias-day-trade-fx-24h | price | null | forge/BIAS_DAY_TRADE_PREREG.md |
+| 2026-11-24 | bias-day-trade-gold | price | underpowered | forge/BIAS_DAY_TRADE_PREREG.md |
+| 2026-11-24 | bias-day-trade-gold-24h | price | underpowered | forge/BIAS_DAY_TRADE_PREREG.md |
+| 2026-11-24 | bias-day-trade-h4-fx | price | null | forge/BIAS_DAY_TRADE_PREREG.md |
+| 2026-11-24 | bias-day-trade-h4-gold | price | underpowered | forge/BIAS_DAY_TRADE_PREREG.md |
+| 2026-11-24 | bias-day-trade-h4-idx | price | null | forge/BIAS_DAY_TRADE_PREREG.md |
+| 2026-11-24 | bias-day-trade-idx | price | null | forge/BIAS_DAY_TRADE_PREREG.md |
+| 2026-11-24 | bias-day-trade-idx-24h | price | null | forge/BIAS_DAY_TRADE_PREREG.md |
+| 2026-11-24 | bias-day-trade-lines | price | null | forge/BIAS_DAY_TRADE_PREREG.md |
 | 2026-11-24 | bias-fast-lag | macro | validated | forge/BIAS_FAST_LAYER_PREREG.md |
 | 2026-11-24 | bias-fast-layer | macro | underpowered | forge/BIAS_FAST_LAYER_PREREG.md |
 | 2026-11-24 | bias-fast-vs-momentum | macro | null | forge/BIAS_FAST_LAYER_PREREG.md |
@@ -733,7 +743,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/APPROACH_BOOK_EURUSD_PREREG.md`: EURUSD Approach Book — pre-registration (how price arrives at a line)
 - `forge/ASYMMETRIC_TRADES_PREREG.md`: Tight stop, far target at the forecast levels — pre-registration
 - `forge/ATLAS_HONEST_GONOGO_PREREG.md`: atlas-honest-gonogo — With the known leaks removed, real bid/ask fills and the production settings, do the Vot
-- `forge/BIAS_DAY_TRADE_PREREG.md`: bias-day-trade — Opened at London midnight on the bias engine's side, does the trade close in profit after cos
 - `forge/BIAS_SCOREBOARD_PREREG.md`: bias-scoreboard — whose morning bias beats the shared public base on the same rows?
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
 - `forge/CB_TONE_REACTION_PREREG.md`: cb-tone-reaction — does the ECB / BoE / BoJ statement's hawkish shift line up with the first-30-minute move in
