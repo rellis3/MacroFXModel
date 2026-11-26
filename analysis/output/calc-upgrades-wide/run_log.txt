@@ -1,0 +1,175 @@
+58 jobs
+F: 2181 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.89e-15 on 2181 sessions
+F: 2181 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 2.00e-15 on 2181 sessions
+  common sample (all arms finite) 2020+: 1656 sessions; dropped 30
+  common sample (all arms finite) 2020+: 1641 sessions; dropped 44
+F: 2196 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 2.00e-15 on 2196 sessions
+  common sample (all arms finite) 2020+: 1681 sessions; dropped 10
+F NQ: F: 2196 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 2.00e-15 on 2196 sessions | common sample (all arms finite) 2020+: 1681 sessions; dropped 10
+F: 2165 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2165 sessions
+  common sample (all arms finite) 2020+: 1659 sessions; dropped 11
+F GOLD: F: 2165 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2165 sessions | common sample (all arms finite) 2020+: 1659 sessions; dropped 11
+F EURUSD: F: 2181 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.89e-15 on 2181 sessions | common sample (all arms finite) 2020+: 1656 sessions; dropped 30
+F USDJPY: F: 2181 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 2.00e-15 on 2181 sessions | common sample (all arms finite) 2020+: 1641 sessions; dropped 44
+F: 2162 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.89e-15 on 2162 sessions
+  common sample (all arms finite) 2020+: 1628 sessions; dropped 44
+F: 2053 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2053 sessions
+  common sample (all arms finite) 2020+: 1551 sessions; dropped 23
+F: 2095 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2095 sessions
+  common sample (all arms finite) 2020+: 0 sessions; dropped 1615
+F: 2182 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2182 sessions
+  common sample (all arms finite) 2020+: 1652 sessions; dropped 33
+F AUDUSD: F: 2182 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2182 sessions | common sample (all arms finite) 2020+: 1652 sessions; dropped 33
+F BRENT: F: 2162 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.89e-15 on 2162 sessions | common sample (all arms finite) 2020+: 1628 sessions; dropped 44
+F COPPER: F: 2053 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2053 sessions | common sample (all arms finite) 2020+: 1551 sessions; dropped 23
+F DE30: F: 2095 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2095 sessions | common sample (all arms finite) 2020+: 0 sessions; dropped 1615
+F: 2181 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.89e-15 on 2181 sessions
+  common sample (all arms finite) 2020+: 1659 sessions; dropped 25
+F GBPUSD: F: 2181 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.89e-15 on 2181 sessions | common sample (all arms finite) 2020+: 1659 sessions; dropped 25
+F: 2152 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2152 sessions
+  common sample (all arms finite) 2020+: 1606 sessions; dropped 56
+F NZDUSD: F: 2152 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2152 sessions | common sample (all arms finite) 2020+: 1606 sessions; dropped 56
+F: 1901 sessions 2018-01-09 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 1901 sessions
+  common sample (all arms finite) 2020+: 1423 sessions; dropped 27
+F PLATINUM: F: 1901 sessions 2018-01-09 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 1901 sessions | common sample (all arms finite) 2020+: 1423 sessions; dropped 27
+F: 2046 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2046 sessions
+  common sample (all arms finite) 2020+: 1553 sessions; dropped 17
+F SILVER: F: 2046 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2046 sessions | common sample (all arms finite) 2020+: 1553 sessions; dropped 17
+F: 1940 sessions 2019-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 1940 sessions
+  common sample (all arms finite) 2020+: 1666 sessions; dropped 16
+F: 2197 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.67e-15 on 2197 sessions
+  common sample (all arms finite) 2020+: 1676 sessions; dropped 13
+F SPX500: F: 2197 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.67e-15 on 2197 sessions | common sample (all arms finite) 2020+: 1676 sessions; dropped 13
+F US2000: F: 1940 sessions 2019-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 1940 sessions | common sample (all arms finite) 2020+: 1666 sessions; dropped 16
+F: 2154 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 2.00e-15 on 2154 sessions
+  common sample (all arms finite) 2020+: 1620 sessions; dropped 37
+F: 2192 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2192 sessions
+  common sample (all arms finite) 2020+: 1678 sessions; dropped 6
+F US30: F: 2192 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2192 sessions | common sample (all arms finite) 2020+: 1678 sessions; dropped 6
+F USDCAD: F: 2154 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 2.00e-15 on 2154 sessions | common sample (all arms finite) 2020+: 1620 sessions; dropped 37
+F: 2154 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2154 sessions
+  common sample (all arms finite) 2020+: 1627 sessions; dropped 38
+F USDCHF: F: 2154 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2154 sessions | common sample (all arms finite) 2020+: 1627 sessions; dropped 38
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1708 sessions; dropped 14
+F: 2227 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.55e-15 on 2227 sessions
+  common sample (all arms finite) 2020+: 1697 sessions; dropped 15
+F WTI: F: 2227 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.55e-15 on 2227 sessions | common sample (all arms finite) 2020+: 1697 sessions; dropped 15
+C AUDCAD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1708 sessions; dropped 14
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1702 sessions; dropped 20
+C AUDCHF: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1702 sessions; dropped 20
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1701 sessions; dropped 21
+C AUDJPY: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1701 sessions; dropped 21
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1702 sessions; dropped 20
+C AUDNZD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1702 sessions; dropped 20
+C: 2238 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2238 sessions
+  common sample (all arms finite) 2020+: 1705 sessions; dropped 17
+C AUDUSD: C: 2238 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2238 sessions | common sample (all arms finite) 2020+: 1705 sessions; dropped 17
+C: 2230 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2230 sessions
+  common sample (all arms finite) 2020+: 1696 sessions; dropped 18
+C BRENT: C: 2230 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2230 sessions | common sample (all arms finite) 2020+: 1696 sessions; dropped 18
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.22e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1710 sessions; dropped 12
+C CADCHF: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.22e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1710 sessions; dropped 12
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1702 sessions; dropped 20
+C CADJPY: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1702 sessions; dropped 20
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1708 sessions; dropped 14
+C CHFJPY: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1708 sessions; dropped 14
+C: 2229 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.55e-15 on 2229 sessions
+  common sample (all arms finite) 2020+: 1697 sessions; dropped 16
+C COPPER: C: 2229 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.55e-15 on 2229 sessions | common sample (all arms finite) 2020+: 1697 sessions; dropped 16
+C: 2195 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2195 sessions
+  common sample (all arms finite) 2020+: 0 sessions; dropped 1692
+C DE30: C: 2195 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2195 sessions | common sample (all arms finite) 2020+: 0 sessions; dropped 1692
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1706 sessions; dropped 16
+C EURAUD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1706 sessions; dropped 16
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1716 sessions; dropped 6
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions
+C EURCAD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1716 sessions; dropped 6
+  common sample (all arms finite) 2020+: 1715 sessions; dropped 7
+C EURCHF: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1715 sessions; dropped 7
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1713 sessions; dropped 9
+C EURGBP: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1713 sessions; dropped 9
+C: 2239 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2239 sessions
+  common sample (all arms finite) 2020+: 1707 sessions; dropped 14
+C EURJPY: C: 2239 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2239 sessions | common sample (all arms finite) 2020+: 1707 sessions; dropped 14
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1705 sessions; dropped 17
+C EURNZD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1705 sessions; dropped 17
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1707 sessions; dropped 15
+C EURUSD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1707 sessions; dropped 15
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1712 sessions; dropped 10
+C GBPAUD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1712 sessions; dropped 10
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1719 sessions; dropped 3
+C GBPCAD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1719 sessions; dropped 3
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1713 sessions; dropped 9
+C GBPCHF: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1713 sessions; dropped 9
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.22e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1704 sessions; dropped 18
+C GBPJPY: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.22e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1704 sessions; dropped 18
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.44e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1707 sessions; dropped 15
+C GBPNZD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.44e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1707 sessions; dropped 15
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1714 sessions; dropped 8
+C GBPUSD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1714 sessions; dropped 8
+C: 2229 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2229 sessions
+  common sample (all arms finite) 2020+: 1699 sessions; dropped 14
+C GOLD: C: 2229 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2229 sessions | common sample (all arms finite) 2020+: 1699 sessions; dropped 14
+C: 2229 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2229 sessions
+  common sample (all arms finite) 2020+: 1701 sessions; dropped 12
+C NQ: C: 2229 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2229 sessions | common sample (all arms finite) 2020+: 1701 sessions; dropped 12
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1702 sessions; dropped 20
+C NZDCAD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1702 sessions; dropped 20
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1702 sessions; dropped 20
+C NZDJPY: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1702 sessions; dropped 20
+C: 2185 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2185 sessions
+C: 2239 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2239 sessions
+  common sample (all arms finite) 2020+: 1644 sessions; dropped 27
+  common sample (all arms finite) 2020+: 1696 sessions; dropped 26
+C NZDUSD: C: 2239 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2239 sessions | common sample (all arms finite) 2020+: 1696 sessions; dropped 26
+C PALLADIUM: C: 2185 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2185 sessions | common sample (all arms finite) 2020+: 1644 sessions; dropped 27
+C: 2206 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2206 sessions
+  common sample (all arms finite) 2020+: 1676 sessions; dropped 14
+C PLATINUM: C: 2206 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2206 sessions | common sample (all arms finite) 2020+: 1676 sessions; dropped 14
+C: 2225 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2225 sessions
+C: 2168 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2168 sessions
+  common sample (all arms finite) 2020+: 1709 sessions; dropped 5
+  common sample (all arms finite) 2020+: 1378 sessions; dropped 288
+C SILVER: C: 2225 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2225 sessions | common sample (all arms finite) 2020+: 1709 sessions; dropped 5
+C: 2218 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2218 sessions
+  common sample (all arms finite) 2020+: 1701 sessions; dropped 8
+C SPX500: C: 2218 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2218 sessions | common sample (all arms finite) 2020+: 1701 sessions; dropped 8
+C UK100: C: 2168 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2168 sessions | common sample (all arms finite) 2020+: 1378 sessions; dropped 288
+C: 2225 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2225 sessions
+  common sample (all arms finite) 2020+: 1697 sessions; dropped 12
+C US2000: C: 2225 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2225 sessions | common sample (all arms finite) 2020+: 1697 sessions; dropped 12
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1707 sessions; dropped 15
+C: 2229 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2229 sessions
+  common sample (all arms finite) 2020+: 1704 sessions; dropped 9
+C US30: C: 2229 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2229 sessions | common sample (all arms finite) 2020+: 1704 sessions; dropped 9
+C USDCAD: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1707 sessions; dropped 15
+C: 2237 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2237 sessions
+  common sample (all arms finite) 2020+: 1703 sessions; dropped 19
+C USDCHF: C: 2237 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2237 sessions | common sample (all arms finite) 2020+: 1703 sessions; dropped 19
+C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions
+  common sample (all arms finite) 2020+: 1701 sessions; dropped 21
+C USDJPY: C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions | common sample (all arms finite) 2020+: 1701 sessions; dropped 21
+C: 2229 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2229 sessions
+  common sample (all arms finite) 2020+: 1702 sessions; dropped 11
+C WTI: C: 2229 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2229 sessions | common sample (all arms finite) 2020+: 1702 sessions; dropped 11

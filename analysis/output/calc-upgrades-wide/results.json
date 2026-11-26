@@ -1,0 +1,264 @@
+{
+ "seed": 20261126,
+ "B": 2000,
+ "block": 63,
+ "verdicts": {
+  "W1 N4_FRESH": "UNDERPOWERED",
+  "W2 N7_ALL": "UNDERPOWERED"
+ },
+ "pooled": {
+  "F|N4_FRESH": {
+   "pct": -0.6899946676613866,
+   "lo": -1.0997270495956701,
+   "hi": -0.28355055443278054,
+   "p": 0.0025,
+   "halves": {
+    "2020-22": -0.7985657405174651,
+    "2023-26": -0.6026152686351205
+   },
+   "n_instruments": 17,
+   "n_days": 1716
+  },
+  "F|N7_ALL": {
+   "pct": -0.11533574529399848,
+   "lo": -1.2098616692052528,
+   "hi": 0.8945098483910874,
+   "p": 0.45,
+   "halves": {
+    "2020-22": 0.5120012914491046,
+    "2023-26": -0.620224679477932
+   },
+   "n_instruments": 17,
+   "n_days": 1716
+  },
+  "F|N6_HARCJ_IV": {
+   "pct": -0.49745357935192525,
+   "lo": -1.7851112658292516,
+   "hi": 0.9089915997728246,
+   "p": 0.2825,
+   "halves": {
+    "2020-22": 1.9078639919621443,
+    "2023-26": -2.4398529292779414
+   },
+   "n_instruments": 6,
+   "n_days": 1716
+  },
+  "F|N1_HARQ": {
+   "pct": -0.047635701711012945,
+   "lo": -0.34812235504370403,
+   "hi": 0.27782248721918257,
+   "p": 0.4095,
+   "halves": {
+    "2020-22": 0.043751736638175664,
+    "2023-26": -0.12118549017157143
+   },
+   "n_instruments": 17,
+   "n_days": 1716
+  },
+  "F|N2_QL_HARCJ": {
+   "pct": 0.909503978583448,
+   "lo": 0.51947890322944,
+   "hi": 1.3115712053508475,
+   "p": 1.0,
+   "halves": {
+    "2020-22": 0.5850513979715144,
+    "2023-26": 1.1706275979839864
+   },
+   "n_instruments": 17,
+   "n_days": 1716
+  },
+  "F|N3_SESS": {
+   "pct": -0.0430076946913549,
+   "lo": -0.4261557642103985,
+   "hi": 0.3468153363195714,
+   "p": 0.424,
+   "halves": {
+    "2020-22": -0.09251072384313108,
+    "2023-26": -0.0031670186855570215
+   },
+   "n_instruments": 17,
+   "n_days": 1716
+  },
+  "F|N5_RR": {
+   "pct": 0.27841626173428224,
+   "lo": -0.006018655506185844,
+   "hi": 0.5790074800009071,
+   "p": 0.944,
+   "halves": {
+    "2020-22": 0.7627255825406021,
+    "2023-26": -0.11136212289085679
+   },
+   "n_instruments": 17,
+   "n_days": 1716
+  },
+  "F|NC_NOISE": {
+   "pct": 0.3315460234660783,
+   "lo": 0.10612422771544062,
+   "hi": 0.5726293273690741,
+   "p": 0.9935,
+   "halves": {
+    "2020-22": 0.22177907187139745,
+    "2023-26": 0.4198878811172202
+   },
+   "n_instruments": 17,
+   "n_days": 1716
+  },
+  "C|N4_FRESH": {
+   "pct": 0.4738497052050761,
+   "lo": 0.0917590580848815,
+   "hi": 0.8428908040664129,
+   "p": 0.9815,
+   "halves": {
+    "2020-22": -0.00045487074793459925,
+    "2023-26": 0.8514837334921532
+   },
+   "n_instruments": 39,
+   "n_days": 1723
+  },
+  "C|N7_ALL": {
+   "pct": 1.0173788042579401,
+   "lo": 0.22937751171988155,
+   "hi": 1.7043174125312421,
+   "p": 0.9765,
+   "halves": {
+    "2020-22": 0.9782471012685923,
+    "2023-26": 1.0485348659592164
+   },
+   "n_instruments": 39,
+   "n_days": 1723
+  },
+  "C|N6_HARCJ_IV": {
+   "pct": -0.14323973283314473,
+   "lo": -1.4924097636462101,
+   "hi": 1.3153133906199,
+   "p": 0.4215,
+   "halves": {
+    "2020-22": 2.348736326446299,
+    "2023-26": -2.1251829921132614
+   },
+   "n_instruments": 6,
+   "n_days": 1717
+  },
+  "C|N1_HARQ": {
+   "pct": 0.006338202407829563,
+   "lo": -0.2460230827957555,
+   "hi": 0.23629877716082265,
+   "p": 0.527,
+   "halves": {
+    "2020-22": 0.007734893658950526,
+    "2023-26": 0.005226178256734215
+   },
+   "n_instruments": 39,
+   "n_days": 1723
+  },
+  "C|N2_QL_HARCJ": {
+   "pct": 0.46646557214060635,
+   "lo": 0.12756751206301709,
+   "hi": 0.7929444220903868,
+   "p": 0.988,
+   "halves": {
+    "2020-22": 0.16771487827138554,
+    "2023-26": 0.7043262922332039
+   },
+   "n_instruments": 39,
+   "n_days": 1723
+  },
+  "C|N3_SESS": {
+   "pct": 0.09990803523227676,
+   "lo": -0.11265808036366731,
+   "hi": 0.3082317823616786,
+   "p": 0.7845,
+   "halves": {
+    "2020-22": 0.12033765556052067,
+    "2023-26": 0.083642284885177
+   },
+   "n_instruments": 39,
+   "n_days": 1723
+  },
+  "C|N5_RR": {
+   "pct": 0.20760578237404292,
+   "lo": 0.02056781430887944,
+   "hi": 0.3924221129998029,
+   "p": 0.9635,
+   "halves": {
+    "2020-22": 0.25324543231388663,
+    "2023-26": 0.17126819313244557
+   },
+   "n_instruments": 39,
+   "n_days": 1723
+  },
+  "C|NC_NOISE": {
+   "pct": 0.24638507748522276,
+   "lo": 0.09451398209424423,
+   "hi": 0.39555910606906,
+   "p": 0.9975,
+   "halves": {
+    "2020-22": 0.10535683016257291,
+    "2023-26": 0.35866960485184674
+   },
+   "n_instruments": 39,
+   "n_days": 1723
+  }
+ },
+ "failed": [],
+ "positive_controls": {
+  "F NQ": "F: 2196 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 2.00e-15 on 2196 sessions",
+  "F GOLD": "F: 2165 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2165 sessions",
+  "F EURUSD": "F: 2181 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.89e-15 on 2181 sessions",
+  "F USDJPY": "F: 2181 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 2.00e-15 on 2181 sessions",
+  "F AUDUSD": "F: 2182 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2182 sessions",
+  "F BRENT": "F: 2162 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.89e-15 on 2162 sessions",
+  "F COPPER": "F: 2053 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2053 sessions",
+  "F DE30": "F: 2095 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2095 sessions",
+  "F GBPUSD": "F: 2181 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.89e-15 on 2181 sessions",
+  "F NZDUSD": "F: 2152 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2152 sessions",
+  "F PLATINUM": "F: 1901 sessions 2018-01-09 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 1901 sessions",
+  "F SILVER": "F: 2046 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2046 sessions",
+  "F SPX500": "F: 2197 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.67e-15 on 2197 sessions",
+  "F US2000": "F: 1940 sessions 2019-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 1940 sessions",
+  "F US30": "F: 2192 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2192 sessions",
+  "F USDCAD": "F: 2154 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 2.00e-15 on 2154 sessions",
+  "F USDCHF": "F: 2154 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2154 sessions",
+  "F WTI": "F: 2227 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.55e-15 on 2227 sessions",
+  "C AUDCAD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions",
+  "C AUDCHF": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2240 sessions",
+  "C AUDJPY": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions",
+  "C AUDNZD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2240 sessions",
+  "C AUDUSD": "C: 2238 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2238 sessions",
+  "C BRENT": "C: 2230 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2230 sessions",
+  "C CADCHF": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.22e-15 on 2240 sessions",
+  "C CADJPY": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2240 sessions",
+  "C CHFJPY": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2240 sessions",
+  "C COPPER": "C: 2229 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.55e-15 on 2229 sessions",
+  "C DE30": "C: 2195 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2195 sessions",
+  "C EURAUD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2240 sessions",
+  "C EURCAD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions",
+  "C EURCHF": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions",
+  "C EURGBP": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions",
+  "C EURJPY": "C: 2239 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2239 sessions",
+  "C EURNZD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2240 sessions",
+  "C EURUSD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions",
+  "C GBPAUD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions",
+  "C GBPCAD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions",
+  "C GBPCHF": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions",
+  "C GBPJPY": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.22e-15 on 2240 sessions",
+  "C GBPNZD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.44e-15 on 2240 sessions",
+  "C GBPUSD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions",
+  "C GOLD": "C: 2229 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2229 sessions",
+  "C NQ": "C: 2229 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2229 sessions",
+  "C NZDCAD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2240 sessions",
+  "C NZDJPY": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions",
+  "C NZDUSD": "C: 2239 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.89e-15 on 2239 sessions",
+  "C PALLADIUM": "C: 2185 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2185 sessions",
+  "C PLATINUM": "C: 2206 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2206 sessions",
+  "C SILVER": "C: 2225 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2225 sessions",
+  "C SPX500": "C: 2218 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2218 sessions",
+  "C UK100": "C: 2168 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2168 sessions",
+  "C US2000": "C: 2225 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2225 sessions",
+  "C US30": "C: 2229 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.78e-15 on 2229 sessions",
+  "C USDCAD": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions",
+  "C USDCHF": "C: 2237 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2237 sessions",
+  "C USDJPY": "C: 2240 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 2.00e-15 on 2240 sessions",
+  "C WTI": "C: 2229 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.11e-15 on 2229 sessions"
+ }
+}

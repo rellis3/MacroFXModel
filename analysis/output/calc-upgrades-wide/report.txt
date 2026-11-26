@@ -1,0 +1,58 @@
+POOLED (gold excluded): % change QLIKE HL+Close+ +Close-, arm vs export calc
+  F N4_FRESH      -0.69% [-1.10, -0.28] p 0.003 halves -0.80 / -0.60  (17 instruments)
+  F N7_ALL        -0.12% [-1.21, +0.89] p 0.450 halves +0.51 / -0.62  (17 instruments)
+  F N6_HARCJ_IV   -0.50% [-1.79, +0.91] p 0.282 halves +1.91 / -2.44  (6 instruments)
+  F N1_HARQ       -0.05% [-0.35, +0.28] p 0.409 halves +0.04 / -0.12  (17 instruments)
+  F N2_QL_HARCJ   +0.91% [+0.52, +1.31] p 1.000 halves +0.59 / +1.17  (17 instruments)
+  F N3_SESS       -0.04% [-0.43, +0.35] p 0.424 halves -0.09 / -0.00  (17 instruments)
+  F N5_RR         +0.28% [-0.01, +0.58] p 0.944 halves +0.76 / -0.11  (17 instruments)
+  F NC_NOISE      +0.33% [+0.11, +0.57] p 0.994 halves +0.22 / +0.42  (17 instruments)
+  C N4_FRESH      +0.47% [+0.09, +0.84] p 0.982 halves -0.00 / +0.85  (39 instruments)
+  C N7_ALL        +1.02% [+0.23, +1.70] p 0.977 halves +0.98 / +1.05  (39 instruments)
+  C N6_HARCJ_IV   -0.14% [-1.49, +1.32] p 0.421 halves +2.35 / -2.13  (6 instruments)
+  C N1_HARQ       +0.01% [-0.25, +0.24] p 0.527 halves +0.01 / +0.01  (39 instruments)
+  C N2_QL_HARCJ   +0.47% [+0.13, +0.79] p 0.988 halves +0.17 / +0.70  (39 instruments)
+  C N3_SESS       +0.10% [-0.11, +0.31] p 0.784 halves +0.12 / +0.08  (39 instruments)
+  C N5_RR         +0.21% [+0.02, +0.39] p 0.964 halves +0.25 / +0.17  (39 instruments)
+  C NC_NOISE      +0.25% [+0.09, +0.40] p 0.998 halves +0.11 / +0.36  (39 instruments)
+
+VERDICTS: {"W1 N4_FRESH": "UNDERPOWERED", "W2 N7_ALL": "UNDERPOWERED"}
+
+failed: []
+
+By class (median % per instrument, n, share better):
+                         median  count  <lambda_0>
+track arm      cls                                
+C     N4_FRESH FX cross    0.03     20        0.40
+               FX major    0.11      7        0.14
+               energy     -1.25      2        1.00
+               index      -0.95      5        0.67
+               metal       0.33      5        0.40
+      N7_ALL   FX cross    0.52     20        0.15
+               FX major    0.58      7        0.00
+               energy     -2.50      2        1.00
+               index       0.94      5        0.17
+               metal       0.42      5        0.40
+F     N4_FRESH FX major   -0.20      7        1.00
+               energy     -1.34      2        1.00
+               index      -1.26      4        0.80
+               metal      -0.90      4        0.75
+      N7_ALL   FX major   -0.42      7        0.86
+               energy     -2.84      2        1.00
+               index       0.28      4        0.20
+               metal      -2.11      4        0.75
+
+F N4_FRESH: WTI -1.6*  US30 -1.5*  SILVER -1.5*  NQ -1.3*  SPX500 -1.3  GOLD -1.2*  BRENT -1.1*  US2000 -1.0  PLATINUM -0.6*  EURUSD -0.4  USDCHF -0.4  GBPUSD -0.2  NZDUSD -0.2  AUDUSD -0.1  USDCAD -0.1  USDJPY -0.0  COPPER +0.6  DE30 +nan*
+F N7_ALL: GOLD -4.3*  WTI -3.7*  SILVER -3.3  BRENT -1.9*  NQ -1.0  PLATINUM -0.9  NZDUSD -0.8  AUDUSD -0.8  GBPUSD -0.5  USDJPY -0.4  EURUSD -0.2  USDCAD -0.1  SPX500 +0.2  US2000 +0.4  US30 +0.8  COPPER +1.0  USDCHF +9.6  DE30 +nan*
+C N4_FRESH: WTI -1.5*  US30 -1.3*  SPX500 -1.2  SILVER -1.1*  BRENT -1.0  NQ -0.9  GOLD -0.9  US2000 -0.6  GBPJPY -0.5  EURNZD -0.3  CHFJPY -0.3  NZDJPY -0.3  AUDJPY -0.2  EURCAD -0.2  EURJPY -0.1  AUDCHF -0.1  EURUSD -0.1  EURAUD +0.0  GBPUSD +0.0  EURGBP +0.0  USDCHF +0.0  GBPNZD +0.0  NZDCAD +0.1  CADCHF +0.1  GBPCHF +0.1  USDCAD +0.1  AUDUSD +0.1  AUDCAD +0.1  NZDUSD +0.2  GBPAUD +0.3  PLATINUM +0.3  CADJPY +0.4  GBPCAD +0.6  USDJPY +0.7  COPPER +1.0  EURCHF +1.1  PALLADIUM +1.4  AUDNZD +1.5  UK100 +30.3  DE30 +nan*
+C N7_ALL: WTI -3.2*  GOLD -2.6  BRENT -1.8  SILVER -1.5  CHFJPY -1.1  US2000 -0.5  EURNZD -0.3  EURCAD -0.1  NZDUSD +0.0  EURJPY +0.1  NZDCAD +0.1  EURAUD +0.2  GBPJPY +0.2  EURGBP +0.3  GBPNZD +0.4  PLATINUM +0.4  EURUSD +0.5  NZDJPY +0.5  AUDUSD +0.5  AUDCAD +0.5  USDCHF +0.6  USDCAD +0.6  NQ +0.7  CADCHF +0.8  AUDCHF +0.9  US30 +0.9  USDJPY +1.0  GBPUSD +1.0  AUDJPY +1.0  GBPCHF +1.1  COPPER +1.3  SPX500 +1.4  GBPAUD +1.4  CADJPY +1.4  EURCHF +1.5  GBPCAD +1.9  PALLADIUM +2.7  AUDNZD +2.9  UK100 +30.3  DE30 +nan*
+
+line detail (median over instruments, % vs export calc):
+line             cdn   cup    hl    oc    oh    ol
+track arm                                         
+C     N4_FRESH  0.08  0.11 -0.72  0.04  0.02 -0.07
+      N7_ALL    0.70  0.96 -0.40  0.54  0.50 -0.18
+F     N4_FRESH -0.50 -0.25 -1.74 -0.44 -0.19 -0.63
+      N7_ALL   -0.68  0.34 -2.48 -0.08  0.32 -1.39
+
+noise control: median +0.17%, range -0.19 to +1.25

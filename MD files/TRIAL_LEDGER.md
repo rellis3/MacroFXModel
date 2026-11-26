@@ -10,15 +10,15 @@ Generated 2026-11-26.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **630** |
+| claims tested (validated + null + underpowered) | **631** |
 | validated | 200 |
 | null | 249 |
-| underpowered | 181 |
+| underpowered | 182 |
 | context (base rates, descriptions: not counted as tests) | 85 |
-| pre-registrations with no banked verdict (below) | 93 |
+| pre-registrations with no banked verdict (below) | 92 |
 
-**What the count says (Lesson 02 §05).** If none of the 630 claims were real, tests at the usual 5% size would still pass
-about **31.5** of them by luck. 200 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 631 claims were real, tests at the usual 5% size would still pass
+about **31.6** of them by luck. 200 passed, so most passes are unlikely to be luck alone, but
 **roughly 32 of the 200 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -737,6 +737,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-25 | close-reversal-confirm | volatility | underpowered | forge/CLOSE_REVERSAL_CONFIRM_PREREG.md |
 | 2026-11-25 | jordan-system-race | volatility | null | forge/JORDAN_SYSTEM_RACE_PREREG.md |
 | 2026-11-25 | jordan-vwap-band-tp | volatility | null | forge/JORDAN_VWAP_BAND_TP_PREREG.md |
+| 2026-11-26 | calc-upgrades-wide | volatility | underpowered | forge/CALC_UPGRADES_WIDE_PREREG.md |
 | 2026-11-26 | gold-calc-upgrades | volatility | validated | forge/GOLD_CALC_UPGRADES_PREREG.md |
 | 2026-11-26 | hlproj-p90-morning-follow | volatility | underpowered | forge/HLPROJ_P90_MORNING_FOLLOW_PREREG.md |
 | 2026-11-26 | jordan-level-history-select | volatility | null | forge/JORDAN_LEVEL_HISTORY_SELECT_PREREG.md |
@@ -753,7 +754,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/ATLAS_HONEST_GONOGO_PREREG.md`: atlas-honest-gonogo — With the known leaks removed, real bid/ask fills and the production settings, do the Vot
 - `forge/BIAS_SCOREBOARD_PREREG.md`: bias-scoreboard — whose morning bias beats the shared public base on the same rows?
 - `forge/BREAK_IVRV_PREREG.md`: Break trades when implied vol is rich — pre-registration
-- `forge/CALC_UPGRADES_WIDE_PREREG.md`: calc-upgrades-wide: do gold's validated calc upgrades carry to every instrument on the QLIKE export?
 - `forge/CB_TONE_REACTION_PREREG.md`: cb-tone-reaction — does the ECB / BoE / BoJ statement's hawkish shift line up with the first-30-minute move in
 - `forge/COG_ANALOG_PREREG.md`: COG-ANALOG: match the last 12 hours of the line against its own past and read what Nasdaq did next
 - `forge/COG_CROSS_ASSET_PREREG.md`: COG-CROSS-ASSET: does the SOFR-Euribor / SOFR-ESTR information relate to, or lead, gold, EURUSD, USDJPY, the R

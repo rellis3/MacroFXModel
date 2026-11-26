@@ -52,4 +52,16 @@ pooled effect of 1–2% is detectable.
 
 ## Amendments
 
-(none yet)
+- **A0, 2026-11-26, PRE-RESULTS (before any non-gold instrument was scored).** Runs on the corrected pre-open feature
+  (`gold-calc-upgrades` A3: floor = 0.001 × the previous day's RV). A first launch on the faulty feature was stopped
+  part-way and its files deleted before scoring.
+- **A1, 2026-11-26, POST-HOC (results seen), descriptive only.** DE30 and UK100 have no trading between 22:00 and
+  24:00 London, so FRESH can't be built (DE30: 0 sessions; UK100: +30%). Pooled figures without them, and by asset
+  class, are reported as descriptive. The verdicts stay as scored.
+
+## RESULTS
+
+`analysis/output/calc-upgrades-wide/RESULTS.md` (banked 2026-11-26).
+- W1 FRESH UNDERPOWERED: futures −0.69% [−1.10, −0.28], CFD +0.47%.
+- W2 all-in UNDERPOWERED: futures −0.12%, CFD +1.02%.
+- The pre-open hour helps energy, metals and US index futures by about 1%; it does nothing for FX.
