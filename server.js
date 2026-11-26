@@ -19985,6 +19985,9 @@ svcInterval('financing', () => {
   });
 }, 6 * 60 * 60_000);
 
+// 26 Nov 2026: the 6h interval alone never fired: the server restarts more often than every 6 hours (deploys), so the series stopped on 23 Nov. A boot run, skipped when the ledger shows a run in the last 20 h.
+svcBoot('financing', () => _captureFinancingSnapshot('boot').catch(e => console.error('[financing]', e.message)), 4 * 60_000, 20 * 3600_000);
+
 app.post('/api/financing/capture-now', async (_req, res) => {
   try { res.json(await _captureFinancingSnapshot('manual')); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
