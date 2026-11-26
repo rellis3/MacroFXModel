@@ -146,3 +146,16 @@ These change how the outcome is timed and add two context fields that are only r
 - **Two context fields** are added to the descriptive matrix only. They feed no gate:
   - **minutes since the inner tier's first touch:** the ladder speed, which H5 uses;
   - **the ladder race at the first inside P75 touch:** P90 reached before price returns to the median, line vs placebo.
+
+### A2 — 2026-11-26 — POST-HOC (results seen; demotes only)
+
+The placebo multipliers were drawn independently per tier, so the placebo ladder's spacing is reshaped: placebo P90
+can sit closer than placebo P75.
+
+- The ladder race's line − placebo is therefore not evidence. It is read against a driftless random walk instead.
+- H5's level-specific part (+4.4 pp vs placebo) can't be separated from that geometry. H5 stays CONTEXT only as market behaviour (momentum), not as a property of our lines.
+- The single-line tests (H1–H4, the matrix, the engine) are unaffected.
+
+## RESULTS
+
+Verdicts and numbers: `analysis/output/level-context-engine/RESULTS.md` (banked 2026-11-26).

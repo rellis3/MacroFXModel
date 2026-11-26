@@ -1,0 +1,6 @@
+,size,size,mean,mean
+kind,line,placebo,line,placebo
+prior_b,,,,
+fast,22730,23526,0.46858776,0.39007905
+normal,13701,16777,0.45938253,0.34165823
+slow,3223,4495,0.45982003,0.32324806
