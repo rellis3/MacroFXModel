@@ -96,3 +96,7 @@ about 0.01R, so the MDE is about 0.02–0.03R.
 ## Amendments
 
 (none yet)
+
+## RESULTS
+
+Verdicts and numbers: `analysis/output/jordan-level-history-select/RESULTS.md` (banked 2026-11-26). S1 NULL, S2 NULL.
