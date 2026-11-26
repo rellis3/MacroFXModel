@@ -15,7 +15,7 @@ Generated 2026-11-26.
 | null | 248 |
 | underpowered | 180 |
 | context (base rates, descriptions: not counted as tests) | 85 |
-| pre-registrations with no banked verdict (below) | 91 |
+| pre-registrations with no banked verdict (below) | 92 |
 
 **What the count says (Lesson 02 §05).** If none of the 627 claims were real, tests at the usual 5% size would still pass
 about **31.4** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
@@ -792,6 +792,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
 - `forge/IVRV_COT_PREREG.md`: IV ÷ RV in the book, the rich-IV break rule on the indices, and COT positioning at the lines — pre-registratio
+- `forge/JORDAN_LEVEL_HISTORY_SELECT_PREREG.md`: jordan-level-history-select: does choosing levels by their own history make Jordan's lines tradeable?
 - `forge/LEVEL_P2_PREREG.md`: Level engine, Phase 2: reach, which-first, time-to-reach (registered 2026-10-10, before any Phase 2 outcome is
 - `forge/LEVEL_SCENARIO_SHADOW_PREREG.md`: S3 shadow: level scenarios, live reach / which-first / time (registered 2026-10-11, before any live session is
 - `forge/LINE_CLUSTER_MFE_PREREG.md`: Clusters of the forecast lines, and fade MFE / MAE at every touch — pre-registration
