@@ -154,3 +154,19 @@ test('SHOW acts: the script parts join to the script, acts cover 0..1 in narrati
   assert.ok(nodeRadius(0) > 0 && nodeRadius(0.5) > nodeRadius(0.25) && nodeRadius(2) === nodeRadius(1));
   assert.ok(Math.abs(nodeRadius(1) ** 2 - nodeRadius(0.5) ** 2 - (nodeRadius(0.5) ** 2 - nodeRadius(0) ** 2)) < 1e-12);
 });
+
+test('the BRIEF reads the day: the group that moved, a usual pair that split, the core markets that are one trade', async () => {
+  const { splits, oneTrade, moveGroup, netBriefParts, showActs, showAct } = await import('./netCore.js');
+  const ids = ['EURUSD', 'GBPUSD', 'USDCHF', 'NQ', 'US2000', 'GOLD'], n = ids.length, m = ids.map(() => ids.map(() => 0.1));
+  const set = (a, b, r) => { const i = ids.indexOf(a), j = ids.indexOf(b); m[i][j] = m[j][i] = r; };
+  set('EURUSD', 'GBPUSD', 0.85); set('EURUSD', 'USDCHF', -0.8); set('GBPUSD', 'USDCHF', -0.7); set('NQ', 'US2000', 0.8); ids.forEach((_, i) => { m[i][i] = 1; });
+  const net = { ids, m };
+  const mv = { NQ: { move: -0.6, ratio: 1.2 }, US2000: { move: 0.5, ratio: 0.9 }, EURUSD: { move: 0.1, ratio: 0.3 }, GBPUSD: { move: 0.1, ratio: 0.2 }, USDCHF: { move: -0.1, ratio: 0.2 } };
+  assert.deepEqual(splits(net, mv).map(s => [s.a, s.b]), [['NQ', 'US2000']]);
+  const ot = oneTrade(net); assert.equal(ot.a, 'EURUSD'); assert.deepEqual(ot.mem.map(x => x.k), ['GBPUSD', 'USDCHF']);
+  const g = moveGroup(net, mv); assert.equal(g.id, 'eq'); assert.equal(g.dir, null, 'split directions: no group direction'); assert.equal(moveGroup(net, { NQ: { move: 1, ratio: 0.5 }, US2000: { move: 1, ratio: 0.6 } }), null, 'under 0.8 of usual is not a move');
+  const parts = netBriefParts(net, mv, 'yesterday'), t = parts.map(x => x.text).join(' ');
+  assert.match(t, /Nasdaq and the Russell normally move together, at 0\.80, but yesterday Nasdaq fell while the Russell rose/);
+  assert.match(t, /That is one dollar trade, not three: size it as one\./); assert.doesNotMatch(t, /\bwill\b/);
+  const acts = showActs(net, parts), sp = acts.find(a => a.act === 'split'); assert.deepEqual(sp.ids, ['NQ', 'US2000']); assert.equal(showAct(acts, (sp.a + sp.b) / 2).focus, 1);
+});

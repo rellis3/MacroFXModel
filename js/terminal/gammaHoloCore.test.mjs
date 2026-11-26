@@ -83,10 +83,10 @@ test('spoken lines: plain, short, one caveat, no forecast words', () => {
   const rows = []; for (let k = 5800; k <= 6100; k += 25) rows.push({ strike: k, callOI: k > 5900 ? 500 : 10, putOI: k < 5900 ? 600 : 10, netGex: (k - 5880) });
   const P = buildPillar({ spot: 5930, gexProfile: rows, gammaFlip: 5880, callWall: 6000, putWall: 5800, callWallOI: 900, putWallOI: 800 }, 'SPX500_USD');
   const t = pillarScript(P, 'SPX500'); assert.match(t, /gamma flip at 5,880/); assert.match(t, /long gamma/); assert.match(t, /call wall is 6,000/); assert.match(t, /not a forecast/);
-  assert.ok(t.split(/\s+/).length <= 75, t); assert.doesNotMatch(t, /\bwill\b|expect|target/i); assert.equal(pillarScript(null, 'SPX500'), null);
+  assert.ok(t.split(/\s+/).length <= 95, t); assert.match(t, /size of the day, not its direction/); assert.doesNotMatch(t, /\bwill\b|expect|target/i); assert.equal(pillarScript(null, 'SPX500'), null);
   const D = terrainDays(rawJ, sumJ, 'SPX500_USD'), s = terrainScript(D, 'SPX500'); assert.match(s, /last 6 captures/); assert.match(s, /call wall held near 5,100/); assert.match(s, /put wall moved from 4,950 to 4,985/);
   assert.doesNotMatch(s, /\bwill\b|expect|target/i); assert.equal(terrainScript([], 'X'), null);
-  assert.equal(pickMain([{ key: 'NQ' }, { key: 'SPX500' }]), 'SPX500'); assert.equal(pickMain([{ key: 'NQ' }]), 'NQ'); assert.equal(pickMain([]), null); assert.equal(fmtDay('2026-11-20'), '20 Nov');
+  assert.equal(pickMain([{ key: 'NQ' }, { key: 'SPX500' }]), 'NQ'); assert.equal(pickMain([{ key: 'SPX500' }, { key: 'GOLD' }]), 'GOLD'); assert.equal(pickMain([{ key: 'NQ' }]), 'NQ'); assert.equal(pickMain([]), null); assert.equal(fmtDay('2026-11-20'), '20 Nov');
 });
 test('box placement takes the first free candidate inside the bounds, else null', async () => {
   const { placeBox } = await import('./gammaHoloCore.js');

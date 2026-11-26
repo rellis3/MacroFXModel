@@ -76,6 +76,27 @@ export function volScript(T, V) {
   return s + 'This describes what already happened. It is not a forecast.';
 }
 
+// ───────── THE BRIEF's read (owner, 26 Nov 2026: "volatility is not giving any advice or analysis, just explaining the charts") ─────────
+export const VOL_CORE = ['NQ', 'GOLD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'];
+/** Each core market's average range used over the last `n` sessions (1 = normal), busiest first: [{ key, v, last }]. */
+export function recentRange(T, n = 5) {
+  if (!T) return [];
+  return VOL_CORE.map(key => { const i = T.markets.findIndex(m => m.key === key); if (i < 0) return null; let s = 0, c = 0; for (let j = Math.max(0, T.ns - n); j < T.ns; j++) { s += T.Z[j * T.nm + i]; c++; } return c ? { key, v: s / c, last: T.Z[(T.ns - 1) * T.nm + i] } : null; })
+    .filter(Boolean).sort((a, b) => b.v - a.v);
+}
+/** The spoken read: which of our markets are running hot or quiet this week and what that means for today's stops and size; the VIX curve. null without a terrain. */
+export function volBrief(T, V) {
+  const r = recentRange(T); if (!r.length) return null;
+  const hot = r.filter(x => x.v >= 1.3), quiet = r.filter(x => x.v <= 0.8).reverse(), t = [];
+  const one = x => `${say(x.key)} at ${x.v.toFixed(1)} times`;
+  if (hot.length) t.push(`Over the last five sessions, ${listW(hot.slice(0, 3).map(one))} ${hot.length === 1 ? 'has' : 'have'} run above ${hot.length === 1 ? 'its' : 'their'} normal range. Big ranges tend to follow big ranges, so allow for a wider day there: wider stops, smaller size.`);
+  else t.push(`Over the last five sessions none of the markets we trade has run hot; the busiest is ${one(r[0])} its normal range.`);
+  if (quiet.length) t.push(`Quiet: ${listW(quiet.slice(0, 2).map(one))}. Tight ranges there, so a breakout needs more proof.`);
+  if (V && V.ratio != null) t.push(V.inverted ? 'The VIX curve is inverted: options price more stress now than in three months, a market on edge.' : 'The VIX curve slopes upward, the calm shape.');
+  return t.join(' ') + ' Context for sizing, not a forecast of direction.';
+}
+const listW = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+
 /**
  * The SHOW camera's act at progress p (0..1): 'sweep' (LOW along the newest session's edge, the markets passing left to right, k = how far across),
  * 'rise' (up and back until the whole window is in view), 'over' (a slow high pass over the terrain with the tallest ridges named). k is eased 0..1 within the act.

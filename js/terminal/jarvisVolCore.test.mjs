@@ -44,3 +44,14 @@ test('volShowAct runs sweep -> rise -> over, and groupColumns puts a ravine betw
   assert.equal(volShowAct(0).act, 'sweep'); assert.equal(volShowAct(0).k, 0); assert.equal(volShowAct(0.25).act, 'sweep'); assert.equal(volShowAct(0.6).act, 'rise'); assert.equal(volShowAct(1).act, 'over'); assert.equal(volShowAct(1).k, 1); assert.equal(volShowAct('x').act, 'sweep');
   const g = groupColumns([{ group: 'a' }, { group: 'a' }, { group: 'b' }]); assert.deepEqual(g.cols, [0, 1, -1, 2]); assert.deepEqual(g.at, [0, 1, 3]); assert.deepEqual(groupColumns(null).cols, []);
 });
+
+test('the BRIEF read: our markets running hot or quiet over five sessions, with what it means for stops and size', async () => {
+  const { volBrief, recentRange } = await import('./jarvisVolCore.js');
+  const markets = [{ key: 'GOLD' }, { key: 'NQ' }, { key: 'USDJPY' }, { key: 'WTI' }], nm = 4, ns = 6, Z = new Float32Array(nm * ns).fill(1);
+  for (let j = 1; j < ns; j++) { Z[j * nm] = 2; Z[j * nm + 2] = 0.6; }
+  const T = { markets, nm, ns, Z };
+  assert.deepEqual(recentRange(T).map(x => x.key), ['GOLD', 'NQ', 'USDJPY']);
+  const t = volBrief(T, { ratio: 1.05, inverted: true });
+  assert.match(t, /gold at 2\.0 times has run above its normal range/); assert.match(t, /wider stops, smaller size/); assert.match(t, /Quiet: Dollar Yen at 0\.6 times/); assert.match(t, /VIX curve is inverted/);
+  assert.equal(volBrief(null), null);
+});

@@ -165,7 +165,8 @@ def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: P
             raise RuntimeError('the virtual clock did not load (vclock.js)')
         cdp = ctx.new_cdp_session(page)
         if part_of_day(datetime.now().hour) == 'morning':
-            wait_desk_run(page)
+            if length != 'guide':          # the visual guide explains the pictures; it does not need today's desk run
+                wait_desk_run(page)
         voice_plain(page)
         page.evaluate('() => window.__vclock.freeze()')
         page.evaluate("""o => { window.__vcRes = null; window.__vcOnAir = 0;
@@ -308,7 +309,7 @@ def main() -> None:
     ap.add_argument('--no-upload', action='store_true', help='record and encode only')
     ap.add_argument('--show', action='store_true', help='keep the browser window on screen')
     ap.add_argument('--format', choices=['wide', 'short'], default='wide', help='wide (default): 1920x1080, the full programme, a normal video; short: 1080x1920 under 3 min, a YouTube Short')
-    ap.add_argument('--len', choices=['short', 'quick', 'full'], default=None, help='the programme cut (default: quick for wide, short for a Short)')
+    ap.add_argument('--len', choices=['short', 'quick', 'full', 'guide'], default=None, help='the programme cut (default: quick for wide, short for a Short)')
     ap.add_argument('--voice', choices=['server', 'kokoro'], default='server', help='server (steady) or kokoro (open-source, needs a fast machine)')
     ap.add_argument('--rate', type=float, choices=[0.9, 1.0, 1.1, 1.15, 1.3], default=1.1, help='voice speed: 0.9 calm, 1 normal, 1.1 steady (default), 1.15 brisk, 1.3 fast')
     ap.add_argument('--live', action='store_true', help='record in real time (the old way; drops frames on a busy machine)')
@@ -351,10 +352,24 @@ def main() -> None:
             from youtube_upload import upload
             today = datetime.now().date()
             part = part_of_day(datetime.now().hour)          # 07:00 -> the morning briefing, 21:00 -> the evening one (the page picks its programme by the same London clock)
-            title = title_for(today, part) if a.format == 'short' else title_for(today, part).replace(' #Shorts', '')
-            vid = upload(mp4, title, description_for(today, cap['voice'], cap['seconds'], part), privacy='unlisted')
+            guide_file = out_dir / 'guide_url.txt'          # the visual guide's link, kept by the guide run and put in every brief's description
+            if a.len == 'guide':
+                title = 'H.E.L.I.X. Visual Guide · how to read the briefings'
+                desc = ('Every picture in the H.E.L.I.X. morning and evening briefings: what it shows and how to read it. '
+                        'The briefings themselves skip the explanations and go straight to the analysis; keep this one for reference.\n\n'
+                        'Description only. Not a forecast, not advice, not a trade.')
+            else:
+                title = title_for(today, part) if a.format == 'short' else title_for(today, part).replace(' #Shorts', '')
+                desc = description_for(today, cap['voice'], cap['seconds'], part)
+                if a.format != 'short':
+                    desc = desc.replace('\n\n#Shorts', '')
+                if guide_file.exists():
+                    desc = f"New to the pictures? The visual guide explains each one: {guide_file.read_text(encoding='utf-8').strip()}\n\n" + desc
+            vid = upload(mp4, title, desc, privacy='unlisted')
             result.update({'videoId': vid, 'url': f'https://youtube.com/shorts/{vid}' if a.format == 'short' else f'https://youtu.be/{vid}', 'privacy': 'unlisted', 'format': a.format})
             log(f"uploaded (unlisted): {result['url']}")
+            if a.len == 'guide':
+                guide_file.write_text(result['url'], encoding='utf-8')
         (out_dir / 'last_run.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
         keep_last(out_dir)
     except Exception as e:

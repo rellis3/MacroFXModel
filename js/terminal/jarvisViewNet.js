@@ -24,6 +24,7 @@ import { registerShowScene } from './showCore.js';
 import { glView, orbitPos, ease } from './jarvisGL.js';
 import { marketSizes } from './jarvisMarkets.js';
 import { placeLabels } from './fxHoloCore.js';
+import { netBriefParts, netScriptParts } from './netCore.js';
 import { buildNet, pickLinks, partners, CLUSTERS, DEFAULT_THR, MAX_LINKS, WINDOWS, scrubSteps, makeScan, scanSome, stepState, pairPath, swingPair, dayMoves, netScript, showActs, showAct, actNodes, nodeRadius, FULL_AT } from './netCore.js';
 const nameOf = (net, id) => { const n = marketName(id, { short: true }); return n === id ? (net.labels[id] ?? id) : n; };
 
@@ -115,7 +116,7 @@ function lighting(net) {
   S.hl.clear(); S.pair = null; S.act = null;
   if (S.sel >= 0) S.hl.add(S.sel);
   if (!showing() || !S.cur) return 0;
-  const a = showAct(S.acts, S.showP), on = actNodes(net, S.cur.m, a.act); S.act = a;
+  const a = showAct(S.acts, S.showP), on = actNodes(net, S.cur.m, a.act, 2, a.ids); S.act = a;
   if (a.focus <= 0 || !on.nodes.length) return 0;
   for (const i of on.nodes) S.hl.add(i); S.pair = on.pair; return a.focus;
 }
@@ -240,7 +241,7 @@ function setup(L, H, api) {
 
   function camUpdate(st, dt, g, focus) {
     const calm = H.calm, cp = g.compact, userYaw = (st.yaw ?? 0.35) - 0.35, zoom = clamp(st.zoom ?? 1, 0.5, 2.6), show = showing();
-    if (!calm && !st.drag && !(S.sel >= 0)) S.base += dt * (show ? 0.14 : 0.07);
+    if (!calm && !st.drag && !(S.sel >= 0)) S.base += dt * (show ? 0.05 : 0.07);      // the SHOW turns slowly (26 Nov 2026: it whipped round in the brief)
     const d0 = cp ? 10 : 8.2; let dist = d0 / zoom, el = clamp(0.3 - ((st.pitch ?? -0.45) + 0.45) * 0.8, -0.9, 1.3), tx = 0, ty = 0, tz = 0;
     if (show && focus > 0 && S.hl.size) {
       // fly to the nodes the narration names: centre on them, close in until they fill the view, drop lower for the headline cluster
@@ -250,7 +251,7 @@ function setup(L, H, api) {
       const near = clamp(sp * (cp ? 3.4 : 2.5) + (head ? 1.0 : 1.5), head ? 1.5 : 2.2, d0 * 0.85);
       tx = cx * f; ty = cy * f; tz = cz * f; dist = dist + (near - dist) * f; el = el + ((head ? 0.08 : 0.2) - el) * f;
     } else if (S.sel >= 0) { wp(S.sel, 0); tx = TMP[0] * 0.4; ty = TMP[1] * 0.4; tz = TMP[2] * 0.4; dist *= 0.88; }
-    const want = { el, dist, tx, ty, tz }, k = 1 - Math.exp(-dt * (calm ? 8 : 1.5));
+    const want = { el, dist, tx, ty, tz }, k = 1 - Math.exp(-dt * (calm ? 8 : show ? 0.55 : 1.5));
     if (!S.cam) S.cam = { ...want };
     for (const f of Object.keys(want)) S.cam[f] += (want[f] - S.cam[f]) * k;
     const p = orbitPos(S.base + userYaw, S.cam.el, S.cam.dist, [S.cam.tx, S.cam.ty, S.cam.tz]);
@@ -566,10 +567,15 @@ registerShowScene({
   id: 'net', after: 'lean',
   prepare: api => load(api).then(n => (n ? { ok: true } : null)).catch(() => null),
   build: (inp, data) => {
-    const net = S.net; if (!data || !net) return null; const text = netScript(net), ch = net.change;
-    return text ? {
+    const net = S.net; if (!data || !net) return null; const guide = netScript(net), ch = net.change;
+    // the brief reads the day: the morning reads yesterday's full session (today has barely started), later in the day today's moves so far
+    const hr = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: 'numeric', hourCycle: 'h23' }).format(inp?.now ?? new Date()));
+    const live = Object.keys(S.live ?? {}).length >= 6, yday = hr < 12 || !live, end = yday ? net.dates.findLastIndex(d => d < new Date(inp?.now ?? Date.now()).toISOString().slice(0, 10)) : -1;
+    const moves = yday ? (end > 0 ? dayMoves(net.R, net.ids, end) : {}) : S.live, brief = netBriefParts(net, moves, yday ? 'yesterday' : 'today');
+    const parts = inp?.guide ? netScriptParts(net) : brief, text = parts?.map(x => x.text).join(' ');
+    return text ? { sync: true, guide,
       title: 'The correlation network', figure: ch && Math.abs(ch.delta) >= 0.15 ? { value: `${fmt(ch.then)} → ${fmt(ch.now)}`, label: `${nameOf(net, ch.a)} vs ${nameOf(net, ch.b)}, 3 months` } : undefined, view: 'net', cam: null, text,
-      enter: api => { S.showP = 0; S.showAt = Date.now(); S.play = false; S.cam = null; S.acts = showActs(net); if (S.w !== net.window) setW(net.window); goStep(last()); if (api?.st) { api.st.sel = null; Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); } },
+      enter: api => { S.showP = 0; S.showAt = Date.now(); S.play = false; S.cam = null; S.acts = showActs(net, parts); if (S.w !== net.window) setW(net.window); goStep(last()); if (api?.st) { api.st.sel = null; Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); } },
       motion: (api, p) => { S.showP = clamp(p, 0, 1); S.showAt = Date.now(); },
     } : null;
   },

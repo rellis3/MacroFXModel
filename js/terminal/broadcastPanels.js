@@ -352,7 +352,7 @@ registerShowScene({
 
 /** The panel CSS (the broadcast overlay adds it; R = the overlay's id). Sized for the wide 1920x1080 page; the phone layout scales it down. */
 export const PANEL_CSS = R => `
-#${R} .bc-panel{background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--bg) 78%,transparent),color-mix(in srgb,var(--bg) 94%,transparent))}
+#${R} .bc-panel{background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--bg) 96%,transparent),var(--bg))}
 #${R} .bc-pw{position:absolute;left:clamp(16px,4vw,90px);right:clamp(16px,4vw,90px);top:clamp(50px,8vh,92px);bottom:calc(var(--l3h,110px) + 64px);display:flex;flex-direction:column;gap:14px}
 #${R} .bc-pk{font:600 15px/1 var(--mono,monospace);letter-spacing:.34em;color:var(--bca)}#${R} .bc-pt{font:600 clamp(20px,2.2vw,34px)/1.15 Georgia,"Times New Roman",serif;color:var(--tx);margin-top:-4px}
 #${R} .bc-pb{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px}
@@ -377,7 +377,7 @@ export const PANEL_CSS = R => `
 #${R} .bp-nt{display:flex;gap:14px;font:500 14px var(--mono,monospace);letter-spacing:.12em;color:var(--tx2)}#${R} .bp-nt b{color:var(--bca)}#${R} .bp-nt em{font-style:normal;margin-left:auto}
 #${R} .bp-news h4{margin:10px 0 8px;font:600 clamp(18px,1.6vw,26px)/1.25 Georgia,serif;color:var(--tx)}#${R} .bp-news p{margin:0 0 10px;font-size:clamp(15px,1.15vw,19px);line-height:1.4;color:var(--tx2)}
 #${R} .bp-chips{display:flex;gap:8px;flex-wrap:wrap}#${R} .bp-chips span{font:600 13px var(--mono,monospace);letter-spacing:.1em;padding:4px 9px;border-radius:6px;border:1px solid currentColor}
-#${R} .bp-cv{width:100%;height:auto;max-height:100%;display:block}
+#${R} .bp-cv{position:relative;inset:auto;width:100%;height:auto;max-height:100%;display:block;cursor:default}
 #${R} .bp-key{display:flex;gap:22px;font:500 14px var(--mono,monospace);letter-spacing:.12em}#${R} .bp-key .k0{color:var(--bca)}#${R} .bp-key .k1{color:var(--gold)}#${R} .bp-key .k2{color:var(--tx2)}
 #${R} .bp-slope{display:grid;grid-template-columns:1.3fr .8fr 1.4fr .7fr;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid color-mix(in srgb,var(--tx2) 15%,transparent)}
 #${R} .bp-slope b{display:block;font-size:20px;color:var(--tx);font-weight:500}#${R} .bp-slope small{color:var(--tx2);font-size:14px}#${R} .bp-slope strong{font-weight:300;font-size:32px;color:var(--tx)}#${R} .bp-slope em{font:500 14px var(--mono,monospace);color:var(--tx2);font-style:normal}

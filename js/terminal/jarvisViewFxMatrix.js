@@ -225,7 +225,7 @@ function build(L, H, api) {
     const when = M.closed ? `market shut · to ${M.closeLabel ?? 'the last prices'}` : M.asOf ? `as of ${String(M.asOf).slice(11, 16)} UTC` : '';
     ctx.font = `600 ${cp ? 12 : 14}px ui-monospace,monospace`; ctx.globalAlpha = fade; ctx.fillStyle = C.blue; ctx.fillText(`FX MATRIX · ${ws.key} · ${when}`, x, y);
     ctx.font = `${cp ? 11 : 12}px ui-monospace,monospace`; ctx.fillStyle = C.tx2; ctx.globalAlpha = fade * 0.92;
-    const lines = cp ? ['rows and columns: strongest first', 'green rises: row out-ran column', 'red mirror below: the same gap reversed'] : ['rows (left) and columns (front): the eight currencies, strongest first', 'bright green column rises where the row out-ran the column', 'dim red mirror below the glass: the same gap seen from the other side', ws.unitPct != null ? `1σ ≈ ${ws.unitPct}% of a usual move over ${ws.key}` : ''];
+    const lines = cp ? ['rows and columns: strongest first', 'green rises: row out-ran column', 'red mirror below: the same gap reversed'] : ['rows (left) and columns (front): the eight currencies, strongest first', 'bright green column rises where the row out-ran the column', 'dim red mirror below the glass: the same gap seen from the other side', ws.unitPct != null ? `1σ ≈ ${Number(ws.unitPct).toPrecision(2)}% of a usual move over ${ws.key}` : ''];
     lines.forEach((l, i) => l && ctx.fillText(l, x, y + 17 + i * 15));
     if (ws.flat) { ctx.fillStyle = C.gold; ctx.fillText(`The market has barely moved over ${ws.key}: the grid lies flat.`, x, y + 17 + lines.length * 15 + 4); }
   }

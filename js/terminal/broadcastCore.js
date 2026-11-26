@@ -215,12 +215,12 @@ export const SEGMENTS = [
       const moving = fx.filter(r => r.tone !== 'quiet').length;
       return !moving ? `Currencies. All ${fx.length} pairs are quiet.` : moving === fx.length ? `Currencies. All ${fx.length} pairs are on the move.` : `Currencies. ${cap1(numWord(moving))} of ${fx.length} pairs are on the move.`;
     } },
-  { id: 'vol', name: 'Volatility', segue: 'Volatility.', tiers: [['ivsurf'], ['vol']],
+  { id: 'vol', name: 'Volatility', segue: 'Volatility.', words: 70, tiers: [['vol'], ['ivsurf']],
     say: ({ inp, fig }) => {
       const rows = (inp.rows ?? []).filter(r => r && fin(r.ratio)), big = rows.filter(r => Math.abs(r.ratio) >= 2).length;
       return big ? `Over to volatility. ${cap1(numWord(big))} of ${rows.length} markets are moving at least twice their usual size.` : fig ? `Over to volatility: ${fig}.` : null;
     } },
-  { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', tiers: [['gpillar', 'gterrain', 'cot'], ['gamma']], say: ({ fig }) => (fig ? `Positioning, and where the options sit: ${fig}.` : null) },
+  { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', words: 70, tiers: [['gpillar', 'gterrain', 'cot'], ['gamma']], say: ({ fig }) => (fig ? `Positioning, and where the options sit: ${fig}.` : null) },
   // THE WIDE programme's market-wide sections (25 Nov 2026; not in the phone Short): the tone and the news first, the bias after the outlook (morning) or the releases (evening)
   { id: 'tone', name: 'Market Tone', wide: true, keep: 2, segue: '', tiers: [['tone', 'wire'], ['wire']] },
   { id: 'deskview', name: "The Desk's View", wide: true, morning: true, segue: '', tiers: [['deskview']] },
@@ -228,7 +228,7 @@ export const SEGMENTS = [
   { id: 'biasday', name: 'The Bias, Scored', wide: true, evening: true, segue: '', tiers: [['biasday']] },
   { id: 'curve', name: 'The Curve', wide: true, segue: '', tiers: [['curve']] },
   { id: 'stress', name: 'Stress & Positioning', wide: true, keep: 2, segue: '', tiers: [['stress', 'skew'], ['skew']] },
-  { id: 'cross', name: 'Cross-Asset', wide: true, segue: 'What is moving together.', tiers: [['net']] },
+  { id: 'cross', name: 'Cross-Asset', wide: true, words: 75, segue: '', tiers: [['net']] },
   // THE EVENING programme (after 18:00 London) opens on THE DAY and THE RELEASES and closes on TOMORROW, and drops THE OUTLOOK. evening: true = only in the evening.
   { id: 'day', name: 'The Day', evening: true, keep: 2, segue: 'The day, looking back.', tiers: [['daymove', 'rangeused'], ['rangeused']], say: () => 'The day, looking back.' },
   { id: 'releases', name: 'The Releases', evening: true, keep: 2, words: 75, segue: '', tiers: [['shocktoday', 'dayreview'], ['dayreview']] },      // the scene opens with its own words
@@ -240,6 +240,46 @@ export const SEGMENTS = [
 /** Every hook scene id the programme may use (so the director only prepares those). */
 export const wantedSceneIds = () => [...new Set(SEGMENTS.flatMap(s => s.tiers.flat()))].filter(id => !BUILTIN[id]);
 /** In the QUICK broadcast a scene's line is cut to whole sentences of about this many words (eight segments, a little over two minutes). */
+// ───────── THE VISUAL GUIDE (owner, 26 Nov 2026): one reference video that explains every picture, so the briefs can be all analysis ─────────
+/** What each picture shows and how to read it, spoken in the guide video (a scene's own guide text, when it has one, is used instead). */
+export const GUIDE_TEXT = {
+  tone: 'Market tone opens each brief: the tape of how far each market has moved against its usual day, the risk flags and the geopolitical risk index, and the currencies ranked strongest to weakest.',
+  wire: 'The news wire: the top stories since the last brief, each with chips showing the markets it touched and which way, green for up and red for down.',
+  deskview: "The desk's view: the headline from the morning desk run, where eleven analysts and a head of desk read the data, with its view on each currency from strongly against to strongly for, and the risks it is watching. It is untested and scored every night.",
+  biasboard: "The bias board: the morning's calls, market by market, long or short, grouped by asset class, with the reason behind each. The evening brief scores every one against what the market actually did.",
+  biasday: 'The bias, scored: each call from the morning against the day, on fifteen-minute candles from seven in the morning London time. A call is with the market, against it, or flat if the move was under a quarter of a usual day.',
+  candles: "The market board: every desk market's candle for the session so far, standing on a trading floor. Height is the move against that market's usual day, so a tall candle is a big day for that market, whatever its price.",
+  wx: 'Market weather: one glass panel per asset class and per currency, each with a little weather scene driven by its move today. Calm skies are a quiet day; storms are big moves.',
+  reactor: 'The chain reactor: the macro chain as a glowing ring, cut into themes like energy, rates and currencies. Each link is a relationship we expect to hold, say higher yields and a stronger dollar; it glows when it is holding today and breaks when it is not.',
+  chainfly: 'The chain fly-through: the same macro links as a tunnel, cause to effect, flown through one by one.',
+  moneyglobe: 'The money globe: a hologram Earth with the flows between economies drawn on it, money, trade and rates, so you can see where the pressure is building.',
+  surprise: 'Data surprises: an eight by eight block of towers, the eight currencies against the families of economic data. A tall tower is data beating forecasts; a sunken one is data missing.',
+  cycle: "The world cycle: the business-cycle clock, expansion, slowdown, contraction and recovery, from the OECD's leading indicators, with each economy's last two years climbing as a trail.",
+  cbpaths: 'Rate paths: each central bank as a lane running away from you, today at your feet and about a year out at the far end. The lane rises where the market prices hikes and falls where it prices cuts.',
+  yields: 'The yield terrain: the US Treasury curve, three months to thirty years, as a landscape through time, the last hundred and twenty sessions flowing toward you.',
+  curve: 'The curve panel: Treasury yields now, a week ago and a month ago, and the main slopes, two to ten and two to thirty years, ranked against their own past year.',
+  fxgrid: "The currency matrix: the eight majors, strongest first along both edges. Each green column is how far the row currency has out-run the column currency, in units of a usual move; the red mirror below is the same gap seen from the other side.",
+  ccy: "Currencies as an orrery: each major is a sphere on its own ring, and the pairs that moved most today are gold tubes strung between them.",
+  stress: "Stress and positioning: credit spreads against their past year, the dollar liquidity in the system, from the Fed's balance sheet to bank reserves, and where speculators sit in the futures market, crowded or stretched.",
+  skew: 'Options skew: the twenty-five delta risk reversal for each futures market, which side, calls or puts, traders are paying more for. Negative in stocks means paying up for downside protection.',
+  net: 'The correlation network: each market is a node, and markets that have moved together over the last sixty trading days are pulled close, those that moved opposite pushed apart. Green links moved together, red moved opposite, and node size is the day’s move against its usual. In the briefs it is used to show which markets are really one trade, and which usual partners split.',
+  vol: "The volatility landscape: each ridge is how stretched a day's range was against that market's own normal, over the last sixty sessions, newest at the front. Indices, majors, crosses, metals and energy are grouped left to right. One is a normal day; three or more is capped.",
+  ivsurf: 'The volatility surface: implied volatility by strike and expiry, from the options market, the price of protection across the curve.',
+  gpillar: 'The gamma pillar: one market’s option book as a glass column, strikes rising like a price chart. Call open interest glows to the right, puts to the left. The gold ring is the gamma flip: above it dealers are modelled long gamma and moves have tended to be damped, below it short gamma and moves have tended to be amplified. The white plane is spot.',
+  gterrain: 'The gamma terrain: dealer gamma by strike over the last weeks as a landscape, so a wall that stays put is a ridge running front to back, and spot snakes across it.',
+  cot: 'The positioning terrain: three years of speculator positioning from the CFTC for every market we follow, week by week, showing who is stretched against their own history.',
+  gamma: 'The gamma floor: one market’s strike ladder you fly along, call open interest on the right and puts on the left.',
+  dayahead: "The day ahead: today's releases on a twenty-four hour clock in London time, with the Asia, London and New York sessions marked and each release's impact.",
+  ranges: "Today's ranges: the expected range for the markets we trade, from the desk's calibrated range forecast, so you know what a normal day looks like before it starts.",
+  shockwave: 'The release shockwave: how markets reacted, minute by minute, to every past release of one kind, stacked like the pages of a book, so you can see the usual size and shape of the reaction.',
+  daymove: "The day's move: the market of the day on its hourly candles, the session from open to close.",
+  rangeused: "Range used: how much of each market's usual day it has already covered, so you can see which moves are stretched.",
+  shocktoday: "Today's releases against their own history: the reaction this time laid over every past one.",
+  dayreview: "The day's releases: each number, its surprise against forecast, and what the markets did next.",
+  tomorrow: "Tomorrow's calendar: the releases due, on the same clock as the morning's day ahead.",
+};
+export const GUIDE_OPEN = "This is the Helix visual guide: each picture you will see in the briefings, what it shows and how to read it. The briefings themselves skip the explanations and go straight to the analysis, so keep this one for reference.";
+export const GUIDE_CLOSE = 'That is every picture in the briefings. Everything here is description, not a forecast and not advice. The briefings go out at seven in the morning and nine at night.';
 export const QUICK_WORDS = 34;
 /** The SHORT broadcast (mode 'short', for a YouTube Short, which must stay under 3 minutes): shorter lines, a two-item lead, and if the estimate still runs long the
  *  least essential segments go first, in this order. Markets, The Chain and The Day Ahead always stay. The budget is an ESTIMATE: a real run took about 1.2x it (transitions, the voice's own pace), so 120 s lands near 2.5 minutes.
@@ -285,12 +325,13 @@ export function keyFigure(text) {
  * Never throws because of a hook. A segment with no available scene is skipped and the numbering closes up.
  */
 export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick', rate = 1, budgetSec = SHORT_BUDGET_SEC } = {}) {
+  const guide = mode === 'guide'; if (guide) { inp = { ...inp, guide: true }; mode = 'full'; }
   const quick = mode !== 'full', short = mode === 'short', words = short ? SHORT_WORDS : QUICK_WORDS, date = dateWords(inp.now ?? new Date()), viewOk = v => !have || have.has(v) || CORE_VIEWS.has(v);
   const built = {}, sceneFor = id => {
     if (id in built) return built[id];
     let x = null; const h = hooks.find(k => k.id === id);
     try {
-      if (h) { const r = h.build(inp, inp.extra?.[id] ?? null); if (r && r.text) x = { id, title: r.title ?? id, view: r.view ?? 'globe', cam: r.cam ?? null, text: clean(r.text), enter: r.enter, motion: r.motion, figure: r.figure ?? r.key ?? null, panel: r.panel ?? null }; }
+      if (h) { const r = h.build(inp, inp.extra?.[id] ?? null); if (r && r.text) x = { id, title: r.title ?? id, view: r.view ?? 'globe', cam: r.cam ?? null, text: clean(guide ? (GUIDE_TEXT[id] ?? r.guide ?? r.text) : r.text), enter: r.enter, motion: r.motion, sync: !!r.sync, figure: r.figure ?? r.key ?? null, panel: r.panel ?? null }; }
       else if (BUILTIN[id]) { const r = BUILTIN[id](inp); if (r) x = { id, ...r }; }
     } catch (e) { x = null; }
     if (x && !viewOk(x.view)) x = null;
@@ -301,7 +342,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
   day.splice(day.findIndex(s => s.id === 'rates') + 1, 0, ...[w('curve')].filter(Boolean));      // wide: the Treasury curve straight after rates
   day.splice(day.findIndex(s => s.id === 'vol'), 0, ...[w('cross'), w('stress')].filter(Boolean));      // wide: cross-asset before volatility
   // morning: the outlook first; afternoon: the outlook last; evening: the day and its releases first, tomorrow last, no outlook (the day is done)
-  const order = (pod === 'morning' ? [w('tone'), seg('ahead'), w('deskview'), w('bias'), ...day] : pod === 'evening' ? [w('tone'), seg('day'), seg('releases'), w('biasday'), ...day, seg('next')] : [w('tone'), ...day, seg('ahead')]).filter(Boolean);
+  const order = guide ? [seg('tone'), seg('deskview'), seg('bias'), seg('biasday'), seg('ahead'), ...day, seg('day'), seg('releases'), seg('next')].filter(Boolean) : (pod === 'morning' ? [w('tone'), seg('ahead'), w('deskview'), w('bias'), ...day] : pod === 'evening' ? [w('tone'), seg('day'), seg('releases'), w('biasday'), ...day, seg('next')] : [w('tone'), ...day, seg('ahead')]).filter(Boolean);
   for (const s of order) {
     let scenes = [];
     for (const tier of s.tiers) { scenes = tier.map(sceneFor).filter(Boolean); if (scenes.length) break; }
@@ -310,8 +351,8 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     segs.push({ id: s.id, name: s.name, segue: s.segue, scenes });
   }
   const part = partOfDay(date.hour), when = part === 'morning' ? 'this morning' : part === 'afternoon' ? 'this afternoon' : 'tonight';
-  const head = inp.headline?.headline ? inp.headline : null;
-  let lead = pickLead({ ...inp, headKeys: head?.keys ?? (head?.key ? [head.key] : []) }, short ? 2 : 3); if (lead.length === 3 && lead[2].score < 1.5) lead = lead.slice(0, 2);       // a weak third item is left out: two strong stories beat three
+  const head = !guide && inp.headline?.headline ? inp.headline : null;
+  let lead = guide ? [] : pickLead({ ...inp, headKeys: head?.keys ?? (head?.key ? [head.key] : []) }, short ? 2 : 3); if (lead.length === 3 && lead[2].score < 1.5) lead = lead.slice(0, 2);       // a weak third item is left out: two strong stories beat three
   const lines = leadLines(lead, when, date.doy % 3), leadKeys = lead.map(x => x.key).filter(Boolean);
   const ctxInp = { ...inp, leadKeys };
   const build = list => {
@@ -320,7 +361,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     const headText = head ? [head.say, head.means].filter(Boolean).join(' ') : '';
     for (const x of sentences(headText)) said.add(norm(x));
     list.forEach((s, i) => { s.num = i + 1; s.total = total; });
-    items.push({ kind: 'open', title: `THE ${part.toUpperCase()} BRIEFING`, view: 'globe', cam: { region: 'world' }, hold: short ? 3 : 4.2, text: `${greeting(date.hour)}. This is Helix, with the ${part} briefing for ${date.spoken}.` });
+    items.push({ kind: 'open', title: guide ? 'THE VISUAL GUIDE' : `THE ${part.toUpperCase()} BRIEFING`, view: 'globe', cam: { region: 'world' }, hold: short ? 3 : 4.2, text: guide ? GUIDE_OPEN : `${greeting(date.hour)}. This is Helix, with the ${part} briefing for ${date.spoken}.` });
     // THE HEADLINE (the newsletter's one-line story), straight after the title: the market it names on its hourly chart behind the card (the daily feed runs a day behind, so yesterday's big day would be missing)
     if (head) items.push({ kind: 'headline', head, title: 'The Headline', view: head.key ? 'session' : 'globe', cam: head.key ? { chart: head.key, tf: '1h', back: head.day && pod !== 'evening' ? 1 : 0 } : { region: 'world' }, hold: 0.9, text: headText });
     lead.forEach((x, i) => items.push({ kind: 'lead', idx: i, n: lead.length, lead: x, title: 'The Lead', view: 'globe', cam: x.key ? { focus: x.key } : { region: 'world' }, hold: 0.6, text: lines[i] }));
@@ -331,16 +372,17 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
         const src = sc.id === 'candles' ? (BUILTIN.candles(ctxInp)?.text ?? sc.text) : sc.text;          // the board's body knows what the lead already said
         const w = def?.words ?? words;      // a segment may carry a longer line (the evening's releases: several numbers each with its reaction)
         let body = dedupeBody(quick ? trimWords(src, w + 8) : src, said); if (quick) body = trimWords(body, w);
-        if (def?.bodyless && j === 0) body = '';
+        if (def?.bodyless && j === 0 && !guide) body = '';
         const figure = sc.figure && sc.figure.value ? sc.figure : keyFigure(body);
         let segue = '';
         const unitFig = figure && (String(figure.label ?? '').trim() || /[×%:]|bp|\bof\b/.test(String(figure.value))) ? speakFig(figure) : null;      // a bare number ("60" sessions) is not a headline
-        if (j === 0) { try { segue = def?.say?.({ inp: ctxInp, scene: sc, fig: unitFig, leadKeys, leadKinds: lead.map(x => x.kind) }) || s.segue; } catch (e) { segue = s.segue; } }
+        if (guide) segue = '';
+        else if (j === 0) { try { segue = def?.say?.({ inp: ctxInp, scene: sc, fig: unitFig, leadKeys, leadKinds: lead.map(x => x.kind) }) || s.segue; } catch (e) { segue = s.segue; } }
         const text = [segue, body].filter(Boolean).join(' ');
         if (text) items.push({ kind: 'scene', seg, scene: sc, title: sc.title, view: sc.view, cam: sc.cam, hold: 0.65, text, figure });
       });
     }
-    items.push({ kind: 'close', seg: { id: 'signoff', name: 'Sign-off', num: total, total }, title: 'Sign-off', view: 'globe', cam: { region: 'world' }, hold: 2.5, text: SIGNOFF_TEXT, date });
+    items.push({ kind: 'close', seg: { id: 'signoff', name: 'Sign-off', num: total, total }, title: 'Sign-off', view: 'globe', cam: { region: 'world' }, hold: 2.5, text: guide ? GUIDE_CLOSE : SIGNOFF_TEXT, date });
     return { items, total, totalSec: Math.round(items.reduce((a, x) => a + (x.text ? readSeconds(x.text) : 0) + (x.hold ?? 0), 0)) };
   };
   let segsUsed = segs, P = build(segsUsed.map(x => ({ ...x })));

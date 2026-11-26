@@ -301,3 +301,14 @@ test('the lead: only Nasdaq, gold and the FX majors, unless another market moves
   assert.deepEqual(keys, ['WHEAT', 'GOLD'], 'sugar at 3.2x and a cross are left out; wheat at 4.4x is extraordinary');
   assert.ok(pickLead({ movers: mv, leadAll: true }).some(x => x.key === 'SUGAR'));
 });
+
+test('the VISUAL GUIDE: every section explained, no headline or lead, the guide text in place of the analysis', async () => {
+  const { planBroadcast, GUIDE_TEXT, GUIDE_OPEN } = await import('./broadcastCore.js');
+  const hooks = [{ id: 'net', build: () => ({ title: 'Net', view: 'globe', text: 'Today the dollar moved as one: size it as one.', guide: 'own guide' }) }, { id: 'vol', build: () => ({ title: 'Vol', view: 'globe', text: 'Gold ran hot: wider stops.' }) }];
+  const g = planBroadcast({ now: new Date('2026-11-26T07:00:00Z'), headline: { headline: 'H', say: 'Big story.' } }, { hooks, mode: 'guide' });
+  assert.equal(g.items[0].text, GUIDE_OPEN); assert.ok(!g.items.some(x => x.kind === 'headline' || x.kind === 'lead'));
+  const net = g.items.find(x => x.scene?.id === 'net'), vol = g.items.find(x => x.scene?.id === 'vol');
+  assert.equal(net.text, GUIDE_TEXT.net); assert.equal(vol.text, GUIDE_TEXT.vol);
+  const b = planBroadcast({ now: new Date('2026-11-26T07:00:00Z') }, { hooks, mode: 'quick' });
+  assert.match(b.items.find(x => x.scene?.id === 'vol').text, /Gold ran hot: wider stops\./);
+});

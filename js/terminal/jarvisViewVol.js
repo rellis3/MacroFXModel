@@ -12,7 +12,7 @@ import { registerShowScene } from './showCore.js';
 import { glView, orbitPos } from './jarvisGL.js';
 import { placeBox } from './gammaHoloCore.js';
 import { keyLine } from './jarvisViewGammaPillar.js';
-import { VOL_GROUPS, VOL_MARKETS, CLIP, buildTerrain, dailyRanges, vixCurve, volScript, volShowAct, groupColumns } from './jarvisVolCore.js';
+import { VOL_GROUPS, VOL_MARKETS, CLIP, buildTerrain, dailyRanges, vixCurve, volScript, volBrief, volShowAct, groupColumns } from './jarvisVolCore.js';
 
 const ID = 'vol', SUB = 2, XW = 7.4, ZD = 6.2, ZF = ZD / 2, HS = 0.55, GAP_V = 0.22, LEVEL = 1;
 const S = { data: null, busy: null, at: 0, showP: -1, showAt: 0, spin: null };
@@ -189,5 +189,5 @@ registerJarvisModule({
 registerShowScene({
   id: 'vol', after: 'lean',
   prepare: api => loadVol(api),
-  build: (inp, data) => { const text = data?.T ? volScript(data.T, data.V) : null; return text ? { title: 'The volatility landscape', view: 'vol', cam: null, text, enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); S.showP = 0; S.showAt = Date.now(); }, motion: (api, p) => { S.showP = clampN(p, 0, 1); S.showAt = Date.now(); } } : null; },
+  build: (inp, data) => { const guide = data?.T ? volScript(data.T, data.V) : null, brief = data?.T ? volBrief(data.T, data.V) : null, text = inp?.guide ? guide : brief ?? guide; return text ? { title: 'The volatility landscape', view: 'vol', cam: null, text, guide, enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); S.showP = 0; S.showAt = Date.now(); }, motion: (api, p) => { S.showP = clampN(p, 0, 1); S.showAt = Date.now(); } } : null; },
 });

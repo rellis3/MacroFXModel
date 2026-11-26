@@ -207,29 +207,90 @@ export function netScriptParts(net) {
 /** The spoken script for the SHOW scene, from the real numbers. Short: the director waits for the narration. */
 export function netScript(net) { const p = netScriptParts(net); return p ? p.map(x => x.text).join(' ') : null; }
 
+// ───────── THE BRIEF's analysis (owner, 26 Nov 2026: "cross asset explains what the visual is, but doesn't give analysis on the day") ─────────
+// The guide video explains the picture (netScriptParts); the brief reads the day through it: which of the markets we trade are really one trade, which usual partners split, where the move was.
+export const NET_CORE = ['NQ', 'GOLD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'];
+const ixOf = net => new Map(net.ids.map((k, i) => [k, i]));
+/** The biggest block of core markets that move as one with a single anchor over the window (|r| >= thr): { a, mem: [{ k, r }] } (mem sorted by |r|) or null under 2 members. */
+export function oneTrade(net, thr = 0.6) {
+  const ix = ixOf(net); let best = null;
+  for (const a of NET_CORE) {
+    if (!ix.has(a)) continue;
+    const mem = NET_CORE.filter(b => b !== a && ix.has(b)).map(b => ({ k: b, r: net.m[ix.get(a)][ix.get(b)] })).filter(x => Number.isFinite(x.r) && Math.abs(x.r) >= thr).sort((x, y) => Math.abs(y.r) - Math.abs(x.r));
+    const avg = mem.reduce((s, x) => s + Math.abs(x.r), 0) / (mem.length || 1);
+    if (!best || mem.length > best.mem.length || (mem.length === best.mem.length && avg > best.avg)) best = { a, mem, avg };
+  }
+  return best && best.mem.length >= 2 ? best : null;
+}
+/** Usual partners that split on the day: |r| >= thr over the window, both moved at least minRatio of their usual, and the day's signs disagree with the relationship. Biggest first; a core market first. */
+export function splits(net, moves, thr = 0.6, minRatio = 0.5) {
+  const out = [], ids = net.ids, core = new Set(NET_CORE);
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+    const r = net.m[i][j], a = moves?.[ids[i]], b = moves?.[ids[j]];
+    if (!Number.isFinite(r) || Math.abs(r) < thr || !a || !b || !(a.ratio >= minRatio) || !(b.ratio >= minRatio) || !a.move || !b.move) continue;
+    if (Math.sign(a.move * b.move) === Math.sign(r)) continue;
+    out.push({ a: ids[i], b: ids[j], r, ma: a.move, mb: b.move, score: Math.min(a.ratio, b.ratio) * Math.abs(r) * (core.has(ids[i]) || core.has(ids[j]) ? 2 : 1) });
+  }
+  return out.sort((x, y) => y.score - x.score);
+}
+/** Where the day's move was: the cluster with the biggest average move against its usual (>= 0.8), with its direction when most agree: { id, name, mean, ids, dir: 'up'|'dn'|null } or null. */
+export function moveGroup(net, moves) {
+  let best = null;
+  for (const c of CLUSTERS) {
+    const m = c.ids.map(k => ({ k, x: moves?.[k] })).filter(o => o.x && Number.isFinite(o.x.ratio)); if (m.length < 2) continue;
+    const mean = m.reduce((s, o) => s + o.x.ratio, 0) / m.length, up = m.filter(o => o.x.move > 0).length;
+    if (!best || mean > best.mean) best = { id: c.id, name: c.name, mean, ids: m.map(o => o.k), dir: up >= m.length * 0.75 ? 'up' : up <= m.length * 0.25 ? 'dn' : null };
+  }
+  return best && best.mean >= 0.8 ? best : null;
+}
+const xWord = r => `${r.toFixed(1)} times`;
+const dirWord = (k, move) => `${spokenName(k)} ${move > 0 ? 'rose' : 'fell'}`;
+/** The BRIEF's spoken analysis in parts, each with the markets it names (ids) so the camera flies to them: [{ act, text, ids }] or null. when = 'today' | 'yesterday' (whose moves these are). */
+export function netBriefParts(net, moves, when = 'today') {
+  if (!net?.m) return null;
+  const s = [], Day = when === 'yesterday' ? 'Yesterday' : 'Today', day = when === 'yesterday' ? 'yesterday' : 'today';
+  const g = moveGroup(net, moves);
+  s.push({ act: 'intro', ids: g?.ids ?? [], text: g ? `What moved together ${day}. The move was in ${g.name.toLowerCase()}${g.dir ? `, ${g.dir === 'up' ? 'higher' : 'lower'} as a group` : ''}, at ${xWord(g.mean)} their usual size on average.` : `What moved together ${day}. Nothing moved much: no group ran at its usual size.` });
+  const sp = splits(net, moves)[0];
+  if (sp) s.push({ act: 'split', ids: [sp.a, sp.b], text: `The break: ${spokenName(sp.a)} and ${spokenName(sp.b)} normally move ${sp.r > 0 ? 'together' : 'opposite'}, at ${f2(sp.r)}, but ${day} ${dirWord(sp.a, sp.ma)} while ${dirWord(sp.b, sp.mb)}. One of them is out of line, so watch which gives way.` });
+  else s.push({ act: 'split', ids: [], text: `${Day}'s moves kept to their usual pattern: no tight pair split.` });
+  const ot = oneTrade(net);
+  if (ot) {
+    const w = ot.mem.filter(x => x.r > 0).map(x => spokenName(x.k)), ag = ot.mem.filter(x => x.r < 0).map(x => spokenName(x.k));
+    const usd = [ot.a, ...ot.mem.map(x => x.k)].every(k => k === 'GOLD' || /USD/.test(k));
+    s.push({ act: 'block', ids: [ot.a, ...ot.mem.map(x => x.k)], text: `For positions: ${spokenName(ot.a)}${w.length ? ` moves with ${list(w)}` : ''}${ag.length ? `${w.length ? ', and' : ''} against ${list(ag)}` : ''}. That is one ${usd ? 'dollar ' : ''}trade, not ${numW(ot.mem.length + 1)}: size it as one.` });
+  }
+  s.push({ act: 'outro', ids: [], text: 'Past relationships, not a forecast.' });
+  return s;
+}
+const numW = n => ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'][n] ?? String(n);
+const list = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+
 /**
  * Where each act of the SHOW sits in the narration, by its share of the characters (the narrator reads at a steady pace): [{ act, a, b }] covering 0..1.
  * The closing sentence is folded into the act before it (the camera stays on the headline while the caveat is read); the headline is the 3-month change when it is spoken, else the tightest pair.
  */
-export function showActs(net) {
-  const parts = netScriptParts(net); if (!parts) return [];
+export function showActs(net, given = null) {
+  const parts = given ?? netScriptParts(net); if (!parts?.length) return [];
   const tot = parts.reduce((s, x) => s + x.text.length + 1, 0); let at = 0; const out = [];
-  for (const x of parts) { const a = at / tot; at += x.text.length + 1; if (x.act === 'outro' && out.length > 1) out[out.length - 1].b = 1; else out.push({ act: x.act, a, b: at / tot }); }
+  for (const x of parts) { const a = at / tot; at += x.text.length + 1; if (x.act === 'outro' && out.length > 1) out[out.length - 1].b = 1; else out.push({ act: x.act, a, b: at / tot, ids: x.ids ?? null }); }
   out[out.length - 1].b = 1; return out;
 }
 /** The act at progress p with a focus that eases in at its start and out at its end (not at the very end of the scene): { act, focus 0..1, k (0..1 through the act) }. */
-export function showAct(acts, p, edge = 0.04) {
+export function showAct(acts, p, edge = 0.1) {
   const x = Math.max(0, Math.min(1, Number(p) || 0)), a = acts.find(s => x >= s.a && x < s.b) ?? acts[acts.length - 1];
-  if (!a) return { act: 'intro', focus: 0, k: 0 };
-  const inF = Math.min(1, (x - a.a) / edge), outF = a.b >= 1 ? 1 : Math.min(1, (a.b - x) / edge);
-  return { act: a.act, focus: a.act === 'intro' || a.act === 'outro' ? 0 : Math.max(0, Math.min(inF, outF)), k: (x - a.a) / Math.max(1e-9, a.b - a.a) };
+  if (!a) return { act: 'intro', focus: 0, k: 0, ids: null };
+  const e = Math.max(1e-6, Math.min(edge, (a.b - a.a) / 3)), inF = Math.min(1, (x - a.a) / e), outF = a.b >= 1 ? 1 : Math.min(1, (a.b - x) / e);      // a short act still reaches full focus
+  const named = a.ids?.length > 0;
+  return { act: a.act, ids: a.ids ?? null, focus: a.act === 'outro' || (a.act === 'intro' && !named) ? 0 : Math.max(0, Math.min(inF, outF)), k: (x - a.a) / Math.max(1e-9, a.b - a.a) };
 }
 /**
  * The nodes an act frames (indices into ids): hi / lo = the pair; change = the pair plus each end's k strongest partners in m (the cluster around the headline pair);
  * group = the tightest cluster's members. { nodes, pair: [i, j] | null }; empty when the act names nothing.
  */
-export function actNodes(net, m, act, k = 2) {
+export function actNodes(net, m, act, k = 2, ids = null) {
   const ix = id => net.ids.indexOf(id), none = { nodes: [], pair: null };
+  if (ids?.length) { const n = ids.map(ix).filter(i => i >= 0); return { nodes: n, pair: n.length === 2 ? [Math.min(...n), Math.max(...n)] : null }; }
   if (act === 'group') { const t = net.tight?.[0], c = t && CLUSTERS.find(x => x.id === t.id); return c ? { nodes: c.ids.map(ix).filter(i => i >= 0), pair: null } : none; }
   const pr = act === 'hi' ? net.hi : act === 'lo' ? net.lo : act === 'change' ? net.change : null; if (!pr) return none;
   const i = ix(pr.a), j = ix(pr.b); if (i < 0 || j < 0) return none;

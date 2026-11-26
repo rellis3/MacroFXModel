@@ -207,7 +207,7 @@ export function dodge(items, { gap = 16, top = 0, bottom = Infinity } = {}) {
 
 export const metaOf = key => GAMMA_MARKETS.find(m => m.key === key) ?? null;
 /** The market the SHOW talks about: ES/SPX when it has a book, else the first one with data. */
-export const pickMain = avail => (avail ?? []).find(m => m.key === 'SPX500')?.key ?? avail?.[0]?.key ?? null;
+export const pickMain = avail => ['NQ', 'GOLD', 'SPX500'].map(k => (avail ?? []).find(m => m.key === k)?.key).find(Boolean) ?? avail?.[0]?.key ?? null;      // the markets the desk trades first (owner, 26 Nov 2026)
 export const fmtDay = d => { const x = new Date(`${d}T12:00:00Z`); return Number.isNaN(+x) ? String(d ?? '') : x.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }); };
 const say = v => (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString('en-US') : Math.abs(v) >= 100 ? v.toFixed(1) : v.toFixed(Math.abs(v) >= 10 ? 2 : 4));
 const pctOf = (v, spot) => { const p = Math.abs((v - spot) / spot * 100); return `${p < 10 ? p.toFixed(1) : Math.round(p)} percent`; };
@@ -222,6 +222,7 @@ export function pillarScript(P, key) {
   const w = []; if (P.callWall) w.push(`the biggest call wall is ${say(P.callWall.strike)}, ${pctOf(P.callWall.strike, P.spot)} ${P.callWall.strike >= P.spot ? 'above' : 'below'}`);
   if (P.putWall) w.push(`the biggest put wall is ${say(P.putWall.strike)}, ${pctOf(P.putWall.strike, P.spot)} ${P.putWall.strike >= P.spot ? 'above' : 'below'}`);
   if (w.length) s.push(`${w.join(', and ')}.`.replace(/^t/, 'T'));
+  if (P.flip != null) s.push(`In our tests the gamma regime has been a guide to the size of the day, not its direction, so ${P.longAt(P.spot) ? 'a tighter day is the likelier shape' : 'allow for a wider day'}.`);
   s.push('A description of positioning, not a forecast.');
   return s.join(' ');
 }
