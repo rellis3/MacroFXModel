@@ -86,4 +86,20 @@ The literature's typical gains for these upgrades are 2–10%, mostly on equity 
 
 ## Amendments
 
-(none yet)
+- **A1, 2026-11-26, PRE-RESULTS (set in the code before the first run).** N4's regression target is the RV of the
+  NY day *after* London midnight (the hours FRESH reads are taken out of the target), so the fit can't credit the
+  feature with variance it contains itself. All other arms keep the full NY-day target. Because each arm is rescaled
+  to every line, the target's level doesn't matter.
+- **A2, 2026-11-26, POST-HOC (results seen), descriptive only.** Run because the N4 gain was large:
+  - a lookahead audit of the FRESH window (`scripts/gold-calc-upgrades/decompose.py`);
+  - a control with the target alone (HARCJ features with N4's target, +0.15%);
+  - FRESH with the full target (−7.5%) and FRESH + IV by OLS (−7.9%);
+  - the split by weekday and by year, the concentration of the gain, and the top days.
+  None of this changes a verdict.
+
+## RESULTS
+
+Verdicts and numbers: `analysis/output/gold-calc-upgrades/RESULTS.md` (banked 2026-11-26).
+- VALIDATED: N7 ALL −8.84%, N4 FRESH −6.92%, N6 HARCJ+IV −2.81%, V3 −1.76%, N1 HARQ −0.42%.
+- NULL: N2 QLIKE fit.
+- UNDERPOWERED: the others.

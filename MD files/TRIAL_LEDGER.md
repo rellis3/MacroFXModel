@@ -10,16 +10,16 @@ Generated 2026-11-26.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **629** |
-| validated | 199 |
+| claims tested (validated + null + underpowered) | **630** |
+| validated | 200 |
 | null | 249 |
 | underpowered | 181 |
 | context (base rates, descriptions: not counted as tests) | 85 |
-| pre-registrations with no banked verdict (below) | 91 |
+| pre-registrations with no banked verdict (below) | 92 |
 
-**What the count says (Lesson 02 §05).** If none of the 629 claims were real, tests at the usual 5% size would still pass
-about **31.5** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
-**roughly 32 of the 199 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 630 claims were real, tests at the usual 5% size would still pass
+about **31.5** of them by luck. 200 passed, so most passes are unlikely to be luck alone, but
+**roughly 32 of the 200 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -737,6 +737,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-25 | close-reversal-confirm | volatility | underpowered | forge/CLOSE_REVERSAL_CONFIRM_PREREG.md |
 | 2026-11-25 | jordan-system-race | volatility | null | forge/JORDAN_SYSTEM_RACE_PREREG.md |
 | 2026-11-25 | jordan-vwap-band-tp | volatility | null | forge/JORDAN_VWAP_BAND_TP_PREREG.md |
+| 2026-11-26 | gold-calc-upgrades | volatility | validated | forge/GOLD_CALC_UPGRADES_PREREG.md |
 | 2026-11-26 | hlproj-p90-morning-follow | volatility | underpowered | forge/HLPROJ_P90_MORNING_FOLLOW_PREREG.md |
 | 2026-11-26 | jordan-level-history-select | volatility | null | forge/JORDAN_LEVEL_HISTORY_SELECT_PREREG.md |
 | 2026-11-26 | level-context-engine | volatility | null | forge/LEVEL_CONTEXT_ENGINE_PREREG.md |
@@ -804,6 +805,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/MACRO_TREND_WEEKDAY_PREREG.md`: Macro state, H1/H4 trend state and weekday at the vol lines — pre-registration
 - `forge/NEWS_TOUCH_PREREG.md`: News at the vol lines — pre-registration
 - `forge/OI_GAMMA_PEAK_PIN_PREREG.md`: oi-gamma-peak-pin — On sessions after 2026-11-23, does the OI Profile's gamma peak, on a PIN day, hold on its 
+- `forge/OI_PROFILE_GOLD_HISTORY_PREREG.md`: oi-profile-gold-history — On 3½ years of gold, do the OI Profile's walls, gamma peak and max pain hold a first
 - `forge/OI_WALL_BUILDING_FORWARD_PREREG.md`: oi-wall-building-forward — does a wall where open interest is being built bounce price more than a flat wall, 
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration

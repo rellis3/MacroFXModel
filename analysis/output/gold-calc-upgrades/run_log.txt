@@ -1,0 +1,54 @@
+F: 2165 sessions 2018-01-02 -> 2026-08-21; positive control HARCJ max rel diff 1.78e-15 on 2165 sessions
+  common sample (all arms finite) 2020+: 1659 sessions; dropped 11
+C: 2229 sessions 2018-01-02 -> 2026-08-20; positive control HARCJ max rel diff 1.11e-15 on 2229 sessions
+  common sample (all arms finite) 2020+: 1699 sessions; dropped 14
+
+PRIMARY: % change in QLIKE on HL + Close+ + Close-, arm vs export calc (negative = better), 2020 -> 2026-08-21
+  track F:
+    N1_HARQ       -0.42% [ -0.73,  -0.08]  p 0.018  halves -0.17 / -0.64  BH yes  -> VALIDATED
+    N2_QL_HARCJ   +0.29% [ -0.00,  +0.59]  p 0.947  halves +0.29 / +0.29  BH no  -> NULL
+    N3_SESS       -0.78% [ -2.13,  +0.20]  p 0.149  halves +0.15 / -1.60  BH no  -> UNDERPOWERED
+    N4_FRESH      -6.92% [ -8.69,  -5.30]  p 0.000  halves -6.67 / -7.13  BH yes  -> VALIDATED
+    N5_RR         -0.21% [ -0.58,  +0.16]  p 0.176  halves -0.34 / -0.10  BH no  -> UNDERPOWERED
+    N6_HARCJ_IV   -2.81% [ -4.38,  -1.33]  p 0.000  halves -1.70 / -3.77  BH yes  -> VALIDATED
+    N7_ALL        -8.84% [-11.34,  -6.36]  p 0.000  halves -8.54 / -9.09  BH yes  -> VALIDATED
+    V3            -1.76% [ -3.46,  -0.14]  p 0.034  halves -1.02 / -2.41  BH yes  -> VALIDATED
+    V4            -1.62% [ -3.49,  +0.21]  p 0.080  halves -0.88 / -2.26  BH no  -> UNDERPOWERED
+    B_har_iv      -0.32% [ -1.74,  +1.19]  p 0.360  halves +0.28 / -0.85  BH no  -> UNDERPOWERED
+    NC_NOISE      +0.02% [ -0.04,  +0.07]  p 0.686  halves -0.03 / +0.05
+  track C:
+    N1_HARQ       -0.53% [ -1.10,  +0.00]  p 0.053  halves -0.28 / -0.74
+    N2_QL_HARCJ   -0.09% [ -0.49,  +0.34]  p 0.360  halves -0.47 / +0.24
+    N3_SESS       +0.17% [ -0.24,  +0.59]  p 0.767  halves +0.38 / -0.01
+    N4_FRESH      -6.11% [ -7.89,  -4.56]  p 0.000  halves -6.70 / -5.60
+    N5_RR         -0.55% [ -1.22,  +0.15]  p 0.092  halves -0.20 / -0.86
+    N6_HARCJ_IV   -2.13% [ -3.45,  -0.68]  p 0.009  halves -1.42 / -2.75
+    N7_ALL        -7.13% [ -9.34,  -4.93]  p 0.000  halves -7.46 / -6.85
+    V3            -0.62% [ -1.94,  +0.74]  p 0.227  halves -0.55 / -0.69
+    V4            -0.32% [ -1.97,  +1.36]  p 0.362  halves -0.16 / -0.46
+    B_har_iv      +0.14% [ -1.11,  +1.46]  p 0.552  halves +0.20 / +0.08
+    NC_NOISE      +0.04% [ -0.21,  +0.31]  p 0.628  halves +0.09 / -0.00
+
+best futures arm: N7_ALL
+
+DESCRIPTIVE
+  F|HARCJ|hl: {'hit50': 53.34538878842676, 'hit75': 26.100060277275468, 'hit90': 9.764918625678119}
+  F|HARCJ|cup: {'hit50': 53.6, 'hit75': 28.45714285714286, 'hit90': 10.857142857142858}
+  F|HARCJ|cdn: {'hit50': 51.09677419354839, 'hit75': 27.483870967741936, 'hit90': 10.580645161290322}
+  F|N7_ALL|hl: {'hit50': 49.12597950572634, 'hit75': 24.23146473779385, 'hit90': 8.981314044605183}
+  F|N7_ALL|cup: {'hit50': 50.97142857142857, 'hit75': 26.74285714285714, 'hit90': 10.285714285714285}
+  F|N7_ALL|cdn: {'hit50': 48.645161290322584, 'hit75': 25.290322580645164, 'hit90': 10.967741935483872}
+  F|regime|quiet: -11.752940789404853
+  F|regime|mid: -8.64919342994539
+  F|regime|busy: -6.178444136172667
+  C|HARCJ|hl: {'hit50': 54.26721600941731, 'hit75': 26.309593878752207, 'hit90': 9.770453207769277}
+  C|HARCJ|cup: {'hit50': 55.16093229744728, 'hit75': 27.85793562708102, 'hit90': 10.654827968923417}
+  C|HARCJ|cdn: {'hit50': 51.62907268170426, 'hit75': 27.694235588972433, 'hit90': 9.649122807017543}
+  C|N7_ALL|hl: {'hit50': 49.85285462036492, 'hit75': 24.072984108299, 'hit90': 8.59329017068864}
+  C|N7_ALL|cup: {'hit50': 52.275249722530525, 'hit75': 25.971143174250834, 'hit90': 10.432852386237514}
+  C|N7_ALL|cdn: {'hit50': 50.6265664160401, 'hit75': 25.18796992481203, 'hit90': 10.902255639097744}
+  C|regime|quiet: -11.02156272555378
+  C|regime|mid: -6.101257688928008
+  C|regime|busy: -4.269601928208388
+  F|HARCJ|cdn_gap_usd: {'all': 8.819861972687573, '2025-26': 23.60166302648376}
+  F|N7_ALL|cdn_gap_usd: {'all': 8.742698340260915, '2025-26': 23.566402800954904}
