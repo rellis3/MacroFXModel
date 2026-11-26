@@ -147,3 +147,13 @@ Production execution is untouched.
 ## Amendments
 
 (none yet)
+
+### A1 — 2026-11-26 — POST-HOC (results seen; demotes only)
+
+D's +0.15R over A is cost selection. With p ≈ 0.5, its rule 2p − 1 − cost > θ trades only where the cost in R is
+small. Matched on cost (≤ 0.03R, test, gross), the pre-touch states earn fade +0.003R / follow −0.004R, while the
+touch fade earns −0.039R. P2 is demoted from UNDERPOWERED (by the gate) to NULL.
+
+## RESULTS
+
+Verdicts and numbers: `analysis/output/level-near-miss-entry/RESULTS.md` (banked 2026-11-26).

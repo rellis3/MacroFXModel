@@ -1,0 +1,133 @@
+method,by,cell,n,win,exp_net
+A touch fade,tier,50,42028,0.4685,-0.1837
+A touch fade,tier,75,24339,0.466,-0.1925
+A touch fade,tier,90,10837,0.4761,-0.1664
+A touch fade,tod,00-07 Asia,8536,0.4612,-0.1633
+A touch fade,tod,07-10 LDN open,8252,0.476,-0.137
+A touch fade,tod,10-13 LDN,9235,0.4793,-0.1894
+A touch fade,tod,13-16 NY overlap,34346,0.4706,-0.2011
+A touch fade,tod,16-22 NY pm,16835,0.4596,-0.18
+A touch fade,vol_b,high,19180,0.4873,-0.0891
+A touch fade,vol_b,low,19747,0.4445,-0.2824
+A touch fade,vol_b,mid,38277,0.472,-0.1809
+A touch follow,tier,50,42028,0.4923,-0.1328
+A touch follow,tier,75,24339,0.5003,-0.1218
+A touch follow,tier,90,10837,0.4941,-0.1374
+A touch follow,tod,00-07 Asia,8536,0.4944,-0.0931
+A touch follow,tod,07-10 LDN open,8252,0.4815,-0.1083
+A touch follow,tod,10-13 LDN,9235,0.5029,-0.1481
+A touch follow,tod,13-16 NY overlap,34346,0.5051,-0.1345
+A touch follow,tod,16-22 NY pm,16835,0.4775,-0.1402
+A touch follow,vol_b,high,19180,0.493,-0.0806
+A touch follow,vol_b,low,19747,0.5078,-0.1488
+A touch follow,vol_b,mid,38277,0.4896,-0.145
+B 20%W,tier,50,101145,0.4572,-0.1805
+B 20%W,tier,75,51337,0.4643,-0.1811
+B 20%W,tier,90,21182,0.4647,-0.1779
+B 20%W,tod,00-07 Asia,27778,0.4464,-0.16
+B 20%W,tod,07-10 LDN open,22892,0.4569,-0.1583
+B 20%W,tod,10-13 LDN,20016,0.4708,-0.1843
+B 20%W,tod,13-16 NY overlap,58830,0.4746,-0.1971
+B 20%W,tod,16-22 NY pm,44148,0.4467,-0.1804
+B 20%W,vol_b,high,44373,0.4794,-0.0948
+B 20%W,vol_b,low,41817,0.4407,-0.2628
+B 20%W,vol_b,mid,87474,0.4598,-0.1843
+B 15%W,tier,50,76294,0.4566,-0.1843
+B 15%W,tier,75,39651,0.4643,-0.1862
+B 15%W,tier,90,16551,0.4731,-0.1733
+B 15%W,tod,00-07 Asia,20023,0.4493,-0.161
+B 15%W,tod,07-10 LDN open,17205,0.4601,-0.1498
+B 15%W,tod,10-13 LDN,15465,0.471,-0.186
+B 15%W,tod,13-16 NY overlap,47260,0.4682,-0.21
+B 15%W,tod,16-22 NY pm,32543,0.4533,-0.1755
+B 15%W,vol_b,high,33567,0.4812,-0.0944
+B 15%W,vol_b,low,32204,0.4382,-0.2726
+B 15%W,vol_b,mid,66725,0.4618,-0.1853
+B 10%W,tier,50,58588,0.461,-0.1836
+B 10%W,tier,75,31491,0.4694,-0.1797
+B 10%W,tier,90,13244,0.4723,-0.176
+B 10%W,tod,00-07 Asia,14416,0.4574,-0.1565
+B 10%W,tod,07-10 LDN open,13005,0.4624,-0.1469
+B 10%W,tod,10-13 LDN,12236,0.4842,-0.1711
+B 10%W,tod,13-16 NY overlap,39097,0.4659,-0.214
+B 10%W,tod,16-22 NY pm,24569,0.4598,-0.1677
+B 10%W,vol_b,high,26025,0.4882,-0.0832
+B 10%W,vol_b,low,25387,0.4409,-0.2758
+B 10%W,vol_b,mid,51911,0.4651,-0.1845
+B 5%W,tier,50,45217,0.4631,-0.1858
+B 5%W,tier,75,25022,0.4659,-0.1881
+B 5%W,tier,90,10739,0.4723,-0.1688
+B 5%W,tod,00-07 Asia,10411,0.4646,-0.1475
+B 5%W,tod,07-10 LDN open,9627,0.4616,-0.1535
+B 5%W,tod,10-13 LDN,9639,0.4825,-0.1791
+B 5%W,tod,13-16 NY overlap,32614,0.4642,-0.2166
+B 5%W,tod,16-22 NY pm,18687,0.4603,-0.1667
+B 5%W,vol_b,high,20257,0.4881,-0.0846
+B 5%W,vol_b,low,20284,0.4408,-0.284
+B 5%W,vol_b,mid,40437,0.466,-0.1841
+C 0.25sig,tier,50,40178,0.4659,-0.1858
+C 0.25sig,tier,75,22587,0.4677,-0.1882
+C 0.25sig,tier,90,9811,0.478,-0.1629
+C 0.25sig,tod,00-07 Asia,8605,0.4675,-0.1476
+C 0.25sig,tod,07-10 LDN open,8290,0.4689,-0.145
+C 0.25sig,tod,10-13 LDN,8771,0.4843,-0.1775
+C 0.25sig,tod,13-16 NY overlap,30694,0.4659,-0.2141
+C 0.25sig,tod,16-22 NY pm,16216,0.4632,-0.1673
+C 0.25sig,vol_b,high,18008,0.4911,-0.0785
+C 0.25sig,vol_b,low,18378,0.4426,-0.2853
+C 0.25sig,vol_b,mid,36190,0.4695,-0.1839
+C 0.5sig,tier,50,46076,0.4649,-0.1848
+C 0.5sig,tier,75,25702,0.4672,-0.1884
+C 0.5sig,tier,90,11026,0.4754,-0.1681
+C 0.5sig,tod,00-07 Asia,9874,0.468,-0.1419
+C 0.5sig,tod,07-10 LDN open,9556,0.4669,-0.1475
+C 0.5sig,tod,10-13 LDN,10143,0.4803,-0.1841
+C 0.5sig,tod,13-16 NY overlap,34648,0.4653,-0.2153
+C 0.5sig,tod,16-22 NY pm,18583,0.4626,-0.1655
+C 0.5sig,vol_b,high,20575,0.4894,-0.084
+C 0.5sig,vol_b,low,20800,0.4432,-0.2823
+C 0.5sig,vol_b,mid,41429,0.4679,-0.1837
+C 0.75sig,tier,50,53090,0.4664,-0.1839
+C 0.75sig,tier,75,29321,0.4698,-0.1828
+C 0.75sig,tier,90,12367,0.4731,-0.1757
+C 0.75sig,tod,00-07 Asia,11220,0.4634,-0.1504
+C 0.75sig,tod,07-10 LDN open,11154,0.4652,-0.1477
+C 0.75sig,tod,10-13 LDN,11682,0.4849,-0.1756
+C 0.75sig,tod,13-16 NY overlap,39520,0.4683,-0.2106
+C 0.75sig,tod,16-22 NY pm,21202,0.4635,-0.1693
+C 0.75sig,vol_b,high,23561,0.4883,-0.087
+C 0.75sig,vol_b,low,23613,0.447,-0.2748
+C 0.75sig,vol_b,mid,47604,0.469,-0.184
+C 1sig,tier,50,61331,0.4652,-0.1842
+C 1sig,tier,75,33556,0.4702,-0.1842
+C 1sig,tier,90,14025,0.4774,-0.1677
+C 1sig,tod,00-07 Asia,12795,0.4596,-0.156
+C 1sig,tod,07-10 LDN open,12943,0.4606,-0.1512
+C 1sig,tod,10-13 LDN,13366,0.4829,-0.1802
+C 1sig,tod,13-16 NY overlap,45401,0.4713,-0.2056
+C 1sig,tod,16-22 NY pm,24407,0.4632,-0.1693
+C 1sig,vol_b,high,27146,0.4872,-0.09
+C 1sig,vol_b,low,26875,0.4474,-0.2726
+C 1sig,vol_b,mid,54891,0.4691,-0.1833
+D probability,tier,50,17954,0.5022,-0.0241
+D probability,tier,75,9644,0.4981,-0.0393
+D probability,tier,90,4336,0.4929,-0.0514
+D probability,tod,00-07 Asia,6147,0.4965,-0.0357
+D probability,tod,07-10 LDN open,2751,0.5333,0.0365
+D probability,tod,10-13 LDN,3547,0.4962,-0.043
+D probability,tod,13-16 NY overlap,12510,0.4943,-0.0476
+D probability,tod,16-22 NY pm,6979,0.5008,-0.0241
+D probability,vol_b,high,16456,0.4989,-0.0273
+D probability,vol_b,low,4024,0.5052,-0.0358
+D probability,vol_b,mid,11454,0.499,-0.0385
+E prob + confirm,tier,50,17161,0.4977,-0.0302
+E prob + confirm,tier,75,9081,0.4971,-0.0407
+E prob + confirm,tier,90,3968,0.5,-0.0372
+E prob + confirm,tod,00-07 Asia,5676,0.4938,-0.0372
+E prob + confirm,tod,07-10 LDN open,2653,0.5243,0.0219
+E prob + confirm,tod,10-13 LDN,3287,0.4922,-0.05
+E prob + confirm,tod,13-16 NY overlap,12171,0.4969,-0.0415
+E prob + confirm,tod,16-22 NY pm,6423,0.4949,-0.0331
+E prob + confirm,vol_b,high,15544,0.4929,-0.0357
+E prob + confirm,vol_b,low,3813,0.5135,-0.0254
+E prob + confirm,vol_b,mid,10853,0.4993,-0.0354
