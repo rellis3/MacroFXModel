@@ -248,6 +248,18 @@ def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, ra
     return {'work': work, 'frames': frames, 'audio': audio, 't0': t0, 't1': t1, 'voice': res.get('voice')}
 
 
+def washed_share(ff: str, mp4: Path, every: float = 4.0) -> float:
+    """Share of sampled frames that are washed out (mean brightness over 150 of 255). The HELIX pictures are dark;
+    26 Nov 2026 a guide uploaded with every 3D view rendered white (the browser's GPU drawing failed mid-run, no error logged)."""
+    w, h = 32, 18
+    r = subprocess.run([ff, '-loglevel', 'error', '-i', str(mp4), '-vf', f'fps=1/{every},scale={w}:{h},format=gray', '-f', 'rawvideo', '-'], capture_output=True)
+    raw, n = r.stdout, w * h
+    frames = [raw[i:i + n] for i in range(0, len(raw) - n + 1, n)]
+    if not frames:
+        return 0.0
+    return sum(1 for f in frames if sum(f) / n > 150) / len(frames)
+
+
 def encode(cap: dict) -> Path:
     ff = ffmpeg_exe()
     work = cap['work']
@@ -265,6 +277,10 @@ def encode(cap: dict) -> Path:
     log(f'encoded {mp4.name}: {secs:.1f} s, loudest moment {db} dB')
     if is_silent(db):
         raise RuntimeError(f'the recording has no sound on it (loudest {db} dB): not uploading. Check the voice (H.E.L.I.X. OPTIONS / /api/jarvis/voice/info).')
+    ws = washed_share(ff, mp4)
+    log(f'washed-out frames: {ws:.0%}')
+    if ws > 0.15:
+        raise RuntimeError(f'{ws:.0%} of the frames are washed out (the 3D views rendered white): not uploading. Record again.')
     w = short_warning(secs) if H > W else None          # the 3-minute limit is for Shorts only
     if w:
         log('note: ' + w)
