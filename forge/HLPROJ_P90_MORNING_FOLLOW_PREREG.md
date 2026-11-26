@@ -62,3 +62,7 @@ borderline powered.
 ## Amendments
 
 (none yet)
+
+## RESULTS
+
+Verdicts and numbers: `analysis/output/hlproj-p90-morning-follow/RESULTS.md` (banked 2026-11-26). R1-R3 UNDERPOWERED; R1/R3 estimates point the wrong way.
