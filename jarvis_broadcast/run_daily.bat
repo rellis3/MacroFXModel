@@ -21,10 +21,13 @@ REM ============================================================================
 cd /d "%~dp0"
 REM Task Scheduler's plain "python" is the system one (no Playwright): use a venv. Here first (a copy of this
 REM folder can hold a .venv or a junction to one), then the repo's .venv one level up, then whatever is on PATH.
+REM 26 Nov 2026: the venv OUTSIDE OneDrive comes first, and when it exists nothing under OneDrive is touched: even an "if exist" on the
+REM OneDrive-linked .venv hung for minutes (the 23:46 25 Nov rehearsal never started). Only without it, the older venvs, then python.
+set "PY=%~dp0.venv-local\Scripts\python.exe"
+if exist "%PY%" goto havepy
 set "PY=python"
 if exist "%~dp0..\.venv\Scripts\python.exe" set "PY=%~dp0..\.venv\Scripts\python.exe"
 if exist "%~dp0.venv\Scripts\python.exe" set "PY=%~dp0.venv\Scripts\python.exe"
-REM 26 Nov 2026: a venv outside OneDrive wins (the OneDrive-linked one stalled a recorder at startup for 30 min)
-if exist "%~dp0.venv-local\Scripts\python.exe" set "PY=%~dp0.venv-local\Scripts\python.exe"
+:havepy
 "%PY%" record_broadcast.py %*
 exit /b %ERRORLEVEL%
