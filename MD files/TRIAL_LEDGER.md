@@ -4,20 +4,20 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-25.
+Generated 2026-11-26.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **625** |
+| claims tested (validated + null + underpowered) | **626** |
 | validated | 199 |
-| null | 246 |
+| null | 247 |
 | underpowered | 180 |
 | context (base rates, descriptions: not counted as tests) | 85 |
-| pre-registrations with no banked verdict (below) | 91 |
+| pre-registrations with no banked verdict (below) | 92 |
 
-**What the count says (Lesson 02 §05).** If none of the 625 claims were real, tests at the usual 5% size would still pass
+**What the count says (Lesson 02 §05).** If none of the 626 claims were real, tests at the usual 5% size would still pass
 about **31.3** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
 **roughly 31 of the 199 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
@@ -737,6 +737,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-25 | close-reversal-confirm | volatility | underpowered | forge/CLOSE_REVERSAL_CONFIRM_PREREG.md |
 | 2026-11-25 | jordan-system-race | volatility | null | forge/JORDAN_SYSTEM_RACE_PREREG.md |
 | 2026-11-25 | jordan-vwap-band-tp | volatility | null | forge/JORDAN_VWAP_BAND_TP_PREREG.md |
+| 2026-11-26 | level-context-engine | volatility | null | forge/LEVEL_CONTEXT_ENGINE_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -790,6 +791,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
 - `forge/IVRV_COT_PREREG.md`: IV ÷ RV in the book, the rich-IV break rule on the indices, and COT positioning at the lines — pre-registratio
+- `forge/LEVEL_NEAR_MISS_ENTRY_PREREG.md`: level-near-miss-entry: is a touch-only entry at the volatility levels leaving money on the table?
 - `forge/LEVEL_P2_PREREG.md`: Level engine, Phase 2: reach, which-first, time-to-reach (registered 2026-10-10, before any Phase 2 outcome is
 - `forge/LEVEL_SCENARIO_SHADOW_PREREG.md`: S3 shadow: level scenarios, live reach / which-first / time (registered 2026-10-11, before any live session is
 - `forge/LINE_CLUSTER_MFE_PREREG.md`: Clusters of the forecast lines, and fade MFE / MAE at every touch — pre-registration
