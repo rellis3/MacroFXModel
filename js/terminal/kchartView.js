@@ -43,7 +43,7 @@ export function mountKChart({ doc = document, win = window, fetchJson = null, lo
 <span class="kc-sep"></span>
 <span class="kc-l">Indicators</span><span id="kc-ind" class="kc-ind">${INDICATORS.map(i => `<span class="kc-ig"><button type="button" class="btn" data-ind="${i.id}" aria-pressed="false" title="${esc(i.note)} Right-click or use the gear to change its numbers.">${esc(i.short)}</button><button type="button" class="btn kc-gear" data-gear="${i.id}" aria-expanded="false" aria-controls="kc-pop" aria-label="${esc(i.label)} settings" title="${esc(i.label)} settings">&#9881;</button></span>`).join('')}</span>
 <span class="kc-sep"></span>
-<button type="button" class="btn" id="kc-lv" aria-pressed="true" title="The day's forecast lines, option walls within 3% of price and the session range">Levels</button><button type="button" class="btn" id="kc-fit">Latest</button>
+<button type="button" class="btn" id="kc-lv" aria-pressed="true" title="The day's QLIKE per-line forecast lines (O-H / O-L p50 p75 p90, Close+ / Close- p50 p75, projected high / low; each line its own best calc, as the v3 CFD export), option walls within 3% of price and the session range">Levels</button><button type="button" class="btn" id="kc-fit">Latest</button>
 </div><div id="kc-pop" class="kc-pop" role="dialog" aria-label="Indicator settings" hidden></div><div id="kc-legend" class="kc-legend" aria-label="Indicators on the chart"></div><div id="kc-info" class="kc-info" role="status" aria-live="polite"></div><div id="kc-chart" class="kc-chart"></div>
 <p class="kc-foot muted">Candles are the terminal's own OANDA mid-price bars; they carry no volume. Lines are where price has been drawn to and how big the day is forecast to be, not which way it will go. Chart by KLineChart (Apache-2.0).</p>`;
   const $ = s => sec.querySelector(s);
@@ -151,9 +151,9 @@ export function mountKChart({ doc = document, win = window, fetchJson = null, lo
     chart?.removeOverlay({ groupId: 'lv' }); dawn = ''; lvNote = ''; drawInfo();
     if (!lvOn || !chart) return;
     if (!REPLAY_INSTRUMENTS[inst]) { lvNote = `Forecast and option lines cover the ${Object.keys(REPLAY_INSTRUMENTS).length} markets the Replay covers; ${inst} is not one of them.`; drawInfo(); return; }
-    let day; try { day = await getJson(`/api/replay/day?inst=${inst}&date=${londonDate(Date.now())}`); } catch { day = null; }
+    const [day, qb] = await Promise.all([`/api/replay/day?inst=${inst}&date=${londonDate(Date.now())}`, '/api/vol-forecast/ladder-v2/qlike-today?track=cfd'].map(u => Promise.resolve().then(() => getJson(u)).catch(() => null)));
     if (my !== lvSeq || !chart) return;
-    const L = levelsFromDay(day, Date.now());
+    const L = levelsFromDay(day ? { inst, ...day } : day, Date.now(), qb?.ok ? qb : null);
     lvNote = L.note; dawn = L.dawn ?? ''; drawInfo();
     if (!L.ok) return;
     const ts = pending.at(-1)?.timestamp ?? Date.now();

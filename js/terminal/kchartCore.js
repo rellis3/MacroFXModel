@@ -100,30 +100,52 @@ export function newerThan(data, lastTs) {
   return data.filter(b => b.timestamp >= lastTs);
 }
 
+/** The QLIKE per-line ladder's lines (ladder-qlike-per-line-cfd, the CFD board the vol-forecast-v3 export and overlay use, /api/vol-forecast/ladder-v2/qlike-today?track=cfd):
+ *  owner 26 Nov 2026, "the strongest levels": each line is its own best-QLIKE calc. O-H / O-L p50 p75 p90 and Close+ / Close- p50 p75 off the 00:00 London open, and the
+ *  projected high / low (low so far + the High-to-Low p50, high so far - it), exactly as the v3 chart draws them. q = that board's levels for this market (% of the open). */
+export const QLIKE_LINES = [
+  ['oh_p50', 1, 'O-H p50'], ['oh_p75', 1, 'O-H p75'], ['oh_p90', 1, 'O-H p90'], ['ol_p50', -1, 'O-L p50'], ['ol_p75', -1, 'O-L p75'], ['ol_p90', -1, 'O-L p90'],
+  ['cup_p50', 1, 'Close+ p50'], ['cup_p75', 1, 'Close+ p75'], ['cdn_p50', -1, 'Close- p50'], ['cdn_p75', -1, 'Close- p75'],
+];
+export function qlikeLines(q, openPrice, hi = null, lo = null) {
+  if (!q || !fin(openPrice)) return [];
+  const out = QLIKE_LINES.filter(([k]) => fin(q[k])).map(([k, side, label]) => ({ id: `ql:${k}`, label, price: openPrice * (1 + side * q[k] / 100), tone: k.startsWith('c') ? 'tx' : 'gold', kind: 'ql' }));
+  if (fin(q.hl_p50) && fin(hi) && fin(lo)) {
+    const r = openPrice * q.hl_p50 / 100;
+    out.push({ id: 'ql:projH', label: 'Proj H (Lo+HL)', price: lo + r, tone: 'gold', kind: 'ql' }, { id: 'ql:projL', label: 'Proj L (Hi-HL)', price: hi - r, tone: 'gold', kind: 'ql' });
+  }
+  return out;
+}
+
 /**
  * Today's lines for a market. day = the /api/replay/day payload, now = the moment to read them at.
- * Returns { ok, lines:[{ id, label, price, tone, kind }], dawn: string|null, price, note } or { ok:false, note } when the market has no Replay data.
+ * qb = the QLIKE per-line board ({ session, levels: { SYM: {...} } }); when it is for this session and has this market, its lines replace the plain forecast (median, p75).
+ * Returns { ok, lines:[{ id, label, price, tone, kind }], dawn: string|null, price, note, calc: 'qlike'|'forecast'|null } or { ok:false, note } when the market has no Replay data.
  * `tone` is a theme token name (pur2 for option walls, gold for forecast lines, tx2 for the session range): colour says WHAT the line is, never a direction.
  */
-export function levelsFromDay(day, now) {
+export function levelsFromDay(day, now, qb = null) {
   const m1 = Array.isArray(day?.bars) ? day.bars : [], win = day?.win;
   if (!day?.ok || !m1.length || !win) return { ok: false, lines: [], dawn: null, price: null, note: 'No option or forecast lines for this market today.' };
   const open = sessionOpen(m1, win), seen = m1.filter(b => b[0] >= win.start && b[0] <= now);
   const last = seen.at(-1) ?? m1.at(-1), price = last ? last[4] : null;
   const ts = Math.min(now, win.end - 1);
+  const q = qb?.session === win.date ? qb.levels?.[String(day.inst ?? '').toUpperCase()] ?? null : null, useQ = !!(q && fin(q.oh_p50));
   const lines = [];
-  for (const l of levelsAt({ oi: day.oi?.entries ?? [], fc: day.forecast, open }, ts)) {
+  for (const l of levelsAt({ oi: day.oi?.entries ?? [], fc: useQ ? null : day.forecast, open }, ts)) {
     if (l.kind === 'open') { lines.push({ id: l.id, label: 'Session open', price: l.price, tone: 'tx3', kind: 'open' }); continue; }
     if (l.kind === 'oi' && fin(price) && Math.abs(l.price / price - 1) > NEAR) continue;
     lines.push({ id: l.id, label: l.label, price: l.price, tone: l.kind === 'oi' ? 'pur2' : 'gold', kind: l.kind, ...(l.stale ? { stale: true } : {}) });
   }
   if (seen.length) {
     const hi = Math.max(...seen.map(b => b[2])), lo = Math.min(...seen.map(b => b[3]));
+    if (useQ && open && ts >= open.t) lines.push(...qlikeLines(q, open.price, hi, lo));
     lines.push({ id: 'sess:hi', label: 'Session high', price: hi, tone: 'tx2', kind: 'range' }, { id: 'sess:lo', label: 'Session low', price: lo, tone: 'tx2', kind: 'range' });
   }
   const d = day.dawn;
   const dawn = d && (d.tone || d.rating) ? `Dawn read: ${[d.tone, d.rating].filter(Boolean).join(', ')}${fin(d.finishedMs) ? `, written ${londonHM(d.finishedMs)} London` : ''}. A description of the morning's view, not a tested signal.` : null;
-  return { ok: true, lines, dawn, price, note: lines.some(l => l.stale) ? 'Option walls are from an older capture (marked).' : '' };
+  const calc = lines.some(l => l.kind === 'ql') ? 'qlike' : lines.some(l => l.kind === 'fc') ? 'forecast' : null;
+  const notes = [calc === 'qlike' ? 'Forecast lines: QLIKE per-line (each line its own best calc, the v3 CFD export).' : calc === 'forecast' ? 'Forecast lines: the plain forecast (median, p75); the QLIKE per-line board is not ready for this session.' : '', lines.some(l => l.stale) ? 'Option walls are from an older capture (marked).' : ''];
+  return { ok: true, lines, dawn, price, calc, note: notes.filter(Boolean).join(' ') };
 }
 
 /** The library's style object from a token map ({ up, dn, tx, tx2, tx3, line, bg1, pur2, gold }), so a theme change only needs a new map. Unknown keys are ignored by the library. */

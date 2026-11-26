@@ -78,6 +78,19 @@ ok(early.ok && !early.lines.some(l => l.kind === 'fc'), 'before the session open
 ok(levelsFromDay({ ok: false }, now).ok === false && levelsFromDay(null, now).lines.length === 0 && levelsFromDay({ ok: true, bars: [], win: {} }, now).ok === false, 'no data: an honest empty answer');
 ok(levelsFromDay({ ...day, dawn: null }, now).dawn === null, 'no dawn read, no chip');
 
+// the QLIKE per-line board replaces the plain forecast (owner 26 Nov 2026: the strongest levels)
+const qb = { session: '2026-11-16', levels: { NQ: { oh_p50: 0.5, oh_p75: 0.8, oh_p90: 1.2, ol_p50: 0.6, ol_p75: 0.9, ol_p90: 1.3, cup_p50: 0.3, cup_p75: 0.6, cdn_p50: 0.35, cdn_p75: 0.7, hl_p50: 1.1 } } };
+const Q = levelsFromDay({ ...day, inst: 'NQ' }, now, qb), o0 = m1[0][1];
+ok(Q.calc === 'qlike' && !Q.lines.some(l => l.kind === 'fc') && Q.lines.filter(l => l.kind === 'ql').length === 12, 'QLIKE lines replace the plain forecast: 10 rungs and the projected high and low');
+ok(Math.abs(Q.lines.find(l => l.id === 'ql:oh_p90').price - o0 * 1.012) < 1e-9 && Math.abs(Q.lines.find(l => l.id === 'ql:cdn_p75').price - o0 * 0.993) < 1e-9, 'rungs hang off the 00:00 London open, as the v3 chart');
+const hiQ = Q.lines.find(l => l.id === 'sess:hi').price, loQ = Q.lines.find(l => l.id === 'sess:lo').price;
+ok(Math.abs(Q.lines.find(l => l.id === 'ql:projH').price - (loQ + o0 * 0.011)) < 1e-9 && Math.abs(Q.lines.find(l => l.id === 'ql:projL').price - (hiQ - o0 * 0.011)) < 1e-9, 'projected high = low so far + HL p50, low = high so far - HL p50');
+ok(/QLIKE per-line/.test(Q.note) && Q.lines.every(l => TOKENS.includes(l.tone)), 'the note says which calc drew the lines');
+const stale = levelsFromDay({ ...day, inst: 'NQ' }, now, { ...qb, session: '2026-11-17' });
+ok(stale.calc === 'forecast' && stale.lines.some(l => l.kind === 'fc') && /not ready/.test(stale.note), 'a board for another session (after 22:00 it is tomorrow\'s) falls back to the plain forecast, and says so');
+ok(levelsFromDay({ ...day, inst: 'GOLD' }, now, qb).calc === 'forecast', 'a market missing from the board keeps the plain forecast');
+ok(levelsFromDay({ ...day, inst: 'NQ' }, start - HOUR, qb).lines.every(l => l.kind !== 'ql'), 'no QLIKE line before the session open');
+
 // themes
 const s = styleFor({ up: '#0a0', dn: '#a00', tx2: '#888', tx3: '#666', line: '#222', bg1: '#000', pur2: '#80f', gold: '#fa0' });
 ok(s.candle.bar.upColor === '#0a0' && s.candle.bar.downColor === '#a00' && s.grid.horizontal.color === '#222' && s.indicator.lines[0].color === '#80f' && s.crosshair.vertical.text.backgroundColor === '#888', 'a token map becomes the library styles');
