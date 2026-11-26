@@ -2,7 +2,7 @@
 // mis-read: strikes × expiries, tab-separated with empty cells).
 //   node js/oiMatrix.test.mjs
 import { parseOIMatrix, oiParseTable, oiParseChangeTable, oiParseVolume, oiCalcMaxPain,
-  oiMatrixPersistence, oiMatrixTermStructure, pickPrimaryExpiry, oiScrubImplausibleStrikes } from './oi.js';
+  oiMatrixPersistence, oiMatrixTermStructure, pickPrimaryExpiry, oiScrubImplausibleStrikes, oiMatrixExpiryLegs } from './oi.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) fails++; };
@@ -35,6 +35,15 @@ ok('drops the deep-OTM tail-hedge strike (empty in near-dated)', !p.strikes.incl
 ok('does NOT grab a later-expiry number for strike 100', p.calls[p.strikes.indexOf(100)] === 230);
 ok('max pain lands near the price, not dragged to the tail', oiCalcMaxPain(p.strikes, p.calls, p.puts) >= 7400,
   `${oiCalcMaxPain(p.strikes, p.calls, p.puts)}`);
+
+console.log('[expiry codes that start with a digit or a single letter (2026-11-26)]');
+{ // gold weekly G4WU6 and a USD/JPY-style 4JYQ6 used to fail the shape test, so the count check dropped EVERY code for the book
+  const RAW = ['\tGCZ6', '4050\tGCZ6', 'Strike\tG4WU6', '1 DTE\t4JYQ6', '28 DTE\tOGZ6', 'C\tP\tC\tP\tC\tP',
+    '4000\t10\t20\t30\t40\t50\t60', '4050\t11\t21\t31\t41\t51\t61', '4100\t12\t22\t32\t42\t52\t62'].join('\n');
+  const legs = oiMatrixExpiryLegs(RAW);
+  ok('all three series codes read, in column order', legs.map(l => l.code).join() === 'G4WU6,4JYQ6,OGZ6', JSON.stringify(legs.map(l => l.code)));
+  ok('the underlying on a price row is still not taken as an expiry', !legs.some(l => l.code === 'GCZ6'));
+}
 
 console.log('[change matrix — aligned to the OI strikes]');
 const CHG = [

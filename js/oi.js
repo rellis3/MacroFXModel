@@ -818,7 +818,10 @@ function _matrixRows(raw) {
     const rowIsPrice = c0 === '' || /^-?\d+(\.\d+)?$/.test(c0);
     for (const tok of lines[i].split('\t')) {
       const t = tok.trim();
-      if (!/^[A-Z]{2,3}[A-Z0-9]{1,2}[A-Z]?\d$/.test(t) || /^\d/.test(t)) continue;
+      // 2026-11-26: a series code may start with a digit (USD/JPY weekly 4JYQ6) or a single letter then a digit (gold weekly G4WU6); the old
+      // shape (two letters first, no leading digit) dropped both, so the count check below failed and those books lost every code.
+      // FX underlyings (6EZ6) also start with a digit, but they sit on price rows and go to `underlyings` by position, not by shape.
+      if (!/^[A-Z0-9]{2,5}[FGHJKMNQUVXZ]\d$/.test(t) || !/[A-Z]/.test(t)) continue;
       (rowIsPrice ? underlyings : codes).push(t);
     }
   }
