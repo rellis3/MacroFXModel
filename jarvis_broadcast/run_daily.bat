@@ -24,5 +24,7 @@ REM folder can hold a .venv or a junction to one), then the repo's .venv one lev
 set "PY=python"
 if exist "%~dp0..\.venv\Scripts\python.exe" set "PY=%~dp0..\.venv\Scripts\python.exe"
 if exist "%~dp0.venv\Scripts\python.exe" set "PY=%~dp0.venv\Scripts\python.exe"
+REM 26 Nov 2026: a venv outside OneDrive wins (the OneDrive-linked one stalled a recorder at startup for 30 min)
+if exist "%~dp0.venv-local\Scripts\python.exe" set "PY=%~dp0.venv-local\Scripts\python.exe"
 "%PY%" record_broadcast.py %*
 exit /b %ERRORLEVEL%
