@@ -254,7 +254,7 @@ export function shiftProfilePrices(p, fn, label = 'futures') {
  *  Pine strings cannot exceed 4,096 characters (a longer paste raises "String is too long"), so the block is COMPACT: bar series are integers scaled to ±1000,
  *  rows under 2% of the peak are dropped, gamma carries only the net, and the helix is downsampled. Pine's str.tonumber may not read exponent notation and may
  *  drop empty fields, so: plain numbers only, '-' for a missing value. Use chunkText() to split a result into <=4,000-character parts, one per Pine input box. */
-export function buildProfileText(p, { name, generated = '', digits = 2, savedAtMs = null } = {}) {
+export function buildProfileText(p, { name, generated = '', digits = 2, savedAtMs = null, sigma = null, gpSince = null } = {}) {
   if (!p) return '';
   const f = v => (Number.isFinite(v) ? (+v).toFixed(digits) : '-');
   const plain = (v, d = 2) => (Number.isFinite(v) ? (+v).toFixed(d) : '-');
@@ -263,7 +263,10 @@ export function buildProfileText(p, { name, generated = '', digits = 2, savedAtM
   const keep = (rows, val, m) => rows.filter(r => Math.abs(val(r)) / m >= 0.02);
   const out = ['──── OI PROFILE ' + '─'.repeat(30), `Generated: ${generated}`, '', name || p.sym];
   out.push(`M|spot|${f(p.spot)}|regime|${p.regime}|netgex|${Number.isFinite(p.netGex) ? Math.round(p.netGex / 1000) : '-'}|book|${p.book.label.replace(/\s+/g, '')}|bookpct|${p.book.share}|zg|${f(p.zeroGamma)}|flip|${f(p.flip)}`
-    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 2)}|iv|${plain(p.iv.atm, 1)}|rr|${plain(p.iv.rr, 1)}|refmove|${f(p.refMove)}|binw|${f(p.binWidth)}|vegapk|${f(p.vegaPeak)}|terms|${p.terms || 'spot'}` + (Number.isFinite(savedAtMs) ? `|saved|${new Date(savedAtMs).toISOString().slice(0, 16).replace('T', ' ')}` : ''));
+    + `|em_hi|${f(p.em?.hi)}|em_lo|${f(p.em?.lo)}|empct|${plain(p.em?.pct, 2)}|iv|${plain(p.iv.atm, 1)}|rr|${plain(p.iv.rr, 1)}|refmove|${f(p.refMove)}|binw|${f(p.binWidth)}|vegapk|${f(p.vegaPeak)}|terms|${p.terms || 'spot'}` + (Number.isFinite(savedAtMs) ? `|saved|${new Date(savedAtMs).toISOString().slice(0, 16).replace('T', ' ')}` : '')
+    // 2026-11-26 touch read: sig = one day's σ in price (the 0.25σ arm/race of the oi-profile-lines study); gpsince = unix ms of a same-morning OI capture
+    // (only then can the gamma-peak PIN first-touch ★ show; the indicator counts that level's touches from here)
+    + (Number.isFinite(sigma) && sigma > 0 ? `|sig|${(+sigma).toFixed(Math.max(digits, 2) + 1)}` : '') + (Number.isFinite(gpSince) ? `|gpsince|${Math.round(gpSince)}` : ''));
   if (p.hedgeRead) out.push(`H0|up1|${Math.round(p.hedgeRead.up1)}|dn1|${Math.round(p.hedgeRead.dn1)}`);
   for (const l of p.levels) out.push(`L|${l.type}|${f(l.price)}|${l.label}|${(+l.strength).toFixed(1)}|${l.touchPct ?? '-'}|${l.etaMin ?? '-'}|${l.expect || '-'}|${Number.isFinite(l.chgPct) ? l.chgPct : '-'}`);
   const gm = mxAbs(p.gex.map(r => r.net)); for (const r of keep(p.gex, r => r.net, gm)) out.push(`G|${f(r.price)}|${sc(r.net, gm)}`);
@@ -275,12 +278,7 @@ export function buildProfileText(p, { name, generated = '', digits = 2, savedAtM
   // VEGA: gross, so one-sided bars (0..1000). Only strikes at least 5% of the peak, 24 at most, so the paste stays inside Pine's string cap.
   const wm = mxAbs((p.vega ?? []).map(r => r.v));
   for (const r of (p.vega ?? []).filter(r => r.v / wm >= 0.05).sort((x, y) => y.v - x.v).slice(0, 24).sort((x, y) => x.price - y.price)) out.push(`W|${f(r.price)}|${sc(r.v, wm)}`);
-  const sm = p.smile.length > 24 ? p.smile.filter((_, i) => i % Math.ceil(p.smile.length / 24) === 0 || i === p.smile.length - 1) : p.smile;   // ≤24 points: a smooth curve needs no more
-  for (const r of sm) out.push(`S|${f(r.price)}|${(+r.iv).toFixed(1)}`);
-  if (p.helix) {
-    const xm = mxAbs(p.helix.flatMap(r => r.g)), hm = mxAbs(p.helix.map(r => r.hedge));
-    for (const r of p.helix) out.push(`X|${f(r.price)}|${r.g.map(v => sc(v, xm)).join('|')}|${sc(r.hedge, hm)}`);
-  }
+  // the IV smile (S rows) and gamma helix (X rows) left the paste on 2026-11-26 (owner: they added looks, not information); p.smile / p.helix stay on the object
   out.push('');
   return out.join(String.fromCharCode(10));
 }

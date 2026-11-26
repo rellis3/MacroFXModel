@@ -10,14 +10,14 @@ Generated 2026-11-26.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **627** |
+| claims tested (validated + null + underpowered) | **628** |
 | validated | 199 |
-| null | 248 |
+| null | 249 |
 | underpowered | 180 |
 | context (base rates, descriptions: not counted as tests) | 85 |
 | pre-registrations with no banked verdict (below) | 91 |
 
-**What the count says (Lesson 02 §05).** If none of the 627 claims were real, tests at the usual 5% size would still pass
+**What the count says (Lesson 02 §05).** If none of the 628 claims were real, tests at the usual 5% size would still pass
 about **31.4** of them by luck. 199 passed, so most passes are unlikely to be luck alone, but
 **roughly 31 of the 199 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
@@ -737,6 +737,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-25 | close-reversal-confirm | volatility | underpowered | forge/CLOSE_REVERSAL_CONFIRM_PREREG.md |
 | 2026-11-25 | jordan-system-race | volatility | null | forge/JORDAN_SYSTEM_RACE_PREREG.md |
 | 2026-11-25 | jordan-vwap-band-tp | volatility | null | forge/JORDAN_VWAP_BAND_TP_PREREG.md |
+| 2026-11-26 | jordan-level-history-select | volatility | null | forge/JORDAN_LEVEL_HISTORY_SELECT_PREREG.md |
 | 2026-11-26 | level-context-engine | volatility | null | forge/LEVEL_CONTEXT_ENGINE_PREREG.md |
 | 2026-11-26 | level-near-miss-entry | volatility | null | forge/LEVEL_NEAR_MISS_ENTRY_PREREG.md |
 

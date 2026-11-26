@@ -52,6 +52,10 @@ ok('no prose lines in the paste (only title, Generated, name and data lines)', r
 ok('vega bars exist, gross (never negative), peak recorded', p.vega.length > 3 && p.vega.every(r => r.v > 0) && Number.isFinite(p.vegaPeak) && Math.abs(p.vegaPeak - 100) <= 6.4, String(p.vegaPeak));
 ok('vega is heaviest near the money in the longer-dated book (the 30-DTE legs outweigh the 1-DTE spikes)', Math.abs(p.vegaPeak - 100) < Math.abs(103 - 100) + 4);
 ok('export carries vegapk in M and W rows scaled 0..1000', /\|vegapk\|\d/.test(rows.find(r => r.startsWith('M|'))) && rows.filter(r => r.startsWith('W|')).length >= 1 && Math.max(...rows.filter(r => r.startsWith('W|')).map(r => +r.split('|')[2])) === 1000 && rows.filter(r => r.startsWith('W|')).every(r => +r.split('|')[2] > 0));
+ok('no IV smile (S) or gamma helix (X) rows in the paste (dropped 2026-11-26)', !rows.some(r => r.startsWith('S|') || r.startsWith('X|')));
+{ const m = buildProfileText(p, { name: 'NQ', digits: 2, sigma: 1.2346, gpSince: 1795589271490 }).split(String.fromCharCode(10)).find(r => r.startsWith('M|'));
+  ok('M line carries sig and gpsince when given (touch read)', /\|sig\|1\.235(\||$)/.test(m) && /\|gpsince\|1795589271490$/.test(m), m);
+  ok('no sig / gpsince when not given', !/\|sig\||\|gpsince\|/.test(rows.find(r => r.startsWith('M|')))); }
 ok('degenerate input is null', buildOiProfile({ spot: 0 }, { legs: [] }) === null && buildProfileText(null) === '');
 const fut = shiftProfilePrices(p, v => v + 170);
 ok('futures terms: every price shifts by the basis, magnitudes and distances do not', fut.spot === p.spot + 170 && fut.levels.every((l, i) => l.price === p.levels[i].price + 170 && l.strength === p.levels[i].strength) && fut.gex[0].net === p.gex[0].net && fut.refMove === p.refMove && fut.binWidth === p.binWidth && fut.zeroGamma === p.zeroGamma + 170);

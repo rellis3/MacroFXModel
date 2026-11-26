@@ -374,7 +374,8 @@ import { levelHeat } from './js/levelHeat.js';                 // per-level deal
 import { buildOILevelText, leanOIText } from './js/oiLevelExport.js';
 import { wallStrengthTier as _oiWallTier } from './js/oiConfluence.js';
 import { ladderLegs as _tierLadderLegs, czLegs as _tierCzLegs } from './js/oiTiers.js';
-import { createSrZones } from './js/srZonesRoutes.js';   // S/R zones export (side by side with OI tiers; display only)
+import { createSrZones } from './js/srZonesRoutes.js';
+import { bookFresh as _srzBookFresh, londonDay as _srzLondonDay } from './js/srZones.js';   // OI Profile paste: gpsince only for a same-morning capture   // S/R zones export (side by side with OI tiers; display only)
 import { OI_CONF_DEFAULTS, volLines as _confVolLines, oiLevelList as _confOiLevels, findCoincidences as _confFind, buildConfZones as _confZones, confTolerance as _confTol } from './js/oiConf.js';
 import { sessionState as _irSessionState, reforecast as _irReforecast, morningLevels as _irMorning } from './js/intradayRange.js';
 import { oiGexLadder as _oiGexLadder, computeExpiryLevels as _oiComputeExpiry, oiMatrixExpiryLegs as _oiMatrixLegs, oiFlatVol as _oiFlatVol, oiFuturesTermsPrice as _oiFutPx } from './js/oi.js';
@@ -32944,10 +32945,11 @@ app.get('/api/oi-profile/export', async (req, res) => {
     }
     // ?terms=futures — for a chart on the FUTURES contract (NQ1!, GC1!, ES1!, 6E1!…): every price gets the stored basis added back (same converter as the levels export)
     const futTerms = String(req.query.terms || '') === 'futures';
-    const blocks = items.map(({ sk, inst, prof: p0 }) => {
+    const blocks = items.map(({ sk, inst, prof: p0, dayMove: dm }) => {
       const prof = futTerms ? shiftProfilePrices(p0, v => _oiFutPx(v, inst)) : p0;
       const fk = (() => { try { return _forecastKeyForPair(sk); } catch { return null; } })();
-      return buildProfileText(prof, { name: fk || String(sk).toUpperCase().replace(/[^A-Z0-9]/g, ''), generated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC · saved ' + (inst.savedAt || '?'), digits: _priceDigits(sk, inst.spot), savedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null });
+      const fresh = _srzBookFresh(inst.savedAtMs, _srzLondonDay(Date.now() / 1000));   // the gamma-peak PIN ★ was only ever scored on morning captures
+      return buildProfileText(prof, { name: fk || String(sk).toUpperCase().replace(/[^A-Z0-9]/g, ''), generated: new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC · saved ' + (inst.savedAt || '?'), digits: _priceDigits(sk, inst.spot), savedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null, sigma: dm, gpSince: fresh ? inst.savedAtMs : null });
     });
     if (!blocks.length) return res.status(404).type('text/plain').send('No profile could be built (no book on the record).');
     if (String(req.query.json || '') === '1') return res.json({ ok: true, items: items.map(it => ({ sk: it.sk, dayMove: it.dayMove, prof: it.prof })) });   // internal: the OI-level hedging plan reads the levels

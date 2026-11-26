@@ -1,0 +1,2872 @@
+{
+ "exploratory": true,
+ "note": "Exploratory, not pre-registered. Own QuikStrike capture, weekdays 2026-08-20..2026-11-23. Distances in forecast \u03c3; within-% counts missing as a miss.",
+ "instruments": {
+  "XAU/USD": {
+   "dates": 67,
+   "monthlyBuiltPct": 100.0,
+   "weeklyDailyOiShare": {
+    "median": 0.016,
+    "p10": 0.009,
+    "p90": 0.026
+   },
+   "codesVia": {
+    "header": 67,
+    "ivterm": 0
+   },
+   "unknownColumnDates": 0,
+   "stdCodesSeen": [
+    "OGF7",
+    "OGG7",
+    "OGH7",
+    "OGJ7",
+    "OGK7",
+    "OGM7",
+    "OGN7",
+    "OGQ7",
+    "OGU6",
+    "OGV6",
+    "OGX6",
+    "OGZ6",
+    "OGZ7",
+    "OGZ8"
+   ],
+   "profileStrongest": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 98.5,
+     "within0_25": 98.5
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 95.5,
+     "within0_25": 95.5
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 95.5,
+     "within0_25": 95.5
+    },
+    "zero_gamma": {
+     "n": 49,
+     "missingPct": 91.8,
+     "medianSig": 0.085,
+     "p90Sig": 0.14,
+     "within0_1": 6.1,
+     "within0_25": 8.2
+    },
+    "gex_flip": {
+     "n": 38,
+     "missingPct": 2.6,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 97.4,
+     "within0_25": 97.4
+    },
+    "vanna_flip": {
+     "n": 41,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 41,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 30,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "profileStrongestWhenBuilt": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 98.5,
+     "within0_25": 98.5
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 95.5,
+     "within0_25": 95.5
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 95.5,
+     "within0_25": 95.5
+    },
+    "zero_gamma": {
+     "n": 49,
+     "missingPct": 91.8,
+     "medianSig": 0.085,
+     "p90Sig": 0.14,
+     "within0_1": 6.1,
+     "within0_25": 8.2
+    },
+    "gex_flip": {
+     "n": 38,
+     "missingPct": 2.6,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 97.4,
+     "within0_25": 97.4
+    },
+    "vanna_flip": {
+     "n": 41,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 41,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 30,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "weeklyDailyOiShareWhenBuilt": 0.016,
+   "profileEveryLine": {
+    "call_wall": {
+     "n": 134,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "put_wall": {
+     "n": 134,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 99.3,
+     "within0_25": 99.3
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 95.5,
+     "within0_25": 95.5
+    },
+    "gex_flip": {
+     "n": 38,
+     "missingPct": 2.6,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 97.4,
+     "within0_25": 97.4
+    },
+    "vanna_flip": {
+     "n": 41,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 41,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 30,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "regimeAgreePct": 83.6,
+   "hedgeMapOn": {
+    "full": 88.1,
+    "monthly": 14.9
+   },
+   "book": {
+    "full": {
+     "2\u20137 DTE": 14,
+     "0\u20131 DTE": 4,
+     "8\u201345 DTE": 38,
+     "46+ DTE": 11
+    },
+    "monthly": {
+     "2\u20137 DTE": 14,
+     "0\u20131 DTE": 4,
+     "8\u201345 DTE": 38,
+     "46+ DTE": 11
+    }
+   },
+   "aggregate": {
+    "callWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 92.5,
+     "within0_25": 92.5
+    },
+    "putWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 91.0,
+     "within0_25": 91.0
+    },
+    "maxPain": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.227,
+     "within0_1": 74.6,
+     "within0_25": 89.6
+    },
+    "allExpiryGammaFlip": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.211,
+     "p90Sig": 0.518,
+     "within0_1": 13.4,
+     "within0_25": 55.2
+    }
+   }
+  },
+  "EUR/USD": {
+   "dates": 67,
+   "monthlyBuiltPct": 100.0,
+   "weeklyDailyOiShare": {
+    "median": 0.175,
+    "p10": 0.143,
+    "p90": 0.227
+   },
+   "codesVia": {
+    "header": 67,
+    "ivterm": 0
+   },
+   "unknownColumnDates": 0,
+   "stdCodesSeen": [
+    "EUUF7",
+    "EUUG7",
+    "EUUU6",
+    "EUUV6",
+    "EUUX6",
+    "EUUZ6"
+   ],
+   "profileStrongest": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.58,
+     "within0_1": 70.1,
+     "within0_25": 70.1
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.666,
+     "within0_1": 79.1,
+     "within0_25": 79.1
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.868,
+     "within0_1": 74.6,
+     "within0_25": 74.6
+    },
+    "zero_gamma": {
+     "n": 48,
+     "missingPct": 83.3,
+     "medianSig": 0.412,
+     "p90Sig": 1.968,
+     "within0_1": 2.1,
+     "within0_25": 6.2
+    },
+    "gex_flip": {
+     "n": 8,
+     "missingPct": 37.5,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 62.5,
+     "within0_25": 62.5
+    },
+    "vanna_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 19,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "profileStrongestWhenBuilt": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.58,
+     "within0_1": 70.1,
+     "within0_25": 70.1
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.666,
+     "within0_1": 79.1,
+     "within0_25": 79.1
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.868,
+     "within0_1": 74.6,
+     "within0_25": 74.6
+    },
+    "zero_gamma": {
+     "n": 48,
+     "missingPct": 83.3,
+     "medianSig": 0.412,
+     "p90Sig": 1.968,
+     "within0_1": 2.1,
+     "within0_25": 6.2
+    },
+    "gex_flip": {
+     "n": 8,
+     "missingPct": 37.5,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 62.5,
+     "within0_25": 62.5
+    },
+    "vanna_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 19,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "weeklyDailyOiShareWhenBuilt": 0.175,
+   "profileEveryLine": {
+    "call_wall": {
+     "n": 134,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.605,
+     "within0_1": 79.1,
+     "within0_25": 79.1
+    },
+    "put_wall": {
+     "n": 134,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 94.0,
+     "within0_25": 94.0
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.868,
+     "within0_1": 74.6,
+     "within0_25": 74.6
+    },
+    "gex_flip": {
+     "n": 8,
+     "missingPct": 37.5,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 62.5,
+     "within0_25": 62.5
+    },
+    "vanna_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 19,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "regimeAgreePct": 88.1,
+   "hedgeMapOn": {
+    "full": 100.0,
+    "monthly": 17.9
+   },
+   "book": {
+    "full": {
+     "8\u201345 DTE": 43,
+     "2\u20137 DTE": 17,
+     "0\u20131 DTE": 7
+    },
+    "monthly": {
+     "8\u201345 DTE": 49,
+     "2\u20137 DTE": 12,
+     "0\u20131 DTE": 6
+    }
+   },
+   "aggregate": {
+    "callWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.534,
+     "within0_1": 76.1,
+     "within0_25": 76.1
+    },
+    "putWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 4.999,
+     "within0_1": 61.2,
+     "within0_25": 61.2
+    },
+    "maxPain": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.584,
+     "p90Sig": 1.226,
+     "within0_1": 35.8,
+     "within0_25": 35.8
+    },
+    "allExpiryGammaFlip": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 1.609,
+     "p90Sig": 4.232,
+     "within0_1": 3.0,
+     "within0_25": 10.4
+    }
+   }
+  },
+  "GBP/USD": {
+   "dates": 67,
+   "monthlyBuiltPct": 100.0,
+   "weeklyDailyOiShare": {
+    "median": 0.152,
+    "p10": 0.09,
+    "p90": 0.292
+   },
+   "codesVia": {
+    "header": 67,
+    "ivterm": 0
+   },
+   "unknownColumnDates": 0,
+   "stdCodesSeen": [
+    "GBUF7",
+    "GBUG7",
+    "GBUU6",
+    "GBUV6",
+    "GBUX6",
+    "GBUZ6"
+   ],
+   "profileStrongest": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.357,
+     "within0_1": 80.6,
+     "within0_25": 80.6
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.614,
+     "within0_1": 82.1,
+     "within0_25": 82.1
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.99,
+     "within0_1": 70.1,
+     "within0_25": 70.1
+    },
+    "zero_gamma": {
+     "n": 55,
+     "missingPct": 89.1,
+     "medianSig": 0.008,
+     "p90Sig": 0.089,
+     "within0_1": 9.1,
+     "within0_25": 10.9
+    },
+    "gex_flip": {
+     "n": 40,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "vanna_flip": {
+     "n": 50,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 50,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 43,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "profileStrongestWhenBuilt": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.357,
+     "within0_1": 80.6,
+     "within0_25": 80.6
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.614,
+     "within0_1": 82.1,
+     "within0_25": 82.1
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.99,
+     "within0_1": 70.1,
+     "within0_25": 70.1
+    },
+    "zero_gamma": {
+     "n": 55,
+     "missingPct": 89.1,
+     "medianSig": 0.008,
+     "p90Sig": 0.089,
+     "within0_1": 9.1,
+     "within0_25": 10.9
+    },
+    "gex_flip": {
+     "n": 40,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "vanna_flip": {
+     "n": 50,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 50,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 43,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "weeklyDailyOiShareWhenBuilt": 0.152,
+   "profileEveryLine": {
+    "call_wall": {
+     "n": 132,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.469,
+     "within0_1": 88.6,
+     "within0_25": 88.6
+    },
+    "put_wall": {
+     "n": 133,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.552,
+     "within0_1": 85.7,
+     "within0_25": 85.7
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.99,
+     "within0_1": 70.1,
+     "within0_25": 70.1
+    },
+    "gex_flip": {
+     "n": 40,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "vanna_flip": {
+     "n": 50,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 50,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 43,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "regimeAgreePct": 73.1,
+   "hedgeMapOn": {
+    "full": 100.0,
+    "monthly": 17.9
+   },
+   "book": {
+    "full": {
+     "8\u201345 DTE": 44,
+     "2\u20137 DTE": 14,
+     "0\u20131 DTE": 9
+    },
+    "monthly": {
+     "8\u201345 DTE": 49,
+     "2\u20137 DTE": 12,
+     "0\u20131 DTE": 6
+    }
+   },
+   "aggregate": {
+    "callWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 3.349,
+     "within0_1": 62.7,
+     "within0_25": 62.7
+    },
+    "putWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.152,
+     "within0_1": 82.1,
+     "within0_25": 82.1
+    },
+    "maxPain": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.122,
+     "within0_1": 62.7,
+     "within0_25": 62.7
+    },
+    "allExpiryGammaFlip": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.29,
+     "p90Sig": 1.994,
+     "within0_1": 20.9,
+     "within0_25": 38.8
+    }
+   }
+  },
+  "USD/JPY": {
+   "dates": 67,
+   "monthlyBuiltPct": 100.0,
+   "weeklyDailyOiShare": {
+    "median": 0.168,
+    "p10": 0.078,
+    "p90": 0.301
+   },
+   "codesVia": {
+    "header": 67,
+    "ivterm": 0
+   },
+   "unknownColumnDates": 0,
+   "stdCodesSeen": [
+    "JPUF7",
+    "JPUG7",
+    "JPUU6",
+    "JPUV6",
+    "JPUX6",
+    "JPUZ6"
+   ],
+   "profileStrongest": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.829,
+     "within0_1": 64.2,
+     "within0_25": 64.2
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.151,
+     "within0_1": 70.1,
+     "within0_25": 70.1
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.017,
+     "within0_1": 56.7,
+     "within0_25": 56.7
+    },
+    "zero_gamma": {
+     "n": 64,
+     "missingPct": 81.2,
+     "medianSig": 0.105,
+     "p90Sig": 0.581,
+     "within0_1": 9.4,
+     "within0_25": 12.5
+    },
+    "gex_flip": {
+     "n": 56,
+     "missingPct": 1.8,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 98.2,
+     "within0_25": 98.2
+    },
+    "vanna_flip": {
+     "n": 48,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 48,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 60,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "profileStrongestWhenBuilt": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.829,
+     "within0_1": 64.2,
+     "within0_25": 64.2
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.151,
+     "within0_1": 70.1,
+     "within0_25": 70.1
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.017,
+     "within0_1": 56.7,
+     "within0_25": 56.7
+    },
+    "zero_gamma": {
+     "n": 64,
+     "missingPct": 81.2,
+     "medianSig": 0.105,
+     "p90Sig": 0.581,
+     "within0_1": 9.4,
+     "within0_25": 12.5
+    },
+    "gex_flip": {
+     "n": 56,
+     "missingPct": 1.8,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 98.2,
+     "within0_25": 98.2
+    },
+    "vanna_flip": {
+     "n": 48,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 48,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 60,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "weeklyDailyOiShareWhenBuilt": 0.168,
+   "profileEveryLine": {
+    "call_wall": {
+     "n": 134,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.856,
+     "within0_1": 82.1,
+     "within0_25": 82.1
+    },
+    "put_wall": {
+     "n": 134,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.939,
+     "within0_1": 84.3,
+     "within0_25": 84.3
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.017,
+     "within0_1": 56.7,
+     "within0_25": 56.7
+    },
+    "gex_flip": {
+     "n": 56,
+     "missingPct": 1.8,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 98.2,
+     "within0_25": 98.2
+    },
+    "vanna_flip": {
+     "n": 48,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 48,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 60,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "regimeAgreePct": 71.6,
+   "hedgeMapOn": {
+    "full": 100.0,
+    "monthly": 17.9
+   },
+   "book": {
+    "full": {
+     "8\u201345 DTE": 25,
+     "2\u20137 DTE": 30,
+     "0\u20131 DTE": 12
+    },
+    "monthly": {
+     "8\u201345 DTE": 49,
+     "2\u20137 DTE": 12,
+     "0\u20131 DTE": 6
+    }
+   },
+   "aggregate": {
+    "callWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.102,
+     "within0_1": 53.7,
+     "within0_25": 53.7
+    },
+    "putWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.173,
+     "within0_1": 86.6,
+     "within0_25": 86.6
+    },
+    "maxPain": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.395,
+     "within0_1": 67.2,
+     "within0_25": 67.2
+    },
+    "allExpiryGammaFlip": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.295,
+     "p90Sig": 1.16,
+     "within0_1": 32.8,
+     "within0_25": 43.3
+    }
+   }
+  },
+  "AUD/USD": {
+   "dates": 67,
+   "monthlyBuiltPct": 100.0,
+   "weeklyDailyOiShare": {
+    "median": 0.141,
+    "p10": 0.067,
+    "p90": 0.185
+   },
+   "codesVia": {
+    "header": 67,
+    "ivterm": 0
+   },
+   "unknownColumnDates": 0,
+   "stdCodesSeen": [
+    "ADUF7",
+    "ADUG7",
+    "ADUU6",
+    "ADUV6",
+    "ADUX6",
+    "ADUZ6"
+   ],
+   "profileStrongest": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.028,
+     "within0_1": 83.6,
+     "within0_25": 83.6
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.788,
+     "within0_1": 86.6,
+     "within0_25": 86.6
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.245,
+     "within0_1": 76.1,
+     "within0_25": 76.1
+    },
+    "zero_gamma": {
+     "n": 56,
+     "missingPct": 87.5,
+     "medianSig": 0.107,
+     "p90Sig": 0.423,
+     "within0_1": 5.4,
+     "within0_25": 8.9
+    },
+    "gex_flip": {
+     "n": 12,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "vanna_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 19,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "profileStrongestWhenBuilt": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.028,
+     "within0_1": 83.6,
+     "within0_25": 83.6
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.788,
+     "within0_1": 86.6,
+     "within0_25": 86.6
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.245,
+     "within0_1": 76.1,
+     "within0_25": 76.1
+    },
+    "zero_gamma": {
+     "n": 56,
+     "missingPct": 87.5,
+     "medianSig": 0.107,
+     "p90Sig": 0.423,
+     "within0_1": 5.4,
+     "within0_25": 8.9
+    },
+    "gex_flip": {
+     "n": 12,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "vanna_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 19,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "weeklyDailyOiShareWhenBuilt": 0.141,
+   "profileEveryLine": {
+    "call_wall": {
+     "n": 131,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.782,
+     "within0_1": 87.0,
+     "within0_25": 87.0
+    },
+    "put_wall": {
+     "n": 132,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 94.7,
+     "within0_25": 94.7
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.245,
+     "within0_1": 76.1,
+     "within0_25": 76.1
+    },
+    "gex_flip": {
+     "n": 12,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "vanna_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 49,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 19,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "regimeAgreePct": 80.6,
+   "hedgeMapOn": {
+    "full": 100.0,
+    "monthly": 17.9
+   },
+   "book": {
+    "full": {
+     "8\u201345 DTE": 43,
+     "2\u20137 DTE": 13,
+     "0\u20131 DTE": 10,
+     "46+ DTE": 1
+    },
+    "monthly": {
+     "8\u201345 DTE": 44,
+     "2\u20137 DTE": 12,
+     "0\u20131 DTE": 6,
+     "46+ DTE": 5
+    }
+   },
+   "aggregate": {
+    "callWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 92.5,
+     "within0_25": 92.5
+    },
+    "putWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 3.245,
+     "within0_1": 73.1,
+     "within0_25": 73.1
+    },
+    "maxPain": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.928,
+     "within0_1": 77.6,
+     "within0_25": 77.6
+    },
+    "allExpiryGammaFlip": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.64,
+     "p90Sig": 1.465,
+     "within0_1": 13.4,
+     "within0_25": 26.9
+    }
+   }
+  },
+  "USD/CAD": {
+   "dates": 67,
+   "monthlyBuiltPct": 100.0,
+   "weeklyDailyOiShare": {
+    "median": 0.114,
+    "p10": 0.068,
+    "p90": 0.17
+   },
+   "codesVia": {
+    "header": 67,
+    "ivterm": 0
+   },
+   "unknownColumnDates": 0,
+   "stdCodesSeen": [
+    "CAUF7",
+    "CAUG7",
+    "CAUU6",
+    "CAUV6",
+    "CAUX6",
+    "CAUZ6"
+   ],
+   "profileStrongest": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.407,
+     "within0_1": 70.1,
+     "within0_25": 70.1
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.447,
+     "within0_1": 77.6,
+     "within0_25": 77.6
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.467,
+     "within0_1": 79.1,
+     "within0_25": 79.1
+    },
+    "zero_gamma": {
+     "n": 54,
+     "missingPct": 87.0,
+     "medianSig": 0.097,
+     "p90Sig": 0.242,
+     "within0_1": 7.4,
+     "within0_25": 11.1
+    },
+    "gex_flip": {
+     "n": 13,
+     "missingPct": 15.4,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 84.6,
+     "within0_25": 84.6
+    },
+    "vanna_flip": {
+     "n": 43,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 43,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 16,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "profileStrongestWhenBuilt": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.407,
+     "within0_1": 70.1,
+     "within0_25": 70.1
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.447,
+     "within0_1": 77.6,
+     "within0_25": 77.6
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.467,
+     "within0_1": 79.1,
+     "within0_25": 79.1
+    },
+    "zero_gamma": {
+     "n": 54,
+     "missingPct": 87.0,
+     "medianSig": 0.097,
+     "p90Sig": 0.242,
+     "within0_1": 7.4,
+     "within0_25": 11.1
+    },
+    "gex_flip": {
+     "n": 13,
+     "missingPct": 15.4,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 84.6,
+     "within0_25": 84.6
+    },
+    "vanna_flip": {
+     "n": 43,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 43,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 16,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "weeklyDailyOiShareWhenBuilt": 0.114,
+   "profileEveryLine": {
+    "call_wall": {
+     "n": 131,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.933,
+     "within0_1": 63.4,
+     "within0_25": 63.4
+    },
+    "put_wall": {
+     "n": 131,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.08,
+     "within0_1": 71.8,
+     "within0_25": 71.8
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.467,
+     "within0_1": 79.1,
+     "within0_25": 79.1
+    },
+    "gex_flip": {
+     "n": 13,
+     "missingPct": 15.4,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 84.6,
+     "within0_25": 84.6
+    },
+    "vanna_flip": {
+     "n": 43,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 43,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 16,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "regimeAgreePct": 62.7,
+   "hedgeMapOn": {
+    "full": 100.0,
+    "monthly": 17.9
+   },
+   "book": {
+    "full": {
+     "8\u201345 DTE": 45,
+     "2\u20137 DTE": 13,
+     "0\u20131 DTE": 7,
+     "46+ DTE": 2
+    },
+    "monthly": {
+     "8\u201345 DTE": 46,
+     "2\u20137 DTE": 9,
+     "0\u20131 DTE": 4,
+     "46+ DTE": 8
+    }
+   },
+   "aggregate": {
+    "callWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 95.5,
+     "within0_25": 95.5
+    },
+    "putWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "maxPain": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.339,
+     "within0_1": 76.1,
+     "within0_25": 76.1
+    },
+    "allExpiryGammaFlip": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 1.427,
+     "p90Sig": 25.077,
+     "within0_1": 25.4,
+     "within0_25": 31.3
+    }
+   }
+  },
+  "USD/CHF": {
+   "dates": 67,
+   "monthlyBuiltPct": 100.0,
+   "weeklyDailyOiShare": {
+    "median": 0.036,
+    "p10": 0.005,
+    "p90": 0.168
+   },
+   "codesVia": {
+    "header": 67,
+    "ivterm": 0
+   },
+   "unknownColumnDates": 0,
+   "stdCodesSeen": [
+    "CHUF7",
+    "CHUG7",
+    "CHUU6",
+    "CHUV6",
+    "CHUX6",
+    "CHUZ6"
+   ],
+   "profileStrongest": {
+    "call_wall": {
+     "n": 64,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.027,
+     "within0_1": 85.9,
+     "within0_25": 85.9
+    },
+    "put_wall": {
+     "n": 63,
+     "missingPct": 4.8,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 87.3,
+     "within0_25": 87.3
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.129,
+     "within0_1": 79.1,
+     "within0_25": 79.1
+    },
+    "zero_gamma": {
+     "n": 25,
+     "missingPct": 52.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 48.0,
+     "within0_25": 48.0
+    },
+    "gex_flip": {
+     "n": 10,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "vanna_flip": {
+     "n": 47,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 47,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 46,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "profileStrongestWhenBuilt": {
+    "call_wall": {
+     "n": 64,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.027,
+     "within0_1": 85.9,
+     "within0_25": 85.9
+    },
+    "put_wall": {
+     "n": 63,
+     "missingPct": 4.8,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 87.3,
+     "within0_25": 87.3
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.129,
+     "within0_1": 79.1,
+     "within0_25": 79.1
+    },
+    "zero_gamma": {
+     "n": 25,
+     "missingPct": 52.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 48.0,
+     "within0_25": 48.0
+    },
+    "gex_flip": {
+     "n": 10,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "vanna_flip": {
+     "n": 47,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 47,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 46,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "weeklyDailyOiShareWhenBuilt": 0.036,
+   "profileEveryLine": {
+    "call_wall": {
+     "n": 118,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 96.6,
+     "within0_25": 96.6
+    },
+    "put_wall": {
+     "n": 118,
+     "missingPct": 4.2,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 89.8,
+     "within0_25": 89.8
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.129,
+     "within0_1": 79.1,
+     "within0_25": 79.1
+    },
+    "gex_flip": {
+     "n": 10,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "vanna_flip": {
+     "n": 47,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 47,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 46,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "regimeAgreePct": 76.1,
+   "hedgeMapOn": {
+    "full": 73.1,
+    "monthly": 17.9
+   },
+   "book": {
+    "full": {
+     "8\u201345 DTE": 30,
+     "2\u20137 DTE": 15,
+     "0\u20131 DTE": 5,
+     "46+ DTE": 17
+    },
+    "monthly": {
+     "8\u201345 DTE": 29,
+     "2\u20137 DTE": 8,
+     "0\u20131 DTE": 4,
+     "46+ DTE": 26
+    }
+   },
+   "aggregate": {
+    "callWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "putWall": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.008,
+     "within0_1": 82.1,
+     "within0_25": 82.1
+    },
+    "maxPain": {
+     "n": 67,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.972,
+     "within0_1": 88.1,
+     "within0_25": 88.1
+    },
+    "allExpiryGammaFlip": {
+     "n": 57,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.316,
+     "within0_1": 80.7,
+     "within0_25": 87.7
+    }
+   }
+  },
+  "NAS100_USD": {
+   "dates": 67,
+   "monthlyBuiltPct": 34.3,
+   "weeklyDailyOiShare": {
+    "median": 1.0,
+    "p10": 0.509,
+    "p90": 1.0
+   },
+   "codesVia": {
+    "header": 67,
+    "ivterm": 0
+   },
+   "unknownColumnDates": 0,
+   "stdCodesSeen": [
+    "NQU6",
+    "NQZ6"
+   ],
+   "profileStrongest": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 0.769,
+     "p90Sig": 1.42,
+     "within0_1": 13.4,
+     "within0_25": 13.4
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 1.914,
+     "within0_1": 20.9,
+     "within0_25": 20.9
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 1.186,
+     "p90Sig": 3.44,
+     "within0_1": 9.0,
+     "within0_25": 9.0
+    },
+    "zero_gamma": {
+     "n": 65,
+     "missingPct": 93.8,
+     "medianSig": 0.055,
+     "p90Sig": 0.131,
+     "within0_1": 4.6,
+     "within0_25": 6.2
+    },
+    "gex_flip": {
+     "n": 45,
+     "missingPct": 71.1,
+     "medianSig": 0.0,
+     "p90Sig": 0.327,
+     "within0_1": 24.4,
+     "within0_25": 24.4
+    },
+    "vanna_flip": {
+     "n": 49,
+     "missingPct": 63.3,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 36.7,
+     "within0_25": 36.7
+    },
+    "charm_flip": {
+     "n": 49,
+     "missingPct": 63.3,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 36.7,
+     "within0_25": 36.7
+    },
+    "max_pain": {
+     "n": 61,
+     "missingPct": 65.6,
+     "medianSig": 0.0,
+     "p90Sig": 1.662,
+     "within0_1": 24.6,
+     "within0_25": 24.6
+    }
+   },
+   "profileStrongestWhenBuilt": {
+    "call_wall": {
+     "n": 23,
+     "missingPct": 0.0,
+     "medianSig": 0.769,
+     "p90Sig": 1.42,
+     "within0_1": 39.1,
+     "within0_25": 39.1
+    },
+    "put_wall": {
+     "n": 23,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.914,
+     "within0_1": 60.9,
+     "within0_25": 60.9
+    },
+    "gamma_peak": {
+     "n": 23,
+     "missingPct": 0.0,
+     "medianSig": 1.186,
+     "p90Sig": 3.44,
+     "within0_1": 26.1,
+     "within0_25": 26.1
+    },
+    "zero_gamma": {
+     "n": 23,
+     "missingPct": 82.6,
+     "medianSig": 0.055,
+     "p90Sig": 0.131,
+     "within0_1": 13.0,
+     "within0_25": 17.4
+    },
+    "gex_flip": {
+     "n": 14,
+     "missingPct": 7.1,
+     "medianSig": 0.0,
+     "p90Sig": 0.327,
+     "within0_1": 78.6,
+     "within0_25": 78.6
+    },
+    "vanna_flip": {
+     "n": 18,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 18,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 21,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.662,
+     "within0_1": 71.4,
+     "within0_25": 71.4
+    }
+   },
+   "weeklyDailyOiShareWhenBuilt": 0.541,
+   "profileEveryLine": {
+    "call_wall": {
+     "n": 134,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 1.218,
+     "within0_1": 17.9,
+     "within0_25": 19.4
+    },
+    "put_wall": {
+     "n": 134,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 0.795,
+     "within0_1": 23.1,
+     "within0_25": 23.9
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 1.186,
+     "p90Sig": 3.44,
+     "within0_1": 9.0,
+     "within0_25": 9.0
+    },
+    "gex_flip": {
+     "n": 45,
+     "missingPct": 71.1,
+     "medianSig": 0.0,
+     "p90Sig": 0.327,
+     "within0_1": 24.4,
+     "within0_25": 24.4
+    },
+    "vanna_flip": {
+     "n": 49,
+     "missingPct": 63.3,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 36.7,
+     "within0_25": 36.7
+    },
+    "charm_flip": {
+     "n": 49,
+     "missingPct": 63.3,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 36.7,
+     "within0_25": 36.7
+    },
+    "max_pain": {
+     "n": 61,
+     "missingPct": 65.6,
+     "medianSig": 0.0,
+     "p90Sig": 1.662,
+     "within0_1": 24.6,
+     "within0_25": 24.6
+    }
+   },
+   "regimeAgreePct": 73.9,
+   "hedgeMapOn": {
+    "full": 100.0,
+    "monthly": 6.0
+   },
+   "book": {
+    "full": {
+     "0\u20131 DTE": 21,
+     "8\u201345 DTE": 10,
+     "2\u20137 DTE": 36
+    },
+    "monthly": {
+     "8\u201345 DTE": 17,
+     "2\u20137 DTE": 4,
+     "0\u20131 DTE": 2,
+     "not built": 44
+    }
+   },
+   "aggregate": {
+    "callWall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 1.035,
+     "p90Sig": 3.718,
+     "within0_1": 13.4,
+     "within0_25": 13.4
+    },
+    "putWall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 2.184,
+     "within0_1": 22.4,
+     "within0_25": 22.4
+    },
+    "maxPain": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 0.19,
+     "p90Sig": 0.777,
+     "within0_1": 11.9,
+     "within0_25": 17.9
+    },
+    "allExpiryGammaFlip": {
+     "n": 67,
+     "missingPct": 100.0
+    }
+   }
+  },
+  "SPX500_USD": {
+   "dates": 67,
+   "monthlyBuiltPct": 34.3,
+   "weeklyDailyOiShare": {
+    "median": 1.0,
+    "p10": 0.708,
+    "p90": 1.0
+   },
+   "codesVia": {
+    "header": 67,
+    "ivterm": 0
+   },
+   "unknownColumnDates": 0,
+   "stdCodesSeen": [
+    "ESU6",
+    "ESZ6"
+   ],
+   "profileStrongest": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 1.475,
+     "within0_1": 22.4,
+     "within0_25": 22.4
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 1.484,
+     "within0_1": 22.4,
+     "within0_25": 22.4
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 1.045,
+     "p90Sig": 3.139,
+     "within0_1": 14.9,
+     "within0_25": 14.9
+    },
+    "zero_gamma": {
+     "n": 65,
+     "missingPct": 93.8,
+     "medianSig": 0.167,
+     "p90Sig": 0.257,
+     "within0_1": 3.1,
+     "within0_25": 4.6
+    },
+    "gex_flip": {
+     "n": 51,
+     "missingPct": 64.7,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 33.3,
+     "within0_25": 33.3
+    },
+    "vanna_flip": {
+     "n": 48,
+     "missingPct": 64.6,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 35.4,
+     "within0_25": 35.4
+    },
+    "charm_flip": {
+     "n": 48,
+     "missingPct": 64.6,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 35.4,
+     "within0_25": 35.4
+    },
+    "max_pain": {
+     "n": 39,
+     "missingPct": 87.2,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 12.8,
+     "within0_25": 12.8
+    }
+   },
+   "profileStrongestWhenBuilt": {
+    "call_wall": {
+     "n": 23,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.475,
+     "within0_1": 65.2,
+     "within0_25": 65.2
+    },
+    "put_wall": {
+     "n": 23,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.484,
+     "within0_1": 65.2,
+     "within0_25": 65.2
+    },
+    "gamma_peak": {
+     "n": 23,
+     "missingPct": 0.0,
+     "medianSig": 1.045,
+     "p90Sig": 3.139,
+     "within0_1": 43.5,
+     "within0_25": 43.5
+    },
+    "zero_gamma": {
+     "n": 22,
+     "missingPct": 81.8,
+     "medianSig": 0.167,
+     "p90Sig": 0.257,
+     "within0_1": 9.1,
+     "within0_25": 13.6
+    },
+    "gex_flip": {
+     "n": 18,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 94.4,
+     "within0_25": 94.4
+    },
+    "vanna_flip": {
+     "n": 17,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 17,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 6,
+     "missingPct": 16.7,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 83.3,
+     "within0_25": 83.3
+    }
+   },
+   "weeklyDailyOiShareWhenBuilt": 0.723,
+   "profileEveryLine": {
+    "call_wall": {
+     "n": 134,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 0.148,
+     "within0_1": 30.6,
+     "within0_25": 30.6
+    },
+    "put_wall": {
+     "n": 134,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 0.527,
+     "within0_1": 29.9,
+     "within0_25": 29.9
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 1.045,
+     "p90Sig": 3.139,
+     "within0_1": 14.9,
+     "within0_25": 14.9
+    },
+    "gex_flip": {
+     "n": 51,
+     "missingPct": 64.7,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 33.3,
+     "within0_25": 33.3
+    },
+    "vanna_flip": {
+     "n": 48,
+     "missingPct": 64.6,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 35.4,
+     "within0_25": 35.4
+    },
+    "charm_flip": {
+     "n": 48,
+     "missingPct": 64.6,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 35.4,
+     "within0_25": 35.4
+    },
+    "max_pain": {
+     "n": 39,
+     "missingPct": 87.2,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 12.8,
+     "within0_25": 12.8
+    }
+   },
+   "regimeAgreePct": 73.9,
+   "hedgeMapOn": {
+    "full": 100.0,
+    "monthly": 6.0
+   },
+   "book": {
+    "full": {
+     "0\u20131 DTE": 11,
+     "2\u20137 DTE": 39,
+     "8\u201345 DTE": 17
+    },
+    "monthly": {
+     "8\u201345 DTE": 17,
+     "2\u20137 DTE": 4,
+     "0\u20131 DTE": 2,
+     "not built": 44
+    }
+   },
+   "aggregate": {
+    "callWall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 0.991,
+     "within0_1": 29.9,
+     "within0_25": 29.9
+    },
+    "putWall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 1.213,
+     "p90Sig": 2.448,
+     "within0_1": 16.4,
+     "within0_25": 16.4
+    },
+    "maxPain": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 1.167,
+     "p90Sig": 1.502,
+     "within0_1": 3.0,
+     "within0_25": 3.0
+    },
+    "allExpiryGammaFlip": {
+     "n": 67,
+     "missingPct": 100.0
+    }
+   }
+  },
+  "US30_USD": {
+   "dates": 48,
+   "monthlyBuiltPct": 25.0,
+   "weeklyDailyOiShare": {
+    "median": 1.0,
+    "p10": 0.191,
+    "p90": 1.0
+   },
+   "codesVia": {
+    "header": 48,
+    "ivterm": 0
+   },
+   "unknownColumnDates": 0,
+   "stdCodesSeen": [
+    "YMU6",
+    "YMZ6"
+   ],
+   "profileStrongest": {
+    "call_wall": {
+     "n": 45,
+     "missingPct": 80.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.23,
+     "within0_1": 17.8,
+     "within0_25": 17.8
+    },
+    "put_wall": {
+     "n": 40,
+     "missingPct": 75.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 25.0,
+     "within0_25": 25.0
+    },
+    "gamma_peak": {
+     "n": 48,
+     "missingPct": 75.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.034,
+     "within0_1": 20.8,
+     "within0_25": 20.8
+    },
+    "zero_gamma": {
+     "n": 4,
+     "missingPct": 100.0
+    },
+    "gex_flip": {
+     "n": 23,
+     "missingPct": 91.3,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 8.7,
+     "within0_25": 8.7
+    },
+    "vanna_flip": {
+     "n": 32,
+     "missingPct": 75.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 25.0,
+     "within0_25": 25.0
+    },
+    "charm_flip": {
+     "n": 32,
+     "missingPct": 75.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 25.0,
+     "within0_25": 25.0
+    },
+    "max_pain": {
+     "n": 44,
+     "missingPct": 81.8,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 18.2,
+     "within0_25": 18.2
+    }
+   },
+   "profileStrongestWhenBuilt": {
+    "call_wall": {
+     "n": 9,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.23,
+     "within0_1": 88.9,
+     "within0_25": 88.9
+    },
+    "put_wall": {
+     "n": 11,
+     "missingPct": 9.1,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 90.9,
+     "within0_25": 90.9
+    },
+    "gamma_peak": {
+     "n": 12,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.034,
+     "within0_1": 83.3,
+     "within0_25": 83.3
+    },
+    "zero_gamma": {
+     "n": 1,
+     "missingPct": 100.0
+    },
+    "gex_flip": {
+     "n": 2,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "vanna_flip": {
+     "n": 8,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 8,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 10,
+     "missingPct": 20.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 80.0,
+     "within0_25": 80.0
+    }
+   },
+   "weeklyDailyOiShareWhenBuilt": 0.204,
+   "profileEveryLine": {
+    "call_wall": {
+     "n": 83,
+     "missingPct": 81.9,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 16.9,
+     "within0_25": 16.9
+    },
+    "put_wall": {
+     "n": 68,
+     "missingPct": 79.4,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 20.6,
+     "within0_25": 20.6
+    },
+    "gamma_peak": {
+     "n": 48,
+     "missingPct": 75.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.034,
+     "within0_1": 20.8,
+     "within0_25": 20.8
+    },
+    "gex_flip": {
+     "n": 23,
+     "missingPct": 91.3,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 8.7,
+     "within0_25": 8.7
+    },
+    "vanna_flip": {
+     "n": 32,
+     "missingPct": 75.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 25.0,
+     "within0_25": 25.0
+    },
+    "charm_flip": {
+     "n": 32,
+     "missingPct": 75.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 25.0,
+     "within0_25": 25.0
+    },
+    "max_pain": {
+     "n": 44,
+     "missingPct": 81.8,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 18.2,
+     "within0_25": 18.2
+    }
+   },
+   "regimeAgreePct": 100.0,
+   "hedgeMapOn": {
+    "full": 18.8,
+    "monthly": 8.3
+   },
+   "book": {
+    "full": {
+     "0\u20131 DTE": 7,
+     "8\u201345 DTE": 20,
+     "2\u20137 DTE": 21
+    },
+    "monthly": {
+     "0\u20131 DTE": 4,
+     "8\u201345 DTE": 6,
+     "2\u20137 DTE": 2,
+     "not built": 36
+    }
+   },
+   "aggregate": {
+    "callWall": {
+     "n": 48,
+     "missingPct": 75.0,
+     "medianSig": 0.0,
+     "p90Sig": 4.022,
+     "within0_1": 16.7,
+     "within0_25": 16.7
+    },
+    "putWall": {
+     "n": 48,
+     "missingPct": 75.0,
+     "medianSig": 0.0,
+     "p90Sig": 2.572,
+     "within0_1": 18.8,
+     "within0_25": 18.8
+    },
+    "maxPain": {
+     "n": 48,
+     "missingPct": 75.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.4,
+     "within0_1": 16.7,
+     "within0_25": 16.7
+    },
+    "allExpiryGammaFlip": null
+   }
+  },
+  "US2000_USD": {
+   "dates": 67,
+   "monthlyBuiltPct": 34.3,
+   "weeklyDailyOiShare": {
+    "median": 1.0,
+    "p10": 0.425,
+    "p90": 1.0
+   },
+   "codesVia": {
+    "header": 67,
+    "ivterm": 0
+   },
+   "unknownColumnDates": 0,
+   "stdCodesSeen": [
+    "RTOU6",
+    "RTOZ6"
+   ],
+   "profileStrongest": {
+    "call_wall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 1.454,
+     "within0_1": 19.4,
+     "within0_25": 19.4
+    },
+    "put_wall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 0.902,
+     "within0_1": 29.9,
+     "within0_25": 29.9
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 1.099,
+     "p90Sig": 3.141,
+     "within0_1": 14.9,
+     "within0_25": 14.9
+    },
+    "zero_gamma": {
+     "n": 55,
+     "missingPct": 98.2,
+     "medianSig": 0.184,
+     "p90Sig": 0.184,
+     "within0_1": 0.0,
+     "within0_25": 1.8
+    },
+    "gex_flip": {
+     "n": 27,
+     "missingPct": 100.0
+    },
+    "vanna_flip": {
+     "n": 49,
+     "missingPct": 63.3,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 36.7,
+     "within0_25": 36.7
+    },
+    "charm_flip": {
+     "n": 49,
+     "missingPct": 63.3,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 36.7,
+     "within0_25": 36.7
+    },
+    "max_pain": {
+     "n": 55,
+     "missingPct": 65.5,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 34.5,
+     "within0_25": 34.5
+    }
+   },
+   "profileStrongestWhenBuilt": {
+    "call_wall": {
+     "n": 23,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 1.454,
+     "within0_1": 56.5,
+     "within0_25": 56.5
+    },
+    "put_wall": {
+     "n": 23,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.902,
+     "within0_1": 87.0,
+     "within0_25": 87.0
+    },
+    "gamma_peak": {
+     "n": 23,
+     "missingPct": 0.0,
+     "medianSig": 1.099,
+     "p90Sig": 3.141,
+     "within0_1": 43.5,
+     "within0_25": 43.5
+    },
+    "zero_gamma": {
+     "n": 13,
+     "missingPct": 92.3,
+     "medianSig": 0.184,
+     "p90Sig": 0.184,
+     "within0_1": 0.0,
+     "within0_25": 7.7
+    },
+    "gex_flip": null,
+    "vanna_flip": {
+     "n": 18,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "charm_flip": {
+     "n": 18,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    },
+    "max_pain": {
+     "n": 19,
+     "missingPct": 0.0,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 100.0,
+     "within0_25": 100.0
+    }
+   },
+   "weeklyDailyOiShareWhenBuilt": 0.438,
+   "profileEveryLine": {
+    "call_wall": {
+     "n": 134,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 0.759,
+     "within0_1": 22.4,
+     "within0_25": 23.1
+    },
+    "put_wall": {
+     "n": 133,
+     "missingPct": 66.2,
+     "medianSig": 0.0,
+     "p90Sig": 0.602,
+     "within0_1": 27.8,
+     "within0_25": 27.8
+    },
+    "gamma_peak": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 1.099,
+     "p90Sig": 3.141,
+     "within0_1": 14.9,
+     "within0_25": 14.9
+    },
+    "gex_flip": {
+     "n": 27,
+     "missingPct": 100.0
+    },
+    "vanna_flip": {
+     "n": 49,
+     "missingPct": 63.3,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 36.7,
+     "within0_25": 36.7
+    },
+    "charm_flip": {
+     "n": 49,
+     "missingPct": 63.3,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 36.7,
+     "within0_25": 36.7
+    },
+    "max_pain": {
+     "n": 55,
+     "missingPct": 65.5,
+     "medianSig": 0.0,
+     "p90Sig": 0.0,
+     "within0_1": 34.5,
+     "within0_25": 34.5
+    }
+   },
+   "regimeAgreePct": 100.0,
+   "hedgeMapOn": {
+    "full": 100.0,
+    "monthly": 6.0
+   },
+   "book": {
+    "full": {
+     "0\u20131 DTE": 18,
+     "2\u20137 DTE": 35,
+     "8\u201345 DTE": 14
+    },
+    "monthly": {
+     "8\u201345 DTE": 17,
+     "2\u20137 DTE": 4,
+     "0\u20131 DTE": 2,
+     "not built": 44
+    }
+   },
+   "aggregate": {
+    "callWall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 4.51,
+     "within0_1": 19.4,
+     "within0_25": 19.4
+    },
+    "putWall": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 1.809,
+     "p90Sig": 5.71,
+     "within0_1": 11.9,
+     "within0_25": 11.9
+    },
+    "maxPain": {
+     "n": 67,
+     "missingPct": 65.7,
+     "medianSig": 0.0,
+     "p90Sig": 1.143,
+     "within0_1": 19.4,
+     "within0_25": 19.4
+    },
+    "allExpiryGammaFlip": {
+     "n": 67,
+     "missingPct": 100.0
+    }
+   }
+  }
+ }
+}
