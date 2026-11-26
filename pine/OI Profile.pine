@@ -4,9 +4,11 @@
 //   GEX PROFILE  per-strike dealer gamma of the STRONGEST-DTE book (green = long gamma/pins, red = short gamma/amplifies)
 //   VANNA        per-strike vanna (cyan +, magenta −)           VOLUME   today's traded options volume by strike
 //   VEGA         gross vega by strike, whole book (purple): where the book is most sensitive to a vol move
-//   IV SMILE     implied vol by strike — the stored points only, nothing invented for the wings
-//   GAMMA HELIX  the dealer-hedging map twisted into two strands: blue = dealer gamma if price were here (IV −2/0/+2/+4 points), white = the
-//                futures dealers must buy/sell to stay flat (mirrored). Where the strands cross is zero gamma.
+//   OI CHG       the day's change in open interest by strike
+//   TOUCH READ   (2026-11-26) every level replays today's bars: untouched / testing now / held ×N / broke ×N, and what the NEXT touch did in our
+//                data (oi-profile-lines, 13k touches on these exact lines vs the same line moved 0.25-0.5σ). Almost every path is 50/50. Two
+//                are not: ★ the gamma peak on a PIN day, first touch after this morning's capture (held 70%, a candidate scored forward), and a
+//                third touch after held→broke (held 36% vs 47%, a hint, not significant). The IV smile and gamma helix columns were removed.
 //
 // DATA: paste the export from  <dashboard>/api/oi-profile/export?pair=nq   (or the "Profile export" button on the OI Lab page) into the box below. One paste per
 // day is plenty — the levels are daily. Several instruments can be pasted together; the block matching the chart's symbol is used.
@@ -14,7 +16,7 @@
 //
 // STATUS: a picture of the book, NOT a signal. The gamma SIGN as a range read is real on NQ; walls/flips reacted like any neighbouring strike in our placebo tests.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
-indicator("OI Profile", shorttitle="OI Profile", overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100)
+indicator("OI Profile", shorttitle="OI Profile", overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100, max_bars_back=2000)
 
 // ── Inputs ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 G1 = "1 · Data"
@@ -41,8 +43,7 @@ showVanna  = input.bool(true, "Vanna", group=G2)
 showVol    = input.bool(true, "Volume", group=G2)
 showChg    = input.bool(true, "OI change", group=G2, tooltip="The day's net change in open interest by strike: green = contracts added (positioning building), red = contracts closed (unwinding). Updated once a day with the OI snapshot.")
 showVega   = input.bool(true, "Vega", group=G2, tooltip="Gross vega by strike, the whole book (all expiries, calls plus puts): where the options book is most sensitive to a move in implied vol. A picture of the book, not a signal; dealers hedge vega with options, not the underlying.")
-showSmile  = input.bool(true, "IV smile", group=G2)
-showHelix  = input.bool(true, "Gamma helix", group=G2)
+showRead   = input.bool(true, "Touch read (today's touches + what the next touch did in our data)", group=G2, tooltip="Each level replays today's bars from London midnight with the study's rules: a close 0.25σ away arms it, a trade at the level is a touch, then held = 0.25σ back before 0.25σ through. The label shows today's record and what the next touch did in 13k touches on these lines. Needs an export with sig (from 2026-11-26).")
 G3 = "3 · Layout"
 lineStart = input.string("London midnight", "Lines start at", options=["London midnight", "Fixed bars back"], group=G3, tooltip="London midnight: every line is anchored at 00:00 Europe/London, the start of the trading day, and runs to the profile (intraday charts only; on daily and above it falls back to a fixed length). Fixed bars back: the old 120-bar line.")
 lineEnd   = input.string("Profile", "Lines end at", options=["Profile", "London midnight"], group=G3, tooltip="Profile: lines run to the profile panel just right of the last bar. London midnight: lines stop at the next 00:00 London and the panel moves out to just after it (scroll the chart right to see it).")
@@ -63,7 +64,7 @@ cVanna = input.color(#ff7ad9, "Vanna flip", group=G4)
 cCharm = input.color(#ff9f43, "Charm flip", group=G4)
 cVol   = input.color(#4aa8ff, "Volume", group=G4)
 cEM    = input.color(#f0b04a, "Expected move", group=G4)
-cSmile = input.color(#ffd166, "IV smile", group=G4)
+cSmile = input.color(#ffd166, "ATM IV text", group=G4)
 cVega  = input.color(#c084fc, "Vega", group=G4)
 cPeak  = input.color(#e2e8f0, "Gamma peak", group=G4)
 
@@ -109,14 +110,8 @@ var array<float> cP = array.new_float()
 var array<float> cV = array.new_float()
 var array<float> wP = array.new_float()
 var array<float> wV = array.new_float()
-var array<float> sP = array.new_float()
-var array<float> sI = array.new_float()
-var array<float> xP = array.new_float()
-var array<float> xG0 = array.new_float()
-var array<float> xG1 = array.new_float()
-var array<float> xG2 = array.new_float()
-var array<float> xG3 = array.new_float()
-var array<float> xH = array.new_float()
+var float mSig = na
+var float mGpSince = na
 var bool parsed = false
 var string parseNote = ""
 
@@ -278,6 +273,10 @@ if barstate.isfirst
                                     mTerms := val
                                 else if key == "saved"
                                     mSaved := val
+                                else if key == "sig"
+                                    mSig := str.tonumber(val)
+                                else if key == "gpsince"
+                                    mGpSince := str.tonumber(val)
                         else if tag == "H0"
                             mUp1 := f_num(p, 2)
                             mDn1 := f_num(p, 4)
@@ -305,16 +304,6 @@ if barstate.isfirst
                         else if tag == "W"
                             array.push(wP, f_num(p, 1))
                             array.push(wV, f_num(p, 2))
-                        else if tag == "S"
-                            array.push(sP, f_num(p, 1))
-                            array.push(sI, f_num(p, 2))
-                        else if tag == "X"
-                            array.push(xP, f_num(p, 1))
-                            array.push(xG0, f_num(p, 2))
-                            array.push(xG1, f_num(p, 3))
-                            array.push(xG2, f_num(p, 4))
-                            array.push(xG3, f_num(p, 5))
-                            array.push(xH, f_num(p, 6))
             parsed := array.size(lvPrice) > 0 or array.size(gP) > 0
 
 
@@ -330,6 +319,51 @@ f_lvStyle(t) =>
 f_lblSize() =>
     lblSizeIn == "tiny" ? size.tiny : lblSizeIn == "normal" ? size.normal : size.small
 
+
+// What the next (or current) touch did in the oi-profile-lines data, by the level's path so far today (H held, B broke, ? both on one bar).
+// Returns [short label text, table text, kind]: kind 1 = hold lean (★ candidate), -1 = break lean (hint), 0 = no edge.
+f_read(string path, bool gpPin, bool gpSpent) =>
+    string sh = "50/50"
+    string lg = ""
+    int kind = 0
+    if gpPin
+        sh := "★ HOLD lean 70%"
+        lg := "★ HOLD lean: gamma peak, PIN day, 1st touch held 70% vs 49% at fake lines (n 74; candidate, scored forward)"
+        kind := 1
+    else if str.contains(path, "?")
+        lg := "50/50 · a touch went both ways on one bar; no data for this path"
+    else if path == ""
+        lg := "50/50 · 1st touches held 49% (fake lines 48.5%)"
+    else if path == "H"
+        lg := "50/50 · 2nd touch after a hold held 51% (fake 51%)"
+    else if path == "B"
+        lg := "50/50 · retest after a break held 48.5% (fake 50.6%)"
+    else if path == "HH"
+        lg := "50/50 · 3rd touch after two holds held 50% (fake 49%)"
+    else if path == "HB"
+        sh := "break lean (hint)"
+        lg := "break lean, hint only: 3rd touch after held→broke held 36% vs 47% at fake lines (n 122, CI touches 0; scored forward)"
+        kind := -1
+    else if path == "BH"
+        lg := "50/50 · 3rd touch after broke→held held 50% (fake 46%)"
+    else if path == "BB"
+        lg := "50/50 · 3rd touch after two breaks held 55% (fake 46%, not significant)"
+    else
+        lg := "50/50 · 4th touch or later: too few in our data"
+    if gpSpent and kind == 0
+        lg := lg + " · gamma peak already touched (later touches held 49%)"
+    [sh, lg, kind]
+
+f_state(int tch, int pend, string seq) =>
+    int nH = 0
+    int nB = 0
+    for ch in str.split(seq, "")
+        if ch == "H"
+            nH += 1
+        else if ch == "B"
+            nB += 1
+    string rec = (nH > 0 ? "held ×" + str.tostring(nH) : "") + (nH > 0 and nB > 0 ? ", " : "") + (nB > 0 ? "broke ×" + str.tostring(nB) : "")
+    pend != 0 ? "testing now (touch " + str.tostring(tch) + ")" + (rec != "" ? " · " + rec : "") : tch == 0 ? "untouched" : (rec != "" ? rec : "chop")
 
 f_arrMax(a) =>
     float m = na
@@ -406,12 +440,9 @@ if barstate.islast
         int c2 = c1 + colW + colGap                  // volume centre
         int c3 = showChg ? c2 + colW + colGap : c2    // OI-change centre (the column only takes room when shown)
         int c3w = showVega ? c3 + colW + colGap : c3  // vega centre (the column only takes room when shown; one-sided bars start at c3w - hw)
-        int s3 = c3w + hw + colGap                   // smile left edge
-        int c4 = s3 + colW + colGap + hw             // helix centre
-        int xEnd = c4 + hw
         float ref = na(mRef) ? math.max(syminfo.mintick * 50, (nz(f_arrMax(gP), close) - nz(f_arrMin(gP), close)) / 6.4) : mRef
-        float pTop = nz(f_arrMax(xP), nz(f_arrMax(gP), close + 2 * ref))
-        float pBot = nz(f_arrMin(xP), nz(f_arrMin(gP), close - 2 * ref))
+        float pTop = nz(f_arrMax(gP), close + 2 * ref)
+        float pBot = nz(f_arrMin(gP), close - 2 * ref)
         if array.size(lvPrice) > 0
             pTop := math.max(pTop, f_arrMax(lvPrice))
             pBot := math.min(pBot, f_arrMin(lvPrice))
@@ -425,6 +456,12 @@ if barstate.islast
         // ── levels: keep the most important N, then (optional band), line, label chip (de-overlapped in price) ──
         int nL = array.size(lvPrice)
         float lastY = na
+        string nxtUp = ""
+        string nxtDn = ""
+        float nxtUpP = na
+        float nxtDnP = na
+        int nHeldDay = 0
+        int nBrokeDay = 0
         bool labLeft = labelSide == "left"
         int labX = labLeft ? xStart : xL
         if nL > 0
@@ -433,7 +470,8 @@ if barstate.islast
             for i = 0 to nL - 1
                 string t0 = array.get(lvType, i)
                 float s0 = nz(array.get(lvStr, i), 0.5)
-                bool isMinor = t0 == "vanna_flip" or t0 == "charm_flip" or t0 == "oi_volume" or t0 == "gamma_peak"
+                // on a PIN day the gamma peak is the one line with a candidate read, so it is always shown when the touch read is on
+                bool isMinor = t0 == "vanna_flip" or t0 == "charm_flip" or t0 == "oi_volume" or (t0 == "gamma_peak" and not (showRead and mRegime == "PIN"))
                 float sc = t0 == "zero_gamma" ? 95.0 : (t0 == "call_wall" or t0 == "put_wall") ? 80.0 + 20.0 * s0 : t0 == "gex_flip" ? 85.0 : t0 == "max_pain" ? 82.0 : (t0 == "exp_hi" or t0 == "exp_lo") ? 70.0 : (t0 == "short_gamma_node" or t0 == "long_gamma_node") ? 76.0 + 14.0 * s0 : 30.0 + 20.0 * s0
                 bool isEm = t0 == "exp_hi" or t0 == "exp_lo"
                 array.push(score, ((isMinor and not showMinor) or isEm) ? -1.0 : sc)
@@ -470,6 +508,61 @@ if barstate.islast
                             array.set(lead, i, j)
                             array.set(also, j, array.get(also, j) + " · " + array.get(lvLabel, i))
                             break
+            // ── touch read: replay today's bars at every level (oi-profile-lines rules: arm on a close 0.25σ away, touch at the level, then
+            //    held = 0.25σ back before 0.25σ through; the touch bar can only resolve as a break; a bar that does both = "?") ──
+            int nbT = timeframe.isintraday ? math.min(1999, bi - dayFirst + 1) : 0
+            bool readOn = showRead and not na(mSig) and mSig > 0 and nbT > 0
+            // the ★ was only ever scored on a book captured this morning: gpsince must be today's London date
+            bool capToday = not na(mGpSince) and dayofmonth(int(mGpSince), "Europe/London") == dayofmonth(time, "Europe/London") and month(int(mGpSince), "Europe/London") == month(time, "Europe/London")
+            array<int> rTch = array.new_int(nL, 0)
+            array<int> rPend = array.new_int(nL, 0)
+            array<int> rBt = array.new_int(nL, 0)
+            array<string> rSeq = array.new_string(nL, "")
+            array<bool> rGp = array.new_bool(nL, false)
+            if readOn
+                float kR = 0.25 * mSig
+                for i = 0 to nL - 1
+                    if array.get(sel, i) and array.get(lead, i) == -1
+                        float p = array.get(lvPrice, i)
+                        bool g = false
+                        for j2 = 0 to nL - 1
+                            if array.get(lvType, j2) == "gamma_peak" and math.abs(array.get(lvPrice, j2) - p) <= 0.05 * mSig
+                                g := true
+                        array.set(rGp, i, g)
+                        int armed = 0
+                        int pend = 0
+                        int tch = 0
+                        int bt = 0
+                        string seq = ""
+                        for j = nbT - 1 to 0
+                            float bh = high[j]
+                            float bl = low[j]
+                            float bc = close[j]
+                            if pend != 0
+                                bool back = pend == 1 ? bh >= p + kR : bl <= p - kR
+                                bool thru = pend == 1 ? bl <= p - kR : bh >= p + kR
+                                if back or thru
+                                    seq += back and thru ? "?" : thru ? "B" : "H"
+                                    pend := 0
+                            else if armed != 0
+                                bool hit = armed == 1 ? bl <= p : bh >= p
+                                if hit
+                                    tch += 1
+                                    bt += capToday and time[j] >= mGpSince ? 1 : 0
+                                    pend := armed
+                                    armed := 0
+                                    if (pend == 1 ? bl <= p - kR : bh >= p + kR)
+                                        seq += "B"
+                                        pend := 0
+                            if pend == 0
+                                if bc >= p + kR
+                                    armed := 1
+                                else if bc <= p - kR
+                                    armed := -1
+                        array.set(rTch, i, tch)
+                        array.set(rPend, i, pend)
+                        array.set(rBt, i, bt)
+                        array.set(rSeq, i, seq)
             for i = 0 to nL - 1
                 if array.get(sel, i) and array.get(lead, i) == -1
                     string t = array.get(lvType, i)
@@ -491,7 +584,27 @@ if barstate.islast
                         lastY := ly
                         float tp = array.get(lvTouch, i)
                         float et = array.get(lvEta, i)
-                        string txt = (nStack > 1 ? "×" + str.tostring(nStack) + " " : "") + array.get(lvLabel, i) + array.get(also, i) + "  " + str.tostring(p, format.mintick) + (array.get(lvExp, i) != "" ? "  ·  " + array.get(lvExp, i) : "") + (f_chgChip(i)) + (na(tp) ? "" : "  ·  " + str.tostring(tp, "#") + "%" + (na(et) ? "" : "~" + str.tostring(et, "#") + "m"))
+                        string rdTxt = ""
+                        if readOn and not isEdge
+                            string sq = array.get(rSeq, i)
+                            int tc = array.get(rTch, i)
+                            int pd = array.get(rPend, i)
+                            bool gpPin = array.get(rGp, i) and mRegime == "PIN" and capToday and array.get(rBt, i) == 0
+                            bool gpSpent = array.get(rGp, i) and mRegime == "PIN" and array.get(rBt, i) > 0
+                            [rSh, rLg, rK] = f_read(sq, gpPin, gpSpent)
+                            string st = f_state(tc, pd, sq)
+                            rdTxt := "\n" + st + " → " + (pd != 0 ? "this touch: " : "next touch: ") + rSh
+                            for ch in str.split(sq, "")
+                                nHeldDay += ch == "H" ? 1 : 0
+                                nBrokeDay += ch == "B" ? 1 : 0
+                            string row = str.tostring(p, format.mintick) + " " + array.get(lvLabel, i) + " · " + st + " · " + rLg
+                            if p >= close and (na(nxtUpP) or p < nxtUpP)
+                                nxtUpP := p
+                                nxtUp := row
+                            if p < close and (na(nxtDnP) or p > nxtDnP)
+                                nxtDnP := p
+                                nxtDn := row
+                        string txt = (nStack > 1 ? "×" + str.tostring(nStack) + " " : "") + array.get(lvLabel, i) + array.get(also, i) + "  " + str.tostring(p, format.mintick) + (array.get(lvExp, i) != "" ? "  ·  " + array.get(lvExp, i) : "") + (f_chgChip(i)) + (na(tp) ? "" : "  ·  " + str.tostring(tp, "#") + "%" + (na(et) ? "" : "~" + str.tostring(et, "#") + "m")) + rdTxt
                         array.push(dLbl, label.new(x=labX, y=ly, text=txt, xloc=xloc.bar_index, yloc=yloc.price, color=color.new(#0d1117, 12), style=(labLeft ? label.style_label_right : label.style_label_left), textcolor=col, size=f_lblSize()))
                         // a label that had to be moved to clear its neighbour stays tied to its own line by a dotted connector
                         if math.abs(ly - p) > ref * 0.02
@@ -514,11 +627,6 @@ if barstate.islast
         if showVega
             array.push(dLbl, label.new(x=c3w, y=yT, text="VEGA", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
             array.push(dLine, line.new(x1=c3w - hw, y1=pBot, x2=c3w - hw, y2=pTop, xloc=xloc.bar_index, color=color.new(#2a3340, 0), width=1))
-        if showSmile
-            array.push(dLbl, label.new(x=s3 + hw, y=yT, text="IV SMILE", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
-        if showHelix
-            array.push(dLbl, label.new(x=c4, y=yT, text="GAMMA HELIX", xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_center, textcolor=color.new(#8b95a3, 0), size=size.tiny))
-            array.push(dLine, line.new(x1=c4, y1=pBot, x2=c4, y2=pTop, xloc=xloc.bar_index, color=color.new(#2a3340, 0), width=1, style=line.style_dotted))
 
         // ── GEX profile bars (sqrt scale so small strikes still read) ──
         if showGex and array.size(gP) > 0
@@ -577,50 +685,9 @@ if barstate.islast
                         float py = array.get(wP, i)
                         array.push(dBox, box.new(left=c3w - hw, top=py + halfBin * 0.5, right=c3w - hw + len, bottom=py - halfBin * 0.5, border_color=color(na), bgcolor=color.new(cVega, 70 - int(v / wmax * 45))))
 
-        // ── IV smile (stored points only) ──
-        if showSmile and array.size(sP) > 1
-            float imin = array.min(sI)
-            float imax = array.max(sI)
-            float irng = math.max(imax - imin, 0.01)
-            array<chart.point> pts = array.new<chart.point>()
-            for i = 0 to array.size(sP) - 1
-                int sx = s3 + int(math.round((array.get(sI, i) - imin) / irng * colW))
-                array.push(pts, chart.point.from_index(sx, array.get(sP, i)))
-            array.push(dPoly, polyline.new(pts, curved=true, closed=false, xloc=xloc.bar_index, line_color=cSmile, line_width=2))
-            array.push(dLbl, label.new(x=s3 + hw, y=pBot - ref * 0.1, text="ATM IV " + (na(mIv) ? "" : str.tostring(mIv, "#.#") + "%") + (na(mRr) ? "" : "  RR " + str.tostring(mRr, "#.#")), xloc=xloc.bar_index, yloc=yloc.price, color=color.new(color.black, 100), style=label.style_label_up, textcolor=cSmile, size=size.tiny))
-
-        // ── gamma helix: gamma strands (IV shifts) + mirrored hedge strand, rungs between, marker at zero gamma ──
-        if showHelix and array.size(xP) > 1
-            float gm = math.max(f_absMax(xG0), math.max(f_absMax(xG1), math.max(f_absMax(xG2), f_absMax(xG3))))
-            float hm = f_absMax(xH)
-            if gm > 0 and hm > 0
-                array<chart.point> a0 = array.new<chart.point>()
-                array<chart.point> a1 = array.new<chart.point>()
-                array<chart.point> a2 = array.new<chart.point>()
-                array<chart.point> a3 = array.new<chart.point>()
-                array<chart.point> ah = array.new<chart.point>()
-                int m = array.size(xP)
-                for i = 0 to m - 1
-                    float py = array.get(xP, i)
-                    array.push(a0, chart.point.from_index(c4 + int(math.round(array.get(xG0, i) / gm * hw)), py))
-                    array.push(a1, chart.point.from_index(c4 + int(math.round(array.get(xG1, i) / gm * hw)), py))
-                    array.push(a2, chart.point.from_index(c4 + int(math.round(array.get(xG2, i) / gm * hw)), py))
-                    array.push(a3, chart.point.from_index(c4 + int(math.round(array.get(xG3, i) / gm * hw)), py))
-                    int xh = c4 - int(math.round(array.get(xH, i) / hm * hw))
-                    array.push(ah, chart.point.from_index(xh, py))
-                    if i % 2 == 0
-                        array.push(dLine, line.new(x1=c4 + int(math.round(array.get(xG1, i) / gm * hw)), y1=py, x2=xh, y2=py, xloc=xloc.bar_index, color=color.new(cZero, 70), width=1))
-                array.push(dPoly, polyline.new(a0, curved=true, closed=false, xloc=xloc.bar_index, line_color=color.new(#9fd6f5, 30), line_width=1))
-                array.push(dPoly, polyline.new(a2, curved=true, closed=false, xloc=xloc.bar_index, line_color=color.new(#3a8fc2, 25), line_width=1))
-                array.push(dPoly, polyline.new(a3, curved=true, closed=false, xloc=xloc.bar_index, line_color=color.new(#2a6890, 20), line_width=1))
-                array.push(dPoly, polyline.new(a1, curved=true, closed=false, xloc=xloc.bar_index, line_color=#5cc8ff, line_width=3))
-                array.push(dPoly, polyline.new(ah, curved=true, closed=false, xloc=xloc.bar_index, line_color=color.new(#f1f5f9, 0), line_width=3))
-                if not na(mZg)
-                    array.push(dLbl, label.new(x=c4, y=mZg, text="ZERO GAMMA", xloc=xloc.bar_index, yloc=yloc.price, color=cZero, style=label.style_circle, textcolor=color.new(color.white, 0), size=size.tiny))
-
         // ── summary table ──
         if showTable
-            tbl := table.new(tblPosition, 2, 11, bgcolor=color.new(#0d1117, 6), frame_color=color.new(#2a3340, 0), frame_width=1, border_width=0)
+            tbl := table.new(tblPosition, 2, 14, bgcolor=color.new(#0d1117, 6), frame_color=color.new(#2a3340, 0), frame_width=1, border_width=0)
             color rc = mRegime == "BREAKOUT" ? cCall : cPut
             table.cell(tbl, 0, 0, "OI PROFILE · " + mName + (mTerms == "futures" ? " · futures prices" : " · spot/CFD prices"), text_color=color.new(#e6e9ef, 0), text_size=tblTextSize, text_halign=text.align_left)
             table.cell(tbl, 1, 0, mGen == "" ? "" : str.substring(mGen, 0, math.min(16, str.length(mGen))), text_color=color.new(#8b95a3, 0), text_size=size.tiny, text_halign=text.align_right)
@@ -649,5 +716,15 @@ if barstate.islast
             table.cell(tbl, 1, 8, shelf, text_color=color.new(#cbd5e1, 0), text_size=tblTextSize, text_halign=text.align_right)
             table.cell(tbl, 0, 9, "VEGA PEAK", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
             table.cell(tbl, 1, 9, na(mVegaPk) ? "—" : str.tostring(mVegaPk, format.mintick) + "  (" + (mVegaPk >= close ? "+" : "") + str.tostring(mVegaPk - close, format.mintick) + ")", text_color=cVega, text_size=tblTextSize, text_halign=text.align_right)
-            table.cell(tbl, 0, 10, "a picture of the book — not a signal", text_color=color.new(#5b6678, 0), text_size=size.tiny, text_halign=text.align_left)
-            table.merge_cells(tbl, 0, 10, 1, 10)
+            // touch read: the nearest shown level each side, today's record there, and what its next touch did in our data
+            string noRead = not showRead ? "touch read off" : (na(mSig) or mSig <= 0) ? "re-export: this paste has no sig (needed for the touch read)" : not timeframe.isintraday ? "intraday charts only" : "—"
+            color upCol = str.contains(nxtUp, "★") ? cPain : str.contains(nxtUp, "break lean") ? cCall : color.new(#cbd5e1, 0)
+            color dnCol = str.contains(nxtDn, "★") ? cPain : str.contains(nxtDn, "break lean") ? cCall : color.new(#cbd5e1, 0)
+            table.cell(tbl, 0, 10, "NEXT ABOVE", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 10, nxtUp != "" ? nxtUp : noRead, text_color=upCol, text_size=tblTextSize, text_halign=text.align_right)
+            table.cell(tbl, 0, 11, "NEXT BELOW", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 11, nxtDn != "" ? nxtDn : noRead, text_color=dnCol, text_size=tblTextSize, text_halign=text.align_right)
+            table.cell(tbl, 0, 12, "TODAY AT LEVELS", text_color=color.new(#7d8896, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.cell(tbl, 1, 12, "held " + str.tostring(nHeldDay) + " · broke " + str.tostring(nBrokeDay) + (mRegime == "PIN" and na(mGpSince) ? " · ★ needs this morning's OI capture" : ""), text_color=color.new(#cbd5e1, 0), text_size=tblTextSize, text_halign=text.align_right)
+            table.cell(tbl, 0, 13, "13k touches: these lines held 49%, the same as fake lines nearby; ★ and the hint are candidates scored forward, not signals", text_color=color.new(#5b6678, 0), text_size=size.tiny, text_halign=text.align_left)
+            table.merge_cells(tbl, 0, 13, 1, 13)
