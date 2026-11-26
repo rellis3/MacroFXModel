@@ -1,0 +1,773 @@
+{
+ "slug": "oi-profile-gold-history",
+ "prereg": "forge/OI_PROFILE_GOLD_HISTORY_PREREG.md",
+ "seed": 20261126,
+ "B": 2000,
+ "data": {
+  "oi": "Databento OG monthlies 2022-11-04..2026-04-15, T-2",
+  "price": "OANDA XAU_USD M1 mid",
+  "window": "07:00-22:00 London",
+  "sessions_built": 877,
+  "sessions_scored": 833
+ },
+ "build_check": {
+  "n": 20,
+  "passed": 20
+ },
+ "positive_control": {
+  "known_zero": {
+   "E_pp": -0.18,
+   "ci_pp": [
+    -4.14,
+    3.53
+   ],
+   "p": 0.88,
+   "halves_pp": [
+    -3.64,
+    3.32
+   ],
+   "held_real": 49.3,
+   "held_plc": 49.5,
+   "n_real": 834,
+   "n_plc": 3043,
+   "dates_real": 633,
+   "verdict": "NULL"
+  },
+  "planted_0.3": {
+   "E_pp": 17.97,
+   "ci_pp": [
+    14.57,
+    21.26
+   ],
+   "p": 0.0,
+   "halves_pp": [
+    19.36,
+    16.55
+   ],
+   "held_real": 60.7,
+   "held_plc": 42.7,
+   "n_real": 1013,
+   "n_plc": 3477,
+   "dates_real": 648,
+   "verdict": "VALIDATED"
+  }
+ },
+ "verdicts": {
+  "G1": "NULL",
+  "G2 call_wall": "NULL",
+  "G2 put_wall": "NULL",
+  "G2 gamma_peak": "NULL",
+  "G2 max_pain": "UNDERPOWERED",
+  "G3": "NULL",
+  "G4": "UNDERPOWERED"
+ },
+ "dates": 833,
+ "sessions": 833,
+ "counts": {
+  "placebo:back": 2910,
+  "placebo:both": 7,
+  "placebo:through": 2968,
+  "placebo:unresolved": 571,
+  "real:back": 794,
+  "real:both": 2,
+  "real:through": 809,
+  "real:unresolved": 203
+ },
+ "G1": {
+  "E_pp": -0.97,
+  "ci_pp": [
+   -4.75,
+   2.74
+  ],
+  "p": 0.646,
+  "halves_pp": [
+   1.04,
+   -3.19
+  ],
+  "held_real": 48.0,
+  "held_plc": 49.0,
+  "n_real": 844,
+  "n_plc": 3052,
+  "dates_real": 622,
+  "verdict": "NULL"
+ },
+ "G2": {
+  "call_wall": {
+   "E_pp": -1.89,
+   "ci_pp": [
+    -7.55,
+    3.54
+   ],
+   "p": 0.524,
+   "halves_pp": [
+    -2.1,
+    -1.65
+   ],
+   "held_real": 46.8,
+   "held_plc": 48.7,
+   "n_real": 404,
+   "n_plc": 1502,
+   "dates_real": 358,
+   "bh_q10": false,
+   "verdict": "NULL"
+  },
+  "put_wall": {
+   "E_pp": 0.6,
+   "ci_pp": [
+    -4.76,
+    6.36
+   ],
+   "p": 0.804,
+   "halves_pp": [
+    5.08,
+    -4.78
+   ],
+   "held_real": 49.3,
+   "held_plc": 48.7,
+   "n_real": 383,
+   "n_plc": 1356,
+   "dates_real": 321,
+   "bh_q10": false,
+   "verdict": "NULL"
+  },
+  "gamma_peak": {
+   "E_pp": -8.4,
+   "ci_pp": [
+    -15.77,
+    -0.84
+   ],
+   "p": 0.03,
+   "halves_pp": [
+    -5.7,
+    -11.13
+   ],
+   "held_real": 42.6,
+   "held_plc": 51.0,
+   "n_real": 235,
+   "n_plc": 840,
+   "dates_real": 235,
+   "bh_q10": false,
+   "verdict": "NULL"
+  },
+  "max_pain": {
+   "E_pp": 0.19,
+   "ci_pp": [
+    -13.73,
+    13.49
+   ],
+   "p": 0.977,
+   "halves_pp": [
+    -2.83,
+    8.33
+   ],
+   "held_real": 50.9,
+   "held_plc": 50.7,
+   "n_real": 55,
+   "n_plc": 209,
+   "dates_real": 55,
+   "bh_q10": false,
+   "verdict": "UNDERPOWERED"
+  }
+ },
+ "G3": {
+  "E_pp": -11.69,
+  "ci_pp": [
+   -20.19,
+   -3.29
+  ],
+  "p": 0.004,
+  "halves_pp": [
+   -10.9,
+   -11.92
+  ],
+  "held_real": 39.7,
+  "held_plc": 51.4,
+  "n_real": 189,
+  "n_plc": 693,
+  "dates_real": 189,
+  "verdict": "NULL"
+ },
+ "G4": {
+  "E_pp": 6.29,
+  "ci_pp": [
+   -9.61,
+   22.01
+  ],
+  "p": 0.439,
+  "halves_pp": [
+   2.78,
+   10.46
+  ],
+  "held_real": 60.0,
+  "held_plc": 53.7,
+  "n_real": 45,
+  "n_plc": 175,
+  "dates_real": 43,
+  "verdict": "UNDERPOWERED"
+ },
+ "mirror": {
+  "E_pp": -1.99,
+  "ci_pp": [
+   -5.62,
+   1.68
+  ],
+  "p": 0.297,
+  "halves_pp": [
+   -5.34,
+   1.67
+  ],
+  "held_real": 47.5,
+  "held_plc": 49.5,
+  "n_real": 792,
+  "n_plc": 2260,
+  "dates_real": 606,
+  "clears_G1_bar_same_sign": false
+ },
+ "pm05_only": {
+  "G1": {
+   "E_pp": -2.97,
+   "ci_pp": [
+    -6.9,
+    1.18
+   ],
+   "p": 0.156,
+   "halves_pp": [
+    -1.54,
+    -4.57
+   ],
+   "held_real": 48.0,
+   "held_plc": 51.0,
+   "n_real": 844,
+   "n_plc": 1466,
+   "dates_real": 622
+  },
+  "G3": {
+   "E_pp": -14.59,
+   "ci_pp": [
+    -24.02,
+    -5.54
+   ],
+   "p": 0.002,
+   "halves_pp": [
+    -12.03,
+    -16.13
+   ],
+   "held_real": 39.7,
+   "held_plc": 54.3,
+   "n_real": 189,
+   "n_plc": 328,
+   "dates_real": 189
+  },
+  "G4": {
+   "E_pp": 5.0,
+   "ci_pp": [
+    -12.99,
+    23.82
+   ],
+   "p": 0.574,
+   "halves_pp": [
+    -1.51,
+    13.78
+   ],
+   "held_real": 60.0,
+   "held_plc": 55.0,
+   "n_real": 45,
+   "n_plc": 80,
+   "dates_real": 43
+  },
+  "G2 call_wall": {
+   "E_pp": -3.22,
+   "ci_pp": [
+    -9.42,
+    2.61
+   ],
+   "p": 0.33,
+   "halves_pp": [
+    -3.36,
+    -3.09
+   ],
+   "held_real": 46.8,
+   "held_plc": 50.0,
+   "n_real": 404,
+   "n_plc": 718,
+   "dates_real": 358
+  },
+  "G2 put_wall": {
+   "E_pp": -1.95,
+   "ci_pp": [
+    -7.64,
+    4.24
+   ],
+   "p": 0.538,
+   "halves_pp": [
+    0.99,
+    -5.59
+   ],
+   "held_real": 49.3,
+   "held_plc": 51.3,
+   "n_real": 383,
+   "n_plc": 655,
+   "dates_real": 321
+  },
+  "G2 gamma_peak": {
+   "E_pp": -11.25,
+   "ci_pp": [
+    -19.55,
+    -3.07
+   ],
+   "p": 0.007,
+   "halves_pp": [
+    -8.14,
+    -14.26
+   ],
+   "held_real": 42.6,
+   "held_plc": 53.8,
+   "n_real": 235,
+   "n_plc": 394,
+   "dates_real": 235
+  },
+  "G2 max_pain": {
+   "E_pp": 0.91,
+   "ci_pp": [
+    -14.95,
+    15.56
+   ],
+   "p": 0.91,
+   "halves_pp": [
+    -2.6,
+    10.42
+   ],
+   "held_real": 50.9,
+   "held_plc": 50.0,
+   "n_real": 55,
+   "n_plc": 100,
+   "dates_real": 55
+  }
+ },
+ "reported": {
+  "touch 2 after held": {
+   "E_pp": -2.84,
+   "ci_pp": [
+    -10.78,
+    5.11
+   ],
+   "p": 0.488,
+   "halves_pp": [
+    -4.72,
+    -0.7
+   ],
+   "held_real": 44.9,
+   "held_plc": 47.7,
+   "n_real": 196,
+   "n_plc": 775,
+   "dates_real": 182
+  },
+  "touch 2 after broke, same side": {
+   "E_pp": -1.92,
+   "ci_pp": [
+    -51.4,
+    47.32
+   ],
+   "p": 0.98,
+   "halves_pp": [
+    8.06,
+    -16.67
+   ],
+   "held_real": 50.0,
+   "held_plc": 51.9,
+   "n_real": 6,
+   "n_plc": 52,
+   "dates_real": 6
+  },
+  "retest after broke (other side)": {
+   "E_pp": 2.42,
+   "ci_pp": [
+    -4.78,
+    10.22
+   ],
+   "p": 0.507,
+   "halves_pp": [
+    -3.48,
+    8.67
+   ],
+   "held_real": 52.4,
+   "held_plc": 50.0,
+   "n_real": 227,
+   "n_plc": 768,
+   "dates_real": 203
+  },
+  "touch 3 HH": {
+   "E_pp": 6.02,
+   "ci_pp": [
+    -12.37,
+    22.95
+   ],
+   "p": 0.523,
+   "halves_pp": [
+    16.3,
+    -8.17
+   ],
+   "held_real": 57.5,
+   "held_plc": 51.5,
+   "n_real": 40,
+   "n_plc": 169,
+   "dates_real": 40
+  },
+  "touch 3 BH": {
+   "E_pp": 7.82,
+   "ci_pp": [
+    -7.72,
+    22.12
+   ],
+   "p": 0.309,
+   "halves_pp": [
+    7.74,
+    8.03
+   ],
+   "held_real": 61.5,
+   "held_plc": 53.7,
+   "n_real": 52,
+   "n_plc": 188,
+   "dates_real": 51
+  },
+  "touch 3 BB": {
+   "E_pp": 3.22,
+   "ci_pp": [
+    -12.51,
+    18.05
+   ],
+   "p": 0.696,
+   "halves_pp": [
+    9.13,
+    -4.55
+   ],
+   "held_real": 54.9,
+   "held_plc": 51.7,
+   "n_real": 51,
+   "n_plc": 178,
+   "dates_real": 50
+  },
+  "G3 on BREAKOUT days": {
+   "E_pp": 5.37,
+   "ci_pp": [
+    -11.78,
+    22.66
+   ],
+   "p": 0.556,
+   "halves_pp": [
+    6.0,
+    0.55
+   ],
+   "held_real": 54.3,
+   "held_plc": 49.0,
+   "n_real": 46,
+   "n_plc": 147,
+   "dates_real": 46
+  },
+  "all lines PIN, touch 1": {
+   "E_pp": -2.28,
+   "ci_pp": [
+    -6.33,
+    1.83
+   ],
+   "p": 0.277,
+   "halves_pp": [
+    -0.36,
+    -3.77
+   ],
+   "held_real": 46.8,
+   "held_plc": 49.1,
+   "n_real": 686,
+   "n_plc": 2472,
+   "dates_real": 514
+  },
+  "all lines BREAKOUT, touch 1": {
+   "E_pp": 4.72,
+   "ci_pp": [
+    -4.56,
+    14.53
+   ],
+   "p": 0.333,
+   "halves_pp": [
+    4.75,
+    4.4
+   ],
+   "held_real": 53.2,
+   "held_plc": 48.4,
+   "n_real": 158,
+   "n_plc": 580,
+   "dates_real": 108
+  },
+  "gamma peak 2nd+ touches, PIN": {
+   "E_pp": 0.61,
+   "ci_pp": [
+    -7.59,
+    8.64
+   ],
+   "p": 0.905,
+   "halves_pp": [
+    9.81,
+    -5.99
+   ],
+   "held_real": 49.4,
+   "held_plc": 48.8,
+   "n_real": 162,
+   "n_plc": 654,
+   "dates_real": 98
+  }
+ },
+ "per_year_G1": {
+  "2022": {
+   "E_pp": -7.99,
+   "ci_pp": [
+    -24.57,
+    9.45
+   ],
+   "p": 0.35,
+   "halves_pp": [
+    -7.99,
+    null
+   ],
+   "held_real": 37.1,
+   "held_plc": 45.1,
+   "n_real": 35,
+   "n_plc": 113,
+   "dates_real": 24
+  },
+  "2023": {
+   "E_pp": -2.32,
+   "ci_pp": [
+    -9.5,
+    4.65
+   ],
+   "p": 0.553,
+   "halves_pp": [
+    -2.32,
+    null
+   ],
+   "held_real": 46.3,
+   "held_plc": 48.6,
+   "n_real": 272,
+   "n_plc": 956,
+   "dates_real": 195
+  },
+  "2024": {
+   "E_pp": 1.14,
+   "ci_pp": [
+    -6.21,
+    7.97
+   ],
+   "p": 0.729,
+   "halves_pp": [
+    9.32,
+    -10.53
+   ],
+   "held_real": 50.2,
+   "held_plc": 49.1,
+   "n_real": 251,
+   "n_plc": 907,
+   "dates_real": 187
+  },
+  "2025": {
+   "E_pp": -1.27,
+   "ci_pp": [
+    -8.04,
+    5.91
+   ],
+   "p": 0.747,
+   "halves_pp": [
+    null,
+    -1.27
+   ],
+   "held_real": 48.4,
+   "held_plc": 49.7,
+   "n_real": 223,
+   "n_plc": 831,
+   "dates_real": 171
+  },
+  "2026": {
+   "E_pp": 1.81,
+   "ci_pp": [
+    -13.07,
+    15.39
+   ],
+   "p": 0.809,
+   "halves_pp": [
+    null,
+    1.81
+   ],
+   "held_real": 50.8,
+   "held_plc": 49.0,
+   "n_real": 63,
+   "n_plc": 245,
+   "dates_real": 45
+  }
+ },
+ "concentration": {
+  "touch_share": {
+   "2023": 0.322,
+   "2024": 0.297,
+   "2025": 0.264,
+   "2026": 0.075,
+   "2022": 0.041
+  },
+  "excess_share": {
+   "2022": 0.352,
+   "2023": 0.795,
+   "2024": -0.361,
+   "2025": 0.357,
+   "2026": -0.144
+  },
+  "max_touch_share": 0.322
+ },
+ "regime_mix": {
+  "PIN": 550,
+  "BREAKOUT": 113
+ },
+ "sensitivity_T1": {
+  "dates": 836,
+  "sessions": 836,
+  "counts": {
+   "placebo:back": 2967,
+   "placebo:both": 6,
+   "placebo:through": 2938,
+   "placebo:unresolved": 574,
+   "real:back": 748,
+   "real:both": 3,
+   "real:through": 858,
+   "real:unresolved": 187
+  },
+  "G1": {
+   "E_pp": -5.26,
+   "ci_pp": [
+    -9.23,
+    -1.45
+   ],
+   "p": 0.007,
+   "halves_pp": [
+    -2.68,
+    -8.18
+   ],
+   "held_real": 45.1,
+   "held_plc": 50.4,
+   "n_real": 836,
+   "n_plc": 3096,
+   "dates_real": 629,
+   "verdict": "VALIDATED"
+  },
+  "G2": {
+   "call_wall": {
+    "E_pp": -9.37,
+    "ci_pp": [
+     -14.94,
+     -3.92
+    ],
+    "p": 0.0,
+    "halves_pp": [
+     -5.67,
+     -13.41
+    ],
+    "held_real": 41.1,
+    "held_plc": 50.5,
+    "n_real": 404,
+    "n_plc": 1530,
+    "dates_real": 362,
+    "bh_q10": true,
+    "verdict": "NULL"
+   },
+   "put_wall": {
+    "E_pp": -1.58,
+    "ci_pp": [
+     -7.25,
+     4.27
+    ],
+    "p": 0.567,
+    "halves_pp": [
+     -0.94,
+     -2.17
+    ],
+    "held_real": 49.1,
+    "held_plc": 50.7,
+    "n_real": 375,
+    "n_plc": 1382,
+    "dates_real": 319,
+    "bh_q10": false,
+    "verdict": "NULL"
+   },
+   "gamma_peak": {
+    "E_pp": -12.0,
+    "ci_pp": [
+     -19.81,
+     -4.66
+    ],
+    "p": 0.004,
+    "halves_pp": [
+     -5.05,
+     -21.09
+    ],
+    "held_real": 39.8,
+    "held_plc": 51.8,
+    "n_real": 226,
+    "n_plc": 824,
+    "dates_real": 226,
+    "bh_q10": true,
+    "verdict": "NULL"
+   },
+   "max_pain": {
+    "E_pp": -8.28,
+    "ci_pp": [
+     -22.23,
+     5.81
+    ],
+    "p": 0.23,
+    "halves_pp": [
+     -6.0,
+     -16.21
+    ],
+    "held_real": 42.2,
+    "held_plc": 50.5,
+    "n_real": 64,
+    "n_plc": 212,
+    "dates_real": 64,
+    "bh_q10": false,
+    "verdict": "NULL"
+   }
+  },
+  "G3": {
+   "E_pp": -14.63,
+   "ci_pp": [
+    -22.84,
+    -6.8
+   ],
+   "p": 0.001,
+   "halves_pp": [
+    -8.6,
+    -20.61
+   ],
+   "held_real": 37.0,
+   "held_plc": 51.6,
+   "n_real": 184,
+   "n_plc": 694,
+   "dates_real": 184,
+   "verdict": "NULL"
+  },
+  "G4": {
+   "E_pp": 6.06,
+   "ci_pp": [
+    -9.56,
+    21.61
+   ],
+   "p": 0.455,
+   "halves_pp": [
+    9.71,
+    0.54
+   ],
+   "held_real": 58.7,
+   "held_plc": 52.6,
+   "n_real": 46,
+   "n_plc": 190,
+   "dates_real": 45,
+   "verdict": "UNDERPOWERED"
+  }
+ }
+}
