@@ -86,4 +86,7 @@ The counts depend on how many lines the monthly book draws per day; the actual n
 
 ## Amendments
 
-(none)
+**A1 (2026-11-26, PRE-RESULTS: written before the build check or any session was scored).** Three mechanics, no change to any test, bar or cell.
+1. §3.5 build check, third item: the profile's call/put walls are the strongest book's largest **gamma** strikes above/below spot, not its largest-OI strikes, so "equal the max-OI strikes" was the wrong check. Replaced by: every drawn wall sits on a real Databento strike (in spot terms, strike − basis) and on the correct side of spot. The other two items are unchanged (matrix sums exact per expiry; F from the two strikes nearest ATM agree within 0.3%).
+2. Spot and basis: the profile's spot is OANDA mid at 07:00 London on S (as the live capture), and the futures anchor passed to the build is spot07 + basis(D), with basis(D) measured at 13:30 New York on D as §3.4 says. ATM IV per expiry is the mean of the Black-76 call and put IVs at the strike nearest F, T from 13:30 New York on D to the Databento expiry timestamp.
+3. Inputs not available in the history and left empty: the OI change paste (only labels OI CHG, scored types unaffected) and the per-strike smile paste (the profile's per-book gamma uses each expiry's ATM IV from the term table, `oiBookLegs`). Volume is passed as the day's total per strike. HAR-σ sensitivity is dropped if it cannot be fitted point in time on this history; T-1 is kept.
