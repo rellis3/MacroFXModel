@@ -1489,6 +1489,7 @@ export const DERIVED = {
      "js/terminal/analogueView.js",
      "js/terminal/biasEngineView.js",
      "js/terminal/broadcastCore.js",
+     "js/terminal/broadcastPanels.js",
      "js/terminal/cotHoloCore.js",
      "js/terminal/deepDive.js",
      "js/terminal/fedPathYieldsView.js",
@@ -1858,6 +1859,7 @@ export const DERIVED = {
    "modules": [],
    "names": {
     "terminal": [
+     "js/terminal/broadcastPanels.js",
      "js/terminal/jarvisSessionCore.js",
      "js/terminal/jarvisViewDayAhead.js",
      "js/terminal/jarvisViewSession.js",
@@ -1994,6 +1996,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/broadcastPanels.js",
      "js/terminal/macroSubtabs.js"
     ],
     "today": [],
@@ -2254,6 +2257,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/broadcastPanels.js",
      "js/terminal/creditLiquidityView.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
@@ -2333,6 +2337,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/broadcastPanels.js",
      "js/terminal/flagsView.js",
      "js/terminal/liveLayer.js"
     ],
@@ -2806,6 +2811,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/broadcastPanels.js",
      "js/terminal/chainBoard.js",
      "js/terminal/terminalTabs.js",
      "js/terminal/traderReadView.js"
@@ -2990,6 +2996,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/broadcastPanels.js",
      "js/terminal/cotHoloCore.js",
      "js/terminal/goldCore.js",
      "js/terminal/goldView.js",
@@ -3558,6 +3565,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/broadcastPanels.js",
      "js/terminal/newsChannelView.js",
      "js/terminal/newsSearchCore.js",
      "js/terminal/newsSearchView.js",
@@ -3964,6 +3972,7 @@ export const DERIVED = {
    "names": {
     "terminal": [
      "desk-terminal.html",
+     "js/terminal/broadcastPanels.js",
      "js/terminal/dataAge.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
@@ -5543,5 +5552,5 @@ export const DERIVED = {
  "unclassified": [],
  "rootPageCount": 265,
  "packFeeds": 115,
- "generatedAt": "2026-11-25"
+ "generatedAt": "2026-11-26"
 };
