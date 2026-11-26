@@ -10,6 +10,8 @@
  * Pure. Tested in js/worldRates.test.mjs.
  */
 export const WORLD_RATES_URL = start => `https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/M.?startPeriod=${start}&format=csv`;
+// The same dataset's DAILY series (owner 26 Nov 2026: the globe said 'as of October'; the monthly file lags a few weeks, the daily one runs to the last few days).
+export const WORLD_RATES_DAILY_URL = start => `https://stats.bis.org/api/v2/data/dataflow/BIS/WS_CBPOL/1.0/D.?startPeriod=${start}&format=csv`;
 
 // ISO2 → [ISO 3166 numeric (the world-atlas ids), name, currency]. XM is the euro area: it colours every member.
 export const AREAS = {
@@ -25,7 +27,7 @@ export const AREAS = {
 export const EURO_MEMBERS = ['040', '056', '191', '196', '233', '246', '250', '276', '300', '372', '380', '428', '440', '442', '470', '528', '620', '703', '705', '724'];
 
 /** BIS SDMX CSV (quoted fields with commas) → { AREA: [{ period, rate }] } sorted by period. */
-export function parseCbpol(text) {
+export function parseCbpol(text, re = /^\d{4}-\d{2}$/) {
   const rows = [], s = String(text ?? '');
   let i = 0, field = '', row = [], q = false;
   for (; i < s.length; i++) {
@@ -39,7 +41,7 @@ export function parseCbpol(text) {
   const head = rows[0] ?? [], A = head.indexOf('REF_AREA'), T = head.indexOf('TIME_PERIOD'), V = head.indexOf('OBS_VALUE');
   if (A < 0 || T < 0 || V < 0) throw new Error('BIS CBPOL CSV: unexpected header');
   const out = {};
-  for (const r of rows.slice(1)) { const v = parseFloat(r[V]); if (!r[A] || !/^\d{4}-\d{2}$/.test(r[T] ?? '') || !Number.isFinite(v)) continue; (out[r[A]] ??= []).push({ period: r[T], rate: v }); }
+  for (const r of rows.slice(1)) { const v = parseFloat(r[V]); if (!r[A] || !re.test(r[T] ?? '') || !Number.isFinite(v)) continue; (out[r[A]] ??= []).push({ period: r[T], rate: v }); }
   for (const k of Object.keys(out)) out[k].sort((a, b) => a.period.localeCompare(b.period));
   return out;
 }
@@ -48,8 +50,22 @@ const back = (period, n) => { const [y, m] = period.split('-').map(Number), d = 
 const at = (series, period) => { let v = null; for (const x of series) { if (x.period <= period) v = x.rate; else break; } return v; };
 const r2 = x => (Number.isFinite(x) ? +x.toFixed(2) : null);
 
-/** Per bank: the latest rate, its month, the change over 3 and 12 months (pp), and the cycle. */
-export function worldRates(byArea, { staleMonths = 4 } = {}) {
+/** BIS daily CSV -> { AREA: [{ period: 'YYYY-MM-DD', rate }] }. */
+export const parseCbpolDaily = text => parseCbpol(text, /^\d{4}-\d{2}-\d{2}$/);
+/** Lay the daily series over the monthly one: each month the daily file covers takes its last daily value, so the newest month is current to the last published day.
+ *  Returns { byArea (monthly, merged), lastDay: { AREA: 'YYYY-MM-DD' } }. */
+export function mergeDaily(byArea, daily) {
+  const out = {}, lastDay = {};
+  for (const area of new Set([...Object.keys(byArea ?? {}), ...Object.keys(daily ?? {})])) {
+    const m = new Map((byArea?.[area] ?? []).map(x => [x.period, x.rate]));
+    for (const d of daily?.[area] ?? []) { m.set(d.period.slice(0, 7), d.rate); lastDay[area] = d.period; }
+    out[area] = [...m].sort((a, b) => a[0].localeCompare(b[0])).map(([period, rate]) => ({ period, rate }));
+  }
+  return { byArea: out, lastDay };
+}
+
+/** Per bank: the latest rate, its month (and its day when the daily series has it), the change over 3 and 12 months (pp), and the cycle. */
+export function worldRates(byArea, { staleMonths = 4, lastDay = {} } = {}) {
   const latestAll = Object.values(byArea).map(s => s.at(-1)?.period).filter(Boolean).sort().at(-1);
   const banks = {};
   for (const [area, s] of Object.entries(byArea)) {
@@ -57,13 +73,14 @@ export function worldRates(byArea, { staleMonths = 4 } = {}) {
     const last = s.at(-1), ch3 = at(s, back(last.period, 3)), ch12 = at(s, back(last.period, 12));
     const d3 = ch3 == null ? null : last.rate - ch3, d12 = ch12 == null ? null : last.rate - ch12;
     const cycle = d3 == null ? 'unknown' : d3 >= 0.2 ? 'hiking' : d3 <= -0.2 ? 'cutting' : d12 != null && Math.abs(d12) >= 0.5 ? (d12 > 0 ? 'on hold after hikes' : 'on hold after cuts') : 'on hold';
-    banks[area] = { area, iso: meta[0], name: meta[1], ccy: meta[2], rate: last.rate, asOf: last.period, change3m: r2(d3), change12m: r2(d12), cycle,
+    banks[area] = { area, iso: meta[0], name: meta[1], ccy: meta[2], rate: last.rate, asOf: last.period, asOfDay: lastDay[area]?.startsWith(last.period) ? lastDay[area] : null, change3m: r2(d3), change12m: r2(d12), cycle,
       stale: latestAll && back(latestAll, staleMonths) > last.period, spark: s.slice(-13).map(x => x.rate) };
   }
   const list = Object.values(banks).filter(b => !b.stale);
   const count = c => list.filter(b => b.cycle === c).length;
-  return { asOf: latestAll, banks, summary: { banks: list.length, hiking: count('hiking'), cutting: count('cutting'), onHold: list.length - count('hiking') - count('cutting'),
-    hikers: list.filter(b => b.cycle === 'hiking').map(b => b.area), cutters: list.filter(b => b.cycle === 'cutting').map(b => b.area) }, source: 'BIS central bank policy rates (WS_CBPOL), monthly' };
+  const asOfDay = Object.values(banks).map(b => b.asOfDay).filter(Boolean).sort().at(-1) ?? null;
+  return { asOf: latestAll, asOfDay, banks, summary: { banks: list.length, hiking: count('hiking'), cutting: count('cutting'), onHold: list.length - count('hiking') - count('cutting'),
+    hikers: list.filter(b => b.cycle === 'hiking').map(b => b.area), cutters: list.filter(b => b.cycle === 'cutting').map(b => b.area) }, source: asOfDay ? 'BIS central bank policy rates (WS_CBPOL), daily to the last published day, monthly history' : 'BIS central bank policy rates (WS_CBPOL), monthly' };
 }
 
 /** ISO numeric → the bank record (the euro area spread over its members), for the map. */

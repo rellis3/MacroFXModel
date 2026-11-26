@@ -289,7 +289,7 @@ import * as _RRM from './js/researchRoom.js';   // research rooms: a case shown 
 import * as _RIM from './js/researchImages.js';   // pictures attached to research questions: read once by a vision model, then text
 import { normaliseTrades as _sxNormalise, tearsheet as _sxTearsheet, toolkitCsv as _sxToolkitCsv, terminalCsv as _sxTerminalCsv, liveVsExpected as _sxLiveVsExpected } from './js/systemExports.js';   // §9ac
 import { selectPairs as _psSelect } from './js/pairSelector.js';   // §9ae
-import { WORLD_RATES_URL as _WR_URL, parseCbpol as _wrParse, worldRates as _wrBuild, byIsoNumeric as _wrByIso } from './js/worldRates.js';   // §9af
+import { WORLD_RATES_URL as _WR_URL, WORLD_RATES_DAILY_URL as _WR_DURL, parseCbpol as _wrParse, parseCbpolDaily as _wrParseD, mergeDaily as _wrMerge, worldRates as _wrBuild, byIsoNumeric as _wrByIso } from './js/worldRates.js';   // §9af
 import { EM_PAIRS as _EM_PAIRS, emGauges as _emBuild } from './js/emGauges.js';
 import { yieldBoard as _mbYields, creditBoard as _mbCredit, CREDIT_SERIES as _MB_CREDIT, liquidityBoard as _mbLiquidity, basisBoard as _mbBasis, termPremium as _mbTermPremium, worldStress as _mbStress } from './js/marketBoards.js';   // §9ag
 import { fetchBund as _yfBund, fetchJgbBoth as _yfJgb, fetchCanada as _yfCanada, fetchAustralia as _yfAustralia, parseValet as _yfValet } from './js/yieldFeeds.js';
@@ -8566,7 +8566,11 @@ app.get('/api/world-rates', async (_req, res) => {
       const d = new Date(); d.setUTCMonth(d.getUTCMonth() - 16);
       const r = await fetch(_WR_URL(d.toISOString().slice(0, 7)), { headers: { 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, signal: AbortSignal.timeout(45_000) });
       if (!r.ok) throw new Error(`BIS HTTP ${r.status}`);
-      const wr = _wrBuild(_wrParse(await r.text()));
+      const monthly = _wrParse(await r.text());
+      // the daily series (last ~100 days) brings the newest month up to the last published day; a failed daily fetch keeps the monthly answer
+      let daily = null; try { const s = new Date(Date.now() - 100 * 86400e3).toISOString().slice(0, 10); const rd = await fetch(_WR_DURL(s), { headers: { 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, signal: AbortSignal.timeout(45_000) }); if (rd.ok) daily = _wrParseD(await rd.text()); } catch { daily = null; }
+      const mg = daily ? _wrMerge(monthly, daily) : { byArea: monthly, lastDay: {} };
+      const wr = _wrBuild(mg.byArea, { lastDay: mg.lastDay });
       _wrCache = { at: Date.now(), data: { ok: true, fetchedAt: new Date().toISOString(), ...wr, iso: Object.fromEntries(Object.entries(_wrByIso(wr)).map(([k, b]) => [k, b.area])) } };
     }
     res.json(_wrCache.data);

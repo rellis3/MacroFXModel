@@ -72,6 +72,7 @@ export const lineWidth = (v, vmax, lo = 1.2, hi = 7) => (!fin(v) || !(vmax > 0) 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const backMonth = (period, n) => { const [y, m] = String(period).split('-').map(Number), d = new Date(Date.UTC(y, m - 1 - n, 1)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`; };
 export const monthWord = p => { const m = /^(\d{4})-(\d{2})$/.exec(String(p ?? '')); return m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : String(p ?? ''); };
+export const dayWord = p => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(p ?? '')); return m ? `${+m[3]} ${MONTHS[+m[2] - 1]}` : String(p ?? ''); };
 export const quarterWord = p => { const m = /^(\d{4})-Q([1-4])$/.exec(String(p ?? '')); return m ? `the ${['first', 'second', 'third', 'fourth'][+m[2] - 1]} quarter of ${m[1]}` : String(p ?? ''); };
 /** The month of the last change in a monthly spark ending at asOf (null when the rate did not move inside the spark). */
 export function lastMove(spark, asOf) {
@@ -102,7 +103,7 @@ export function ratesModel(j) {
   const summary = { n: live.length, hiking: live.filter(b => b.tone === 'up').length, cutting: live.filter(b => b.tone === 'dn').length, stale: banks.length - live.length };
   summary.hold = summary.n - summary.hiking - summary.cutting;
   const capped = banks.filter(b => b.capped).map(b => b.area);
-  return { ok: true, asOf: j.asOf ?? banks.map(b => b.asOf).filter(Boolean).sort().at(-1) ?? null, banks, by, summary, capped, euro: by.XM ?? null, source: j.source ?? 'BIS central bank policy rates (WS_CBPOL), monthly' };
+  return { ok: true, asOfDay: j.asOfDay ?? null, asOf: j.asOf ?? banks.map(b => b.asOf).filter(Boolean).sort().at(-1) ?? null, banks, by, summary, capped, euro: by.XM ?? null, source: j.source ?? 'BIS central bank policy rates (WS_CBPOL), monthly' };
 }
 /** Which pillars carry a label: the G10, plus the biggest 3-month movers outside it (n), plus the selection. Order = priority. */
 export function rateLabels(m, { compact = false, sel = null } = {}) {
@@ -243,7 +244,7 @@ export function moneyScript(rm, cm) {
   const parts = [];
   if (rm?.ok) {
     const s = rm.summary, mv = movers(rm), h = mv.hikers[0], c = mv.cutters[0];
-    let t = `Policy rates from the BIS, as of ${monthWord(rm.asOf)}: over three months ${s.cutting} of ${s.n} central banks have cut and ${s.hiking} ${s.hiking === 1 ? 'has' : 'have'} hiked.`;
+    let t = `Policy rates from the BIS, as of ${rm.asOfDay ? dayWord(rm.asOfDay) : monthWord(rm.asOf)}: over three months ${s.cutting} of ${s.n} central banks have cut and ${s.hiking} ${s.hiking === 1 ? 'has' : 'have'} hiked.`;
     const notes = [];
     if (c) notes.push(`the biggest cut was ${nm(c)}'s, ${r1(c.ch3)} points to ${r1(c.rate)} percent`);
     if (h) notes.push(`${nm(h)} hiked ${r1(h.ch3)} points to ${r1(h.rate)} percent`);
