@@ -389,7 +389,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
   const budget = Math.max(60, Math.min(170, +budgetSec || SHORT_BUDGET_SEC)) * Math.max(0.75, Math.min(1.5, +rate || 1));      // the budget is in seconds at normal speed: a faster voice fits more of the programme in the same 2.5 minutes
   if (short) for (const id of (pod === 'evening' ? SHORT_DROP_EVENING : SHORT_DROP)) { if (P.totalSec <= budget) break; if (segsUsed.some(x => x.id === id)) { segsUsed = segsUsed.filter(x => x.id !== id); P = build(segsUsed.map(x => ({ ...x }))); } }
   const { items, total, totalSec } = P;
-  return { date, lead, segments: segsUsed.map((s, i) => ({ id: s.id, name: s.name, num: i + 1, total, scenes: s.scenes.map(x => x.id) })), items, ticker: tickerItems(inp.rows ?? inp.movers ?? []), totalSec };
+  return { guide, date, lead, segments: segsUsed.map((s, i) => ({ id: s.id, name: s.name, num: i + 1, total, scenes: s.scenes.map(x => x.id) })), items, ticker: tickerItems(inp.rows ?? inp.movers ?? []), totalSec };
 }
 
 /** How long an item holds on screen with the voice off, at a speed: reading time plus its card hold. */

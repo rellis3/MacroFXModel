@@ -158,12 +158,12 @@ function makeOverlay(api) {
   doc.getElementById(`${api.ID}-bc`)?.remove();
   const el = doc.createElement('div'); el.className = 'bc'; el.id = `${api.ID}-bc`; el.setAttribute('aria-live', 'polite');
   el.innerHTML = `<style>${css(api.ID)}${PANEL_CSS(api.ID)}</style><div class="bc-veil"></div>
-<div class="bc-card bc-open"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-line"></div><div class="bc-tc bc-reveal"><canvas class="bc-helix" data-b="hx" aria-hidden="true"></canvas><div class="bc-kick">H.E.L.I.X.</div><h1 class="bc-h1">THE <b data-b="part">MORNING</b> BRIEFING</h1><div class="bc-date" data-b="odate"></div></div></div>
+<div class="bc-card bc-open"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-line"></div><div class="bc-tc bc-reveal"><canvas class="bc-helix" data-b="hx" aria-hidden="true"></canvas><div class="bc-kick">H.E.L.I.X.</div><h1 class="bc-h1">THE <b data-b="part">MORNING</b> <span data-b="pkind">BRIEFING</span></h1><div class="bc-date" data-b="odate"></div></div></div>
 <div class="bc-card bc-head"><div class="bc-hw"><div class="bc-hk" data-b="hk"></div><div class="bc-tag">THE HEADLINE</div><div class="bc-hh" data-b="hh"></div><div class="bc-hf" data-b="hf"><b data-b="hfv"></b><small data-b="hfl"></small></div><div class="bc-hm" data-b="hm"></div></div></div>
 <div class="bc-card bc-panel"><div class="bc-pw"><div class="bc-pk" data-b="pk"></div><div class="bc-pt" data-b="pt"></div><div class="bc-pb" data-b="pb"></div></div></div>
 <div class="bc-card bc-lead"><div class="bc-ghost" data-b="ghost"></div><div class="bc-lw"><div class="bc-tag">THE LEAD <span data-b="lnum"></span></div><div class="bc-fig" data-b="fig"></div><div class="bc-figl" data-b="figl"></div><div class="bc-hl" data-b="hl"></div><div class="bc-hs" data-b="hs"></div><div class="bc-pips" data-b="pips"></div></div></div>
 <div class="bc-card bc-bump"><div class="bc-scan"></div><div class="bc-tc"><div class="bc-bn" data-b="bn"></div><div class="bc-bname" data-b="bname"></div><div class="bc-bar"></div></div></div>
-<div class="bc-card bc-close"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-tc"><div class="bc-h1">That is the briefing.</div><div class="bc-not">Description, not advice.</div><div class="bc-date" data-b="cdate"></div><div class="bc-sig" data-b="sig">J.A.R.V.I.S. · THE MORNING BRIEFING</div></div></div>
+<div class="bc-card bc-close"><div class="bc-scan"></div><div class="bc-ring"></div><div class="bc-tc"><div class="bc-h1" data-b="chead">That is the briefing.</div><div class="bc-not">Description, not advice.</div><div class="bc-date" data-b="cdate"></div><div class="bc-sig" data-b="sig">J.A.R.V.I.S. · THE MORNING BRIEFING</div></div></div>
 <div class="bc-scrim"></div><div class="bc-l3"><div class="n" data-b="l3n"></div><div class="m"><div class="s" data-b="l3s"></div><div class="t" data-b="l3t"></div></div><div class="f" data-b="l3f"><b data-b="l3v"></b><small data-b="l3l"></small></div></div>
 <div class="bc-sub off" data-b="sub"></div>
 <div class="bc-tick"><div class="lb">MARKETS <small>MOVE · ×USUAL</small></div><div class="cw"><div class="tr" data-b="tr"></div></div></div>
@@ -184,7 +184,7 @@ function makeOverlay(api) {
     },
     veil(on) { el.querySelector('.bc-veil').classList.toggle('on', !!on); },
     wipe() { const w = el.querySelector('.bc-wipe'); w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); },
-    open(date) { $('odate').textContent = date.card; $('cdate').textContent = date.card; const part = partOfDay(date.hour).toUpperCase(); $('part').textContent = part; $('sig').textContent = `H.E.L.I.X. · THE ${part} BRIEFING`; },
+    open(date, guide = false) { $('odate').textContent = guide ? 'HOW TO READ THE BRIEFINGS' : date.card; $('cdate').textContent = guide ? '' : date.card; const part = guide ? 'VISUAL' : partOfDay(date.hour).toUpperCase(), kind = guide ? 'GUIDE' : 'BRIEFING'; $('part').textContent = part; $('pkind').textContent = kind; $('chead').textContent = guide ? 'That is the visual guide.' : 'That is the briefing.'; $('sig').textContent = `H.E.L.I.X. · THE ${part} ${kind}`; },
     lead(x, i, n) {
       $('lnum').textContent = `· ${i + 1} OF ${n}`; $('ghost').textContent = String(i + 1);
       const fig = $('fig'); fig.textContent = x.figure; fig.parentElement.style.setProperty('--tc', TONE[x.tone] ?? TONE.tx);
@@ -300,7 +300,7 @@ registerJarvisModule({
         slow: () => { ctl.rate = [...steps].reverse().find(x => x < ctl.rate - 1e-6) ?? 0.75; api.st.speakCtl?.setRate?.(ctl.rate); sync(); },
       }); sync(); api.caption(null);
       ov?.remove(); ov = makeOverlay(api); if (!ov) { status('The HUD is not open.', true); return; }
-      ov.open(P.date); ov.ticker(P.ticker); ov.on(); api.sfx.ambient(true);
+      ov.open(P.date, !!P.guide); ov.ticker(P.ticker); ov.on(); api.sfx.ambient(true);
       if (onAir) { try { await onAir(); } catch (e) { /* the recorder's hook must never stop the show */ } if (my !== token) return; }      // the daily job starts recording HERE, on the title card, not on the panel while the data loads
       status(`On air: ${P.segments.length} segments, about ${durText(items.reduce((a, x) => a + itemSeconds(x, ctl.rate), 0))}. Voice: ${api.voiceLabel?.() ?? "on"}.`);
       api.voicePrefetch?.(items[0]?.text);
