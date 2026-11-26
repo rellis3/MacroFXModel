@@ -1,0 +1,35 @@
+25 jobs
+AUDUSD: tick 5e-05, sigma_v med 0.00097404; A 33831, B line 10565 (z>=2 42%), D 20414
+BRENT: tick 0.01, sigma_v med 0.48409; A 31334, B line 10454 (z>=2 39%), D 19845
+COPPER: tick 0.0005, sigma_v med 0.023975; A 38119, B line 10420 (z>=2 42%), D 21677
+CORN: tick 0.25, sigma_v med 1.2776; A 36262, B line 8365 (z>=2 49%), D 20485
+DE30: tick 1, sigma_v med 60.161; A 30640, B line 9758 (z>=2 37%), D 16648
+EURUSD: tick 5e-05, sigma_v med 0.0010337; A 41410, B line 10264 (z>=2 51%), D 22353
+GBPUSD: tick 0.0001, sigma_v med 0.0014822; A 35864, B line 10342 (z>=2 46%), D 21025
+GOLD: tick 0.1, sigma_v med 16.761; A 46692, B line 10902 (z>=2 48%), D 22439
+NATGAS: tick 0.001, sigma_v med 0.025071; A 46687, B line 10193 (z>=2 53%), D 24952
+NQ: tick 0.25, sigma_v med 75.124; A 53666, B line 9766 (z>=2 54%), D 24783
+NZDUSD: tick 5e-05, sigma_v med 0.00090264; A 29155, B line 10243 (z>=2 43%), D 19713
+PLATINUM: tick 0.1, sigma_v med 13.818; A 33836, B line 10125 (z>=2 41%), D 20485
+SILVER: tick 0.005, sigma_v med 0.5396; A 42479, B line 10843 (z>=2 48%), D 22170
+SPX500: tick 0.25, sigma_v med 12.341; A 56553, B line 9872 (z>=2 52%), D 26397
+US2000: tick 0.1, sigma_v med 7.524; A 53215, B line 7849 (z>=2 55%), D 26477
+US30: tick 1, sigma_v med 93.633; A 51106, B line 9375 (z>=2 56%), D 24117
+USDCAD: tick 9.06746e-05, sigma_v med 0.00096821; A 36820, B line 10042 (z>=2 48%), D 21776
+USDCHF: tick 2.87381e-05, sigma_v med 0.0009236; A 31946, B line 10945 (z>=2 44%), D 20654
+USDJPY: tick 0.0114959, sigma_v med 0.17238; A 39350, B line 11204 (z>=2 43%), D 20841
+WHEAT: tick 0.25, sigma_v med 2.357; A 29245, B line 8550 (z>=2 45%), D 17405
+WTI: tick 0.01, sigma_v med 0.44137; A 49459, B line 10707 (z>=2 46%), D 24188
+ZB: tick 0.03125, sigma_v med 0.14753; A 38526, B line 9334 (z>=2 47%), D 22517
+ZF: tick 0.0078125, sigma_v med 0.047415; A 42999, B line 9779 (z>=2 48%), D 22555
+ZN: tick 0.015625, sigma_v med 0.072465; A 49308, B line 9529 (z>=2 48%), D 24240
+ZT: tick 0.00390625, sigma_v med 0.019088; A 46984, B line 11027 (z>=2 45%), D 24823
+B z>=2 share of line touches: 46.7%; z median 1.90
+C1: trades 116939; TP hit 29.2%; TP distance median 1.51R; net -0.1550 [-0.1702,-0.1397] gross -0.0184; line - placebo +0.0019 [-0.0077,+0.0109]; halves 2020-22 -0.0109/-0.1824, 2023-26 +0.0132/-0.1307; mirror Close± +0.0064 HL -0.0026; z<2 net -0.1480 (n 85865)
+   by z: [2.0, 2.5) n38240 line -0.154 plc -0.152; [2.5, 3.0) n29243 line -0.142 plc -0.142; [3.0, 4.0) n31279 line -0.160 plc -0.159; [4.0, inf) n18177 line -0.170 plc -0.189
+C2: trades 116939; TP hit 17.2%; TP distance median 2.36R; net -0.1591 [-0.1776,-0.1412] gross -0.0226; line - placebo +0.0036 [-0.0074,+0.0138]; halves 2020-22 -0.0091/-0.1819, 2023-26 +0.0149/-0.1390; mirror Close± +0.0094 HL -0.0022; z<2 net -0.1504 (n 124800)
+   by z: [2.0, 2.5) n38240 line -0.155 plc -0.160; [2.5, 3.0) n29243 line -0.150 plc -0.152; [3.0, 4.0) n31279 line -0.165 plc -0.163; [4.0, inf) n18177 line -0.171 plc -0.188
+D: trades 267553; TP hit 46.6%; net -0.1775 [-0.1863,-0.1687] gross -0.0170; real - placebo bands +0.0160 [+0.0102,+0.0227]; halves 2020-22 +0.0192/-0.2015, 2023-26 +0.0132/-0.1563
+C1: BH fail -> NULL
+C2: BH fail -> NULL
+D: BH pass -> UNDERPOWERED

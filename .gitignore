@@ -817,3 +817,7 @@ analysis/output/jordan-lines-mae/touches/
 analysis/output/jordan-system-race/trades/
 analysis/output/close-reversal-confirm/trades/
 analysis/output/jordan-vwap-band-tp/touches/
+# 2026-11-26 study intermediates (rebuilt by their scripts; 700+ MB)
+analysis/output/level-*/**/*.parquet
+analysis/output/**/*.npy
+analysis/output/**/forward_cache/

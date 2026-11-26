@@ -1,0 +1,82 @@
+65 jobs
+F AUDUSD: 16 calcs, tick 5e-05, trades S1 3061 S2 6571
+F BRENT: 16 calcs, tick 0.01, trades S1 2695 S2 6071
+F COPPER: 16 calcs, tick 0.0005, trades S1 2913 S2 6274
+F CORN: 16 calcs, tick 0.25, trades S1 2441 S2 5750
+F DE30: 16 calcs, tick 1, trades S1 2534 S2 5798
+F EURUSD: 16 calcs, tick 5e-05, trades S1 3303 S2 6606
+F GBPUSD: 16 calcs, tick 0.0001, trades S1 2657 S2 6360
+F GOLD: 16 calcs, tick 0.1, trades S1 2883 S2 6762
+F NATGAS: 16 calcs, tick 0.001, trades S1 3153 S2 6987
+F NQ: 16 calcs, tick 0.25, trades S1 2630 S2 5956
+F NZDUSD: 16 calcs, tick 5e-05, trades S1 3258 S2 6828
+F PLATINUM: 16 calcs, tick 0.1, trades S1 2474 S2 5678
+F SILVER: 16 calcs, tick 0.005, trades S1 3305 S2 6844
+F SPX500: 16 calcs, tick 0.25, trades S1 2775 S2 6077
+F US2000: 16 calcs, tick 0.1, trades S1 2963 S2 4902
+F US30: 16 calcs, tick 1, trades S1 2587 S2 5880
+F USDCAD: 16 calcs, tick 9.06746e-05, trades S1 3071 S2 6247
+F USDCHF: 16 calcs, tick 2.87381e-05, trades S1 3571 S2 6729
+F USDJPY: 16 calcs, tick 0.0114959, trades S1 3650 S2 6908
+F WHEAT: 16 calcs, tick 0.25, trades S1 2511 S2 5755
+F WTI: 16 calcs, tick 0.01, trades S1 2879 S2 6142
+F ZB: 16 calcs, tick 0.03125, trades S1 2595 S2 5903
+F ZF: 16 calcs, tick 0.0078125, trades S1 2484 S2 5161
+F ZN: 16 calcs, tick 0.015625, trades S1 2589 S2 5524
+F ZT: 16 calcs, tick 0.00390625, trades S1 2754 S2 5420
+C AUDCAD: 16 calcs, tick nan, trades S1 3085 S2 6876
+C AUDCHF: 16 calcs, tick nan, trades S1 2890 S2 6391
+C AUDJPY: 16 calcs, tick nan, trades S1 3194 S2 6482
+C AUDNZD: 16 calcs, tick nan, trades S1 3583 S2 6583
+C AUDUSD: 16 calcs, tick nan, trades S1 3190 S2 6756
+C BRENT: 16 calcs, tick nan, trades S1 2968 S2 6282
+C CADCHF: 16 calcs, tick nan, trades S1 3131 S2 6610
+C CADJPY: 16 calcs, tick nan, trades S1 3265 S2 6813
+C CHFJPY: 16 calcs, tick nan, trades S1 3613 S2 7366
+C COPPER: 16 calcs, tick nan, trades S1 3061 S2 6741
+C DE30: 16 calcs, tick nan, trades S1 2808 S2 6244
+C EURAUD: 16 calcs, tick nan, trades S1 3205 S2 6928
+C EURCAD: 16 calcs, tick nan, trades S1 3103 S2 6701
+C EURCHF: 16 calcs, tick nan, trades S1 3485 S2 6678
+C EURGBP: 16 calcs, tick nan, trades S1 2699 S2 6199
+C EURJPY: 16 calcs, tick nan, trades S1 3492 S2 6777
+C EURNZD: 16 calcs, tick nan, trades S1 3173 S2 7152
+C EURUSD: 16 calcs, tick nan, trades S1 3343 S2 6695
+C GBPAUD: 16 calcs, tick nan, trades S1 2897 S2 6329
+C GBPCAD: 16 calcs, tick nan, trades S1 2832 S2 6336
+C GBPCHF: 16 calcs, tick nan, trades S1 2945 S2 6300
+C GBPJPY: 16 calcs, tick nan, trades S1 3121 S2 6739
+C GBPNZD: 16 calcs, tick nan, trades S1 2958 S2 6266
+C GBPUSD: 16 calcs, tick nan, trades S1 2802 S2 6589
+C GOLD: 16 calcs, tick nan, trades S1 3013 S2 6966
+C NQ: 16 calcs, tick nan, trades S1 2581 S2 5883
+C NZDCAD: 16 calcs, tick nan, trades S1 3335 S2 7091
+C NZDJPY: 16 calcs, tick nan, trades S1 3358 S2 6629
+C NZDUSD: 16 calcs, tick nan, trades S1 3350 S2 7056
+C PALLADIUM: 16 calcs, tick nan, trades S1 3114 S2 6480
+C PLATINUM: 16 calcs, tick nan, trades S1 2902 S2 6906
+C SILVER: 16 calcs, tick nan, trades S1 3355 S2 7256
+C SPX500: 16 calcs, tick nan, trades S1 2633 S2 5912
+C UK100: 16 calcs, tick nan, trades S1 2759 S2 6101
+C US2000: 16 calcs, tick nan, trades S1 2434 S2 5560
+C US30: 16 calcs, tick nan, trades S1 2428 S2 5747
+C USDCAD: 16 calcs, tick nan, trades S1 3145 S2 6495
+C USDCHF: 16 calcs, tick nan, trades S1 3587 S2 6899
+C USDJPY: 16 calcs, tick nan, trades S1 3690 S2 7114
+C WTI: 16 calcs, tick nan, trades S1 2797 S2 5989
+futures (net) S1: SYS - QL -0.0101R [-0.0402, +0.0221] p 0.610 (n 3539); halves 2021-23 -0.0162 [-0.0576,+0.0273], 2024-26 -0.0023 [-0.0529,+0.0483]
+   QL pick net R -0.0108 [-0.0774, +0.0536]; halves 2021-23 -0.0213, 2024-26 +0.0013
+   hindsight best calc - QL mean +0.0991R; SD across calcs (median sym) 0.0612R; SYS = QL 7%; SYS same as last year 54%
+futures (net) S2: SYS - QL -0.0033R [-0.0201, +0.0117] p 0.718 (n 7888); halves 2021-23 +0.0062 [-0.0135,+0.0256], 2024-26 -0.0156 [-0.0384,+0.0085]
+   QL pick net R -0.1010 [-0.1257, -0.0750]; halves 2021-23 -0.1005, 2024-26 -0.1016
+   hindsight best calc - QL mean +0.0599R; SD across calcs (median sym) 0.0312R; SYS = QL 8%; SYS same as last year 58%
+CFDs (gross) S1: SYS - QL -0.0131R [-0.0362, +0.0107] p 0.334 (n 6115); halves 2021-23 -0.0155 [-0.0479,+0.0150], 2024-26 -0.0105 [-0.0454,+0.0251]
+   QL pick net R +0.0282 [-0.0366, +0.0909]; halves 2021-23 +0.0156, 2024-26 +0.0424
+   hindsight best calc - QL mean +0.0938R; SD across calcs (median sym) 0.0587R; SYS = QL 5%; SYS same as last year 50%
+CFDs (gross) S2: SYS - QL -0.0082R [-0.0213, +0.0037] p 0.290 (n 13579); halves 2021-23 -0.0102 [-0.0271,+0.0068], 2024-26 -0.0059 [-0.0236,+0.0118]
+   QL pick net R -0.0135 [-0.0337, +0.0096]; halves 2021-23 -0.0099, 2024-26 -0.0177
+   hindsight best calc - QL mean +0.0507R; SD across calcs (median sym) 0.0292R; SYS = QL 8%; SYS same as last year 52%
+F_S1: BH fail -> UNDERPOWERED
+F_S2: BH fail -> NULL
+C_S1: BH fail -> NULL
+C_S2: BH fail -> NULL
