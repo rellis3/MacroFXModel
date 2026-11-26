@@ -714,7 +714,7 @@ function svcRun(id, fn) {
 // Only for jobs whose readers serve from KV / R2, never from a process cache the boot run would have filled.
 // maxAgeMs is kept under the job's interval so a skip can never push a refresh past one interval.
 const _LEDGER_KEY = 'ops/run-ledger.json';
-const _LEDGER_IDS = new Set(['bankCredit', 'fundingRead', 'regimeStudy', 'fredDashboard', 'macroContext', 'vixCapture', 'nasdaqMacroLead', 'sessionResearchFull']);
+const _LEDGER_IDS = new Set(['bankCredit', 'fundingRead', 'regimeStudy', 'fredDashboard', 'macroContext', 'vixCapture', 'nasdaqMacroLead', 'sessionResearchFull', 'dataArchive']);
 let _ledger = null, _ledgerLoading = null, _ledgerTimer = null;
 function _ledgerLoad() {
   if (_ledger) return Promise.resolve(_ledger);
@@ -757,10 +757,27 @@ function svcInterval(id, fn, ms) {
 }
 
 /** Gated, timed `setTimeout` — for the one-off boot run several jobs pair with their interval. */
+// Boot jobs used to overlap (a dozen fire between 30 s and 3 min after boot, several are heavy), and the sum of their peaks set the billed memory high-water mark. At most BOOT_JOB_MAX of these
+// one-off runs execute at once; a job that finds the slots full waits 15 s and asks again, for at most 8 tries (2 min), then runs regardless, so nothing is ever skipped or held back for long.
+// BOOT_JOB_MAX=0 turns the gate off.
+const _BOOT_JOB_MAX = Number.isFinite(Number(process.env.BOOT_JOB_MAX)) ? Number(process.env.BOOT_JOB_MAX) : 2;
+const _bootJobsRunning = new Set();
 function svcTimeout(id, fn, ms) {
   if (!svcEnabled(id)) return null;
   _svcStat(id).started = true;
-  return setTimeout(() => svcRun(id, fn), ms);
+  if (!(_BOOT_JOB_MAX > 0)) return setTimeout(() => svcRun(id, fn), ms);
+  const go = tries => {
+    if (_bootJobsRunning.size >= _BOOT_JOB_MAX && tries < 8) return setTimeout(() => go(tries + 1), 15_000);
+    const slot = `${id}#${Math.random()}`;
+    _bootJobsRunning.add(slot);
+    const free = () => _bootJobsRunning.delete(slot);
+    try {
+      const out = svcRun(id, fn);
+      if (out && typeof out.then === 'function') out.then(free, e => { free(); console.error(`[svc] ${id} boot run failed:`, e?.message ?? e); });
+      else free();
+    } catch (e) { free(); console.error(`[svc] ${id} boot run failed:`, e?.message ?? e); }
+  };
+  return setTimeout(() => go(0), ms);
 }
 
 // ── Making the meter survive a redeploy ──────────────────────────────────────
@@ -46896,7 +46913,10 @@ app.post('/api/expiry-track/run', requireAuth, async (req, res) => {
   try { res.json(await _expiryTrack().fold({ rebuild: String(req.query.rebuild || '') === '1' })); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-svcTimeout('dataArchive', () => _archiveDaily().catch(e => console.error('[archive]', e.message)), 15 * 60_000);
+// Once a day, not once a boot (2026-11-26): this job downloads and parses the GPR and gold-ETF Excel files, re-folds the expiry tracker and builds every swing walk (~500 MB of churn),
+// and it ran 15 min after each of the ~16 boots a day although its results are written to R2 / KV and nothing reads a process cache it filled. svcBoot skips the boot run when the run ledger
+// says it finished within 20 h; the 24 h interval below and POST /api/data-archive/run still run it in full.
+svcBoot('dataArchive', () => _archiveDaily().catch(e => console.error('[archive]', e.message)), 15 * 60_000, 20 * 3600_000);
 svcInterval('dataArchive', () => _archiveDaily().catch(e => console.error('[archive]', e.message)), 24 * 3600_000);
 app.get('/api/data-archive/status', async (_req, res) => {
   try {

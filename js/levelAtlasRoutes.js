@@ -499,8 +499,11 @@ async function coldStartLiveCache(pair) {
     liveColdStartFailedAt.delete(pair);   // clear any earlier cooldown -- this pair is warm now
     console.log(`[level-atlas-live] ${sym}: warm (${bounded.n.toLocaleString()} bars, ${LIVE_WINDOW_DAYS}d window${fromSnapshot ? ', from R2 snapshot' : ''})`);
   } catch (e) {
-    liveColdStartFailedAt.set(pair, Date.now());
-    console.error(`[level-atlas-live] ${sym}: cold start failed — ${e.message}`);
+    // A pair with no stored M1 data at all (R2 "key does not exist" / "no M1 data") cannot recover within the day: sit out 12 h instead of 30 min, so a page that asks for every instrument stops
+    // re-running the failing load (each try reads from R2, retries, and logs) all day. The stored value is future-dated so the existing cooldown test (now - failedAt < 30 min) holds for 12 h.
+    const noData = /does not exist|no M1 data|NoSuchKey/i.test(String(e?.message));
+    liveColdStartFailedAt.set(pair, noData ? Date.now() + 11.5 * 3600_000 : Date.now());
+    console.error(`[level-atlas-live] ${sym}: cold start failed — ${e.message}${noData ? ' (no stored data; not retried for 12 h)' : ''}`);
   } finally {
     liveWarming.delete(pair);
   }
@@ -766,11 +769,20 @@ export function mountLevelAtlasRoutes(app, express) {
       for (const alias of raw) {
         const pair = resolveKey(alias) || String(alias).toLowerCase().replace(/[^a-z0-9]/g, '');
         try {
-          const live = await getFastLive(pair);
-          if (live.warming) { skipped[alias] = 'warming (cold cache) — try again shortly'; continue; }
-          if (!live.date) { skipped[alias] = 'no live coverage yet'; continue; }
           const stored = await getJSON(`${PREFIX}/${pair}.json`);
           const book = stored?.books?.[DEFAULT_REARM] ?? null;
+          // Stored, not walked (2026-11-26): a page asking for every instrument used to start a live M1 walk for ~46 pairs (each a 15 MB snapshot restore plus a re-walk on every new bar, 1-2 GB of
+          // churn). The preview now reads the live cache only for pairs a bot already keeps warm; every other pair is answered from the stored book's own snapshot (`stored.live`, written when the
+          // book was built) and marked `stale: true` when that snapshot is not from today, in which case its "already touched" list is dropped (those touches are not today's). The decision and
+          // base rates, which come from the book, are unchanged. LEVEL_ATLAS_PREVIEW_WARM=1 restores the old behaviour.
+          let live, fromBook = false;
+          if (liveCache.has(pair) || process.env.LEVEL_ATLAS_PREVIEW_WARM === '1') live = await getFastLive(pair);
+          else if (stored?.live?.date) { live = stored.live; fromBook = true; }
+          else { skipped[alias] = 'no stored snapshot yet'; continue; }
+          if (live.warming) { skipped[alias] = 'warming (cold cache) — try again shortly'; continue; }
+          if (!live.date) { skipped[alias] = 'no live coverage yet'; continue; }
+          const stale = fromBook && String(live.date).slice(0, 10) !== new Date().toISOString().slice(0, 10);
+          if (stale) live = { ...live, touches: [] };
           // `base` = the cell's own in-sample base rates for this side+rung (out/back %,
           // average pullback after a touch, minutes to resolve) — vol-forecast-v3.html's
           // Levels sheet prints these as "if it reverses → price · ~minutes". Additive:
@@ -786,7 +798,7 @@ export function mountLevelAtlasRoutes(app, express) {
                          decision: book ? voteDecision(book, t) : null, base: baseFor(t) }));
           // `alias` echoes the caller's own spelling so a page that asked with display
           // names ("GOLD") can find its row without re-implementing resolveKey.
-          instruments[pair] = { instrument: pair, alias, date: live.date, pending, touches };
+          instruments[pair] = { instrument: pair, alias, date: live.date, pending, touches, ...(fromBook ? { fromBook: true, stale, bookGeneratedAt: stored?.generatedAt ?? null } : {}) };
         } catch (e) { skipped[alias] = `error: ${e.message}`; }
       }
       res.json({ ok: true, instruments, skipped });
