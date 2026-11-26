@@ -1,99 +1,101 @@
-# gold-calc-upgrades: results
+# gold-calc-upgrades: results (corrected 2026-11-26)
+
+> **Fault fixed 2026-11-26 (prereg A3).** The first banked run (10876283) floored the pre-open feature at
+> 1% of the realised variance of the **day being forecast**. That floor applied on 46% of days and leaked the
+> target into the forecast. FRESH was reported at −6.9% and the all-in arm at −8.8%. Corrected, with the floor at
+> 0.1% of the previous day's RV (it now applies on 0.7% of days): FRESH −1.16%, all-in −4.26%. Arms without the
+> pre-open feature are unchanged. The buggy numbers are kept for the record below.
 
 **Setup**
 - Prereg: `forge/GOLD_CALC_UPGRADES_PREREG.md` (005ccfba). Script: `scripts/gold-calc-upgrades/score.py`. Seed 20261126.
 - Gold futures (GC, NT8) is the primary sample; OANDA XAU_USD is the replication.
 - Test period: 2020 → 2026-08-21. Each test year is fitted only on the years before it.
-- Common sample (every arm finite): 1,659 futures sessions and 1,699 CFD sessions.
-- Scoring: per-line QLIKE (lower is better), scaled exactly as in the export race.
-- Baseline: the calc each line uses in the live QLIKE export (HARCJ; on the CFD, R15 for OH and Close+).
+- Common sample: 1,659 futures sessions and 1,699 CFD sessions.
+- Scoring: per-line QLIKE, scaled exactly as in the export race.
+- Baseline: the calc each line uses in the live QLIKE export.
 - **Nothing live changed.**
 
 **Controls**
-- My re-implementation of HARCJ reproduces the export's HARCJ (max relative difference 2e-15, both tracks).
-- A HARCJ-plus-noise arm scores +0.02% (futures) and +0.04% (CFD), so a random extra regressor doesn't help.
+- HARCJ is reproduced exactly (max relative difference 2e-15).
+- A noise regressor scores +0.02% (futures) and +0.04% (CFD).
 
-## Verdicts
+## Verdicts (corrected)
 
-% change in QLIKE on Jordan's lines (HL + Close+ + Close−) against the export's calc. Negative means better. Each arm
-was run on gold futures, with the CFD as the replication.
+% change in QLIKE on HL + Close+ + Close−, arm vs export calc. Negative means better.
 
 | Arm | What it adds | Futures [90% CI] | Halves 2020–22 / 2023–26 | BH | CFD | Verdict |
 |---|---|---|---|---|---|---|
-| **N7 ALL** | everything below, fitted by QLIKE | **−8.84%** [−11.34, −6.36] | −8.54 / −9.09 | yes | −7.13% | **VALIDATED** |
-| **N4 FRESH** | volatility in the hour before London opens (22:00–24:00 London) | **−6.92%** [−8.69, −5.30] | −6.67 / −7.13 | yes | −6.11% | **VALIDATED** |
+| **N7 ALL** | everything below, fitted by QLIKE | **−4.26%** [−6.82, −1.91] | −2.42 / −5.86 | yes | −2.64% | **VALIDATED** |
 | **N6 HARCJ+IV** | GVZ (gold implied vol) as a regressor | **−2.81%** [−4.38, −1.33] | −1.70 / −3.77 | yes | −2.13% | **VALIDATED** |
 | **V3** | existing scaled-GVZ arm | −1.76% [−3.46, −0.14] | −1.02 / −2.41 | yes | −0.62% | **VALIDATED** (weak) |
+| **N4 FRESH** | variance of the hour before London opens | **−1.16%** [−1.98, −0.38] | −0.39 / −1.83 | yes | −0.90% | **VALIDATED** (small, concentrated) |
 | **N1 HARQ** | trust yesterday less when it was noisy | −0.42% [−0.73, −0.08] | −0.17 / −0.64 | yes | −0.53% | **VALIDATED** (tiny) |
 | N3 SESS | yesterday split into Asia / London / NY | −0.78% [−2.13, +0.20] | +0.15 / −1.60 | no | +0.17% | UNDERPOWERED |
-| N5 RR | realized range instead of realised variance | −0.21% [−0.58, +0.16] | −0.34 / −0.10 | no | −0.55% | UNDERPOWERED |
+| N5 RR | realized range | −0.21% [−0.58, +0.16] | −0.34 / −0.10 | no | −0.55% | UNDERPOWERED |
 | V4 | raw GVZ | −1.62% [−3.49, +0.21] | −0.88 / −2.26 | no | −0.32% | UNDERPOWERED |
 | B_har_iv | 50/50 HAR + GVZ | −0.32% [−1.74, +1.19] | +0.28 / −0.85 | no | +0.14% | UNDERPOWERED |
 | N2 QL-HARCJ | same features, fitted by QLIKE | +0.29% [−0.00, +0.59] | +0.29 / +0.29 | no | −0.09% | **NULL** |
 
 ## What did the work
 
-**1. The pre-open hour (N4 FRESH, about −7%)**
-- The export's calc only sees completed NY days, which end at 22:00 London. FRESH adds the realised volatility of the
-  last hour or so before the London session starts (gold reopens at 23:00 London).
-- Its coefficient is +0.27 (futures) and +0.25 (CFD), in the last fit year.
-- The gain is there in every year (−4.9% to −10.4%) and on every weekday, on both feeds.
-- Changing the target alone (a control with HARCJ's features and FRESH's target) is +0.15%, so the gain comes from
-  the information in that hour, not from the target change.
-- Alignment audit: the window is always 22:00–24:00 London on the evening before the session; one edge row has
-  nothing to read. Typically it holds about 1% of the day's variance.
-- **The gain is concentrated:** 56% comes from the top 1% of days and 88% from the top 5%. These are days when the
-  Asian open was wild and the export's line was far too narrow, for example:
-  - 2023-12-04, gold's Asian-hours record spike: the hour before London ran 4.3× normal and HL was 4.7%;
-  - 2021-08-09, the Asian-open flash crash;
-  - 2026-01-29/30.
-- In plain terms: **on most days it changes little, but on the days that matter it widens the lines before London
-  opens.**
+**1. Gold implied vol as a regressor (N6, −2.8%): the steadiest gain.**
+- GVZ's coefficient is about 0.70.
+- It beats the older GVZ arms. Those were left out of the export as not site-computable, not because they scored
+  worse.
 
-**2. Gold implied vol as a regressor (N6, about −3%)**
-- It beats every older GVZ arm (V3 −1.8%, V4 −1.6%, the 50/50 blend −0.3%). GVZ's coefficient is about 0.70, and
-  the 22-day term turns slightly negative.
-- The old IV arms were never beaten on the merits; they were left out of the export picks as not site-computable.
+**2. The pre-open hour (N4 FRESH, −1.2%): small and concentrated.**
+- More than all of the gain (110%) comes from the top 1% of days. On ordinary days it is very slightly worse.
+- Those days are wild Asian opens, mostly Mondays (the Sunday reopen after weekend news; Monday −3.5%, other weekdays
+  about 0): 2023-12-04, 2025-12-29, 2021-08-09, 2026-01-29.
+- By year: −2.9% to +0.6%.
+- Lookahead audit: the window is always 22:00–24:00 London before the session, and the floor now uses only the
+  previous day. Changing the target alone gives +0.15%.
 
-**3. Combined (N7, about −9%)**
-- Together they add up but overlap: FRESH −6.9% and IV −2.8% combine to −8.8%. The control with FRESH + IV
-  (OLS, not QLIKE-fitted) is −7.9%.
+**3. Combined (N7, −4.3%).**
+- IV plus FRESH (OLS) gives −3.6%. Everything QLIKE-fitted gives −4.3%.
 
-**4. Didn't help:** fitting HARCJ by QLIKE (NULL); splitting yesterday by session or using realized range (too small
-to tell); HARQ helps, but only by −0.4%.
+**4. Didn't help:** QLIKE fitting (NULL); the session split and realized range (too small to tell).
 
-## By line (futures, N4 FRESH vs export calc)
-
-HL −17.7% (most), then OL −6.7% and Close− −6.4%; OC −4.4%, Close+ −2.2%, OH −1.8%.
-On the CFD: HL −15.7%, Close− −5.3%, Close+ −2.3%.
-
-## Descriptive: does it change the lines you trade?
+## Descriptive (corrected)
 
 | | Export calc (HARCJ) | N7 ALL |
 |---|---|---|
-| Futures hit rate HL P50 / P75 / P90 | 53.3 / 26.1 / 9.8% | 49.1 / 24.2 / 9.0% |
-| Futures Close+ | 53.6 / 28.5 / 10.9% | 51.0 / 26.7 / 10.3% |
-| Futures Close− | 51.1 / 27.5 / 10.6% | 48.6 / 25.3 / 11.0% |
-| Close− median → P75 gap ($), all years / 2025–26 | 8.82 / 23.60 | 8.74 / 23.57 |
+| Futures hit rate HL P50 / P75 / P90 | 53.3 / 26.1 / 9.8% | 50.6 / 23.9 / 8.5% |
+| Futures Close+ | 53.6 / 28.5 / 10.9% | 51.2 / 27.5 / 9.9% |
+| Futures Close− | 51.1 / 27.5 / 10.6% | 48.6 / 25.7 / 9.5% |
+| Close− median → P75 gap ($), all years / 2025–26 | 8.82 / 23.60 | 9.16 / 23.87 |
 
-- Calibration moves closer to 50 / 25 / 10 (the export's lines were hit slightly too often).
-- The typical gap in dollars doesn't change. The better calc moves the lines **day to day** (wider on wild
-  mornings, tighter on calm ones); it doesn't make them narrower on average.
-- QLIKE gain by regime, futures: quiet days −11.8%, middle −8.6%, busy −6.2%. On the CFD: −11.0 / −6.1 / −4.3%.
+- By regime (futures): quiet −4.5%, middle −3.4%, busy −4.8%.
+- The dollar gap is essentially unchanged.
 
-## Answer
+## MAE at the lines, export vs shadow (exploratory, `mae_compare.py`, gold futures)
 
-Two of the ideas make the gold calc clearly better on Jordan's lines, on both price feeds and in both halves:
-1. reading the hour of trading before London opens;
-2. adding gold's implied volatility (GVZ).
+- Every Jordan line (Close±, HL projections, P50/75/90), first touch, faded.
+- Over all lines, 2020–26:
 
-Together they give about −9% QLIKE. HARQ helps a little. QLIKE fitting, the session split and realized range don't.
+| | MAE60 median | MAE60 p75 | Jordan-way MAE (75-tick stop) | 1R win rate |
+|---|---|---|---|---|
+| Export calc | 41.9 ticks | 92.9 ticks | 58.4 ticks | 49.6% |
+| Shadow N7 | 41.4 ticks | 91.9 ticks | 59.3 ticks | 49.4% |
 
-**Graded weight:** strong for FRESH and FRESH+IV (pre-registered, every year, both feeds), with the caveat that the
-gain is concentrated on the few wild Asian-open days. Moderate for HARCJ+IV.
+- **No difference.** A better forecast doesn't change how far price runs against you after a touch.
+- Single-cell gaps (e.g. HL lower P90) rest on 70–170 touches and go both ways.
+- In 2025–26 the median Jordan-way MAE hits his 75-tick cap on most lines: his stop is now inside the typical
+  adverse move on gold.
 
-**Next (per the prereg):**
-- Shadow gold export with N7, beside the live one (no live change), plus a forward score.
-- **Build note:** FRESH needs the forecast computed after 00:00 London (from the 23:00–24:00 hour), not at the NY
-  close; GVZ must be read live (`_ivGvzLatest`, already on the server).
-- The QLIKE export stays as it is until the forward score agrees and the owner says so.
+## Answer (corrected)
+
+Gold's implied vol (GVZ) is the useful upgrade, at about −3%. The pre-open hour adds about −1%, almost all of it on
+wild Monday and Asian opens. Together they give about −4% QLIKE on Jordan's lines, on both feeds and in both halves.
+None of it changes MAE at the lines.
+
+**Graded weight:**
+- moderate for IV and for all-in;
+- weak-to-moderate for the pre-open hour (it's a rare-day detector);
+- against QLIKE fitting.
+
+**Next:** a shadow export beside the live one with a forward score. The QLIKE export stays unchanged.
+
+## Record: the first (faulty) run
+
+FRESH −6.92% [−8.69, −5.30], N7 −8.84% [−11.34, −6.36] (futures). Inflated by the floor leak above; superseded.

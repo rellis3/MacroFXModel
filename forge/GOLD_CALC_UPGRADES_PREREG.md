@@ -96,10 +96,17 @@ The literature's typical gains for these upgrades are 2–10%, mostly on equity 
   - FRESH with the full target (−7.5%) and FRESH + IV by OLS (−7.9%);
   - the split by weekday and by year, the concentration of the gain, and the top days.
   None of this changes a verdict.
+- **A3, 2026-11-26, FAULT FIX (results seen).** The FRESH feature was floored at 0.01 × the realised variance of the
+  NY day being forecast. That's lookahead, and it applied on 46% of days. The floor is now 0.001 × the previous day's
+  RV, known before the session, and applies on 0.7% of days. N4 and N7 were re-run and the verdicts re-read under the
+  unchanged gates:
+  - FRESH −6.92% → −1.16% (still VALIDATED);
+  - N7 −8.84% → −4.26% (still VALIDATED).
+  The other arms don't use the feature and are unchanged. Found while porting the feature to the site.
 
 ## RESULTS
 
 Verdicts and numbers: `analysis/output/gold-calc-upgrades/RESULTS.md` (banked 2026-11-26).
-- VALIDATED: N7 ALL −8.84%, N4 FRESH −6.92%, N6 HARCJ+IV −2.81%, V3 −1.76%, N1 HARQ −0.42%.
+- VALIDATED (corrected, A3): N7 ALL −4.26%, N6 HARCJ+IV −2.81%, V3 −1.76%, N4 FRESH −1.16%, N1 HARQ −0.42%.
 - NULL: N2 QLIKE fit.
 - UNDERPOWERED: the others.

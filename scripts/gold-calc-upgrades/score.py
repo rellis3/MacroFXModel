@@ -43,6 +43,7 @@ NEW = ["N1_HARQ", "N2_QL_HARCJ", "N3_SESS", "N4_FRESH", "N5_RR", "N6_HARCJ_IV", 
 OLD_IV = ["V3", "V4", "B_har_iv"]
 TESTED = NEW + OLD_IV
 LOG = []
+FRESH_FLOOR = 0.001
 
 
 def say(s=""):
@@ -94,7 +95,9 @@ def design(F, iv):
     q = np.sqrt(F["rq"]) / F["rv"]
     nxt = pd.Series(F.index, index=F.index).shift(-1)
     y = np.log(rv).shift(-1)
-    fresh_next = np.log(np.maximum(F["fresh"], 0.01 * rv)).shift(-1)     # pre-open hours of day t+1
+    # pre-open hours of day t+1. FAULT FIX 2026-11-26 (prereg A3): the floor was 0.01 x rv of day t+1 itself (the day
+    # being forecast = lookahead); it is now 0.001 x rv of day t (known). FRESH_FLOOR is the sensitivity knob.
+    fresh_next = np.log(np.maximum(F["fresh"].shift(-1), FRESH_FLOOR * rv))
     y_post = np.log(F["post"]).shift(-1)                                   # target without those hours (N4, A1)
     ivt = pd.Series(L.asof_before(pd.DatetimeIndex(F.index + pd.Timedelta(days=1)), iv), index=F.index)
     # GVZ close strictly before day t+1's date = known by the end of NY day t

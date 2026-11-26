@@ -32,7 +32,7 @@ def design(F, iv):
     X,nxt=orig(F,iv)
     har,y,_=X["HARCJ"]; rv=F["rv"]
     y_post=np.log(F["post"]).shift(-1)
-    fresh_next=np.log(np.maximum(F["fresh"],0.01*rv)).shift(-1)
+    fresh_next=np.log(np.maximum(F["fresh"].shift(-1),G.FRESH_FLOOR*rv))   # fixed floor (prereg A3)
     X["T_target_only"]=(har,y_post,"ols")
     X["T_fresh_fullY"]=(har.assign(fr=fresh_next),y,"ols")
     X["T_fresh_IV"]=(har.assign(fr=fresh_next,iv=X["N6_HARCJ_IV"][0]["iv"]),y_post,"ols")
