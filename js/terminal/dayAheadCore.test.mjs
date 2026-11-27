@@ -145,3 +145,25 @@ test('outlookScript: a day with no high-impact release reads the medium ones fro
   assert.equal(d.events.length, 4, 'the holiday is dropped, low impact kept on the clock');
   assert.equal(outlookScript(d, now), 'No top-tier releases today; the medium-impact ones, London time. At 08:30, German manufacturing PMI: expected 54.1, after 54.2 last time, and German services PMI: expected 52.4, after 51.7 last time. At 14:45, US manufacturing PMI: expected 54.5, after 56.0 last time.');
 });
+
+test('dayContext: holiday and half-day tags, the validated pre-release and after-CPI facts, the Monday / month-start profile (Helix review wave 1.7 / 1.10)', async () => {
+  const { dayContext, holidayTag, closuresOn } = await import('./dayAheadCore.js');
+  const at = s => Date.parse(s);
+  // 27 Nov 2026: the day after Thanksgiving (1pm New York close), after Thanksgiving itself
+  const h = holidayTag(at('2026-11-27T07:00:00Z'));
+  assert.match(h.text, /^Today is the day after Thanksgiving: the US stock market closes at 1pm New York, a half day, so thin trade this afternoon is the holiday, not a calm market\. Yesterday was Thanksgiving: the US stock market was shut, so yesterday's ranges are holiday ranges\.$/);
+  assert.equal(closuresOn('2026-11-26')[0].name, 'Thanksgiving'); assert.equal(holidayTag(at('2026-11-18T07:00:00Z')), null);
+  // a CPI morning: the pre-release fact before the print only; the session after CPI the next day
+  const cpi = { events: [{ ccy: 'USD', rank: 3, name: 'CPI m/m', family: 'CPI', ms: at('2026-11-10T13:30:00Z'), actual: null }] };
+  const a = dayContext({ day: cpi, now: at('2026-11-10T07:00:00Z') });
+  assert.ok(a.tags.includes('prerelease')); assert.match(a.text, /ten to twelve percent narrower than a normal morning.*not a direction/);
+  assert.equal(dayContext({ day: cpi, now: at('2026-11-10T14:00:00Z') }), null, 'after the print the pre-release line is gone');
+  const ppi = { events: [{ ccy: 'USD', rank: 3, name: 'PPI m/m', family: 'PPI', ms: at('2026-11-10T13:30:00Z') }] };
+  assert.equal(dayContext({ day: ppi, now: at('2026-11-10T07:00:00Z') }), null, 'PPI mornings are near normal in the test');
+  const b = dayContext({ day: { events: [] }, yday: { events: [{ ...cpi.events[0], actual: '0.3%' }] }, now: at('2026-11-11T07:00:00Z') });
+  assert.deepEqual(b.tags, ['aftercpi']); assert.match(b.text, /session after, on euro-dollar and dollar-Canada, as range, never direction/);
+  assert.deepEqual(dayContext({ day: { events: [] }, now: at('2026-11-16T07:00:00Z') }).tags, ['monday']);
+  assert.deepEqual(dayContext({ day: { events: [] }, now: at('2026-12-01T07:00:00Z') }).tags, ['monthstart']);
+  assert.equal(dayContext({ day: { events: [] }, now: at('2026-11-18T07:00:00Z') }), null);
+  for (const x of [a, b]) assert.doesNotMatch(x.text, /\bwill\b|coiled|fenced|buy|sell/i);
+});

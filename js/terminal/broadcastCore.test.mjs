@@ -314,3 +314,9 @@ test('the VISUAL GUIDE: every section explained, no headline or lead, the guide 
   const b = planBroadcast({ now: new Date('2026-11-26T07:00:00Z') }, { hooks, mode: 'quick' });
   assert.match(b.items.find(x => x.scene?.id === 'vol').text, /Gold ran hot: wider stops\./);
 });
+
+test('the quiet lead says a US holiday or half day, so a thin board reads as the calendar (Helix review wave 1.10)', () => {
+  const bd = { n: 30, quiet: 25, up: 3, dn: 2 };
+  assert.match(pickLead({ now: new Date('2026-11-27T07:05:00Z'), board: bd })[0].text, /Today is the day after Thanksgiving, a US half day, so a thin board is the calendar, not a calm market\.$/);
+  assert.doesNotMatch(pickLead({ now: new Date('2026-11-18T07:05:00Z'), board: bd })[0].text, /holiday|half day/);
+});

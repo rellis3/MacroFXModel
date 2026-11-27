@@ -18,7 +18,7 @@ import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView } from './jarvisGL.js';
 import { isEvening, reactionOf, releasedGroups, reviewScript, reviewFigure, tomorrowScript, REACT_PAIR } from './eveningCore.js';
-import { SESSIONS, REGION_LABEL, londonParts, polar, angleOf, laneOffset, pylonHeight, mergeDay, nextBig, countdown, hourProfile, ridgeAt, placeLabels, dayScript, outlookScript, sweepMins } from './dayAheadCore.js';
+import { SESSIONS, REGION_LABEL, londonParts, polar, angleOf, laneOffset, pylonHeight, mergeDay, nextBig, countdown, hourProfile, ridgeAt, placeLabels, dayScript, outlookScript, sweepMins, dayContext } from './dayAheadCore.js';
 
 const R = 3, R_SESS = 2.68, RB = 1.2, RA = 1.08, FULL = 1.5, TTL = 10 * 60_000, NR = 289, TAIL = 70, MAXP = 64;
 const ORIGIN = Array(3).fill(0);
@@ -301,7 +301,10 @@ registerShowScene({
   id: 'dayahead', after: 'fxgrid',
   prepare: api => loadDay(api).then(() => (S.day && S.feedOk ? { now: nowMs(api) } : null)).catch(() => null),
   build: (inp, data) => {
-    if (!data || !S.day) return null; const text = outlookScript(S.day, data.now); if (!text) return null;
+    if (!data || !S.day) return null; const base = outlookScript(S.day, data.now); if (!base) return null;
+    // validated context and the holiday tag, said after the schedule (Helix review wave 1.7 / 1.10); the schedule line itself is unchanged
+    let ctx = null; try { const lp = londonParts(data.now), y0 = data.now - lp.mins * 60e3 - 864e5; ctx = inp?.guide ? null : dayContext({ day: S.day, yday: S.week ? mergeDay({ week: S.week, feed: S.feed, now: y0 + 12 * 3600e3 }) : null, now: data.now }); } catch (e) { ctx = null; }
+    const text = ctx ? `${base} ${ctx.text}` : base;
     return { title: 'The day ahead', view: 'ahead', cam: null, text, enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); S.sel = null; S.review = false; S.showP = 0; S.showAt = Date.now(); },
       motion: (api, p) => { S.showP = clamp(p, 0, 1); S.showAt = Date.now(); } };
   },

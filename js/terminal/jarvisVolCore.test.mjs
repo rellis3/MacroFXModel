@@ -77,3 +77,10 @@ test('a missing cell is missing, not "1.0 times normal": left out of latest, pea
   const nq = recentRange(T).find(x => x.key === 'NQ'); assert.ok(Math.abs(nq.v - 0.5) < 1e-6, `NQ's two measured quiet days, not diluted by fills: ${nq.v}`); assert.equal(nq.last, null);
   assert.match(volScript(T, null), /none of the 4 markets/);
 });
+
+test('holidayNote: a latest session on Thanksgiving is said as a holiday range (Helix review wave 1.10)', async () => {
+  const { holidayNote } = await import('./jarvisVolCore.js');
+  assert.match(holidayNote({ dates: ['2026-11-25', '2026-11-26'], ns: 2 }), /^The latest session, Thursday 26 November, was Thanksgiving, a US holiday: its range is a holiday range, not a calm market\.$/);
+  assert.match(holidayNote({ dates: ['2026-11-27'], ns: 1 }), /the day after Thanksgiving, a US half day/);
+  assert.equal(holidayNote({ dates: ['2026-11-24'], ns: 1 }), null); assert.equal(holidayNote(null), null);
+});

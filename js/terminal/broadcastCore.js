@@ -7,6 +7,7 @@
 // screen). DESCRIPTION ONLY: nothing here is a forecast, a signal or a trade.
 import { spokenName, marketName } from './jarvisNames.js';
 import { readSeconds } from './showCore.js';
+import { holidayTag } from './dayAheadCore.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const list = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
@@ -111,7 +112,9 @@ export function pickLead(inp = {}, n = 3) {
   for (const c of cand) { if (out.length >= n) break; if (cnt[c.kind] >= lim[c.kind]) continue; cnt[c.kind]++; out.push(c); }
   for (const c of cand) { if (out.length >= n) break; if (!out.includes(c)) out.push(c); }       // a thin morning may lean on a third mover
   const bd = inp.board;
-  if (!out.length && bd && bd.n) out.push({ kind: 'quiet', score: 0, figure: `${bd.quiet} of ${bd.n}`, figLabel: 'markets barely moving', headline: 'A quiet start', sub: 'No market is far outside its usual move', tone: 'tx', say: `a quiet start. ${cap1(numWord(bd.quiet))} of the ${bd.n} markets are barely moving against their usual size.` });
+  // a holiday or half day is said with the quiet start, so a thin board is read as the calendar (Helix review wave 1.10)
+  let hol = ''; try { const h = holidayTag(+(inp.now ?? Date.now())); const c = h?.today.find(x => x.market === 'US stock market'); if (c) hol = ` Today is ${c.name.replace(/^Day after/, 'the day after')}, ${/early/.test(c.kind) ? 'a US half day' : 'a US holiday'}, so a thin board is the calendar, not a calm market.`; } catch (e) { hol = ''; }
+  if (!out.length && bd && bd.n) out.push({ kind: 'quiet', score: 0, figure: `${bd.quiet} of ${bd.n}`, figLabel: 'markets barely moving', headline: 'A quiet start', sub: hol ? 'A US holiday session' : 'No market is far outside its usual move', tone: 'tx', say: `a quiet start. ${cap1(numWord(bd.quiet))} of the ${bd.n} markets are barely moving against their usual size.${hol}` });
   for (const x of out) x.text = cap1(x.say);
   return out;
 }

@@ -2,6 +2,7 @@
 // (as a percent of price) divided by that market's OWN normal range, the median of its previous 20 sessions' ranges (point-in-time, so a day never sets its own yardstick). 1.0 = a normal day for that market.
 // Source: /api/ohlc-range daily bars (OANDA), the VIX curve from /api/fredhistory. DESCRIPTION ONLY: how stretched each day was; never a forecast, never a trade.
 import { spokenName } from './jarvisNames.js';
+import { closuresBetween } from '../marketCalendars.js';
 const num = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const CLIP = 3, LOOKBACK = 20, MIN_PRIOR = 10, SESSIONS = 60;
@@ -108,7 +109,14 @@ export function volBrief(T, V) {
   else t.push(`Over the last five sessions none of the markets we trade has run hot; the busiest is ${one(r[0])} its normal range.`);
   if (quiet.length) t.push(`Quiet: ${listW(quiet.slice(0, 2).map(one))}, where ranges have run tight.`);
   const vl = vixLine(V); if (vl) t.push(vl);
+  const hn = holidayNote(T); if (hn) t.push(hn);
   return t.join(' ') + ' A description of ranges, not a forecast.';
+}
+/** The latest session's holiday, said as such (Helix review wave 1.10): "The latest session, Thursday 26 November, was Thanksgiving, a US holiday: its range is a holiday range." null on an ordinary day. */
+export function holidayNote(T) {
+  const d = T?.dates?.[T.ns - 1]; if (!d) return null;
+  const c = closuresBetween(d, d), us = c.find(x => x.market === 'US stock market') ?? c[0]; if (!us) return null;
+  return `The latest session, ${dayWord(d)}, was ${us.name.replace(/^Day after/, 'the day after')}, ${/early/.test(us.kind) ? 'a US half day' : us.market === 'US stock market' ? 'a US holiday' : `a ${us.market === 'UK' ? 'UK' : 'euro-area'} holiday`}: its range is a holiday range, not a calm market.`;
 }
 const listW = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
 
