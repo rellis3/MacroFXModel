@@ -197,3 +197,9 @@ additive (new registry, old names kept as aliases), requested by the owner 2026-
 - 2026-11-27: §2 built and tested; DXY rebuilt and on the terminal. IBKR probe run (results in §3 phase 2).
 - 2026-11-27: §3 rewritten as the full pull/store/roll plan after checking every IBKR script on main. Correction:
   SONIA futures DO resolve (`SONIA.N`, class `SO3`, as `refresh_cb_expectations.py` uses); the first probe used the wrong symbol.
+- 2026-11-27: §3 phases 1, 2 and 4 built (branch ibkr-roll). `scripts/ibkr/contracts.py` (registry, roll rules, aliases; tested in
+  `scripts/ibkr/test_contracts.py`), `scripts/ibkr/continuous.py` (ROOT1/ROOT2 unadjusted + `_adj`, `rolls.json`, `aliases.json`, daily closes,
+  expiry guard). Probe: every phase-2 root resolves and returns 1-minute midpoints (JGB, CGB, CORRA, YT, XT, IR, Conf, SONIA, 6A/6C/6S/6N).
+  Correction: BAX no longer lists at IBKR (0 contracts); the CORRA 3M future (CRA, CDE) is the Canadian strip. The 30-minute job
+  (`--tier auto`) pulls the phase-1 roots every run and the G10 roots on the run in the first half of each hour; a rolled root pulls its
+  current front, plus the next contract inside 10 business days of the roll.

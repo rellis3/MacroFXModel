@@ -6,10 +6,11 @@ Laptop: IB Gateway open and logged in, API on port 4002 (paper; override with en
     python scripts/rates_line/pull_deep_history.py                        # the seven core legs (SR3U6 SR3Z6 SR3H7 IH7 IZ6 ER3Z6 ER3H7)
     python scripts/rates_line/pull_deep_history.py --all                  # every live contract in refresh_leg_bars.IB_SPEC (adds the Apr-2026 ones, fed funds, ZT, Schatz)
     python scripts/rates_line/pull_deep_history.py --names SR3U6 IH7 --until 2022-01-01 --commit
+    python scripts/rates_line/pull_deep_history.py --roots ZN GBL JGB --dry-run   # 2026-11-27: backfill whole roots (expired contracts too) for the continuous series
 
 How it works: whole-week MIDPOINT requests ending Saturday 00:00 UTC (the same as the first deep pull and refresh_leg_bars.py), newest first, starting with the week
 before the oldest bar on disk. A contract stops at the earliest date IBKR says it holds (reqHeadTimeStamp), at --until, after --max-weeks, or after --stop-empty empty
-weeks in a row (before the contract quoted at all). Expired contracts cannot be fetched (IBKR does not serve them), so this only reaches contracts still trading.
+weeks in a row (before the contract quoted at all). Expired contracts are requested with includeExpired (IBKR keeps them about two years); --roots plans every contract of a root since --since.
 Bars are merged into analysis/output/stir_1m_older/<EXCH>_<LOCAL>.parquet, which build_leg_bars.py reads alongside stir_1m_deep; the chart files are rebuilt at the end.
 A folder of its own because the 30-minute refresh (refresh_leg_bars.py) rewrites the stir_1m_deep files, and two writers on one file can drop each other's bars.
 Run it with --pace 20 or more while that refresh runs: IBKR's 60-requests-per-10-minutes limit is shared across the account. An empty week is retried twice, a minute apart,
@@ -40,7 +41,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts' / 'rates_line'))
 import build_leg_bars as B
-from refresh_leg_bars import IB_SPEC, CORE
+from refresh_leg_bars import IB_SPEC, CORE, K      # IB_SPEC and CORE come from the contract registry (scripts/ibkr/contracts.py) since 2026-11-27
+import continuous as KC      # scripts/ibkr/continuous.py (on the path through refresh_leg_bars): the contract sequence of a root
 
 DEEP = ROOT / 'analysis' / 'output' / 'stir_1m_older'      # its own folder: refresh_leg_bars.py rewrites the stir_1m_deep files every 30 minutes
 ARCH = ROOT / 'analysis' / 'output' / 'stir'
@@ -121,7 +123,11 @@ def quality(path):
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--all', action='store_true', help='every live contract in IB_SPEC, not only the seven core legs')
-    ap.add_argument('--names', nargs='+', help='just these contracts (names as on the chart, e.g. SR3U6 IH7 FGBS2612)')
+    ap.add_argument('--names', nargs='+', help='just these contracts (names as on the chart, e.g. SR3U6 IH7 FGBS2612; any registry name works: ZNH7 FGBL2703 JGBZ6)')
+    ap.add_argument('--roots', nargs='+', help='BACKFILL every contract of these registry roots (ZN GBL JGB SO3 ...; ALL = every root) from --since to the live depth, '
+                    'expired ones included (IBKR keeps them about 2 years): the history scripts/ibkr/continuous.py stitches into ROOT1 / ROOT2')
+    ap.add_argument('--since', default='2024-11-01', help='--roots: the first contract kept is the one whose roll falls after this date (default 2024-11-01)')
+    ap.add_argument('--window-months', type=int, default=7, help='--roots: go back at most this many months before each contract\'s roll (default 7: covers its time as the 2nd contract)')
     ap.add_argument('--until', default=None, help='do not go back before this date (default 2016-01-01, older than any listing here; 2024-01-01 with --i2-archive)')
     ap.add_argument('--i2-archive', action='store_true', help='pull the 15-minute TRADES of the expired Euribor quarterlies for their I2! windows (see above) instead')
     ap.add_argument('--sr32-archive', action='store_true', help='the same for the expired SOFR quarterlies and the rolling SR32! line (both flags together do both)')
@@ -135,10 +141,29 @@ if __name__ == '__main__':
     a = ap.parse_args()
     PACE_S[0] = a.pace
 
-    names = a.names or (list(IB_SPEC) if a.all else CORE)
-    bad = [n for n in names if n not in IB_SPEC]
+    floor = {}      # --roots: per contract, do not go back before this (its roll minus --window-months)
+    if a.roots:
+        keys = list(K.ROOTS) if a.roots == ['ALL'] else a.roots
+        bad = [k for k in keys if k not in K.ROOTS]
+        if bad:
+            sys.exit(f'not registry roots: {bad}. Known: {" ".join(K.ROOTS)}')
+        names, since, today = [], pd.Timestamp(a.since).date(), datetime.now(timezone.utc).date()
+        for k in keys:
+            r = K.ROOTS[k]
+            if r.kind == 'index':
+                continue
+            sy, sm = K._add_months(since.year, since.month, -1)
+            seq = [z for z in KC.sequence(k, sy, sm, *K._add_months(today.year, today.month, 15)) if z['roll'] > since]
+            live = [z for z in seq if z['ltd'] >= today][:r.depth]
+            for z in [z for z in seq if z['ltd'] < today] + live:
+                names.append(z['name'])
+                y, m = K._add_months(z['roll'].year, z['roll'].month, -a.window_months)
+                floor[z['name']] = datetime(y, m, 1, tzinfo=timezone.utc)
+    else:
+        names = a.names or (list(IB_SPEC) if a.all else CORE)
+    bad = [n for n in names if not K.alias(n)]
     if bad:
-        sys.exit(f'not in refresh_leg_bars.IB_SPEC: {bad}. Known: {" ".join(IB_SPEC)}')
+        sys.exit(f'not registry names: {bad}. Known roots: {" ".join(K.ROOTS)}')
     roll_legs = [x for x, on in (('I2', a.i2_archive), ('SR32', a.sr32_archive)) if on]
     until = pd.Timestamp(a.until or ('2024-01-01' if roll_legs else '2016-01-01'), tz='UTC').to_pydatetime()
     now = datetime.now(timezone.utc)
@@ -202,8 +227,13 @@ if __name__ == '__main__':
     plan = []
     for n in names:
         old = oldest_on_disk(n, found)
-        start = saturday_on_or_before(old.to_pydatetime() if old is not None else now)
-        weeks = week_ends(start, until, a.max_weeks)
+        al = K.alias(n)
+        top = now
+        if al['year']:      # an expired contract: start from the week after its last trading day, not from today (empty weeks would end it before its data)
+            ltd = datetime.combine(KC.contract_ltd(al['root'], al['year'], al['month'], KC.load_cache()), datetime.min.time(), tzinfo=timezone.utc)
+            top = min(now, ltd + timedelta(days=8))
+        start = saturday_on_or_before(old.to_pydatetime() if old is not None else top)
+        weeks = week_ends(start, max(until, floor.get(n, until)), a.max_weeks)
         skip = state.get(n, {}).get('finished') and not a.force
         plan.append((n, old, weeks, skip))
     todo = [p for p in plan if not p[3]]
@@ -236,16 +266,17 @@ if __name__ == '__main__':
     DEEP.mkdir(parents=True, exist_ok=True)
     touched = []
     for n, old, weeks, _ in todo:
-        sym, exch, ccy, month = IB_SPEC[n]
+        al = K.alias(n)
+        r = K.ROOTS[al['root']]
         conn()
-        det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month))
+        det = ib.reqContractDetails(K.ib_contract(r, f'{al["year"]}{al["month"]:02d}', include_expired=True))      # with the trading class (VX, SO3 ...); expired ones too
         if not det:
             print(f'{n}: contract not found (expired or not listed); skipping', flush=True)
             state[n] = dict(finished=True, reason='contract not found at IBKR', at=now.isoformat())
             continue
         c = det[0].contract
         c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]
-        stem = found[n]['stem'] if n in found else f'{exch}_{c.localSymbol}'
+        stem = found[n]['stem'] if n in found else K.stem_for(r, al['year'], al['month'], K._ltd_date(c.lastTradeDateOrContractMonth))      # the same stem the 30-minute job writes
         path = DEEP / f'{stem}.parquet'
         head = None
         try:

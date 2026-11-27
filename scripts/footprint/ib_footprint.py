@@ -1,6 +1,6 @@
 """NQ footprint for a past window from IB Gateway historical ticks (read-only, no orders).
 
-    python scripts/footprint/ib_footprint.py 2026-10-30 13:30 14:00 [--contract 202612]
+    python scripts/footprint/ib_footprint.py 2026-10-30 13:30 14:00 [--contract 202612]   (default: the front NQ on that day)
 
 Pulls TRADES and BID_ASK ticks for the window (paged 1000 at a time until the window is covered, both series),
 classifies each trade against the prevailing quote (at/above ask = buy, at/below bid = sell, inside = unclassified),
@@ -34,9 +34,12 @@ def pull(ib, c, what, start, end, maxreq=4000):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("day"); ap.add_argument("start"); ap.add_argument("end")
-    ap.add_argument("--contract", default="202612"); ap.add_argument("--port", type=int, default=int(os.environ.get("IB_PORT", 4002)))
+    ap.add_argument("--contract", default="", help="contract month YYYYMM; default: the front NQ on that day by the registry roll calendar (scripts/ibkr/contracts.py)"); ap.add_argument("--port", type=int, default=int(os.environ.get("IB_PORT", 4002)))
     a = ap.parse_args()
     S = dt.datetime.fromisoformat(f"{a.day}T{a.start}:00"); E = dt.datetime.fromisoformat(f"{a.day}T{a.end}:00")
+    if not a.contract:
+        import sys; sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ibkr")); import contracts as K
+        a.contract = K.front_month("NQ", S.date()); print("front NQ on", a.day, "=", a.contract)
     ib = IB(); ib.connect("127.0.0.1", a.port, clientId=79, readonly=True, timeout=15)
     c = Future("NQ", a.contract, "CME", currency="USD"); ib.qualifyContracts(c)
     tr, r1 = pull(ib, c, "TRADES", S, E)

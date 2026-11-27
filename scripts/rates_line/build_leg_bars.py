@@ -12,10 +12,13 @@ import datetime as dt
 import json
 import re
 from pathlib import Path
+import sys
 import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts' / 'ibkr'))
+import contracts as K      # the contract registry (2026-11-27): names, stems and roll rules for every IBKR root
 OUTROOT = ROOT / 'analysis' / 'output'
 OUT = OUTROOT / 'cog_chart'
 DIRS = ['stir_1m_older', 'stir_1m_deep', 'stir_1m_meeting', 'stir_1m', 'stir_1m_i2', 'stir_1m_sweep/mid', 'stir_1m_bonds']      # midpoint folders only (the trades folders are trade prices)
@@ -78,7 +81,8 @@ def describe(stem):
         root = m.group(1)
         label = {'VVIX': 'VVIX index (vol of VIX)', 'VIX': 'VIX index (S&P 500 30-day implied vol)', 'VXN': 'VXN index (Nasdaq-100 30-day implied vol)'}[root]
         return root, label, 'Dollar and volatility', 'US', 'price', 'index level (RTH trades)'
-    return None
+    # 2026-11-27: every other root in the contract registry (scripts/ibkr/contracts.py): NQ, ES, CME FX, gold, and the G10 legs (JGB, CGB, CORRA, ASX, Conf, SONIA)
+    return K.describe_stem(stem)
 
 
 def bars(df, rule):
@@ -262,6 +266,14 @@ if __name__ == '__main__':
             meta.append(dict(name=sname, label=label, group=spec['group'], side=spec['side'], kind='rate', period=period, first=str(start)[:10], asOf=str(end), m5=len(m5), m15=len(m15), h1=len(h1),
                              m5First=first_of(m5), m15First=first_of(m15), h1First=first_of(h1), folders=['stitched'], stem=sname, stitched=True, segments=segs, **cov))
             print(f'{sname} (stitched): {str(start)[:10]} -> {str(end)[:16]} | ' + ' | '.join(f"{x['contract']} {x['start'][:10]}..{x['end'][:10]} {x['source'].split()[1]}" for x in segs))
+    try:      # 2026-11-27: continuous ROOT1 / ROOT2 for every registry root (scripts/ibkr/continuous.py), plus aliases.json, rolls.json and the daily closes
+        import continuous
+        have = {x['name'] for x in meta}
+        meta += [x for x in continuous.build_all(m5_days=a.m5_days, m15_days=a.m15_days) if x['name'] not in have]
+    except Exception as e:      # never lose the per-contract legs over the continuous build
+        import traceback
+        traceback.print_exc()
+        print(f'continuous build failed ({type(e).__name__}: {e}); per-contract legs written as usual')
     (OUT / 'legs_meta.json').write_text(json.dumps(meta, indent=1), encoding='utf-8')
     (OUT / 'archive.json').write_text(json.dumps(archive(), indent=1), encoding='utf-8')
     print(len(meta), 'contracts')

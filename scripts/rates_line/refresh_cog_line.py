@@ -24,8 +24,13 @@ sys.path.insert(0, str(ROOT / 'scripts' / 'rates_line'))
 from build_cog_line import LEGS
 BASE = 'https://macrofxmodel-production.up.railway.app'; KV_KEY = 'cog_line_live_v1'
 # IBKR lookup per file: (symbol, exchange, currency, contract-month parameter)
-IB_SPEC = {'CME_SR3U6': ('SOFR3', 'CME', 'USD', '202609'), 'CME_SR3Z6': ('SOFR3', 'CME', 'USD', '202612'), 'CME_SR3H7': ('SOFR3', 'CME', 'USD', '202703'),
-           'ICEEU_IH7': ('I', 'ICEEU', 'EUR', '202703'), 'ICEEU_IM7': ('I', 'ICEEU', 'EUR', '202706')}
+# 2026-11-27: built from the contract registry (scripts/ibkr/contracts.py); the same five files and months as before. The line's legs are pinned per
+# segment in build_cog_line.LEGS (strip contracts never roll; they are ranked), so only the lookup moved: with the registry's trading class.
+sys.path.insert(0, str(ROOT / 'scripts' / 'ibkr'))
+import contracts as K
+_FILES = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IM7']
+IB_SPEC = {K.stem_for(K.alias(n)['root'], K.alias(n)['year'], K.alias(n)['month']): K.legacy_spec(n) for n in _FILES}
+_ROOT_OF = {K.stem_for(K.alias(n)['root'], K.alias(n)['year'], K.alias(n)['month']): K.alias(n)['root'] for n in _FILES}
 last = [0.0]
 def pace():
     w = 10.5 - (time.time() - last[0]); time.sleep(max(w, 0)); last[0] = time.time()
@@ -59,7 +64,7 @@ if __name__ == '__main__':
     print(f'pulling the last {days} day(s) for {need}')
     for name in need:
         sym, exch, ccy, month = IB_SPEC[name]
-        det = ib.reqContractDetails(Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month))
+        det = ib.reqContractDetails(K.ib_contract(_ROOT_OF[name], month))
         if not det: print(f'{name}: contract not found (expired or not listed)'); continue
         c = det[0].contract; c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]
         if datetime.strptime(c.lastTradeDateOrContractMonth, '%Y%m%d').replace(tzinfo=timezone.utc) < now - timedelta(days=1): print(f'{name}: expired {c.lastTradeDateOrContractMonth}, skipping'); continue

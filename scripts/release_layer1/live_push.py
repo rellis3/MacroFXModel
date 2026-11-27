@@ -27,25 +27,50 @@ def kv_set(obj):
     with urllib.request.urlopen(req, timeout=60) as r: return r.getcode(), r.read().decode()[:120]
 
 
+def resolve(ib, R, n, today, found):
+    """A NAMES entry -> (contract, file stem, is_index) from the registry (scripts/ibkr/contracts.py, 2026-11-27). A strip contract (SR3U6, IH7)
+    and an index are pulled as named; a ROLLED root's name (ZNZ6, NQZ6, GCZ6 ...) pulls that root's current front, so the page keeps moving
+    through the roll (layer1_lib chains the successor files after the named one). None when IBKR lists nothing live."""
+    K = R.K
+    al = K.alias(n)
+    if not al:
+        return None
+    r = K.ROOTS[al['root']]
+    det = ib.reqContractDetails(K.ib_contract(r))
+    if not det:
+        return None
+    if r.kind == 'index':
+        return det[0].contract, found[n]['stem'] if n in found else f'{r.tag}_{r.key}', True, n
+    live = K.select_live(r, [K.detail_row(d) for d in det], today, depth=max(r.depth, 8))
+    if r.rolled:
+        i = K.active_index(r, live, today)
+        z = live[i] if i is not None else None
+    else:
+        z = next((x for x in live if (x['y'], x['m']) == (al['year'], al['month'])), None)
+    if z is None:
+        return None
+    c = next(d.contract for d in det if d.contract.localSymbol == z['local'])
+    c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]
+    return c, found[z['name']]['stem'] if z['name'] in found else z['stem'], False, z['name']
+
+
 def pull(names, hours=24):
     import refresh_leg_bars as R
-    from ib_insync import IB, Future, Index, util
-    found = R.B.discover(); stem = lambda n: found[n]['stem'] if n in found else f'{R.IB_SPEC[n][1]}_{n}'
+    from ib_insync import IB, util
+    found = R.B.discover()
     ib = IB()
     try: ib.connect('127.0.0.1', R.IB_PORT, clientId=23, timeout=20, readonly=True)
     except Exception as e: return f'IB Gateway not reachable on {R.IB_PORT} ({type(e).__name__}); pull skipped'
-    notes = []
+    notes, today = [], datetime.now(timezone.utc).date()
     for n in names:
-        sym, exch, ccy, month = R.IB_SPEC[n]
-        idx = month == 'IND'                                                           # cash volatility indices: TRADES bars, no expiry
-        det = ib.reqContractDetails(Index(symbol=sym, exchange=exch, currency=ccy) if idx else Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month))
-        if not det: notes.append(f'{n}: not found'); continue
-        c = det[0].contract
-        if not idx: c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]
+        got = resolve(ib, R, n, today, found)
+        if not got: notes.append(f'{n}: not found'); continue
+        c, stem, idx, now_name = got                                                   # idx: cash volatility indices, TRADES bars, no expiry
+        if now_name != n: notes.append(f'{n} rolled: pulled {now_name}')
         try: bars = ib.reqHistoricalData(c, endDateTime='', durationStr=f'{hours * 3600} S', barSizeSetting='1 min', whatToShow='TRADES' if idx else 'MIDPOINT', useRTH=False, formatDate=2, timeout=120)
         except Exception as e: notes.append(f'{n}: {e}'); continue
         if bars:
-            df = util.df(bars); df.insert(0, 'time', pd.to_datetime(df.pop('date'), utc=True).dt.strftime('%Y-%m-%dT%H:%M:%SZ')); R.merge(R.SRC / f'{stem(n)}.parquet', df)
+            df = util.df(bars); df.insert(0, 'time', pd.to_datetime(df.pop('date'), utc=True).dt.strftime('%Y-%m-%dT%H:%M:%SZ')); R.merge(R.SRC / f'{stem}.parquet', df)
         else: notes.append(f'{n}: no bars returned')
         time.sleep(2)
     ib.disconnect(); return 'pulled ' + ', '.join(names) + ('; ' + '; '.join(notes) if notes else '')

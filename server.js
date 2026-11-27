@@ -9349,12 +9349,51 @@ async function _ccSyncFromR2() {
       _ccSynced.set(name, f.sha256); n++;
     }
     _ccSync = { at: new Date().toISOString(), asOf: man.generatedAt, files: n, error: null };
+    try { const h = await _r2GetJSON('rates-legs/_health.json'); if (h?.roots) _ccHealth = { at: Date.now(), v: h }; } catch { /* the guard is optional: the legs above are what matter */ }
     if (n) console.log(`[rates-legs] ${n} leg file(s) from R2 (as of ${man.generatedAt})`);
   } catch (e) { _ccSync = { ..._ccSync, at: new Date().toISOString(), error: e.message }; console.error('[rates-legs]', e.message); }
 }
+// Expiry guard (plans/DATA_CAPTURE_G10.md section 3, phase 1.8): rates-legs/_health.json, written by the laptop's legs_r2.py push after every 30-minute
+// refresh from scripts/ibkr/continuous.py health(). Per root: the contract the continuous front is on, its roll date, its newest bar, whether the next
+// contract has bars. Shown in /api/services; a root is flagged when its newest bar is over a business day old, or it is inside its roll window and the
+// next contract has no bars (the silent stop of the Schatz on 9 Oct 2026). The file itself going stale means the laptop job stopped.
+let _ccHealth = { at: 0, v: null };
+function _ccBdays(fromIso, nowMs) {      // weekdays after fromIso's date up to now (holidays ignored here; the laptop's file counts them per exchange)
+  let n = 0; const d = new Date(`${String(fromIso).slice(0, 10)}T00:00:00Z`), end = new Date(new Date(nowMs).toISOString().slice(0, 10) + 'T00:00:00Z');
+  while (d < end) { d.setUTCDate(d.getUTCDate() + 1); if (d.getUTCDay() % 6) n++; }
+  return n;
+}
+function _ccHealthView(nowMs = Date.now()) {
+  const h = _ccHealth.v;
+  if (!h?.roots) return { ok: false, note: 'rates-legs/_health.json not read yet (the laptop writes it with legs_r2.py push)' };
+  const fileAgeH = (nowMs - Date.parse(h.generatedAt)) / 3600e3;
+  const roots = h.roots.map(r => {
+    const flags = [...(r.flags ?? [])];
+    if (r.newestBar && _ccBdays(r.newestBar, nowMs) > 1 && !flags.includes('stale')) flags.push('stale');
+    return { ...r, flags };
+  });
+  const flagged = roots.filter(r => r.flags.length).map(r => `${r.root}: ${r.flags.join(', ')}`);
+  return { ok: !flagged.length && fileAgeH < 3, generatedAt: h.generatedAt, fileAgeHours: +fileAgeH.toFixed(1), fileStale: fileAgeH >= 3, rollWindowBd: h.rollWindowBd, flagged, roots };
+}
 svcTimeout('ratesLegsSync', _ccSyncFromR2, 5_000);
 svcInterval('ratesLegsSync', _ccSyncFromR2, 30 * 60_000);
-const _ccLegNames = () => _cogJson(path.join(_CC_DIR, 'legs_meta.json')).map(l => l.name);      // every US / euro rates contract the builder found (scripts/rates_line/build_leg_bars.py)
+const _ccLegNames = () => _cogJson(path.join(_CC_DIR, 'legs_meta.json')).map(l => l.name);
+// aliases.json (scripts/ibkr/continuous.py): ZNZ6 -> ZN1 from ZNZ6's roll date, FGBL2612 -> GBL1, NQZ6 -> NQ1 ... so pages that ask for the old name draw
+// straight through the roll (the step at the roll is the real calendar gap: the chart series is unadjusted). Only once the continuous file is at
+// least as new as the contract's own file, so a root whose new front has no bars yet keeps showing the old contract.
+function _ccAliasOf(name, nowMs = Date.now()) {
+  try {
+    const a = _cogJson(path.join(_CC_DIR, 'aliases.json'))[name];
+    if (!a?.to || nowMs < Date.parse(`${a.rollAt}T00:00:00Z`)) return null;
+    const to = _cogJson(path.join(_CC_DIR, `leg_${a.to}.json`)); let own = null; try { own = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)); } catch { /* the old contract's file is gone */ }
+    return !own || Date.parse(to.asOf) >= Date.parse(own.asOf) ? a.to : null;
+  } catch { return null; }
+}
+function _ccLiveAdd(base, live, name) {      // the laptop's push for a leg: a stitched / continuous leg takes its current contract's push, from that contract's start
+  let add = live?.legs?.[base.liveFrom ?? name]?.m5;
+  if (add && base.liveSince) { const i0 = add.t.findIndex(t => t >= base.liveSince); add = i0 < 0 ? null : { t: add.t.slice(i0), o: add.o.slice(i0), h: add.h.slice(i0), l: add.l.slice(i0), c: add.c.slice(i0) }; }
+  return add;
+}      // every US / euro rates contract the builder found (scripts/rates_line/build_leg_bars.py)
 let _ccLive = { at: 0, v: null };
 async function _ccLivePush() {
   if (Date.now() - _ccLive.at > 20_000) {
@@ -9462,13 +9501,12 @@ app.get('/api/cog-chart/leg', async (req, res) => {
     const name = String(req.query.name || '');
     if (_YL[name]) { res.set('Cache-Control', 'no-store'); return res.json(await _ylLeg(name)); }      // yield legs (Y_*): their own path; nothing below changes
     if (!_ccLegNames().includes(name)) return res.status(400).json({ ok: false, error: 'unknown contract' });
-    const base = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)), live = await _ccLivePush();
-    let add = live?.legs?.[base.liveFrom ?? name]?.m5;      // a stitched leg (I2 = rolling 2nd Euribor) takes the live push of the contract it is now, only from its roll on
-    if (add && base.liveSince) { const i0 = add.t.findIndex(t => t >= base.liveSince); add = i0 < 0 ? null : { t: add.t.slice(i0), o: add.o.slice(i0), h: add.h.slice(i0), l: add.l.slice(i0), c: add.c.slice(i0) }; }
+    const aliasOf = _ccAliasOf(name), base = _cogJson(path.join(_CC_DIR, `leg_${aliasOf ?? name}.json`)), live = await _ccLivePush();
+    const add = _ccLiveAdd(base, live, aliasOf ?? name);      // a stitched leg (I2 = rolling 2nd Euribor) takes the live push of the contract it is now, only from its roll on
     let m5 = base.m5, m15 = base.m15, h1 = base.h1 ?? null, liveAsOf = null;      // h1 = the whole history on disk (1h / 4h charts); m15 the last 180 days, m5 the last 30
     if (add?.t?.length) { m5 = _ccMerge(m5, add); m15 = _ccMerge(m15, _ccAgg(add, 900)); if (h1) h1 = _ccMerge(h1, _ccAgg(add, 3600)); liveAsOf = live.asOf ?? null; }
     res.set('Cache-Control', 'no-store');
-    res.json({ ok: true, name, label: base.label, group: base.group, side: base.side, kind: base.kind, period: base.period, source: base.source, convention: base.convention, first: base.first, staticAsOf: base.asOf, liveAsOf, segments: base.segments ?? null, m5, m15, h1 });
+    res.json({ ok: true, name, aliasOf: aliasOf ?? null, label: aliasOf ? `${name} (rolled: drawn as ${aliasOf}) ${base.label}` : base.label, group: base.group, side: base.side, kind: base.kind, period: base.period, source: base.source, convention: base.convention, first: base.first, staticAsOf: base.asOf, liveAsOf, segments: base.segments ?? null, m5, m15, h1 });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -10026,7 +10064,7 @@ async function _eventDayRead() {
   const ahead = [...(live?.ahead ?? []), ..._evdSchedule({ fomc: FOMC_MEETINGS, ecb: ECB_MEETINGS, boe: BOE_MEETINGS, boj: BOJ_MEETINGS, fiscal: FISCAL_EVENTS, calendar })];
   const legs = {}, push = await _ccLivePush();
   for (const [name] of _EVD_LEGS) {
-    try { const b = _cogJson(path.join(_CC_DIR, `leg_${name}.json`)), add = push?.legs?.[name]?.m5; legs[name] = { kind: b.kind, m5: add?.t?.length ? _ccMerge(b.m5, add) : b.m5 }; }
+    try { const al = _ccAliasOf(name), b = _cogJson(path.join(_CC_DIR, `leg_${al ?? name}.json`)), add = al ? _ccLiveAdd(b, push, al) : push?.legs?.[name]?.m5; legs[name] = { kind: b.kind, m5: add?.t?.length ? _ccMerge(b.m5, add) : b.m5 }; }
     catch { /* leg file absent: that leg is left out of the line */ }
   }
   const v = { rows, ahead, front: _evdFrontEnds(legs) };
@@ -46254,6 +46292,7 @@ app.get('/api/services', (req, res) => {
     today: { date: view.today.to, span: view.today.days },
     window: { from: view.window.from, to: view.window.to, days: view.window.days },
     persistence: view.persistence,
+    ratesLegs: _ccHealthView(),      // IBKR futures roll guard (rates-legs/_health.json): flagged roots = stale bars, or in the roll window with no next-contract bars
     services: rows,
   });
 });

@@ -739,6 +739,8 @@ education/papers/**/*.pdf
 /analysis/output/stir_1m_deep/
 /analysis/output/stir_1m_older/
 /analysis/output/cog_chart/
+# continuous ROOT1/ROOT2 series, rolls.json, daily closes: rebuilt from the per-contract files every run (scripts/ibkr/continuous.py)
+/analysis/output/ibkr_continuous/
 
 analysis/output/swing-walk-track/_books/
 
