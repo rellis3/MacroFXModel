@@ -431,12 +431,15 @@ def cmd_wide():
         for sym, res, ps, pl, err in ex.map(wide_one, [(s, sel) for s in syms]):
             if err:
                 fails[sym] = err; print(sym, "FAILED", err[:300], flush=True); continue
+            if not any(res["cells"][cname(c)]["summary"].get("trades", 0) for c in CELLS):
+                fails[sym] = "no trades (no shadow widths on the M1 sample)"; print(sym, "no trades, excluded", flush=True); continue
             allres[sym], PS[sym], PL[sym] = res, ps, pl
             s = res["cells"][seln]["summary"]
             print(f"{sym}: selected {s.get('meanR', np.nan):+.3f} n {s.get('trades', 0)}", flush=True)
     rng = np.random.default_rng(SEED + 2)
 
     def pool(frames):
+        frames = [f.astype(float) for f in frames if len(f)]
         idx = sorted(set().union(*[set(f.index) for f in frames]))
         r = np.zeros(len(idx)); n = np.zeros(len(idx))
         for f in frames:

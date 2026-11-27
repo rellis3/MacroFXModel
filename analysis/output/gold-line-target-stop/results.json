@@ -1,0 +1,45 @@
+{
+ "id": "gold-line-target-stop",
+ "seed": 20261127,
+ "verdicts": {
+  "gold-line-target-stop": "UNDERPOWERED",
+  "gold-line-target-stop-wide": "NULL"
+ },
+ "gold_selected_cell": "f0.15|T2_vwap+0.5s|BEoff",
+ "gold_selected": {
+  "meanR": 0.11177868002897257,
+  "ci90": [
+   0.018405832731452857,
+   0.18464692734527532
+  ],
+  "halves": [
+   0.03416891346529446,
+   0.16585782587919506
+  ],
+  "pl1_p95": 0.06608412102495266,
+  "p": 0.023,
+  "bh": false
+ },
+ "gold_cells_positive": 12,
+ "wide_selected": {
+  "meanR": -0.06303339885608789,
+  "ci90": [
+   -0.08091086441321632,
+   -0.043077694280349015
+  ],
+  "p": 1.0,
+  "halves": [
+   -0.07038821550656495,
+   -0.056732001938579156
+  ],
+  "share_pos": 0.1875,
+  "trades": 15712,
+  "pl1_mean": -0.046200991943179365,
+  "pl1_p95": -0.03134418732768853,
+  "verdict": "NULL"
+ },
+ "detail": [
+  "results_gold.json",
+  "results_wide.json"
+ ]
+}
