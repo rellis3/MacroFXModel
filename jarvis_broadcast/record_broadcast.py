@@ -327,6 +327,13 @@ def end_stuck_run(out_dir: Path) -> None:
     if old and old != os.getpid():
         try:
             q = subprocess.run(['powershell', '-NoProfile', '-Command', f'(Get-CimInstance Win32_Process -Filter "ProcessId={old}").CommandLine'], capture_output=True, text=True, timeout=30)
+            if 'record_broadcast' in (q.stdout or '') and ('--part special' in q.stdout or '--part weekly' in q.stdout):
+                # a release special or the weekly recap is a live, healthy run (not a stuck one): the briefing waits for it, up to 45 minutes, then ends it
+                log(f'a {"special" if "--part special" in q.stdout else "weekly recap"} (process {old}) is still recording: waiting for it, up to 45 min')
+                t0 = time.time()
+                while time.time() - t0 < 45 * 60 and recorder_alive(out_dir):
+                    time.sleep(20)
+                q = subprocess.run(['powershell', '-NoProfile', '-Command', f'(Get-CimInstance Win32_Process -Filter "ProcessId={old}").CommandLine'], capture_output=True, text=True, timeout=30)
             if 'record_broadcast' in (q.stdout or ''):
                 log(f'an earlier recorder (process {old}) is still running: ending it and its browser first')
                 subprocess.run(['taskkill', '/PID', str(old), '/T', '/F'], capture_output=True, timeout=60)
