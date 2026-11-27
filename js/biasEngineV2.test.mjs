@@ -156,7 +156,10 @@ ok('A14 no production reads: only V2\'s own files, its server section, its panel
     'js/biasIntraday.js', 'js/biasIntraday.test.mjs',
     // owner 2026-11-24 (tier 2 of the live layer): the asset cards' TILT row shows the hourly re-run's v1r (V1's logic on fresh data) beside the
     // morning issue, owner only as the route is; display only, it feeds no call, size or score
-    'js/terminal/liveLayer.js', 'js/terminal/liveLayer.test.mjs']);
+    'js/terminal/liveLayer.js', 'js/terminal/liveLayer.test.mjs',
+    // owner 2026-11-25 (wide broadcast): the morning bias board and evening grid show V2's issued calls and its intraday track,
+    // labelled unproven; display only, it feeds no call, size or score
+    'js/terminal/broadcastPanels.js']);
   const hits = [];
   const walkDir = d => { for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) {
     const rel = path.join(d, e.name);
