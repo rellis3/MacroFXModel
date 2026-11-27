@@ -171,6 +171,7 @@ export const EXCLUDED_PAGES = {
   'system-gold-macro.html': 'system',
   'vumanchu-state.html': 'research: forward validation',
   'delta-at-line.html': 'research',
+  'gold-rolling-mae.html': 'research',
   'desk-office.html': 'desk: internal analysis',
   'desk-run.html': 'desk: analysts and the book',
   'desk-terminal.html': 'the terminal itself',
