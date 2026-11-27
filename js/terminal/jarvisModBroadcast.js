@@ -283,8 +283,9 @@ registerJarvisModule({
     (async () => {
       try {
         const j = await api.jf('/api/helix/broadcasts?n=8'), box = q('published'); if (!box || !j?.ok || !j.items?.length) return;
+        const safeHref = u => (/^https:\/\/[^\s"'<>]+$/i.test(String(u ?? '')) ? String(u) : '#');      // only https links (YouTube, the feed): never a page of this site
         const when = iso => { try { return new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
-        box.innerHTML = `<p class="jv-sub" style="margin-top:10px;letter-spacing:.12em">ON YOUTUBE (UNLISTED)${j.podcastFeed ? ` · <a href="${api.esc(j.podcastFeed)}" target="_blank" rel="noopener">PODCAST FEED</a>` : ''}</p><table>${j.items.map(x => `<tr><td>${api.esc(when(x.at))}</td><td><a href="${api.esc(x.url)}" target="_blank" rel="noopener">${api.esc(x.title)}</a></td></tr>`).join('')}</table>`;
+        box.innerHTML = `<p class="jv-sub" style="margin-top:10px;letter-spacing:.12em">ON YOUTUBE (UNLISTED)${j.podcastFeed ? ` · <a href="${api.esc(safeHref(api.win.location.origin + j.podcastFeed))}" target="_blank" rel="noopener">PODCAST FEED</a>` : ''}</p><table>${j.items.map(x => `<tr><td>${api.esc(when(x.at))}</td><td><a href="${api.esc(safeHref(x.url))}" target="_blank" rel="noopener">${api.esc(x.title)}</a></td></tr>`).join('')}</table>`;
       } catch (e) { /* the list is optional */ }
     })();
 
