@@ -147,6 +147,7 @@ export const SURFACES = [
   // ── Overview panels ──
   mk('panel.ov.hero', 'panel', 'Overview: the globe and map', 'Overview', null, 'rate cycle, bank credit, fair value and the desk\'s currency bias layers'),
   mk('panel.ov.book', 'panel', 'Overview: today\'s headline', 'Overview', null, 'the one-sentence read of the day'),
+  mk('panel.ov.booktape', 'panel', 'Overview: book against the tape', 'Overview', null, 'first block of Today: each live card with the range used, lines traded, the move against the call and the next release; its plan column follows the panel.asset.plan switch'),
   mk('panel.ov.bookintel', 'panel', 'Overview: book intelligence', 'Overview', null, 'the global call, risk-off, the largest net currency, scenario loss, concentration (js/terminal/bookPanels.js)'),
   mk('panel.ov.regime', 'panel', 'Overview: market regime', 'Overview', null, 'risk-on / risk-off tone, the summary, the drivers, what would flip it, and the currencies the desk leans bullish or bearish'),
   mk('panel.ov.regime-lists', 'panel', 'Overview: regime lean lists', 'Overview', null, 'the currencies the desk leans bullish and bearish inside the regime card, shown to the desk login as "bullish lean / bearish lean" with the reasons'),

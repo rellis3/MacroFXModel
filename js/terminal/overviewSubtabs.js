@@ -10,7 +10,7 @@ export const OV_SUBS = [
   // the picture of the day: the headline, the regime, the week, the risks to the read. (The globe and map are PINNED above the pills on every section, see OV_PINNED;
   // the At a glance block and the risk-flag history card belong to Today only: overview-sections.css hides them on the other four.)
   { id: 'today', alias: 'today', label: 'Today',
-    blocks: ['panel.ov.book', 'panel.ov.regime', 'panel.ov.week', 'panel.ov.riskwarn'] },
+    blocks: ['panel.ov.booktape', 'panel.ov.book', 'panel.ov.regime', 'panel.ov.week', 'panel.ov.riskwarn'] },
   // every currency read side by side: the desk ranking, the price read in sigma, analyst against price, exposure, the bias engine
   { id: 'currencies', alias: 'currencies', label: 'Currencies',
     blocks: ['panel.ov.strength', 'panel.ov.ccystrength', 'panel.ov.priceread', 'panel.ov.exposure', 'panel.ov.engine'] },
@@ -27,12 +27,12 @@ export const OV_SUBS = [
 export const OV_PINNED = ['panel.ov.hero'];
 export const HERO_LS = 'deskOverviewHero:v1';
 /** Is the pinned map folded? `stored` is { today?: 'open'|'folded', other?: 'open'|'folded' } (the owner's own choice, one for Today and one for the other four sections).
- *  With no choice: open on Today; on a phone folded on the other four sections, open elsewhere. */
+ *  With no choice: folded everywhere (review 2026-11-27: open, the globe and the chrome filled the whole first screen and At a glance started ~1,170px
+ *  down on a laptop, two screens down on a phone). A choice the owner made is kept either way. `phone` no longer changes the default. */
 export function heroFolded(sub, stored = {}, phone = false) {
   const group = sub === 'today' ? 'today' : 'other', s = stored?.[group];
-  if (s === 'folded') return true;
   if (s === 'open') return false;
-  return group === 'other' && !!phone;
+  return true;
 }
 export const heroGroup = sub => (sub === 'today' ? 'today' : 'other');
 

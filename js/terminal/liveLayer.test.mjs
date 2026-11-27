@@ -59,7 +59,7 @@ test('speedsHtml: live, hourly, set times and daily, each with its time', () => 
   assert.doesNotMatch(speedsHtml(null, null, null), /HOURLY/);
 });
 
-import { shapeHtml, ccysOf, againstCall, eventHtml, retailHtml, tapeChip, againstHtml, favsHtml } from './liveLayer.js';
+import { shapeHtml, ccysOf, againstCall, eventHtml, retailHtml, tapeChip, againstHtml, favsHtml, bookTapeHtml } from './liveLayer.js';
 test('shapeHtml: day type and session ranges', () => {
   const h = shapeHtml({ dayType: 'trend up', sess: { asia: { loU: -0.1, hiU: 0.2 }, london: { loU: 0.1, hiU: 0.9 } } });
   assert.match(h, /trend up so far/);
@@ -121,4 +121,14 @@ test('price tape: indices, gold and majors first; change in % and u', () => {
   assert.deepEqual(tapeBits({ last: 1.09156, chgPct: 0.07, nowU: 0.21 }), { v: '1.09156', c: '▲0.07%', cls: 'up', u: '+0.21u' });
   assert.equal(tapeBits({ last: 208.6, chgPct: -0.4 }).cls, 'dn');
   assert.equal(tapeBits({}).c, '–');
+});
+
+test('bookTapeHtml: one row per card, range used, the move coloured by the call, the next release', () => {
+  const now = Date.parse('2026-11-27T12:00:00Z');
+  const h = bookTapeHtml([{ n: 'NQ', rating: 'SHORT', size: 0.5, m: { nowU: 1.31, spanUsed: 1.04, touched: ['up p50'] }, against: ['the day is +1.31u from the open'], plan: '', next: { country: 'US', event: 'ISM Manufacturing PMI', ms: now + 2 * 864e5 + 3 * 3600e3 } },
+    { n: 'USDCAD', rating: 'LONG', size: 1, m: { nowU: 0.08, spanUsed: 0.74, touched: [] }, against: [], plan: '<span class="chip">⏳ waiting</span>', next: null }], { at: '2026-11-27T12:00:00Z', open: true, now });
+  assert.match(h, /Book against the tape/); assert.match(h, /104%/); assert.match(h, /74%/); assert.match(h, /class="dn"[^>]*>\+1\.31u/, 'a move against a short is red');
+  assert.match(h, />against</); assert.match(h, /ISM Manufacturing PMI <span class="muted">in 2d 3h/); assert.match(h, /none in 48h/); assert.match(h, /waiting/);
+  assert.equal(bookTapeHtml([]), '');
+  assert.match(bookTapeHtml([{ n: 'X', rating: 'LONG', size: 1, m: null, against: [], plan: '', next: null }], { open: false }), /markets closed/);
 });

@@ -104,6 +104,29 @@ export function againstHtml(rows, total) {
   if (!rows.length) return `<div class="lv-row lv-sub muted lv-against"><span class="lv-tag">CALLS</span>the day is not against any of the ${total} desk calls</div>`;
   return `<div class="card lv-against"><div class="ch"><span class="lbl">Day against the call · ${rows.length} of ${total}</span><span class="r muted">a move of 0.75u or more against the morning call, or the hourly tilt turned against it</span></div><div class="drv">${rows.map(r => `<span class="click" tabindex="0" data-lv-open="${E(r.n)}" title="${E(r.why.join('; '))}">⚠ ${E(r.label)}</span>`).join('')}</div></div>`;
 }
+/**
+ * The first block of the Overview's Today section (review 2026-11-27): the book against the tape, one row per live card. What has tested
+ * well here is about RANGE (the p50/p75 day lines, release-day widening), not direction, so each row leads with how much of the day's
+ * expected range is used and which lines have traded, then the morning call, the move against it, the plan state and the next release.
+ * rows: [{ n, rating, size, conviction, m (a /api/market-live market), against: [], plan (html chip or ''), next ({ country, event, ms }|null) }]
+ */
+export function bookTapeHtml(rows, { at = null, open = true, now = Date.now() } = {}) {
+  if (!rows.length) return '';
+  const word = r => String(r ?? '').replace('STRONG_', 'strong ').toLowerCase();
+  const used = m => (fin(m?.spanUsed) ? Math.round(m.spanUsed * 100) : null);
+  const head = `<div class="ch"><span class="lbl">Book against the tape</span><span class="r muted">${open ? `live ${E(hhmm(at))} London` : 'markets closed: the last session'} · range used = today's high-to-low as a share of the expected p50 range</span></div>`;
+  const tr = r => {
+    const u = used(r.m), d = DIRN[r.rating] ?? 0;
+    const move = fin(r.m?.nowU) ? `<b class="${cls(r.m.nowU * d)}" title="since the open, in u (the day's p50 distance); coloured by whether it is with the call">${sg(r.m.nowU)}u</b>` : '<span class="muted">–</span>';
+    const hit = (r.m?.touched ?? []).slice(-2).join(', ');
+    const nx = r.next ? `${E(r.next.country)} ${E(r.next.event)} <span class="muted">in ${E(r.next.ms - now >= 864e5 ? `${Math.floor((r.next.ms - now) / 864e5)}d ${Math.round(((r.next.ms - now) % 864e5) / 3600e3)}h` : mins(r.next.ms - now))}</span>` : '<span class="muted">none in 48h</span>';
+    return `<tr class="click" tabindex="0" data-lv-open="${E(r.n)}"><td class="mono"><b>${E(r.n)}</b></td><td class="${d > 0 ? 'up' : d < 0 ? 'dn' : ''}">${E(word(r.rating))}${fin(r.size) ? ` <span class="muted">${E(r.size)}</span>` : ''}</td>
+<td class="n mono">${move}${r.against.length ? ' <span class="chip dn" title="' + E(r.against.join('; ')) + '">against</span>' : ''}</td>
+<td class="n mono"${u != null && u >= 100 ? ' style="color:var(--gold)" title="the day has already covered its expected p50 range"' : ''}>${u != null ? `${u}%` : '–'}</td>
+<td class="muted" style="font-size:12px">${E(hit) || '–'}</td><td>${r.plan || '<span class="muted">–</span>'}</td><td style="font-size:12px">${nx}</td></tr>`;
+  };
+  return `<div class="card lv-booktape">${head}<div class="scroll"><table><thead><tr><th>Market</th><th>Morning call</th><th class="n">Since open</th><th class="n" title="today's high-to-low as a share of the expected p50 range">Range used</th><th>Lines traded</th><th>Plan</th><th>Next high-impact release</th></tr></thead><tbody>${rows.map(tr).join('')}</tbody></table></div></div>`;
+}
 /** The live favourites board: one row per starred market. */
 export function favsHtml(rows) {
   if (!rows.length) return '';
@@ -318,6 +341,12 @@ export function patch(doc = document) {
   const cards = globalThis.deskCardsAll?.() ?? {}, called = Object.entries(cards).filter(([, c]) => DIRN[c?.rating]);
   const agRows = called.map(([n, c]) => ({ n, label: `${n} ${c.rating.replace('STRONG_', 'strong ').toLowerCase()}`, why: againstCall(c.rating, mk[n], tiltDirOf(n)) })).filter(r => r.why.length);
   doc.querySelectorAll('[data-lv-against]').forEach(el => set(el, LIVE ? againstHtml(agRows, called.length) : ''));
+  if (doc.querySelector('[data-lv-booktape]')) {
+    const evs = (globalThis.deskEvents?.() ?? []).map(e => ({ ...e, ms: Number(e.ms ?? Date.parse(e.time ?? e.date)) })).filter(e => /high/i.test(e.impact ?? '') && e.ms > Date.now() && e.ms < Date.now() + 48 * 3600e3).sort((a, b) => a.ms - b.ms);
+    const bt = called.filter(([, c]) => +c.size > 0).sort((a, b) => +b[1].size - +a[1].size).map(([n, c]) => ({ n, rating: c.rating, size: c.size, m: mk[n], against: againstCall(c.rating, mk[n], tiltDirOf(n)),
+      plan: plansOn() ? (globalThis.twChip?.(n) ?? '') : '', next: evs.find(e => ccysOf(n).includes(e.country) || (e.country === 'EU' && ccysOf(n).includes('EUR'))) ?? null }));
+    doc.querySelectorAll('[data-lv-booktape]').forEach(el => set(el, bookTapeHtml(bt, { at, open: !!LIVE?.open })));
+  }
   const favs = (globalThis.assetFav?.fav?.list?.() ?? []).filter(n => cards[n] || mk[n]).map(n => { const c = cards[n], ev = eventHtml(n, globalThis.deskEvents?.(), []); return { n, call: c?.rating, dir: DIRN[c?.rating] ?? 0, m: mk[n], against: againstCall(c?.rating, mk[n], tiltDirOf(n)), next: ev ? ev.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : '' }; });
   doc.querySelectorAll('[data-lv-favs]').forEach(el => set(el, favsHtml(favs)));
   const chip = doc.getElementById('lvstamp');
@@ -369,7 +398,7 @@ if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => { if (!document.hidden) pollLive(); }); };
   // a section re-render leaves fresh, empty placeholders: fill them at once from the last reads (patch marks what it filled, so this never loops)
   let queued = false;
-  new MutationObserver(() => { if (queued || !(LIVE || BEI) || !document.querySelector('[data-lv-asset]:not([data-lv-done]),[data-lv-ccy]:not([data-lv-done]),[data-lv-strip]:not([data-lv-done]),[data-lv-speeds]:not([data-lv-done]),[data-lv-against]:not([data-lv-done]),[data-lv-favs]:not([data-lv-done]),[data-lv-pstrip]:not([data-lv-done]),[data-lv-thennow]:not([data-lv-done]),[data-lv-ladder]:not([data-lv-done])')) return;
+  new MutationObserver(() => { if (queued || !(LIVE || BEI) || !document.querySelector('[data-lv-asset]:not([data-lv-done]),[data-lv-ccy]:not([data-lv-done]),[data-lv-strip]:not([data-lv-done]),[data-lv-speeds]:not([data-lv-done]),[data-lv-against]:not([data-lv-done]),[data-lv-booktape]:not([data-lv-done]),[data-lv-favs]:not([data-lv-done]),[data-lv-pstrip]:not([data-lv-done]),[data-lv-thennow]:not([data-lv-done]),[data-lv-ladder]:not([data-lv-done])')) return;
     queued = true; requestAnimationFrame(() => { queued = false; patch(); }); }).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', e => { const el = e.target.closest?.('[data-lv-open]'); if (el) globalThis.openAsset?.(el.dataset.lvOpen); if (e.target.closest?.('[data-lv-replay]')) openReplay(); });
   document.addEventListener('keydown', e => { if (e.key !== 'Enter') return; const el = e.target.closest?.('[data-lv-open]'); if (el) globalThis.openAsset?.(el.dataset.lvOpen); });
