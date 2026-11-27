@@ -17,7 +17,7 @@
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView } from './jarvisGL.js';
-import { isEvening, reactionOf, releasedGroups, reviewScript, reviewFigure, tomorrowScript, REACT_PAIR } from './eveningCore.js';
+import { isEvening, reactionOf, releasedGroups, reviewScript, reviewFigure, tomorrowScript, REACT_PAIR, familyRead } from './eveningCore.js';
 import { SESSIONS, REGION_LABEL, londonParts, polar, angleOf, laneOffset, pylonHeight, mergeDay, nextBig, countdown, hourProfile, ridgeAt, placeLabels, dayScript, outlookScript, sweepMins, dayContext } from './dayAheadCore.js';
 
 const R = 3, R_SESS = 2.68, RB = 1.2, RA = 1.08, FULL = 1.5, TTL = 10 * 60_000, NR = 289, TAIL = 70, MAXP = 64;
@@ -321,10 +321,12 @@ registerShowScene({
     const pairs = [...new Set(groups.map(g => REACT_PAIR[g.ccy]?.[0]).filter(Boolean))], bars = {};
     await Promise.all(pairs.map(async p => { try { const j = await api.jf(`/api/cog-chart/candles?asset=${p}&tf=15m&count=1500`); if (j?.ok && Array.isArray(j.candles)) bars[p] = j.candles.map(c => ({ t: +c.t, o: +c.o, c: +c.c })).sort((a, b) => a.t - b.t); } catch (e) { /* that pair goes unmeasured */ } }));
     const react = {}; for (const g of groups) { const b = bars[REACT_PAIR[g.ccy]?.[0]]; if (b) react[g.key] = reactionOf(b, g.ms, g.ccy); }
-    return { now, react };
+    // the release against its own family's history and its surprise in sigma (Helix review wave 1.4); optional: a failed fetch only drops those sentences
+    const fam = {}; try { const rr = await api.jf('/api/release-reactions?n=80'); const recs = [...(rr?.live ?? []), ...(rr?.recent ?? [])]; for (const g of groups) { const f = familyRead(recs, g); if (f) fam[g.key] = f; } } catch (e) { /* time-of-day yardstick only */ }
+    return { now, react, fam };
   },
   build: (inp, data) => {
-    if (!data || !S.day) return null; const text = reviewScript(S.day, data.react, data.now, inp?.mode === 'short' ? 2 : 3); if (!text) return null;
+    if (!data || !S.day) return null; const text = reviewScript(S.day, data.react, data.now, inp?.mode === 'short' ? 2 : 3, inp?.mode === 'short' ? {} : (data.fam ?? {})); if (!text) return null;
     return { title: "Today's releases", view: 'ahead', cam: null, text, figure: reviewFigure(S.day, data.react, data.now),
       enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: true }); S.sel = null; S.review = true; S.showP = -1; } };
   },

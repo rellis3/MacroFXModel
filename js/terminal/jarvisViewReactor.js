@@ -17,7 +17,7 @@ import { registerShowScene } from './showCore.js';
 import { glView, orbitPos } from './jarvisGL.js';
 import { CHAIN_NODES } from '../macroChain.js';
 import { shortLabel } from './chainBoard.js';
-import { ringLayout, bars as barsOf, pickLabels, placeLabels, linkStyles, arcPoints, bez, storyStops, storyAt, pulseRate, readout, reactorScript, yawFacing, angDiff, plainName, barHeight, RING_R, CAP } from './reactorCore.js';
+import { ringLayout, bars as barsOf, pickLabels, placeLabels, linkStyles, arcPoints, bez, storyStops, storyAt, pulseRate, readout, reactorScript, adaptiveFloors, yawFacing, angDiff, plainName, barHeight, RING_R, CAP } from './reactorCore.js';
 
 const R = RING_R, TABLE_Y = -0.75, CORE_Y = 0.42, NP_BROKEN = 14, NP_HOLD = 2, STORY_S = 8, KEY_LINE = 'bar height = today’s move against its own noise · gold arc = a textbook link that broke · description only, not a forecast';
 const NAME = k => (CHAIN_NODES[k] ? shortLabel(CHAIN_NODES[k]) : k);
@@ -387,11 +387,16 @@ function wrap(ctx, text, maxW, maxLines = 3) {
 // ── SHOW: after the biggest moves, the reactor; the camera flies across each broken link while Jarvis names them ──
 registerShowScene({
   id: 'reactor', after: 'movers',
-  prepare: api => (api.st?.graph ? { graph: api.st.graph, sum: api.st.sum ?? null } : null),
+  prepare: async api => {
+    if (!api.st?.graph) return null;
+    // adaptive noise floors from each node's own history, said beside the fixed ones (Helix review wave 1.5); a failed fetch only drops that sentence
+    let floors = null; try { const d = await api.jf('/api/drill-series'); floors = d?.ok === false ? null : adaptiveFloors(d, CHAIN_NODES); } catch (e) { floors = null; }
+    return { graph: api.st.graph, sum: api.st.sum ?? null, floors };
+  },
   build(inp, data) {
     const graph = data?.graph; if (!graph?.nodes?.length) return null;
     const sum = data?.sum ?? inp.chain ?? null, lay = ringLayout(graph.nodes.map(n => n.key)), names = Object.fromEntries(graph.nodes.map(n => [n.key, SAY[n.key] ?? n.key]));
-    const text = reactorScript(sum, storyStops(graph, lay, names), barsOf(graph), names); if (!text) return null;
+    const text = reactorScript(sum, storyStops(graph, lay, names), barsOf(graph), names, inp?.guide ? null : data?.floors); if (!text) return null;
     return {
       title: 'The chain reactor', view: 'reactor', cam: null, text,
       enter(api) { S.showP = 0; S.showAt = Date.now(); S.story.on = false; S.focusSector = null; S.selKey = null; if (api?.st) { api.st.sel = null; Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); } },

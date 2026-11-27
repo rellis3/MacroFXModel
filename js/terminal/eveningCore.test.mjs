@@ -131,3 +131,21 @@ test('reactionOf: the baseline steps back in the release\'s own clock, so a US 0
   assert.ok(Math.abs(r.usualPct - 0.05) < 1e-6, `usual ${r.usualPct}`); assert.ok(Math.abs(r.ratio - 2) < 1e-6);
   assert.ok(reactionOf(out, rel, 'USD', { zone: 'Nowhere/Zone' }).usualPct < 0.05, 'a fixed UTC step reads the wrong hour on the days before the change');
 });
+
+test('the evening review against the release family\'s own history and its surprise in sigma, beside the time-of-day usual (Helix review wave 1.4)', async () => {
+  const { familyRead, familyWords } = await import('./eveningCore.js');
+  const ms = T('2026-11-06T13:30:00Z'), g = { hm: '13:30', ms, ccy: 'USD', key: reactKey('13:30', 'USD') };
+  const recs = [{ ms: ms + 60e3, ccy: 'USD', family: 'NFP', event: 'Non-Farm Employment Change', surprise: { z: -1.6 }, markets: [{ id: 'zt', m30: 0.05 }, { id: 'eurusd', m30: 0.42, usual30: 0.2, n30: 24 }] },
+    { ms: ms - 86400e3, ccy: 'USD', markets: [{ id: 'eurusd', m30: 9 }] }];
+  const f = familyRead(recs, g);
+  assert.deepEqual([f.z, f.n30, +f.ratio.toFixed(6), f.sizeFamily], [-1.6, 24, 2.1, true]);
+  const w = familyWords(f);
+  assert.match(w, /Against its own last 24 releases, that half hour was about 2 times the usual for this release\. The surprise was 1\.6 standard deviations of its past surprises, below the forecast\./);
+  assert.match(w, /bigger surprises in rate decisions and jobs data have gone with wider sessions: size, never direction\./);
+  assert.equal(familyRead(recs, { ...g, ms: ms + 3600e3 }), null, 'no record at that time'); assert.equal(familyWords(null), '');
+  assert.doesNotMatch(familyWords({ ...f, sizeFamily: false }), /desk's tests/, 'the validated fact only for the families it was shown on');
+  // the review line carries it after the time-of-day sentence
+  const day = { events: [{ rank: 3, actual: '120K', forecast: '180K', ms, hm: '13:30', ccy: 'USD', short: 'US jobs', event: 'Jobs', country: 'US' }] };
+  const t = reviewScript(day, { [g.key]: { movePct: 0.4, usualPct: 0.1, ratio: 4 } }, ms + 7200e3, 3, { [g.key]: f });
+  assert.match(t, /about 4 times the usual for that time of day\. Against its own last 24 releases/);
+});

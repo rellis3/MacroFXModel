@@ -62,6 +62,29 @@ function printed(e) {
   const cmp = f == null || na == null || nf == null ? '' : na > nf ? `, above the ${f} expected` : na < nf ? `, below the ${f} expected` : `, in line with the ${f} expected`;
   return `${sayRelease(e)} came in at ${a}${cmp}`;
 }
+/**
+ * The release against ITS OWN history (Helix review wave 1.4), beside the time-of-day yardstick: the release-reaction record (/api/release-reactions live + recent) for this
+ * release time and currency. Its 30-minute move in the currency's main pair against that family's usual |move| (usual30, point in time, over n30 earlier releases), and the surprise
+ * in sigma of the family's own past surprises. { z, m30, usual30, n30, ratio, family, sizeFamily } or null without a matching scored record.
+ */
+const SIZE_FAMILIES = /^(NFP|FOMC|ECB|BOE|BOJ|BOC|RBA|RBNZ|SNB)$/i, SIZE_WORDS = /rate decision|interest rate|employment|payroll|non-?farm|jobs|unemployment/i;
+export function familyRead(recs, g) {
+  const pair = REACT_PAIR[g?.ccy]?.[0]?.toLowerCase(); if (!pair || !Array.isArray(recs)) return null;
+  const rec = recs.find(r => r && Math.abs(+r.ms - g.ms) <= 3 * 60e3 && (r.ccy ? r.ccy === g.ccy : true) && (r.markets ?? []).some(m => m.id === pair && fin(m.m30)));
+  if (!rec) return null;
+  const m = rec.markets.find(x => x.id === pair), u = fin(m.usual30) && +m.usual30 > 0 ? +m.usual30 : null, z = fin(rec.surprise?.z) ? +rec.surprise.z : null;
+  return { z, m30: +m.m30, usual30: u, n30: fin(m.n30) ? +m.n30 : null, ratio: u ? Math.abs(+m.m30) / u : null, family: rec.family ?? null,
+    sizeFamily: SIZE_FAMILIES.test(String(rec.family ?? '')) || SIZE_WORDS.test(String(rec.event ?? '')) };
+}
+/** The spoken add-on for familyRead: against the family's usual, the surprise in sigma, and (rate decisions and jobs only) the validated surprise-size fact, range not direction. */
+export function familyWords(f) {
+  if (!f) return '';
+  const t = [];
+  if (f.ratio != null && f.n30 >= 5) t.push(`Against its own last ${f.n30} releases, that half hour was ${f.ratio < 0.6 ? 'smaller than' : f.ratio < 1.4 ? 'about' : f.ratio < 1.95 ? `${f.ratio.toFixed(1)} times` : `about ${Math.round(f.ratio)} times`} the usual for this release.`);
+  if (f.z != null) t.push(`The surprise was ${Math.abs(f.z) < 0.25 ? 'close to nothing' : `${Math.abs(f.z).toFixed(1)} standard deviations of its past surprises`}${Math.abs(f.z) >= 0.25 ? `, ${f.z > 0 ? 'above' : 'below'} the forecast` : ''}.`);
+  if (f.z != null && Math.abs(f.z) >= 1 && f.sizeFamily) t.push("In the desk's tests, bigger surprises in rate decisions and jobs data have gone with wider sessions: size, never direction.");
+  return t.length ? ` ${t.join(' ')}` : '';
+}
 /** The key to look a release group's reaction up by. */
 export const reactKey = (hm, ccy) => `${hm}|${ccy}`;
 /** Today's released groups worth reading (rank >= 2, with a printed number), each { hm, ms, ccy, ev, rank, key }. A bare composite "PMI" is dropped when the same group names its parts. */
@@ -78,7 +101,7 @@ export function releasedGroups(day, now) {
  * The EVENING review line: up to `max` release times (the biggest reactions and the top-ranked first, then read in clock order), each with what printed against the forecast and
  * what the currency did in the half hour after. react = { [reactKey]: reactionOf(...) }. null when nothing printed today.
  */
-export function reviewScript(day, react = {}, now, max = 3) {
+export function reviewScript(day, react = {}, now, max = 3, fam = {}) {
   const groups = releasedGroups(day, now); if (!groups.length) return null;
   const score = g => (react[g.key]?.ratio ?? 0) + g.rank * 0.5;
   const pick = [...groups].sort((a, b) => score(b) - score(a)).slice(0, max).sort((a, b) => a.ms - b.ms);
@@ -86,7 +109,7 @@ export function reviewScript(day, react = {}, now, max = 3) {
     const said = g.ev.slice(0, 2).map(printed).filter(Boolean); if (!said.length) return null;
     const r = react[g.key], who = CCY_WORD[g.ccy];
     const after = r && who ? (Math.abs(r.movePct) < 0.02 ? ` ${cap(who)} barely moved in the half hour after.` : ` In the half hour after, ${who} ${r.movePct > 0 ? 'rose' : 'fell'} ${pctWords(r.movePct)}${timesWords(r.ratio)}.`) : '';
-    return `At ${g.hm}, ${said.join(', and ')}.${after}`;
+    return `At ${g.hm}, ${said.join(', and ')}.${after}${familyWords(fam[g.key])}`;
   }).filter(Boolean);
   if (!lines.length) return null;
   const rest = groups.length - pick.length, big = pick.map(g => ({ g, r: react[g.key] })).filter(x => x.r?.ratio != null).sort((a, b) => b.r.ratio - a.r.ratio)[0];
