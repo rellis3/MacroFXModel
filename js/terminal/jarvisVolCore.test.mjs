@@ -84,3 +84,13 @@ test('holidayNote: a latest session on Thanksgiving is said as a holiday range (
   assert.match(holidayNote({ dates: ['2026-11-27'], ns: 1 }), /the day after Thanksgiving, a US half day/);
   assert.equal(holidayNote({ dates: ['2026-11-24'], ns: 1 }), null); assert.equal(holidayNote(null), null);
 });
+
+test('base rates: the tallest ridge at its real size with how rare it was for that market, and how many markets a typical day runs at 1.5x (Helix review wave 1.2)', () => {
+  // 120 sessions of 1, every 10th session 2 (a 1.5x day one session in ten), and session 110 at 5 (past the drawn cap)
+  const T = buildTerrain(data(4, 120, i => (i === 110 ? 5 : i % 10 === 5 ? 2 : 1)), { sessions: 30 });
+  const pk = T.peaks[0]; assert.equal(pk.v, CLIP); assert.ok(Math.abs(pk.raw - 5) < 1e-6); assert.equal(pk.rare.c, 0);
+  const s = volScript(T, null);
+  assert.match(s, /at 5\.0 times its normal, above the top of the scale, the biggest in its previous \d+ sessions\./); assert.doesNotMatch(s, /three times or more/);
+  assert.ok(T.base.n === 4 && Math.abs(T.base.stretched - 0.4) < 0.05, JSON.stringify(T.base));
+  assert.match(s, /On a typical day, fewer than one would\./);
+});

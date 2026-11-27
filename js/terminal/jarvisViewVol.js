@@ -4,7 +4,7 @@
 // in the ratio, 1.0 = a normal day, clipped at 3 (clipped days carry a white tip). Colour ramp: cool below normal, grey at normal, gold to red when stretched, white-hot at 3x. A white contour marks
 // the 1.0 level. A gold sweep line travels along time and names its session; the tallest ridges carry a flare and a label. The camera drifts round the terrain (drag to turn, scroll to zoom; still
 // under reduced motion). SHOW: down LOW along the newest session's edge, the markets passing one by one, then up and back over the whole window with the tallest ridges named.
-// Data: /api/ohlc-range daily bars (OANDA, one request per market, in batches of 7) and the VIX curve from /api/fredhistory?keys=vix,vix3m. The maths lives in jarvisVolCore.js.
+// Data: /api/ohlc-range daily bars (OANDA, one request per market, in batches of 7; about 250 sessions, so the base rates have a year of each market's own days) and the VIX curve from /api/fredhistory?keys=vix,vix3m. The maths lives in jarvisVolCore.js.
 // DESCRIPTION ONLY: it shows what already happened, never a forecast.
 import { marketName } from './jarvisNames.js';
 import { registerJarvisModule } from './jarvisModules.js';
@@ -28,7 +28,7 @@ function rampAt(v) { let k = 0; while (k < STOPS.length - 2 && v > STOPS[k + 1])
 export async function loadVol(api, force) {
   if (S.busy) return S.busy; if (S.data && !force && Date.now() - S.at < 600000) return S.data;
   S.busy = (async () => {
-    const ok = p => Promise.resolve(p).catch(() => null), now = new Date(), today = now.toISOString().slice(0, 10), from = new Date(now.getTime() - 135 * 864e5).toISOString().slice(0, 10), bars = {};
+    const ok = p => Promise.resolve(p).catch(() => null), now = new Date(), today = now.toISOString().slice(0, 10), from = new Date(now.getTime() - 380 * 864e5).toISOString().slice(0, 10), bars = {};
     const vp = ok(api.jf('/api/fredhistory?keys=vix,vix3m'));
     for (let k = 0; k < VOL_MARKETS.length; k += 7) {
       await Promise.all(VOL_MARKETS.slice(k, k + 7).map(async m => { const r = await ok(api.jf(`/api/ohlc-range?symbol=${m.oanda}&granularity=D&from=${from}&to=${today}`)); const d = dailyRanges(r, today); if (d.length) bars[m.key] = d; }));

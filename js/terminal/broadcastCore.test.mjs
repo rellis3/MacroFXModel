@@ -320,3 +320,16 @@ test('the quiet lead says a US holiday or half day, so a thin board reads as the
   assert.match(pickLead({ now: new Date('2026-11-27T07:05:00Z'), board: bd })[0].text, /Today is the day after Thanksgiving, a US half day, so a thin board is the calendar, not a calm market\.$/);
   assert.doesNotMatch(pickLead({ now: new Date('2026-11-18T07:05:00Z'), board: bd })[0].text, /holiday|half day/);
 });
+
+test('the move against the usual move BY THIS HOUR, beside the full-day ratio (Helix review wave 1.1)', async () => {
+  const { todShare, ratioByHour } = await import('./broadcastCore.js');
+  const flat = { mean: new Float64Array(24).fill(4) };
+  assert.ok(Math.abs(todShare(flat, Date.parse('2026-11-27T06:00:00Z')) - 0.25) < 1e-9, 'a flat profile: 6 of 24 hours is a quarter of the variance');
+  const busy = { mean: new Float64Array(24).map((_, h) => (h >= 7 && h < 17 ? 6 : 2)) };
+  const s7 = todShare(busy, Date.parse('2026-11-27T07:00:00Z')); assert.ok(s7 > 0 && s7 < 0.1, String(s7));
+  assert.equal(todShare(null, 1), null); assert.equal(ratioByHour(1.5, 0.9), null, 'late in the day the full-day yardstick stands'); assert.ok(Math.abs(ratioByHour(1, 0.25) - 2) < 1e-12);
+  const lead = pickLead({ now: new Date('2026-11-18T07:00:00Z'), todShare: 0.25, movers: [{ key: 'GOLD', ratio: 1.5, oc: 0.6, tone: 'up' }] });
+  assert.match(lead[0].text, /That is 1\.5 times its usual move\. By this hour of the day, that is three times the usual so far\./);
+  assert.doesNotMatch(pickLead({ now: new Date('2026-11-18T07:00:00Z'), movers: [{ key: 'GOLD', ratio: 1.5, oc: 0.6, tone: 'up' }] })[0].text, /this hour/, 'no profile: the full-day line only');
+  assert.match(pickLead({ now: new Date('2026-11-18T07:00:00Z'), todShare: 0.2, board: { n: 30, quiet: 25, up: 3, dn: 2 } })[0].text, /a usual day has done only about 20 percent of its moving, so part of the quiet is the clock/);
+});

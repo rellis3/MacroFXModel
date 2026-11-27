@@ -9,7 +9,8 @@ import { registerJarvisModule, viewsOf } from './jarvisModules.js';
 import { SHOW_HOOKS } from './showCore.js';
 import { glWarm } from './jarvisGL.js';
 import { helixLogo } from './helixLogo.js';
-import { planBroadcast, wantedSceneIds, subtitleChunks, chunkAt, itemSeconds, durText, tickerText, dateWords, partOfDay } from './broadcastCore.js';
+import { planBroadcast, wantedSceneIds, subtitleChunks, chunkAt, itemSeconds, durText, tickerText, dateWords, partOfDay, todShare } from './broadcastCore.js';
+import { hourProfile } from './dayAheadCore.js';
 import { boardSummary, topMovers } from './jarvisCandles.js';
 import { enterScene, sceneMotion, makeRecorder, voiceButton, voiceWord } from './jarvisModShow.js';
 import { buildHeadline } from './broadcastHeadline.js';
@@ -262,7 +263,8 @@ registerJarvisModule({
         headline = buildHeadline(feeds, { nowMs: Date.now(), evening: partOfDay(dateWords(new Date()).hour) === 'evening' });
       } catch (e) { headline = null; }
       const s = st.sum, chain = s ? { holding: s.holding, broken: s.broken, quiet: s.quiet, judged: s.judged, brokenShort: s.brokenShort, headline: s.headline } : null;
-      cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra, headline } };
+      let tod = null; try { tod = todShare(hourProfile(await api.jf('/api/vol-forecast/intraday-profile')), Date.now()); } catch (e) { tod = null; }      // the share of a usual day done by now (Helix wave 1.1)
+      cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra, headline, todShare: tod } };
       return cache;
     }
     let shortSec;                                   // the short cut's budget (seconds at normal speed); the recorder may ask for more (undefined = the planner's default)
