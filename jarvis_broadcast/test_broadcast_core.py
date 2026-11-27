@@ -50,7 +50,7 @@ def test_titles_and_text_say_description_only():
     t = title_for(d)
     assert t == 'H.E.L.I.X. Morning Briefing · Mon 23 Nov 2026 #Shorts' and len(t) <= 100
     desc = description_for(d, voice='server voice', seconds=131.4)
-    assert 'Not a forecast' in desc and '131 s' in desc and '#Shorts' in desc
+    assert 'Not a forecast' in desc and '131 s' not in desc and 'voice:' not in desc and '#Shorts' in desc      # 4.5: no "N s · voice:" line
     assert 'will' not in desc.lower().split('narrated')[0]
     assert title_for(d, 'evening') == 'H.E.L.I.X. Evening Briefing · Mon 23 Nov 2026 #Shorts'
     ev = description_for(d, part='evening')

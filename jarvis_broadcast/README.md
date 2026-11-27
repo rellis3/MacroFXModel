@@ -125,12 +125,74 @@ Environment overrides, for unusual machines only:
 - `JARVIS_CHROME_ARGS`: extra Chrome flags, e.g. `--use-angle=swiftshader` on a PC with no working GPU.
 - `JARVIS_PROFILE`: the profile folder.
 
+## The Telegram note, the extra programmes and the checks (27 Nov 2026)
+
+### The Telegram note
+
+When a video has uploaded, the job tells the desk server (`helix_notify.py` → `POST /api/helix/broadcast-published`). The **server** sends the note; the laptop never talks to Telegram. A failed run sends a short failure note the same way (`/api/helix/broadcast-failed`). The note is:
+
+```
+H.E.L.I.X. · Morning briefing is up
+H.E.L.I.X. Morning · Gold runs 2.4 times its usual move · Fri 27 Nov
+https://youtu.be/<id>
+4 min 31 s · unlisted
+```
+
+- It goes out under its own switch, **helixBroadcast** in ⚙ Alerts (on by default). Each video id is sent once, however often the laptop retries.
+- Auth is the site's laptop-push rule: the `X-Auth-Token` header carries `KV_WRITE_SECRET`. The job reads it from the environment, or from `jarvis_broadcast\push_secret.txt` (git-ignored). The server checks it only when the variable is set there. **Set the same `KV_WRITE_SECRET` on Railway and on the laptop**; the podcast upload refuses without it.
+- A note that cannot be sent is logged and never fails the run (the video is up anyway).
+- Helix lists what was published under the briefing panel (`GET /api/helix/broadcasts`).
+
+### The extra programmes
+
+| Programme | When | How |
+|---|---|---|
+| **Short** (45-60 s) | after each morning upload | The wide video's opening (title, headline, lead), reframed to 1080×1920 over a blurred copy. Uploaded as a Short. `--no-short` skips it |
+| **Podcast episode** | after each morning, evening, weekly and special upload | The loudnormed sound as an MP3, uploaded to the server (R2) and listed in a private RSS feed at `/api/helix/podcast/<key>/feed.xml` (the address is on the briefing panel). `--no-podcast` skips it |
+| **Weekly recap** | Fridays 22:00, task **Helix Weekly Recap** | **After** the Friday evening briefing, which still goes out at 21:00. The evening look-back with the 5-day chain, its own title card, opener and sign-off. It queues behind the evening run if that is still recording |
+| **Release special** | task **Helix Release Special**, every 10 min on weekdays 07:00-22:30 | It exits at once unless a rank-3 release (payrolls, CPI, the Fed's or another central bank's rate decision, from the same ForexFactory week the evening briefing uses) printed 30-80 min ago and has no special yet. One short wide special per release |
+
+`setup_tasks.ps1` registers the three new tasks (Weekly Recap, Release Special, Upload Retry). It only adds tasks that are missing and never touches the existing ones: `powershell -ExecutionPolicy Bypass -File setup_tasks.ps1 -WhatIf` shows what it would do.
+
+YouTube quota: each upload costs about 1,600 of the 10,000 daily units, captions 400, and a thumbnail 50. A Friday with one special uses about 9,800, so a second special that day would run out of quota: its upload fails and goes into the retry queue for the next day.
+
+### The checks before upload
+
+- **Every line voiced.** Every line is rendered before going on air, and the run stops if one cannot be. The page then counts the voiced lines, and anything under 100% is not uploaded. The old -50 dB check passed on the drone alone.
+- **Time window.** Morning runs from 06:45 to 11:30, evening and weekly from 18:00 to 23:59, and specials from 07:00 to 22:30. A late or missed run is skipped, never recorded under the wrong name; `--force` overrides this.
+- **Loudness.** A limiter sits on the page's sound bus. The encoder then runs a two-pass `loudnorm` to -14 LUFS and -1 dBTP. The drone ducks about 8 dB under the voice.
+- **Picture.** `freezedetect` refuses a picture stuck for 20 s; `blackdetect` refuses a video that is 25% black.
+- **Retry.** A failed upload goes into `out\upload_queue.json`. Task **Helix Upload Retry** retries it every 2 h with back-off. `--upload-only DIR` uploads one folder by hand.
+- **Laptop awake.** The laptop is kept awake for the run. In the morning the job waits until the 06:30 desk-run launcher has finished with the browser profile.
+
+### The YouTube text
+
+- **Title:** the title carries the headline.
+- **Tags:** from the markets the programme named.
+- **Description:** chapters from the segment times (the "N s · voice" line is gone).
+- **Thumbnail:** the headline card. YouTube needs the channel phone-verified for custom thumbnails.
+- **Captions:** an `.srt` made from the script timings.
+  - Captions need a second, optional sign-in: `python record_broadcast.py --youtube-auth-captions`, which saves `token_captions.json` (git-ignored).
+  - In the Google Cloud consent screen, add the scope `.../auth/youtube.force-ssl` first.
+  - Without it, captions are skipped and nothing else changes.
+
+### Voice
+
+- **ElevenLabs speed and context.** ElevenLabs now gets the broadcast's speed (`voice_settings.speed`), so its clips are no longer sped up and pitched up in the browser. It also gets the lines either side, for a natural run between them.
+- **Pronunciation dictionary.** Optional: set `JARVIS_ELEVEN_DICT=<dictionary id>:<version id>`.
+- **Day budget.** If the ElevenLabs budget left today is less than the script, the whole programme uses the free voice. It never switches voice halfway.
+- **Desk shorthand.** It is read out the same way for every voice, for example EURUSD as "euro dollar", bp as "basis points", 2s10s as "twos tens", and 1.2M as "1.2 million".
+
+`python record_broadcast.py --dry-run` runs a stand-in capture through every step after recording, with nothing uploaded or sent.
+
 ## Files
 
 - `record_broadcast.py`: the job.
 - `broadcast_core.py`: pure helpers (frame timing, silence check, titles), tested in `test_broadcast_core.py`.
 - `youtube_upload.py`: the upload (resumable, retries on Google 5xx errors).
 - `run_daily.bat`: what Task Scheduler runs.
+- `helix_notify.py`: tells the server after an upload (the server sends the Telegram note). `special_check.py`: the release-special launcher.
+- `run_weekly.bat`, `run_special_check.bat`, `run_upload_retry.bat`, `setup_tasks.ps1`: the extra programmes' launchers and their task setup.
 - Git-ignored: `.profile/`, `out/`, `client_secret.json`, `token.json`. The job keeps the last 7 days of MP4s and deletes the frames once encoded.
 
 Everything in the video is **description only**, like the rest of Jarvis. Each upload's description says so.

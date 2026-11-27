@@ -195,7 +195,9 @@ export async function openJarvis(win = window) {
   // ONE audio bus for everything Jarvis plays (sound effects, the natural voice): it goes to the speakers AND to a tap a recorder can read, so a recording
   // (RECORD AS VIDEO, the laptop's daily broadcast job) gets the sound straight from the page: no "share tab audio" tick, no sound device needed.
   // FRAME-BY-FRAME recording (jarvis_broadcast/vclock.js froze the page clock): a context made before the freeze is dropped, so the next one is the recorder's offline, virtual-clock one
-  const audioCtx = () => { if (ac && win.__vclock?.frozen && !ac.__virtual) { ac = null; bus = null; tap = null; amb = null; } ac ??= new (win.AudioContext || win.webkitAudioContext)(); if (!bus) { bus = ac.createGain(); bus.connect(ac.destination); tap = ac.createMediaStreamDestination(); bus.connect(tap); } return ac; };
+  const audioCtx = () => { if (ac && win.__vclock?.frozen && !ac.__virtual) { ac = null; bus = null; tap = null; amb = null; } ac ??= new (win.AudioContext || win.webkitAudioContext)(); if (!bus) { bus = ac.createGain(); const lim = busLimiter(ac); bus.connect(lim); lim.connect(ac.destination); tap = ac.createMediaStreamDestination(); lim.connect(tap); } return ac; };
+  // a limiter on the bus (2026-11-27): the voice, the drone and the effects never clip the recording; the encoder's two-pass loudnorm (record_broadcast.py) sets the final level
+  function busLimiter(c) { try { const k = c.createDynamicsCompressor(); k.threshold.value = -3; k.knee.value = 0; k.ratio.value = 20; k.attack.value = 0.002; k.release.value = 0.12; return k; } catch (e) { return c.createGain(); } }
   const busIn = () => { audioCtx(); return bus; };
   const blip = (f = 660, d = 0.08, type = 'sine', g = 0.03, at = 0) => {
     if (!st.sound) return; try { audioCtx(); const o = ac.createOscillator(), v = ac.createGain(), t = ac.currentTime + at; o.type = type; o.frequency.setValueAtTime(f, t); v.gain.setValueAtTime(g, t); v.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(v); v.connect(busIn()); o.start(t); o.stop(t + d + 0.02); } catch (e) { /* no audio */ }
@@ -212,9 +214,12 @@ export async function openJarvis(win = window) {
         o1.type = 'sine'; o1.frequency.value = 55; o2.type = 'triangle'; o2.frequency.value = 82.6; lp.type = 'lowpass'; lp.frequency.value = 420; lfo.frequency.value = 0.12; lg.gain.value = 0.012; lfo.connect(lg); lg.connect(g.gain);
         nz.buffer = noiseBuf(); nz.loop = true; nf.type = 'bandpass'; nf.frequency.value = 260; ng.gain.value = 0.008; nz.connect(nf); nf.connect(ng); ng.connect(g);
         o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(busIn()); g.gain.setValueAtTime(0.0001, ac.currentTime); g.gain.linearRampToValueAtTime(0.045, ac.currentTime + 3);
-        [o1, o2, lfo, nz].forEach(n => n.start()); amb = { g, nodes: [o1, o2, lfo, nz] };
+        const dk = ac.createGain(); g.disconnect(); g.connect(dk); dk.connect(busIn());      // the duck stage: about 8 dB down under the voice (sfx.duck)
+        [o1, o2, lfo, nz].forEach(n => n.start()); amb = { g, dk, nodes: [o1, o2, lfo, nz] };
       } catch (e) { /* no audio */ }
     },
+    /** Duck the drone about 8 dB while the voice speaks (on), and bring it back after (off). */
+    duck(on) { try { if (!amb?.dk) return; const t = ac.currentTime, p = amb.dk.gain; p.cancelScheduledValues(t); p.setValueAtTime(p.value, t); p.linearRampToValueAtTime(on ? 0.4 : 1, t + (on ? 0.25 : 0.8)); } catch (e) { /* no audio */ } },
     whoosh() {
       if (!st.sound) return; try {
         audioCtx(); const t = ac.currentTime, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
@@ -248,7 +253,8 @@ export async function openJarvis(win = window) {
     return new Promise(res => {
       const t = String(text ?? ''), est1 = Math.max(2, t.split(/\s+/).filter(Boolean).length / 2.6) * 1000; let r = rate > 0 ? rate : 1, est = est1 / r;
       let done = false, tid = 0, left = est, since = 0, paused = false, nctl = null, waiting = false, bChar = -1;
-      const fin = () => { if (!done) { done = true; win.clearTimeout(tid); if (st.speakCtl === ctl) { st.speakStop = null; st.speakCtl = null; } res(); } };
+      const fin = () => { if (!done) { done = true; win.clearTimeout(tid); sfx.duck(false); if (st.speakCtl === ctl) { st.speakStop = null; st.speakCtl = null; } res(); } };
+      const tally = k => { if (st.voiceTally && t.trim()) st.voiceTally[k]++; };      // the recorder refuses a video with a line not voiced (st.voiceTally = { hit, miss }, set by the broadcast)
       const aloud = st.voice && (st.neural || win.speechSynthesis);
       const arm = ms => { win.clearTimeout(tid); since = performance.now(); left = ms; tid = win.setTimeout(fin, ms); };
       const stop = () => { try { nctl?.stop(); if (win.speechSynthesis) win.speechSynthesis.cancel(); } catch (e) { /* idle */ } fin(); };
@@ -265,12 +271,12 @@ export async function openJarvis(win = window) {
       st.speakStop = stop; st.speakCtl = ctl;
       if (!aloud) { arm(est); return; }
       arm(est * (st.neural && neural.slow() ? 8 : 2.5) + (st.neural && neural.slow() ? 60000 : 12000));       // a safety net: the show never hangs on a voice that never ends (longer while Kokoro renders in the browser)
-      const fallback = () => { waiting = false; if (done) return; try { if (!win.speechSynthesis) { arm(est); return; } win.speechSynthesis.cancel(); builtIn(t, r, fin, ch => { bChar = ch; }); } catch (e) { arm(est); } };
-      if (st.neural) { waiting = true; win.speechSynthesis?.cancel(); neural.play(t, r, fin).then(c => { waiting = false; if (done) { c?.stop(); return; } if (c) { nctl = c; if (c.setRate && r !== rate) c.setRate(r); arm(Math.max(est * 2.5 + 8000, (c.seconds ?? 0) * 1000 + 3000)); if (paused) c.pause(true); } else fallback(); }); }
+      const fallback = () => { waiting = false; if (done) return; tally('miss'); try { if (!win.speechSynthesis) { arm(est); return; } win.speechSynthesis.cancel(); builtIn(t, r, fin, ch => { bChar = ch; }); } catch (e) { arm(est); } };
+      if (st.neural) { waiting = true; win.speechSynthesis?.cancel(); sfx.duck(true); neural.play(t, r, fin).then(c => { waiting = false; if (done) { c?.stop(); return; } if (c) { nctl = c; tally('hit'); if (c.setRate && r !== rate) c.setRate(r); arm(Math.max(est * 2.5 + 8000, (c.seconds ?? 0) * 1000 + 3000)); if (paused) c.pause(true); } else fallback(); }); }
       else fallback();
     });
   }
-  const voicePrefetch = t => { if (st.voice && st.neural) neural.prefetch(t); };
+  const voicePrefetch = t => (st.voice && st.neural ? neural.prefetch(t) : null);      // the clip's promise (url or null): the recorder pre-renders every line with it
   const setCaption = (text, title = '') => { const c = $('cap'); if (!text) { c.hidden = true; return; } $('capt').textContent = title; $('capx').textContent = text; c.hidden = false; };
   const setCinema = (on, stop = null, ctl = null) => { root.classList.toggle('jv-cinema', !!on); st.cinemaStop = on ? stop : null; st.cinemaCtl = on ? ctl : null; if (!on) { setCaption(null); $('cpause').textContent = '⏸ PAUSE'; $('cine').classList.remove('more'); } else stopAttract(); };
   const cineAct = a => { const c = st.cinemaCtl; if (!c) return; try { c[a]?.(); } catch (e) { /* the director must never break the HUD */ } };

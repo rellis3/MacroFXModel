@@ -36,24 +36,25 @@ function serverEngine(win) {
     name: 'server',
     fetch(text) {
       const t = sayName(text).trim(); if (!t || Date.now() < disabledUntil) return Promise.resolve(null);
-      const key = bake === 1 ? t : `${bake}|${t}`;
+      const prov = win.__jarvisVoiceProvider === 'edge' ? 'edge' : '', key = `${prov}|${bake === 1 ? t : `${bake}|${t}`}`;
+      const cx = win.__jarvisVoiceContext?.get?.(text) ?? null;      // the lines either side (the broadcast sets them): ElevenLabs reads them for a natural run between lines; the cache key ignores them
       if (clips.has(key)) return clips.get(key);
       const p = (async () => {
         try {
           // never let one slow clip hold up the programme, but give a long line time to render: the Edge voice needs ~3-4 s per 100 characters on a slow minute, and a
           // flat 15 s cut-off made a 500-character line fail twice (prefetch, then play) = 30 s of picture with no voice in the 23 Nov recording
           const ac = new win.AbortController(), to = win.setTimeout(() => ac.abort(), Math.min(50000, 15000 + 70 * t.length));
-          const r = await win.fetch('/api/jarvis/voice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, rate: bake }), signal: ac.signal }).finally(() => win.clearTimeout(to));
+          const r = await win.fetch('/api/jarvis/voice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t, rate: bake, ...(prov ? { provider: prov } : {}), ...(cx?.prev ? { prev: sayName(cx.prev).slice(0, 600) } : {}), ...(cx?.next ? { next: sayName(cx.next).slice(0, 600) } : {}) }), signal: ac.signal }).finally(() => win.clearTimeout(to));
           if (!r.ok) throw new Error(String(r.status)); provider = r.headers.get('X-Jarvis-Voice') || provider;
-          const blob = await r.blob(); if (!blob.size) throw new Error('empty'); failures = 0; const u = win.URL.createObjectURL(blob); byUrl.set(u, { provider: r.headers.get('X-Jarvis-Voice') || '', rate: bake }); return u;
+          const blob = await r.blob(); if (!blob.size) throw new Error('empty'); failures = 0; const u = win.URL.createObjectURL(blob); const hr = Number(r.headers.get('X-Jarvis-Rate')); byUrl.set(u, { provider: r.headers.get('X-Jarvis-Voice') || '', rate: bake, baked: Number.isFinite(hr) && hr > 0 ? hr : null }); return u;
         } catch (e) { clips.del(key); if (++failures >= 3) disabledUntil = Date.now() + 5 * 60_000; return null; }     // one slow line (prefetch + play = 2) must not silence the rest of the show
       })();
       clips.set(key, p); return p;
     },
     /** FRAME-BY-FRAME recording: ask the server for clips already at this speed (pitch kept), instead of speeding the playback up. */
     setBake: r => { bake = Math.max(0.5, Math.min(2, +r || 1)); },
-    /** The speed baked into a clip (1 when the provider ignores the asked-for speed, as ElevenLabs does). */
-    baked: u => { const m = byUrl.get(u); return m && !/eleven/i.test(m.provider) ? m.rate : 1; },
+    /** The speed baked into a clip: what the server says it baked (X-Jarvis-Rate; ElevenLabs takes voice_settings.speed from 2026-11-27, so its clip plays at 1.0, pitch unchanged), else the old rule (Edge bakes it, ElevenLabs did not). */
+    baked: u => { const m = byUrl.get(u); if (!m) return 1; if (m.baked) return m.baked; return !/eleven/i.test(m.provider) ? m.rate : 1; },
     info: () => ({ provider, failures }),
   };
 }
@@ -180,7 +181,8 @@ export function makeNeuralVoice(win, opts = {}) {
       progress() { const d = a.duration; return ended ? 1 : Number.isFinite(d) && d > 0 ? Math.max(0, Math.min(1, a.currentTime / d)) : null; } };
   }
   return {
-    prefetch: t => { if (engine() === 'kokoro' && lock !== 'server' && kokoro.info().ready) kokoro.fetch(t); else server.fetch(t); },
+    /** Render a line ahead. Returns the clip's promise (an object URL, or null when it failed): the recorder pre-renders every line before going on air. */
+    prefetch: t => (engine() === 'kokoro' && lock !== 'server' && kokoro.info().ready ? kokoro.fetch(t) : server.fetch(t)),
     /** A new programme starts: decide its voice afresh, and start warming Kokoro if it is the chosen engine. */
     begin: () => { lock = null; if (engine() === 'kokoro') kokoro.warm(); },
     play,

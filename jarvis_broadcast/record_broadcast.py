@@ -20,9 +20,15 @@ FRAME-BY-FRAME (the default for both runs: morning from 24 Nov 2026, evening fro
 Usage:
   python record_broadcast.py --login            one-off: opens a visible window; log into the desk site, then close it
   python record_broadcast.py --youtube-auth     one-off: sign in to YouTube (opens a browser), saves token.json
-  python record_broadcast.py                    the daily run (record + upload unlisted)
+  python record_broadcast.py --youtube-auth-captions   one-off, optional: the captions sign-in (token_captions.json)
+  python record_broadcast.py                    the daily run (record + upload unlisted); the clock picks morning or evening, outside their windows it is skipped
+  python record_broadcast.py --part weekly --wait-busy          the Friday weekly recap (run_weekly.bat)
+  python record_broadcast.py --part special --release-key K ... a release special (run_special_check.bat starts it)
+  python record_broadcast.py --retry-queue      retry failed uploads (run_upload_retry.bat);  --upload-only DIR  upload one recorded folder
   python record_broadcast.py --no-upload --show record only, with the window on screen (to watch a test run)
-Options: --len short|quick|full  --voice server|kokoro  --rate 1.1  --live (real-time capture)  --fps 30  --base URL  --out DIR
+  python record_broadcast.py --dry-run          no browser, voice, upload or note: a stand-in capture through every later step
+Options: --len short|quick|full  --voice server|kokoro  --rate 1.1  --live (real-time capture)  --fps 30  --base URL  --out DIR  --no-short  --no-podcast  --force
+After each upload the SERVER is told (helix_notify.py) and sends the owner's Telegram note; a failed run sends a short failure note the same way. Telegram is never sent from here.
 """
 from __future__ import annotations
 
@@ -39,7 +45,10 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from broadcast_core import concat_list, max_volume, is_silent, title_for, description_for, short_warning, part_of_day  # noqa: E402
+from broadcast_core import (concat_list, max_volume, is_silent, title_for, description_for, short_warning, part_of_day, voiced_problem, resolve_part, PART_TITLES,  # noqa: E402
+                            PAGE_PROGRAMME, tags_for, chapters_text, srt_text, loudnorm_first, loudnorm_measured, loudnorm_second, detect_problem, short_window, desk_run_state,
+                            queue_push, queue_due, queue_after_fail, queue_done, QUEUE_MAX_TRIES, podcast_id)
+import helix_notify  # noqa: E402
 
 BASE = 'https://macrofxmodel-production.up.railway.app'
 PROFILE = Path(os.environ.get('JARVIS_PROFILE', HERE / '.profile'))                     # the saved, logged-in browser profile (git-ignored)
@@ -148,7 +157,7 @@ def voice_plain(page):
     page.evaluate("() => { try { const k = 'jarvisVoice:v1'; localStorage.setItem(k, JSON.stringify({ ...JSON.parse(localStorage.getItem(k) || '{}'), fx: 'off' })); } catch (e) {} }")
 
 
-def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: Path, rate: float = 1.1, fps: int = 30) -> dict:
+def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: Path, rate: float = 1.1, fps: int = 30, prog: dict | None = None) -> dict:
     """FRAME-BY-FRAME: freeze the page clock, then step it 1/fps s at a time with a screenshot after each step (see the module notes)."""
     from playwright.sync_api import sync_playwright
     stamp = datetime.now().strftime('%Y-%m-%d_%H%M')
@@ -164,14 +173,14 @@ def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: P
         if not page.evaluate('() => !!window.__vclock'):
             raise RuntimeError('the virtual clock did not load (vclock.js)')
         cdp = ctx.new_cdp_session(page)
-        if part_of_day(datetime.now().hour) == 'morning':
+        if (prog or {}).get('part', part_of_day(datetime.now().hour)) == 'morning':
             if length != 'guide':          # the visual guide explains the pictures; it does not need today's desk run
                 wait_desk_run(page)
         voice_plain(page)
         page.evaluate('() => window.__vclock.freeze()')
         page.evaluate("""o => { window.__vcRes = null; window.__vcOnAir = 0;
             window.__jarvisBroadcastAuto(o).then(r => { window.__vcRes = r; }, e => { window.__vcRes = { ok: false, error: String(e && e.message || e) }; }); }""",
-                      {'len': length, 'engine': engine, 'rate': rate, 'budgetSec': FRAMES_SHORT_SEC})
+                      {'len': length, 'engine': engine, 'rate': rate, 'budgetSec': FRAMES_SHORT_SEC, **(prog or {}).get('page', {})})
         log(f'recording the {length} broadcast frame by frame at {fps} fps (voice: {engine}, speed {rate}x)')
         started, last_note, n = time.time(), time.time(), 0
         while True:
@@ -201,11 +210,16 @@ def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: P
     if not res or not res.get('ok'):
         raise RuntimeError(f'the broadcast did not run: {res}')
     t0, t1 = res['t0'] / 1000.0, res['t1'] / 1000.0
-    log(f"captured {len(frames)} frames and {audio.stat().st_size // 1024} KB of sound over {t1 - t0:.1f} s in {time.time() - started:.0f} s; voice: {res.get('voice')} ({((res.get('voiceInfo') or {}).get('server') or {}).get('provider') or '?'}, no robot finish)")
-    return {'work': work, 'frames': frames, 'audio': audio, 't0': t0, 't1': t1, 'voice': res.get('voice')}
+    log(f"captured {len(frames)} frames and {audio.stat().st_size // 1024} KB of sound over {t1 - t0:.1f} s in {time.time() - started:.0f} s; voice: {res.get('voice')} ({((res.get('voiceInfo') or {}).get('server') or {}).get('provider') or '?'}, no robot finish); voiced {res.get('voiced', '?')} of {res.get('lines', '?')} lines")
+    if res.get('voiceForced'):
+        log(f"voice: {res['voiceForced']}")
+    why = voiced_problem(res)
+    if why:
+        raise RuntimeError(why)
+    return {'work': work, 'frames': frames, 'audio': audio, 't0': t0, 't1': t1, 'voice': res.get('voice'), 'log': {k: res.get(k) for k in LOG_KEYS}}
 
 
-def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, rate: float = 1.1) -> dict:
+def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, rate: float = 1.1, prog: dict | None = None) -> dict:
     """LIVE (--live): Chrome's screencast in real time; the sound recorded from the page's audio bus."""
     from playwright.sync_api import sync_playwright
     stamp = datetime.now().strftime('%Y-%m-%d_%H%M')
@@ -234,7 +248,7 @@ def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, ra
         cdp.on('Page.screencastFrame', on_frame)
         cdp.send('Page.startScreencast', {'format': 'jpeg', 'quality': 88, 'maxWidth': W * DPR, 'maxHeight': H * DPR, 'everyNthFrame': 1})
         log(f'recording the {length} broadcast (voice: {engine}, speed {rate}x)')
-        res = page.evaluate('o => window.__jarvisBroadcastAuto(o)', {'len': length, 'engine': engine, 'rate': rate})
+        res = page.evaluate('o => window.__jarvisBroadcastAuto(o)', {'len': length, 'engine': engine, 'rate': rate, **(prog or {}).get('page', {})})
         time.sleep(0.5)
         cdp.send('Page.stopScreencast')
         ctx.close()
@@ -244,8 +258,11 @@ def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, ra
     audio = work / f'audio.{ext}'
     audio.write_bytes(base64.b64decode(res['audio']))
     t0, t1 = res['t0'] / 1000.0, res['t1'] / 1000.0
-    log(f"captured {len(frames)} frames and {audio.stat().st_size // 1024} KB of sound over {t1 - t0:.1f} s; voice: {res.get('voice')}")
-    return {'work': work, 'frames': frames, 'audio': audio, 't0': t0, 't1': t1, 'voice': res.get('voice')}
+    log(f"captured {len(frames)} frames and {audio.stat().st_size // 1024} KB of sound over {t1 - t0:.1f} s; voice: {res.get('voice')}; voiced {res.get('voiced', '?')} of {res.get('lines', '?')} lines")
+    why = voiced_problem(res)
+    if why:
+        raise RuntimeError(why)
+    return {'work': work, 'frames': frames, 'audio': audio, 't0': t0, 't1': t1, 'voice': res.get('voice'), 'log': {k: res.get(k) for k in LOG_KEYS}}
 
 
 def washed_share(ff: str, mp4: Path, every: float = 4.0) -> float:
@@ -260,15 +277,16 @@ def washed_share(ff: str, mp4: Path, every: float = 4.0) -> float:
     return sum(1 for f in frames if sum(f) / n > 150) / len(frames)
 
 
-def encode(cap: dict) -> Path:
+def encode(cap: dict, part: str | None = None) -> Path:
     ff = ffmpeg_exe()
     work = cap['work']
     text, secs = concat_list(cap['frames'], cap['t0'], cap['t1'])
     (work / 'frames' / 'list.ffconcat').write_text(text, encoding='utf-8')
-    mp4 = work / f"jarvis-{part_of_day(datetime.now().hour)}-{work.name[:10]}.mp4"
+    mp4 = work / f"jarvis-{part or part_of_day(datetime.now().hour)}-{work.name[:10]}.mp4"
+    cap['audioNorm'] = loudnorm_audio(ff, Path(cap['audio']), work / 'audio-norm.wav')      # 4.2: -14 LUFS / -1 dBTP, two passes
     vf = f'scale={OUT_W}:{OUT_H}:force_original_aspect_ratio=decrease:flags=lanczos,pad={OUT_W}:{OUT_H}:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p'
     cmd = [ff, '-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', str(work / 'frames' / 'list.ffconcat'),
-           '-i', str(cap['audio']), '-map', '0:v:0', '-map', '1:a:0', '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',   # veryfast: 2 min not 15 on the laptop (24 Nov 2026), same crf; YouTube re-encodes anyway
+           '-i', str(cap['audioNorm']), '-map', '0:v:0', '-map', '1:a:0', '-vf', vf, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',   # veryfast: 2 min not 15 on the laptop (24 Nov 2026), same crf; YouTube re-encodes anyway
            '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-t', f'{secs:.3f}', '-movflags', '+faststart', str(mp4)]
     subprocess.run(cmd, check=True)
     # the voice must be on it: refuse a silent recording
@@ -281,6 +299,7 @@ def encode(cap: dict) -> Path:
     log(f'washed-out frames: {ws:.0%}')
     if ws > 0.15:
         raise RuntimeError(f'{ws:.0%} of the frames are washed out (the 3D views rendered white): not uploading. Record again.')
+    detect_check(ff, mp4, secs)                          # 4.11: a frozen or black picture is not uploaded
     w = short_warning(secs) if H > W else None          # the 3-minute limit is for Shorts only
     if w:
         log('note: ' + w)
@@ -308,6 +327,13 @@ def end_stuck_run(out_dir: Path) -> None:
     if old and old != os.getpid():
         try:
             q = subprocess.run(['powershell', '-NoProfile', '-Command', f'(Get-CimInstance Win32_Process -Filter "ProcessId={old}").CommandLine'], capture_output=True, text=True, timeout=30)
+            if 'record_broadcast' in (q.stdout or '') and ('--part special' in q.stdout or '--part weekly' in q.stdout):
+                # a release special or the weekly recap is a live, healthy run (not a stuck one): the briefing waits for it, up to 45 minutes, then ends it
+                log(f'a {"special" if "--part special" in q.stdout else "weekly recap"} (process {old}) is still recording: waiting for it, up to 45 min')
+                t0 = time.time()
+                while time.time() - t0 < 45 * 60 and recorder_alive(out_dir):
+                    time.sleep(20)
+                q = subprocess.run(['powershell', '-NoProfile', '-Command', f'(Get-CimInstance Win32_Process -Filter "ProcessId={old}").CommandLine'], capture_output=True, text=True, timeout=30)
             if 'record_broadcast' in (q.stdout or ''):
                 log(f'an earlier recorder (process {old}) is still running: ending it and its browser first')
                 subprocess.run(['taskkill', '/PID', str(old), '/T', '/F'], capture_output=True, timeout=60)
@@ -318,10 +344,273 @@ def end_stuck_run(out_dir: Path) -> None:
     pid_file.write_text(str(os.getpid()))
 
 
+def keep_awake(on: bool) -> None:
+    """4.10: keep the laptop (and its display: the browser must draw) awake for the run; released at the end. Windows only, harmless elsewhere."""
+    try:
+        import ctypes
+        ES_CONTINUOUS, ES_SYSTEM_REQUIRED, ES_DISPLAY_REQUIRED = 0x80000000, 0x00000001, 0x00000002
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | (ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED if on else 0))
+    except Exception:
+        pass
+
+
+def wait_desk_launcher(out_dir: Path, until=(7, 25)) -> None:
+    """4.12: the 06:30 desk-run launcher (desk_run.py) opens the same browser profile for a moment once the OI pull ends (up to 07:20). If it is still waiting, wait for it,
+    so the recorder never takes the profile first (the launcher would then fail and the paid run would not start, or the recorder would fall back to live)."""
+    f = out_dir / 'desk_run.log'
+    today = datetime.now().strftime('%Y-%m-%d')
+    noted = False
+    while True:
+        try:
+            st = desk_run_state(f.read_text(encoding='utf-8', errors='replace') if f.exists() else '', today)
+        except OSError:
+            st = 'none'
+        if st != 'pending' or (datetime.now().hour, datetime.now().minute) >= until:
+            if noted:
+                log(f'desk-run launcher: {st}; recording now')
+            return
+        if not noted:
+            log('the desk-run launcher has not started the desk run yet (it needs the browser profile for a moment): waiting for it, up to 07:25')
+            noted = True
+        time.sleep(15)
+
+
+def recorder_alive(out_dir: Path) -> int:
+    """The process id of a running recorder (out/recorder.pid, only if that process is still a record_broadcast run), else 0."""
+    pid_file = out_dir / 'recorder.pid'
+    try:
+        old = int(pid_file.read_text().strip()) if pid_file.exists() else 0
+    except Exception:
+        return 0
+    if not old or old == os.getpid():
+        return 0
+    try:
+        q = subprocess.run(['powershell', '-NoProfile', '-Command', f'(Get-CimInstance Win32_Process -Filter "ProcessId={old}").CommandLine'], capture_output=True, text=True, timeout=30)
+        return old if 'record_broadcast' in (q.stdout or '') else 0
+    except Exception:
+        return 0
+
+
+def wait_for_recorder(out_dir: Path, limit_s: int = 90 * 60) -> None:
+    """The extra programmes (weekly recap, release special) QUEUE behind a running recorder instead of ending it (end_stuck_run is for the scheduled briefings)."""
+    t0 = time.time()
+    while True:
+        pid = recorder_alive(out_dir)
+        if not pid:
+            break
+        if time.time() - t0 > limit_s:
+            raise RuntimeError(f'another recorder (process {pid}) is still running after {limit_s // 60} min: not starting')
+        if time.time() - t0 < 1:
+            log(f'another recorder (process {pid}) is running: waiting for it to finish')
+        time.sleep(30)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / 'recorder.pid').write_text(str(os.getpid()))
+
+
+def loudnorm_audio(ff: str, src: Path, dst: Path) -> Path:
+    """4.2: two-pass loudnorm to -14 LUFS / -1 dBTP (the bus limiter keeps peaks in; this sets the level YouTube and podcast apps expect). Falls back to the raw audio on error."""
+    try:
+        r = subprocess.run([ff, '-hide_banner', '-nostats', '-i', str(src), '-af', loudnorm_first(), '-f', 'null', '-'], capture_output=True, text=True, timeout=600)
+        m = loudnorm_measured(r.stderr)
+        subprocess.run([ff, '-y', '-loglevel', 'error', '-i', str(src), '-af', loudnorm_second(m), '-ar', '48000', '-ac', '1', str(dst)], check=True, timeout=600)
+        log(f"loudness: {m.get('input_i') if m else '?'} LUFS measured, normalised to -14 LUFS / -1 dBTP ({'two passes' if m else 'one pass'})")
+        return dst
+    except Exception as e:
+        log(f'loudness normalisation failed ({e}); using the audio as recorded')
+        return src
+
+
+def detect_check(ff: str, mp4: Path, seconds: float) -> None:
+    """4.11: freezedetect / blackdetect before upload; a long freeze or a mostly black video is refused."""
+    r = subprocess.run([ff, '-hide_banner', '-nostats', '-i', str(mp4), '-vf', 'fps=10,scale=320:-2,freezedetect=n=-60dB:d=8,blackdetect=d=3:pic_th=0.98:pix_th=0.02',
+                        '-an', '-f', 'null', '-'], capture_output=True, text=True, timeout=900)
+    why = detect_problem(r.stderr, seconds)
+    if why:
+        raise RuntimeError(why)
+
+
+def make_thumbnail(ff: str, mp4: Path, t: float, out: Path) -> Path | None:
+    """4.6: one frame of the headline card (a few seconds in, once its words are up) as a 1280-wide JPEG."""
+    try:
+        subprocess.run([ff, '-y', '-loglevel', 'error', '-ss', f'{max(0.0, t):.2f}', '-i', str(mp4), '-frames:v', '1', '-vf', 'scale=1280:-2', '-q:v', '3', str(out)], check=True, timeout=120)
+        return out if out.exists() and out.stat().st_size > 2000 else None
+    except Exception as e:
+        log(f'thumbnail not made ({e})')
+        return None
+
+
+def make_short(ff: str, mp4: Path, window: tuple[float, float], out: Path) -> Path:
+    """4.13: the 45-60 s Short: the wide video's opening (title, headline, lead) reframed to 1080x1920, the picture centred over a blurred copy of itself."""
+    a, b = window
+    vf = ('[0:v]split[a][b];[a]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gblur=sigma=28,eq=brightness=-0.12[bg];'
+          '[b]scale=1080:-2:flags=lanczos[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,format=yuv420p[v]')
+    af = f'afade=t=out:st={max(0.0, b - a - 0.8):.2f}:d=0.8'
+    subprocess.run([ff, '-y', '-loglevel', 'error', '-ss', f'{a:.2f}', '-t', f'{b - a:.2f}', '-i', str(mp4), '-filter_complex', vf, '-map', '[v]', '-map', '0:a:0', '-af', af,
+                    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '21', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', str(out)], check=True, timeout=900)
+    return out
+
+
+def make_mp3(ff: str, audio: Path, out: Path) -> Path:
+    """4.13: the podcast episode: the loudnormed sound as a 96 kbit/s mono MP3."""
+    subprocess.run([ff, '-y', '-loglevel', 'error', '-i', str(audio), '-c:a', 'libmp3lame', '-b:a', '96k', '-ac', '1', '-ar', '44100', str(out)], check=True, timeout=600)
+    return out
+
+
+LOG_KEYS = ('lines', 'voiced', 'marks', 'script', 'programme', 'headline', 'keys', 'voiceForced')
+
+
+def build_meta(cap: dict, mp4: Path, part: str, fmt: str, rel: dict | None, guide_url: str | None) -> dict:
+    """Everything the upload needs, written to the run folder as meta.json (so --upload-only and the retry queue can publish it later)."""
+    today = datetime.now().date()
+    lg = cap.get('log') or {}
+    secs = cap.get('seconds') or 0
+    rel_name = (rel or {}).get('name')
+    head = lg.get('headline') if part in ('morning', 'evening', 'afternoon', 'weekly') else None
+    title = title_for(today, part, head)
+    if part == 'special' and rel_name:
+        title = title_for(today, 'special', f"{(rel or {}).get('ccy', '')} {rel_name}".strip())
+    if fmt != 'short':
+        title = title.replace(' #Shorts', '')
+    chapters = chapters_text(lg.get('marks'), secs, open_title=PART_TITLES.get(part, 'Title'))
+    desc = description_for(today, cap.get('voice'), secs, part, chapters=chapters, headline=head, release=rel_name, guide_url=guide_url)
+    if fmt != 'short':
+        desc = desc.replace('\n\n#Shorts', '')
+    srt = mp4.with_suffix('.srt')
+    if lg.get('script'):
+        srt.write_text(srt_text(lg['script']), encoding='utf-8')
+    head_mark = next((m['t'] for m in lg.get('marks') or [] if m.get('kind') == 'headline'), None)
+    return {'part': part, 'format': fmt, 'title': title, 'description': desc, 'tags': tags_for(lg.get('keys'), part, fmt == 'short'), 'mp4': str(mp4), 'seconds': round(secs, 1),
+            'srt': str(srt) if srt.exists() else None, 'thumbAt': (head_mark + 4.0) if head_mark is not None else None, 'marks': lg.get('marks') or [],
+            'releaseKey': (rel or {}).get('key'), 'audio': str(cap.get('audioNorm') or ''), 'voice': cap.get('voice'), 'date': today.isoformat()}
+
+
+def publish(meta: dict, base: str, out_dir: Path, *, short_cut: bool = True, podcast: bool = True, dry: bool = False) -> dict:
+    """Upload the video (unlisted), tell the server (the Telegram note), then the extras: captions, thumbnail, the podcast episode, the Short. Only the video upload can fail the
+    run; each extra is best effort and logged. In --dry-run nothing leaves the laptop: the uploads and the notes are logged with fake ids."""
+    ff = ffmpeg_exe()
+    mp4, part, fmt = Path(meta['mp4']), meta['part'], meta['format']
+    if dry:
+        vid = 'DRYRUN00001'
+        log(f"[dry run] would upload {mp4.name} as unlisted: {meta['title']!r} ({len(meta['tags'])} tags, {len(meta['description'])} chars of description)")
+    else:
+        from youtube_upload import upload
+        vid = upload(mp4, meta['title'], meta['description'], privacy='unlisted', tags=meta['tags'])
+    url = f'https://youtube.com/shorts/{vid}' if fmt == 'short' else f'https://youtu.be/{vid}'
+    log(f'uploaded (unlisted): {url}')
+    res = {'videoId': vid, 'url': url, 'privacy': 'unlisted', 'format': fmt}
+    note = (lambda *a, **k: log(f'[dry run] would notify the server: {a[1:3]}') or True) if dry else helix_notify.notify_published
+    if not note(base, vid, meta['title'], part, meta.get('seconds'), fmt, meta.get('releaseKey'), log=log):
+        log('the server could not be told (no Telegram note); the video is up regardless')
+    if not dry:
+        try:
+            import youtube_upload as yu
+            if meta.get('srt') and yu.captions_ready():
+                yu.upload_captions(vid, Path(meta['srt']))
+                log('captions uploaded')
+            elif meta.get('srt'):
+                log('captions skipped: no captions sign-in (python record_broadcast.py --youtube-auth-captions)')
+            if meta.get('thumbAt') is not None:
+                jpg = make_thumbnail(ff, mp4, meta['thumbAt'], mp4.with_suffix('.jpg'))
+                if jpg:
+                    yu.set_thumbnail(vid, jpg)
+                    log('thumbnail set from the headline card')
+        except Exception as e:
+            log(f'captions/thumbnail not set ({e}); the video is up regardless')
+    elif meta.get('thumbAt') is not None:
+        jpg = make_thumbnail(ff, mp4, meta['thumbAt'], mp4.with_suffix('.jpg'))
+        log(f'[dry run] thumbnail {"made" if jpg else "NOT made"}; captions {"written" if meta.get("srt") else "none"}')
+    # the podcast episode (audio only, private feed): every wide briefing, recap and special
+    if podcast and fmt == 'wide' and part in ('morning', 'evening', 'weekly', 'special') and meta.get('audio') and Path(meta['audio']).exists():
+        try:
+            mp3 = make_mp3(ff, Path(meta['audio']), mp4.with_suffix('.mp3'))
+            ep = podcast_id(datetime.fromisoformat(meta['date']).date(), part, meta.get('releaseKey'))
+            if dry:
+                log(f'[dry run] would upload podcast episode {ep} ({mp3.stat().st_size // 1024} KB)')
+            else:
+                j = helix_notify.upload_podcast(base, mp3, ep, meta['title'], part, meta.get('seconds'), log=log)
+                log(f"podcast episode {ep}: {'published' if j and j.get('ok') else 'not published'} {(j or {}).get('error', '')}".rstrip())
+        except Exception as e:
+            log(f'podcast episode not made ({e})')
+    # the Short: the morning's opening minute, reframed for the phone
+    if short_cut and fmt == 'wide' and part == 'morning':
+        try:
+            win = short_window(meta.get('marks'), meta.get('seconds') or 0)
+            if win:
+                sp = make_short(ff, mp4, win, mp4.with_name(mp4.stem + '-short.mp4'))
+                d = datetime.fromisoformat(meta['date']).date()
+                sm = {**meta, 'part': 'short', 'format': 'short', 'mp4': str(sp), 'seconds': round(win[1] - win[0], 1), 'srt': None, 'thumbAt': None, 'releaseKey': None,
+                      'title': title_for(d, 'short', meta['title'].split(' · ')[1] if meta['title'].count(' · ') >= 2 else None),
+                      'description': description_for(d, part='morning') + '', 'tags': meta['tags'] + ['Shorts']}
+                (sp.parent / 'meta-short.json').write_text(json.dumps(sm, indent=2), encoding='utf-8')
+                res['short'] = publish(sm, base, out_dir, short_cut=False, podcast=False, dry=dry)
+            else:
+                log('no Short: the video is under 45 s')
+        except Exception as e:
+            log(f'the Short was not made or uploaded ({e})')
+    return res
+
+
+QUEUE = 'upload_queue.json'
+
+
+def read_queue(out_dir: Path) -> list:
+    try:
+        return json.loads((out_dir / QUEUE).read_text(encoding='utf-8'))
+    except Exception:
+        return []
+
+
+def drain_queue(base: str, out_dir: Path) -> int:
+    """4.11: retry the uploads that failed (out/upload_queue.json), with a back-off. Each success sends its Telegram note as usual."""
+    q = read_queue(out_dir)
+    due = queue_due(q, time.time())
+    if not due:
+        log(f'upload queue: nothing due ({len(q)} waiting)')
+        return 0
+    for e in due:
+        meta_file = Path(e['dir']) / e.get('meta', 'meta.json')
+        try:
+            meta = json.loads(meta_file.read_text(encoding='utf-8'))
+            log(f"upload queue: retrying {meta_file.parent.name} (try {e.get('tries', 0) + 1})")
+            publish(meta, base, out_dir)
+            q = queue_done(q, e)
+        except Exception as x:
+            log(f'upload queue: {meta_file.parent.name} failed again ({x})')
+            q = queue_after_fail(q, e, time.time())
+            if e.get('tries', 0) + 1 >= QUEUE_MAX_TRIES:
+                helix_notify.notify_failed(base, e.get('part', 'morning'), f'the upload failed {QUEUE_MAX_TRIES} times and was given up: {x}', log=log)
+    (out_dir / QUEUE).write_text(json.dumps(q, indent=2), encoding='utf-8')
+    return 0
+
+
+def dry_capture(out_dir: Path, seconds: float = 70.0) -> dict:
+    """--dry-run: a stand-in capture made with ffmpeg (a test pattern and a tone, no browser, no voice call), with marks and a script shaped like the page's, so every step
+    after recording (concat, loudness, freeze/black checks, chapters, captions, thumbnail, the Short, the MP3) runs for real."""
+    ff = ffmpeg_exe()
+    work = out_dir / f"{datetime.now().strftime('%Y-%m-%d_%H%M')}-dry"
+    frames_dir = work / 'frames'
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    subprocess.run([ff, '-y', '-loglevel', 'error', '-f', 'lavfi', '-i', f'testsrc2=size={W}x{H}:rate=5:duration={seconds}', '-q:v', '4', str(frames_dir / 'f%06d.jpg')], check=True)
+    subprocess.run([ff, '-y', '-loglevel', 'error', '-f', 'lavfi', '-i', f'sine=frequency=220:duration={seconds}:sample_rate=48000', '-af', 'volume=0.2', str(work / 'audio.wav')], check=True)
+    names = sorted(p.name for p in frames_dir.glob('f*.jpg'))
+    t0 = 1000.0
+    frames = [(n, t0 + i / 5) for i, n in enumerate(names)]
+    marks = [{'t': 0, 'kind': 'open', 'title': 'THE MORNING BRIEFING'}, {'t': 6, 'kind': 'headline', 'title': 'The Headline'}, {'t': 16, 'kind': 'lead', 'title': 'The Lead'},
+             {'t': 30, 'kind': 'lead', 'title': 'The Lead'}, {'t': 48, 'kind': 'bumper', 'title': 'Markets'}, {'t': 51, 'kind': 'scene', 'title': 'Board'}, {'t': 63, 'kind': 'close', 'title': 'Sign-off'}]
+    script = [{'a': 0.5, 'b': 5.5, 'text': 'Good morning. This is Helix, with the morning briefing.', 'voiced': True},
+              {'a': 6.5, 'b': 15, 'text': 'The headline: gold runs 2.4 times its usual move.', 'voiced': True},
+              {'a': 16.5, 'b': 47, 'text': 'Three stories lead this morning. First, gold. Second, the yen. And third, oil.', 'voiced': True},
+              {'a': 51, 'b': 62, 'text': 'Markets: nine of fifteen are moving more than usual.', 'voiced': True}, {'a': 63, 'b': 68, 'text': 'That is the briefing.', 'voiced': True}]
+    log(f'[dry run] stand-in capture: {len(frames)} frames, {seconds:.0f} s of tone (no browser, no voice call)')
+    return {'work': work, 'frames': frames, 'audio': work / 'audio.wav', 't0': t0, 't1': t0 + seconds, 'voice': 'dry run',
+            'log': {'lines': len(script), 'voiced': len(script), 'marks': marks, 'script': script, 'programme': 'briefing', 'headline': 'Gold runs 2.4 times its usual move', 'keys': ['GOLD', 'USDJPY', 'WTI']}}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--login', action='store_true', help='one-off: log into the desk site in a visible window')
     ap.add_argument('--youtube-auth', action='store_true', help='one-off: sign in to YouTube and save token.json')
+    ap.add_argument('--youtube-auth-captions', action='store_true', help='one-off: a second sign-in with the captions permission (youtube.force-ssl), saved as token_captions.json')
     ap.add_argument('--no-upload', action='store_true', help='record and encode only')
     ap.add_argument('--show', action='store_true', help='keep the browser window on screen')
     ap.add_argument('--format', choices=['wide', 'short'], default='wide', help='wide (default): 1920x1080, the full programme, a normal video; short: 1080x1920 under 3 min, a YouTube Short')
@@ -331,6 +620,18 @@ def main() -> None:
     ap.add_argument('--live', action='store_true', help='record in real time (the old way; drops frames on a busy machine)')
     ap.add_argument('--frames', action='store_true', help='record frame by frame (the morning default)')
     ap.add_argument('--fps', type=int, choices=[24, 25, 30], default=30, help='frame-by-frame: frames per second (default 30)')
+    ap.add_argument('--part', choices=['morning', 'evening', 'weekly', 'special'], default=None, help='the programme (default: the clock, morning or evening); a run outside its window is skipped')
+    ap.add_argument('--force', action='store_true', help='record even outside the time window')
+    ap.add_argument('--release-key', default=None, help='special: the release key from /api/helix/special-due (one special per release)')
+    ap.add_argument('--release-name', default=None, help='special: the release, e.g. "Non-Farm Employment Change"')
+    ap.add_argument('--release-ccy', default=None, help='special: its currency, e.g. USD')
+    ap.add_argument('--release-hm', default=None, help='special: its London time, e.g. 13:30')
+    ap.add_argument('--wait-busy', action='store_true', help='queue behind a running recorder instead of ending it (the weekly recap and the specials)')
+    ap.add_argument('--upload-only', default=None, metavar='DIR', help='upload the video already in DIR (its meta.json), with its notes and extras')
+    ap.add_argument('--retry-queue', action='store_true', help='retry the failed uploads in out/upload_queue.json, then exit')
+    ap.add_argument('--no-short', action='store_true', help='do not cut and upload the 45-60 s Short from the morning video')
+    ap.add_argument('--no-podcast', action='store_true', help='do not publish the audio as a podcast episode')
+    ap.add_argument('--dry-run', action='store_true', help='no browser, no voice, no upload, no notes: a stand-in capture through every later step (to test the pipeline)')
     ap.add_argument('--base', default=os.environ.get('JARVIS_SITE', BASE))
     ap.add_argument('--out', default=str(OUT))
     a = ap.parse_args()
@@ -340,58 +641,102 @@ def main() -> None:
         W, H, DPR = SHORT_PAGE
         OUT_W, OUT_H = W * DPR, H * DPR
     if a.len is None:
-        a.len = 'short' if a.format == 'short' else 'quick'
+        a.len = 'short' if a.format == 'short' or a.part == 'special' else 'quick'
     if a.login:
         return do_login(a.base)
-    if a.youtube_auth:
-        from youtube_upload import authorise
-        authorise(interactive=True)
+    if a.youtube_auth or a.youtube_auth_captions:
+        import youtube_upload as yu
+        if a.youtube_auth_captions:
+            yu.authorise(interactive=True, token=yu.TOKEN_CAPTIONS, scopes=yu.SCOPES_CAPTIONS)
+        else:
+            yu.authorise(interactive=True)
         print('YouTube sign-in saved.')
         return
     out_dir = Path(a.out)
-    end_stuck_run(out_dir)
+    if a.retry_queue:
+        sys.exit(drain_queue(a.base, out_dir))
+    if a.upload_only:
+        meta = json.loads((Path(a.upload_only) / 'meta.json').read_text(encoding='utf-8'))
+        try:
+            res = publish(meta, a.base, out_dir, short_cut=not a.no_short, podcast=not a.no_podcast, dry=a.dry_run)
+            (out_dir / 'last_run.json').write_text(json.dumps({'ok': True, 'uploadOnly': True, **res}, indent=2), encoding='utf-8')
+        except Exception as e:
+            log(f'FAILED (upload only): {e}')
+            sys.exit(1)
+        return
+    now = datetime.now()
+    if a.len == 'guide':
+        part = 'guide'
+    else:
+        part, why = resolve_part(now, a.part, a.force or a.dry_run)
+        if not part:
+            log(f'skipped: {why}')
+            (out_dir / 'last_run.json').write_text(json.dumps({'ok': True, 'skipped': why, 'at': now.isoformat(timespec='seconds')}, indent=2), encoding='utf-8')
+            return
+    programme, pod = PAGE_PROGRAMME.get(part, ('briefing', None))
+    rel = {'key': a.release_key, 'name': a.release_name, 'ccy': (a.release_ccy or '').upper() or None, 'hm': a.release_hm} if part == 'special' else None
+    page = {'programme': programme, 'pod': pod, 'release': ({k: rel[k] for k in ('name', 'ccy', 'hm')} if rel else None), 'chainWin': 5 if part == 'weekly' else None}
+    prog = {'part': part, 'page': page}
+    notify = not a.no_upload and not a.dry_run
+    keep_awake(True)
     try:
-        if a.live:
-            cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate)
-            mp4 = encode(cap)
+        if a.wait_busy:
+            wait_for_recorder(out_dir)
+        else:
+            end_stuck_run(out_dir)
+        if part == 'morning' and not a.dry_run:
+            wait_desk_launcher(out_dir)
+        if a.dry_run:
+            cap = dry_capture(out_dir)
+            mp4 = encode(cap, part)
+        elif a.live:
+            cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate, prog)
+            mp4 = encode(cap, part)
         else:
             try:
-                cap = record_frames(a.base, a.len, a.voice, a.show, out_dir, a.rate, a.fps)
-                mp4 = encode(cap)
-            except Exception as e:                  # a video beats none: fall back to the live recording
+                cap = record_frames(a.base, a.len, a.voice, a.show, out_dir, a.rate, a.fps, prog)
+                mp4 = encode(cap, part)
+            except Exception as e:                  # a video beats none: fall back to the live recording (but not when a line could not be voiced: live would be silent there too)
+                if 'VOICE_GAP' in str(e) or 'lines were voiced' in str(e):
+                    raise
                 log(f'frame-by-frame failed ({e}); recording live instead')
                 a.live = True
-                cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate)
-                mp4 = encode(cap)
-        result = {'ok': True, 'mode': 'live' if a.live else 'frames', 'file': str(mp4), 'seconds': round(cap['seconds'], 1), 'voice': cap['voice'], 'at': datetime.now().isoformat(timespec='seconds')}
+                cap = record(a.base, a.len, a.voice, a.show, out_dir, a.rate, prog)
+                mp4 = encode(cap, part)
+        result = {'ok': True, 'mode': 'dry' if a.dry_run else 'live' if a.live else 'frames', 'part': part, 'file': str(mp4), 'seconds': round(cap['seconds'], 1), 'voice': cap['voice'],
+                  'voiced': f"{(cap.get('log') or {}).get('voiced', '?')}/{(cap.get('log') or {}).get('lines', '?')}", 'at': datetime.now().isoformat(timespec='seconds')}
+        guide_file = out_dir / 'guide_url.txt'          # the visual guide's link, kept by the guide run and put in every brief's description
+        if a.len == 'guide':
+            meta = {'part': 'guide', 'format': a.format, 'title': 'H.E.L.I.X. Visual Guide · how to read the briefings', 'mp4': str(mp4), 'seconds': round(cap['seconds'], 1),
+                    'description': ('Every picture in the H.E.L.I.X. morning and evening briefings: what it shows and how to read it. '
+                                    'The briefings themselves skip the explanations and go straight to the analysis; keep this one for reference.\n\n'
+                                    'Description only. Not a forecast, not advice, not a trade.'),
+                    'tags': tags_for([], 'guide'), 'srt': None, 'thumbAt': None, 'marks': [], 'releaseKey': None, 'audio': '', 'date': datetime.now().date().isoformat()}
+        else:
+            gu = guide_file.read_text(encoding='utf-8').strip() if guide_file.exists() else None
+            meta = build_meta(cap, mp4, part, a.format, rel, gu)
+        (cap['work'] / 'meta.json').write_text(json.dumps(meta, indent=2), encoding='utf-8')
         if not a.no_upload:
-            from youtube_upload import upload
-            today = datetime.now().date()
-            part = part_of_day(datetime.now().hour)          # 07:00 -> the morning briefing, 21:00 -> the evening one (the page picks its programme by the same London clock)
-            guide_file = out_dir / 'guide_url.txt'          # the visual guide's link, kept by the guide run and put in every brief's description
-            if a.len == 'guide':
-                title = 'H.E.L.I.X. Visual Guide · how to read the briefings'
-                desc = ('Every picture in the H.E.L.I.X. morning and evening briefings: what it shows and how to read it. '
-                        'The briefings themselves skip the explanations and go straight to the analysis; keep this one for reference.\n\n'
-                        'Description only. Not a forecast, not advice, not a trade.')
-            else:
-                title = title_for(today, part) if a.format == 'short' else title_for(today, part).replace(' #Shorts', '')
-                desc = description_for(today, cap['voice'], cap['seconds'], part)
-                if a.format != 'short':
-                    desc = desc.replace('\n\n#Shorts', '')
-                if guide_file.exists():
-                    desc = f"New to the pictures? The visual guide explains each one: {guide_file.read_text(encoding='utf-8').strip()}\n\n" + desc
-            vid = upload(mp4, title, desc, privacy='unlisted')
-            result.update({'videoId': vid, 'url': f'https://youtube.com/shorts/{vid}' if a.format == 'short' else f'https://youtu.be/{vid}', 'privacy': 'unlisted', 'format': a.format})
-            log(f"uploaded (unlisted): {result['url']}")
-            if a.len == 'guide':
-                guide_file.write_text(result['url'], encoding='utf-8')
+            try:
+                res = publish(meta, a.base, out_dir, short_cut=not a.no_short, podcast=not a.no_podcast, dry=a.dry_run)
+            except Exception as e:                  # the video is made: queue it for another try instead of losing it
+                if not a.dry_run:
+                    (out_dir / QUEUE).write_text(json.dumps(queue_push(read_queue(out_dir), {'dir': str(cap['work']), 'meta': 'meta.json', 'part': part}, time.time()), indent=2), encoding='utf-8')
+                raise RuntimeError(f'the upload failed ({e}); queued for a retry (run_upload_retry.bat)') from e
+            result.update(res)
+            if a.len == 'guide' and not a.dry_run:
+                guide_file.write_text(res['url'], encoding='utf-8')
         (out_dir / 'last_run.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
-        keep_last(out_dir)
+        if not a.dry_run:
+            keep_last(out_dir, 9)
     except Exception as e:
         log(f'FAILED: {e}')
-        (out_dir / 'last_run.json').write_text(json.dumps({'ok': False, 'error': str(e), 'at': datetime.now().isoformat(timespec='seconds')}, indent=2), encoding='utf-8')
+        (out_dir / 'last_run.json').write_text(json.dumps({'ok': False, 'part': part, 'error': str(e), 'at': datetime.now().isoformat(timespec='seconds')}, indent=2), encoding='utf-8')
+        if notify and part != 'guide':
+            helix_notify.notify_failed(a.base, part, str(e), log=log)       # the server sends the short failure note; a failed notify is only logged
         sys.exit(1)
+    finally:
+        keep_awake(False)
 
 
 if __name__ == '__main__':

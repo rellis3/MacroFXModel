@@ -1,0 +1,129 @@
+// js/jarvis/helixBroadcast.js: the server end of the H.E.L.I.X. broadcasts (the laptop records and uploads them; jarvis_broadcast/record_broadcast.py).
+// Telegram goes from HERE, never from the laptop: after each upload the laptop tells this server, which sends the owner one note (sender helixBroadcast, ⚙ Alerts).
+//
+//   POST /api/helix/broadcast-published  { videoId, title, part, seconds?, format?, releaseKey? }  -> the "is up" note, once per video id; listed for Helix
+//   POST /api/helix/broadcast-failed     { part, error }                                          -> a short failure note (at most FAIL_CAP a day)
+//   GET  /api/helix/broadcasts           owner only: the last published videos and podcast episodes, and the podcast feed's address
+//   GET  /api/helix/special-due          the rank-3 release (payrolls, CPI, a rate decision) printed 30-80 minutes ago that has no special yet, or none (read-only)
+//   POST /api/helix/podcast/episode?id=&title=&part=&seconds=  (audio/mpeg body) -> R2 helix/podcast/<id>.mp3, the feed, and the note. Needs the push secret.
+//   GET  /api/helix/podcast/<feedKey>/feed.xml | /<id>.mp3     the private podcast feed (an obscure address, not listed anywhere)
+//
+// AUTH (the laptop has no login cookie): the platform's laptop-push convention, the X-Auth-Token header against KV_WRITE_SECRET, the same variable /api/kv/set and the
+// footprint pushes use (read from the same env var on both sides). With KV_WRITE_SECRET set, every write here needs it. Without it, the two note routes stay usable but
+// bounded (a valid YouTube id, the link built here, deduped, capped per day); the podcast upload refuses (fails closed), since it writes files.
+// Description only: the notes say a video is up or a run failed, nothing else.
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { KV_KEY, readStore, addItem, addFailure, validatePublished, validateFailed, publishedText, failedText, specialsDue, validateEpisode, podcastRss } from './helixBroadcastCore.js';
+
+const R2_PREFIX = 'helix/podcast/';
+const origin = req => { const h = String(req.get('host') ?? ''); return `${/^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(h) ? 'http' : 'https'}://${h}`; };      // Railway terminates TLS in front of us
+const londonDay = (deps, ms = Date.now()) => (deps.londonDate ? deps.londonDate(ms) : new Date(ms).toISOString().slice(0, 10));
+
+/** The push secret check: true when the header matches KV_WRITE_SECRET, or when no secret is configured and `open` is allowed. */
+export function pushOk(header, secret, open) {
+  if (!secret) return !!open;
+  const a = Buffer.from(String(header ?? '')), b = Buffer.from(String(secret));
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+/** The podcast feed's private path segment: HELIX_PODCAST_KEY, else derived from the push secret; null (feed off) with neither. */
+export function feedKey(env = process.env) {
+  const k = String(env.HELIX_PODCAST_KEY ?? '').trim(); if (/^[A-Za-z0-9_-]{16,80}$/.test(k)) return k;
+  const s = String(env.KV_WRITE_SECRET ?? '').trim(); return s ? createHash('sha256').update(`helix-podcast|${s}`).digest('hex').slice(0, 32) : null;
+}
+
+export async function mount(app, deps) {
+  const { express, kv } = deps;
+  const secret = () => String(process.env.KV_WRITE_SECRET ?? '');
+  let chain = Promise.resolve();                                // one KV read-modify-write at a time
+  const update = fn => (chain = chain.then(async () => { const s = readStore(await kv.get(KV_KEY)); const r = await fn(s); if (r?.store) await kv.put(KV_KEY, JSON.stringify(r.store)); return r; }));
+  const send = async text => { try { return !!(await deps.tgSendAs?.('helixBroadcast', text)); } catch (e) { console.warn('[helixBroadcast] telegram:', e.message); return false; } };
+
+  app.post('/api/helix/broadcast-published', express.json({ limit: '8kb' }), async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (!pushOk(req.get('X-Auth-Token'), secret(), true)) return res.status(401).json({ ok: false, error: 'X-Auth-Token required' });
+    const v = validatePublished(req.body); if (!v.ok) return res.status(400).json(v);
+    try {
+      const r = await update(s => addItem(s, v.item, londonDay(deps)));
+      const sent = !r.duplicate && !r.capped ? await send(publishedText(v.item)) : false;
+      res.json({ ok: true, duplicate: r.duplicate, capped: r.capped, sent, url: v.item.url });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  app.post('/api/helix/broadcast-failed', express.json({ limit: '8kb' }), async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (!pushOk(req.get('X-Auth-Token'), secret(), true)) return res.status(401).json({ ok: false, error: 'X-Auth-Token required' });
+    const v = validateFailed(req.body); if (!v.ok) return res.status(400).json(v);
+    try {
+      const r = await update(s => addFailure(s, londonDay(deps)));
+      const sent = r.capped ? false : await send(failedText(v.part, v.error));
+      res.json({ ok: true, capped: r.capped, sent });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  app.get('/api/helix/broadcasts', deps.ownerOnly, async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const s = readStore(await kv.get(KV_KEY)), fk = feedKey();
+      res.json({ ok: true, items: s.items.slice(0, Math.max(1, Math.min(60, +req.query.n || 20))), today: s.day, podcastFeed: fk ? `/api/helix/podcast/${fk}/feed.xml` : null });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  app.get('/api/helix/special-due', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const s = readStore(await kv.get(KV_KEY)), done = new Set(s.items.map(x => x.releaseKey).filter(Boolean));
+      const ev = await deps.selfJson('/api/events'), events = Array.isArray(ev) ? ev : Array.isArray(ev?.events) ? ev.events : [];
+      const now = Number.isFinite(+req.query.now) && +req.query.now > 0 ? +req.query.now : Date.now();     // ?now= replays a time (for testing the laptop's launcher); nothing is written
+      const due = specialsDue(events, now, done);
+      res.json({ ok: true, now: new Date(now).toISOString(), checked: events.length, due });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // ── the podcast ──
+  app.post('/api/helix/podcast/episode', express.raw({ type: ['audio/mpeg', 'application/octet-stream'], limit: '60mb' }), async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    if (!pushOk(req.get('X-Auth-Token'), secret(), false)) return res.status(401).json({ ok: false, error: 'the podcast upload needs KV_WRITE_SECRET set on the server and sent as X-Auth-Token' });
+    if (!deps.r2?.configured?.()) return res.status(503).json({ ok: false, error: 'R2 is not configured on the server' });
+    const buf = Buffer.isBuffer(req.body) ? req.body : null;
+    const v = validateEpisode(req.query, buf?.length ?? 0); if (!v.ok) return res.status(400).json(v);
+    try {
+      const fk = feedKey(), base = `${origin(req)}/api/helix/podcast/${fk}`;
+      const ep = { ...v.ep, kind: 'podcast', at: new Date().toISOString() };
+      const r = await update(async s => {
+        if (s.items.some(x => x.id === `pod-${ep.id}`)) return { store: null, duplicate: true };
+        await deps.r2.putBuffer(`${R2_PREFIX}${ep.id}.mp3`, buf, 'audio/mpeg');
+        const idx = (await deps.r2.getJSON(`${R2_PREFIX}index.json`).catch(() => null)) ?? { episodes: [] };
+        idx.episodes = [ep, ...(idx.episodes ?? []).filter(e => e.id !== ep.id)].slice(0, 120);
+        await deps.r2.putJSON(`${R2_PREFIX}index.json`, idx);
+        const item = { id: `pod-${ep.id}`, kind: 'podcast', part: 'podcast', title: ep.title, url: `${base}/${ep.id}.mp3`, seconds: ep.seconds, at: ep.at };
+        return { ...addItem(s, item, londonDay(deps)), item };
+      });
+      if (r.duplicate) return res.json({ ok: true, duplicate: true });
+      const sent = r.capped ? false : await send(publishedText({ ...r.item, url: `${base}/feed.xml` }));
+      res.status(201).json({ ok: true, sent, feed: `${base}/feed.xml` });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  const feedGate = (req, res, next) => { const fk = feedKey(); if (!fk || req.params.key !== fk || !deps.r2?.configured?.()) return res.status(404).end(); next(); };
+  app.get('/api/helix/podcast/:key/feed.xml', feedGate, async (req, res) => {
+    try {
+      const idx = (await deps.r2.getJSON(`${R2_PREFIX}index.json`).catch(() => null)) ?? { episodes: [] };
+      res.set({ 'Content-Type': 'application/rss+xml; charset=utf-8', 'Cache-Control': 'private, max-age=300', 'X-Robots-Tag': 'noindex' });
+      res.send(podcastRss(idx.episodes, `${origin(req)}/api/helix/podcast/${req.params.key}`));
+    } catch (e) { res.status(500).end(); }
+  });
+  app.get('/api/helix/podcast/:key/:file', feedGate, async (req, res) => {
+    const m = /^([A-Za-z0-9][A-Za-z0-9_-]{5,63})\.mp3$/.exec(req.params.file); if (!m) return res.status(404).end();
+    try {
+      const buf = await deps.r2.getBuffer(`${R2_PREFIX}${m[1]}.mp3`); if (!buf) return res.status(404).end();
+      res.set({ 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, max-age=86400', 'Accept-Ranges': 'bytes', 'X-Robots-Tag': 'noindex' });
+      const rg = /^bytes=(\d*)-(\d*)$/.exec(req.get('range') ?? '');
+      if (rg && (rg[1] || rg[2])) {
+        const size = buf.length, a = rg[1] ? +rg[1] : Math.max(0, size - +rg[2]), b = rg[1] && rg[2] ? Math.min(size - 1, +rg[2]) : size - 1;
+        if (a > b || a >= size) return res.status(416).set('Content-Range', `bytes */${size}`).end();
+        return res.status(206).set('Content-Range', `bytes ${a}-${b}/${size}`).send(buf.subarray(a, b + 1));
+      }
+      res.send(buf);
+    } catch (e) { res.status(500).end(); }
+  });
+}

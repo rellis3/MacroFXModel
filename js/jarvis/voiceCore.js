@@ -22,10 +22,38 @@ export function pickProvider(env = {}) {
   return { name: 'edge', voice: String(env.JARVIS_EDGE_VOICE || EDGE_DEFAULT_VOICE) };
 }
 
-/** Text made safe and short for speech: markup and control characters gone, whitespace folded, cut at a sentence end before MAX_CHARS. '' when nothing is left. */
+// ── the ONE spoken-text normaliser (2026-11-27): every voice gets the same reading of desk shorthand ──
+const CCY_SAY = { EUR: 'euro', GBP: 'sterling', USD: 'dollar', JPY: 'yen', AUD: 'Aussie', NZD: 'kiwi', CAD: 'Canada', CHF: 'Swiss' };
+const PAIR_SAY = { AUDUSD: 'Aussie dollar', NZDUSD: 'kiwi dollar', USDCAD: 'dollar Canada', USDCHF: 'dollar Swiss' };
+const PLURAL = { 1: 'ones', 2: 'twos', 3: 'threes', 5: 'fives', 7: 'sevens', 10: 'tens', 20: 'twenties', 30: 'thirties' };
+const ORDQ = { 1: 'first', 2: 'second', 3: 'third', 4: 'fourth' };
+const SCALE = { K: 'thousand', M: 'million', B: 'billion', BN: 'billion', TN: 'trillion', T: 'trillion' };
+const MONEY = { '$': 'dollars', '€': 'euros', '£': 'pounds', '¥': 'yen' };
+/**
+ * Desk shorthand as words: currency pairs (EURUSD, EUR/USD -> "euro dollar"), basis points, the Unicode minus, curve spreads (2s10s -> "twos tens"), money and K/M/B/bn,
+ * "vs", quarters (Q3 -> "third quarter"), 25-delta, multiples (2.4x / 2.4× -> "2.4 times"), %, m/m and y/y. Clock times and prices are left to the voice (it reads them well).
+ * Applied on the server for every provider (cleanForSpeech), so the free text from the wire and skew scenes is read the same way as the templates.
+ */
+export function speakable(text) {
+  return String(text ?? '')
+    .replace(/[−–](?=\d)/g, 'minus ').replace(/−/g, '-').replace(/±/g, 'plus or minus ')
+    .replace(/\b(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF)\/?(EUR|GBP|USD|JPY|AUD|NZD|CAD|CHF)\b/g, (m, a, b) => (a === b ? m : PAIR_SAY[a + b] ?? `${CCY_SAY[a]} ${CCY_SAY[b]}`))
+    .replace(/\b(\d{1,2})s(\d{1,2})s\b/g, (m, a, b) => (PLURAL[a] && PLURAL[b] ? `${PLURAL[a]} ${PLURAL[b]}` : m))
+    .replace(/([$€£¥])\s?(\d+(?:[.,]\d+)*)(?:\s?(bn|tn|[KMBT])\b)?/gi, (m, c, n, k) => `${n}${k ? ` ${SCALE[k.toUpperCase()]}` : ''} ${MONEY[c]}`)
+    .replace(/\b(\d+(?:\.\d+)?)\s?(bn|tn|[KMB])\b/g, (m, n, k) => `${n} ${SCALE[k.toUpperCase()]}`)
+    .replace(/\b(\d+(?:\.\d+)?)\s?bps?\b/gi, (m, n) => `${n} basis point${n === '1' ? '' : 's'}`)
+    .replace(/\b(\d+(?:\.\d+)?)\s?[x×](?=\s|[,.;:!?)]|$)/g, '$1 times')
+    .replace(/\b(\d+)-delta\b/gi, '$1 delta').replace(/\b(\d+)d(?=\s+(?:risk|reversal|skew|put|call|vol)\b)/gi, '$1 delta')
+    .replace(/\bQ([1-4])\b/g, (m, q) => `${ORDQ[q]} quarter`)
+    .replace(/\bvs\.?(?=\s)/gi, 'versus')
+    .replace(/(\d)\s?%/g, '$1 percent').replace(/\bm\/m\b/gi, 'month on month').replace(/\by\/y\b/gi, 'year on year').replace(/\bq\/q\b/gi, 'quarter on quarter')
+    .replace(/\s*&\s*/g, ' and ');
+}
+
+/** Text made safe and short for speech: markup and control characters gone, desk shorthand read out (speakable), whitespace folded, cut at a sentence end before MAX_CHARS. '' when nothing is left. */
 export function cleanForSpeech(text, max = MAX_CHARS) {
   // the name is said HEE-lix, not HELL-ix (owner, 24 Nov 2026): every voice is handed the spelling that sounds right
-  let t = String(text ?? '').replace(/\bH\.E\.L\.I\.X\.(?=\s|$)|\bH\.E\.L\.I\.X\b|\bHelix\b/gi, 'Heelix').replace(/<[^>]*>/g, ' ').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[*_`#>|~]/g, ' ').replace(/\s+/g, ' ').trim();
+  let t = speakable(String(text ?? '').replace(/\bH\.E\.L\.I\.X\.(?=\s|$)|\bH\.E\.L\.I\.X\b|\bHelix\b/gi, 'Heelix').replace(/<[^>]*>/g, ' ').replace(/[\u0000-\u001f\u007f]/g, ' ')).replace(/[*_`#>|~]/g, ' ').replace(/\s+/g, ' ').trim();
   if (t.length <= max) return t;
   t = t.slice(0, max); const cut = Math.max(t.lastIndexOf('. '), t.lastIndexOf('! '), t.lastIndexOf('? '));
   return (cut > max * 0.5 ? t.slice(0, cut + 1) : t).trim();
@@ -34,9 +62,20 @@ export function cleanForSpeech(text, max = MAX_CHARS) {
 /** The speaking style, clamped: rate 0.5..2 (1 = normal) -> Edge's percent string. */
 export const edgeRate = r => { const x = Math.max(0.5, Math.min(2, Number(r) || 1)); const p = Math.round((x - 1) * 100); return `${p >= 0 ? '+' : ''}${p}%`; };
 
-/** ElevenLabs request body. style 0..1 adds expression; stability lower = more varied delivery. */
-export function elevenBody(text, model = ELEVEN_MODEL) {
-  return { text, model_id: model, voice_settings: { stability: 0.42, similarity_boost: 0.82, style: 0.32, use_speaker_boost: true } };
+/** ElevenLabs' speed range (voice_settings.speed): the broadcast's speed is baked in (pitch kept), instead of the client speeding the clip up (that pitched it up ~1.6 semitones). */
+export const elevenSpeed = r => Math.max(0.7, Math.min(1.2, Number(r) || 1));
+/** A pronunciation dictionary for ElevenLabs from JARVIS_ELEVEN_DICT ("<dictionary id>:<version id>"), or null. */
+export function elevenDict(env = {}) {
+  const m = /^([A-Za-z0-9]{8,64}):([A-Za-z0-9]{8,64})$/.exec(String(env.JARVIS_ELEVEN_DICT ?? '').trim());
+  return m ? [{ pronunciation_dictionary_id: m[1], version_id: m[2] }] : null;
+}
+/** ElevenLabs request body. style 0..1 adds expression; stability lower = more varied delivery. opts: speed (0.7..1.2), prev / next (the lines either side, for a natural run), dict (locators). */
+export function elevenBody(text, model = ELEVEN_MODEL, { speed = 1, prev = '', next = '', dict = null } = {}) {
+  const b = { text, model_id: model, voice_settings: { stability: 0.42, similarity_boost: 0.82, style: 0.32, use_speaker_boost: true, speed: elevenSpeed(speed) } };
+  if (prev) b.previous_text = String(prev).slice(0, 600);
+  if (next) b.next_text = String(next).slice(0, 600);
+  if (dict) b.pronunciation_dictionary_locators = dict;
+  return b;
 }
 
 /** A cache key that does not depend on object order: provider|voice|rate|text. */

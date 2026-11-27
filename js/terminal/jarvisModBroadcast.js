@@ -184,7 +184,7 @@ function makeOverlay(api) {
     },
     veil(on) { el.querySelector('.bc-veil').classList.toggle('on', !!on); },
     wipe() { const w = el.querySelector('.bc-wipe'); w.classList.remove('go'); void w.offsetWidth; w.classList.add('go'); },
-    open(date, guide = false) { $('odate').textContent = guide ? 'HOW TO READ THE BRIEFINGS' : date.card; $('cdate').textContent = guide ? '' : date.card; const part = guide ? 'VISUAL' : partOfDay(date.hour).toUpperCase(), kind = guide ? 'GUIDE' : 'BRIEFING'; $('part').textContent = part; $('pkind').textContent = kind; $('chead').textContent = guide ? 'That is the visual guide.' : 'That is the briefing.'; $('sig').textContent = `H.E.L.I.X. · THE ${part} ${kind}`; },
+    open(date, guide = false, programme = 'briefing') { $('odate').textContent = guide ? 'HOW TO READ THE BRIEFINGS' : date.card; $('cdate').textContent = guide ? '' : date.card; const pk = PROG_CARD[programme], part = guide ? 'VISUAL' : pk ? pk[0] : partOfDay(date.hour).toUpperCase(), kind = guide ? 'GUIDE' : pk ? pk[1] : 'BRIEFING'; $('part').textContent = part; $('pkind').textContent = kind; $('chead').textContent = guide ? 'That is the visual guide.' : 'That is the briefing.'; $('sig').textContent = `H.E.L.I.X. · THE ${part} ${kind}`; },
     lead(x, i, n) {
       $('lnum').textContent = `· ${i + 1} OF ${n}`; $('ghost').textContent = String(i + 1);
       const fig = $('fig'); fig.textContent = x.figure; fig.parentElement.style.setProperty('--tc', TONE[x.tone] ?? TONE.tx);
@@ -225,6 +225,7 @@ function makeOverlay(api) {
   return O;
 }
 
+const PROG_CARD = { weekly: ['WEEKLY', 'RECAP'], special: ['RELEASE', 'SPECIAL'] };      // the title card of the extra programmes (broadcastCore PROGRAMMES)
 const sting = api => { try { api.blip(392, 0.5, 'sine', 0.025); api.blip(587, 0.5, 'sine', 0.022, 0.16); api.blip(784, 0.9, 'triangle', 0.02, 0.32); api.blip(1175, 1.2, 'sine', 0.012, 0.5); } catch (e) { /* no audio */ } };
 const tick = api => { try { api.blip(1320, 0.05, 'square', 0.012); api.blip(990, 0.12, 'sine', 0.016, 0.06); } catch (e) { /* no audio */ } };
 
@@ -238,6 +239,7 @@ registerJarvisModule({
     pane.innerHTML = `<h3>THE ${part} BRIEFING</h3>
 <div class="jv-row"><button type="button" data-b="go" style="font-size:14px;letter-spacing:.2em;padding:10px 24px">▶ PLAY THIS ${part}</button><span class="jv-sub" data-b="status">Reading today's rundown...</span></div>
 <div data-b="rundown"></div>
+<div data-b="published"></div>
 <div class="jv-row"><button type="button" data-b="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-b="len"><option value="quick">QUICK (about 2-3 min)</option><option value="short">SHORT (under 3 min, a YouTube Short)</option><option value="full">FULL (every view)</option><option value="guide">VISUAL GUIDE (what each picture shows)</option></select></label><label class="jv-sub">speed <select data-b="rate"><option value="0.9">calm</option><option value="1">normal</option><option value="1.1">steady</option><option value="1.15">brisk</option><option value="1.3">fast</option></select></label><button type="button" data-b="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button></div>
 <details class="jv-sub"><summary>How recording works</summary><p class="jv-sub">The browser asks what to share. Choose <b>This tab</b>; Helix records its own voice and sound straight from the page, so there is no audio box to tick. The briefing plays and a video file downloads at the end (MP4 where the browser can, else WebM). On a phone it gets the briefing ready for the phone's own screen recorder. Keep the voice on so it is in the video.</p></details>
 <p class="jv-sub">A title sequence, the lead, then each segment over its hologram view, with a ticker, lower-thirds and subtitles. The voice leads; the picture follows. Esc ends it. Description only: what has moved and where things sit, never a forecast or a trade.</p>`;
@@ -266,7 +268,8 @@ registerJarvisModule({
       return cache;
     }
     let shortSec;                                   // the short cut's budget (seconds at normal speed); the recorder may ask for more (undefined = the planner's default)
-    const plan = (inp, mode) => planBroadcast({ ...inp, now: new Date(), mode }, { hooks: SHOW_HOOKS, have: new Set([...CORE_VIEWS, ...viewsOf().map(v => v.id)]), mode, rate: +q('rate').value || 1, budgetSec: shortSec });
+    let prog = { programme: 'briefing', pod: null, release: null };      // the laptop's extra programmes (weekly recap, release special); the panel always plays the briefing
+    const plan = (inp, mode) => planBroadcast({ ...inp, now: new Date(), mode }, { hooks: SHOW_HOOKS, have: new Set([...CORE_VIEWS, ...viewsOf().map(v => v.id)]), mode, rate: +q('rate').value || 1, budgetSec: shortSec, ...prog });
     async function rundown() {
       const box = q('rundown'); if (!box) return;
       try {
@@ -276,6 +279,15 @@ registerJarvisModule({
       } catch (e) { box.innerHTML = ''; status('Ready.'); }
     }
     rundown();
+    // what the laptop has published (GET /api/helix/broadcasts, owner only; the same list the Telegram notes come from): the last few videos and podcast episodes, with links
+    (async () => {
+      try {
+        const j = await api.jf('/api/helix/broadcasts?n=8'), box = q('published'); if (!box || !j?.ok || !j.items?.length) return;
+        const safeHref = u => (/^https:\/\/[^\s"'<>]+$/i.test(String(u ?? '')) ? String(u) : '#');      // only https links (YouTube, the feed): never a page of this site
+        const when = iso => { try { return new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+        box.innerHTML = `<p class="jv-sub" style="margin-top:10px;letter-spacing:.12em">ON YOUTUBE (UNLISTED)${j.podcastFeed ? ` · <a href="${api.esc(safeHref(api.win.location.origin + j.podcastFeed))}" target="_blank" rel="noopener">PODCAST FEED</a>` : ''}</p><table>${j.items.map(x => `<tr><td>${api.esc(when(x.at))}</td><td><a href="${api.esc(safeHref(x.url))}" target="_blank" rel="noopener">${api.esc(x.title)}</a></td></tr>`).join('')}</table>`;
+      } catch (e) { /* the list is optional */ }
+    })();
 
     function stop() {
       token++; stopMotion(); api.sfx.ambient(false); api.st.speakStop?.(); api.caption(null); api.cinema(false); api.st.spin = true;
@@ -291,6 +303,10 @@ registerJarvisModule({
       const c = await gather(true); if (my !== token) return;
       const P = plan(c.inp, q('len').value), items = P.items; api.win.__jarvisBroadcastPlan = P;     // for the lab harness and the console
       ctl.rate = +q('rate').value || 1; ctl.paused = false; ctl.jump = null; st.voice = api.voiceOn ? api.voiceOn() : true; api.voiceBegin?.();
+      // frame by frame: the offline sound buffer is sized from this script before anything plays (vclock.js; a fixed 15 min cut the end of a long run silently)
+      try { api.win.__vclock?.audioSeconds?.(Math.ceil(items.reduce((a, x) => a + itemSeconds(x, ctl.rate), 0) * 1.8 + 180)); } catch (e) { /* not recording */ }
+      const said = items.filter(x => x.text); api.win.__jarvisVoiceContext = new Map(said.map((x, k) => [x.text, { prev: said[k - 1]?.text ?? '', next: said[k + 1]?.text ?? '' }]));      // ElevenLabs reads the lines either side
+      st.voiceTally = { hit: 0, miss: 0 }; const marks = [], lines = []; api.win.__jarvisBroadcastLog = { marks, lines };      // what played when (chapters, captions, the Short) and whether each line was voiced
       const sync = () => api.cineLabel(ctl.rate, ctl.paused), steps = [0.75, 1, 1.25, 1.5, 1.75, 2];
       api.cinema(true, () => { stop(); status('Ended.'); }, {
         next: () => { ctl.jump = 1; api.st.speakCtl?.stop(); },
@@ -300,8 +316,8 @@ registerJarvisModule({
         slow: () => { ctl.rate = [...steps].reverse().find(x => x < ctl.rate - 1e-6) ?? 0.75; api.st.speakCtl?.setRate?.(ctl.rate); sync(); },
       }); sync(); api.caption(null);
       ov?.remove(); ov = makeOverlay(api); if (!ov) { status('The HUD is not open.', true); return; }
-      ov.open(P.date, !!P.guide); ov.ticker(P.ticker); ov.on(); api.sfx.ambient(true);
-      if (onAir) { try { await onAir(); } catch (e) { /* the recorder's hook must never stop the show */ } if (my !== token) return; }      // the daily job starts recording HERE, on the title card, not on the panel while the data loads
+      ov.open(P.date, !!P.guide, P.programme); ov.ticker(P.ticker); ov.on(); api.sfx.ambient(true);
+      if (onAir) { try { await onAir(P); } catch (e) { /* the recorder's hook must never stop the show */ } if (my !== token) return; }      // the daily job starts recording HERE, on the title card, not on the panel while the data loads
       status(`On air: ${P.segments.length} segments, about ${durText(items.reduce((a, x) => a + itemSeconds(x, ctl.rate), 0))}. Voice: ${api.voiceLabel?.() ?? "on"}.`);
       api.voicePrefetch?.(items[0]?.text);
       let i = Math.max(0, Math.min(items.length - 1, +(api.win.__jarvisBroadcastFrom ?? 0) || 0)), prevKind = null, prevView = null;
@@ -309,7 +325,8 @@ registerJarvisModule({
         const it = items[i];
         // the transition: a whoosh and a light wipe; the view changes behind a quick veil so the cut never shows
         const cut = it.view && it.view !== st.view;
-        if (prevKind) { api.sfx.whoosh(); ov.wipe(); }
+        marks.push({ at: Date.now(), kind: it.kind, title: it.kind === 'bumper' ? it.seg?.name ?? it.title : it.title ?? '' });
+        if (prevKind) { if (it.kind === 'bumper' || it.kind === 'close' || it.kind === 'headline' || (it.kind === 'lead' && it.idx === 0)) api.sfx.whoosh(); ov.wipe(); }      // a whoosh at a segment change only (it was 25-30 a video)
         if (it.kind === 'bumper') tick(api);
         if (cut || it.kind === 'scene' || it.cam || prevView == null) {
           if (cut) { ov.veil(true); await Promise.race([Promise.all([sleep(300), glWarm(it.view, api)]), sleep(2500)]); }   // the cut lands on a finished hologram, never on loading text
@@ -337,7 +354,9 @@ registerJarvisModule({
           // THE HEADLINE's chart: a slow turn and push-in while the headline is read (it sat dead still for 18 s in the 24 Nov evening video and looked frozen)
           const headMove = it.kind === 'headline' && it.cam?.chart ? { cam: { drift: true }, motion: (a, p) => { a.st.yaw = 0.16 + 0.26 * p; } } : null;
           stopMotion(); stopMotion = sceneMotion(api, it.kind === 'scene' ? it.scene : headMove ?? { cam: null }, dur, () => my === token, ctl, p => ov?.sub(subs ? chunkAt(chunks, p)?.text : null));
+          const ls = Date.now(), v0 = st.voiceTally?.hit ?? 0;
           await api.speak(it.text, ctl.rate);       // the voice leads: nothing moves on until he has finished the line, or you skip it
+          lines.push({ a: ls, b: Date.now(), text: it.text, kind: it.kind, voiced: (st.voiceTally?.hit ?? 0) > v0 });
           stopMotion(); stopMotion = () => {};
         }
         if (my !== token) break;
@@ -358,8 +377,25 @@ registerJarvisModule({
     // ── the laptop's daily job (jarvis_broadcast/record_broadcast.py) ──
     // Plays the broadcast with no human at the controls and records ITS SOUND from the HUD's audio bus (voice + effects; a sound card is not needed), while the job records the
     // picture from Chrome's own frame feed. Returns the audio (base64) with the wall-clock start/end so the job can line the two up. engine: 'server' (default, steady) or 'kokoro'.
-    api.win.__jarvisBroadcastAuto = async ({ len = 'quick', engine = 'server', kokoroWaitMs = 180000, rate = 1, budgetSec } = {}) => {
-      shortSec = budgetSec;
+    api.win.__jarvisBroadcastAuto = async ({ len = 'quick', engine = 'server', kokoroWaitMs = 180000, rate = 1, budgetSec, programme = 'briefing', pod = null, release = null, chainWin = null, prerender = true } = {}) => {
+      shortSec = budgetSec; prog = { programme, pod, release }; api.win.__jarvisVoiceProvider = null;
+      if (chainWin && st.win !== chainWin) { try { api.$('win')?.querySelector(`[data-w="${chainWin}"]`)?.click(); } catch (e) { /* the 1-day chain stays */ } await sleep(5000); }      // the weekly recap reads the 5-day chain
+      let gap = null, forced = null;
+      // before going on air: is the ElevenLabs day budget enough for the whole script (else the free voice throughout, never a switch mid-programme), then render EVERY line;
+      // a line that cannot be rendered stops the run before anything is recorded (a fallback voice is never in the recording, so the line would be silent)
+      const prep = async P => {
+        const texts = [...new Set(P.items.map(x => x.text).filter(Boolean))], chars = texts.reduce((a, t) => a + t.length, 0);
+        try { const vi = await api.jf('/api/jarvis/voice/info'); const e = vi?.eleven; if (vi?.provider === 'eleven' && e && e.dailyChars - e.usedToday < chars * 1.1) { api.win.__jarvisVoiceProvider = 'edge'; forced = `ElevenLabs has ${Math.max(0, e.dailyChars - e.usedToday)} of the ${chars} characters left today: the free voice for the whole programme`; } } catch (e) { /* no info: carry on */ }
+        if (!prerender || !api.voicePrefetch) return;
+        let k = 0; const miss = [];
+        const one = async t => { for (let a = 0; a < 3; a++) { try { if (await api.voicePrefetch(t)) return; } catch (e) { /* retry */ } await sleep(1500 * (a + 1)); } miss.push(t); };
+        await Promise.all(Array.from({ length: 3 }, async () => { while (k < texts.length) await one(texts[k++]); }));
+        if (miss.length) { gap = `VOICE_GAP: ${miss.length} of ${texts.length} lines could not be rendered (first: "${miss[0].slice(0, 80)}")`; token++; }
+      };
+      const logOut = t0 => { const L = api.win.__jarvisBroadcastLog ?? { marks: [], lines: [] }, P = api.win.__jarvisBroadcastPlan, rel = ms => Math.max(0, (ms - t0) / 1000);
+        const spoken = L.lines.filter(x => x.text && String(x.text).trim());
+        return { lines: spoken.length, voiced: spoken.filter(x => x.voiced).length, marks: L.marks.map(m => ({ t: rel(m.at), kind: m.kind, title: m.title })), script: spoken.map(x => ({ a: rel(x.a), b: rel(x.b), text: x.text, voiced: x.voiced })),
+          programme: P?.programme ?? programme, headline: P?.items?.find(x => x.kind === 'headline')?.head?.headline ?? null, keys: [...new Set([...(P?.lead ?? []).map(x => x.key), ...(P?.items?.find(x => x.kind === 'headline')?.head?.keys ?? [])].filter(Boolean))], voiceForced: forced }; };
       const bus = api.audioBus?.(); if (!bus?.stream) throw new Error('the HUD has no audio bus');
       q('len').value = ['full', 'short', 'guide'].includes(len) ? len : 'quick'; q('rate').value = String([0.9, 1, 1.1, 1.15, 1.3].includes(+rate) ? +rate : 1);      // one of the panel's speeds (calm, normal, steady, brisk, fast); the planner's short budget scales with it
       lsPut({ voice: true }); st.voice = true; st.neural = true; st.sound = true;
@@ -369,11 +405,13 @@ registerJarvisModule({
         api.voiceBake?.(+q('rate').value || 1);                 // the server voice is asked for at the broadcast's speed (pitch kept), not sped up afterwards
         if (engine === 'kokoro') { api.voiceBegin?.(); const t0 = Date.now(); while (!api.voiceInfo?.()?.kokoro?.ready && Date.now() - t0 < kokoroWaitMs) await sleep(1000); }
         const root = api.doc.getElementById(api.ID); root?.classList.add('jv-rec');
-        stop(); let t0 = 0; const onAir = async () => { await sleep(400); t0 = Date.now(); api.win.__vcOnAir = t0; };
+        stop(); let t0 = 0; const onAir = async P => { await prep(P); if (gap) return; await sleep(400); t0 = Date.now(); api.win.__vcOnAir = t0; };
         try { await run(onAir); } finally { root?.classList.remove('jv-rec'); api.voiceBake?.(1); }
+        if (gap) { stop(); throw new Error(gap); }
         if (!t0) throw new Error('the broadcast never went on air (is the HUD open?)');
         const t1 = Date.now(), wav = await vc.render(t0, t1);
-        return { ok: true, mime: 'audio/wav', t0, t1, audio: null, wavChars: wav.chars, voice: api.voiceLabel?.() ?? null, voiceInfo: api.voiceInfo?.() ?? null, status: q('status')?.textContent ?? '' };
+        if (wav.cut) throw new Error(`the sound buffer (${Math.round(wav.bufferSeconds)} s) is shorter than the broadcast (${Math.round((t1 - t0) / 1000)} s): the end would be silent`);
+        return { ok: true, mime: 'audio/wav', t0, t1, audio: null, wavChars: wav.chars, voice: api.voiceLabel?.() ?? null, voiceInfo: api.voiceInfo?.() ?? null, status: q('status')?.textContent ?? '', ...logOut(t0) };
       }
       try { localStorage.setItem('jarvisVoice:v1', JSON.stringify({ ...(JSON.parse(localStorage.getItem('jarvisVoice:v1') || '{}') || {}), engine })); } catch (e) { /* private window */ }
       if (engine === 'kokoro') { api.voiceBegin?.(); const t0 = Date.now(); while (!api.voiceInfo?.()?.kokoro?.ready && Date.now() - t0 < kokoroWaitMs) await sleep(1000); }
@@ -385,13 +423,14 @@ registerJarvisModule({
       const done = new Promise(r => { rec.onstop = r; });
       const root = api.doc.getElementById(api.ID); root?.classList.add('jv-rec');        // a clean picture: no playback buttons in the video
       // recording starts once the title card is up (plus a beat for it to paint), so the video never opens on the PLAY panel while the morning's data loads
-      stop(); let t0 = 0; const onAir = async () => { await sleep(400); t0 = Date.now(); rec.start(1000); };
+      stop(); let t0 = 0; const onAir = async P => { await prep(P); if (gap) return; await sleep(400); t0 = Date.now(); rec.start(1000); };
       try { await run(onAir); } finally { root?.classList.remove('jv-rec'); }
+      if (gap) { stop(); throw new Error(gap); }
       if (!t0 || rec.state === 'inactive') throw new Error('the broadcast never went on air (is the HUD open?)');
       const t1 = Date.now(); rec.stop(); await done;
       const buf = new Uint8Array(await new Blob(chunks, { type: type.split(';')[0] }).arrayBuffer()); let bin = '';
       for (let k = 0; k < buf.length; k += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(k, k + 0x8000));
-      return { ok: true, mime: type, t0, t1, audio: api.win.btoa(bin), voice: api.voiceLabel?.() ?? null, voiceInfo: api.voiceInfo?.() ?? null, status: q('status')?.textContent ?? '' };
+      return { ok: true, mime: type, t0, t1, audio: api.win.btoa(bin), voice: api.voiceLabel?.() ?? null, voiceInfo: api.voiceInfo?.() ?? null, status: q('status')?.textContent ?? '', ...logOut(t0) };
     };
     q('go').onclick = () => { stop(); run(); };
     q('rec').onclick = makeRecorder(api, { run, stop, status, btn: q('rec'), file: 'jarvis-morning-broadcast', label: '⏺ RECORD AS VIDEO', bump: () => ++token, alive: my => my === token,
