@@ -5374,7 +5374,7 @@ async function _dsScore(date, { reflect = true } = {}) {
   const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
   await kv.put(_DS_INDEX_KV, JSON.stringify(idx.slice(-800)));
   // the morning thesis laid against the day, from the same bars (descriptive; prereg amendment A15)
-  try { await _trBuildDay(date, bars); } catch (e) { console.warn('[desk-score] thesis vs reality:', e.message); }
+  try { const t = await _trBuildDay(date, bars); if (!t?.ok) await _trNoteError(date, t?.error ?? 'not built'); } catch (e) { console.warn('[desk-score] thesis vs reality:', e.message); await _trNoteError(date, e.message); }
   // paper trades on the watcher's own rules, from the same bars (description, not the scored test; prereg H1)
   try { await _dppBuildDay(date, bars); } catch (e) { console.warn('[desk-score] paper trades:', e.message); }
   let reflection = null, evening = null;
@@ -5496,6 +5496,10 @@ app.post('/api/analyst-scorecard/backfill', async (req, res) => {
 const _TR_KV = 'thesis_reality_v1';
 const _TR_DAY_KEY = date => `desk_run_reality_${date}`;
 let _trJob = null;
+// Review 2026-11-27: 25 and 26 Nov were scored but never laid against their day, and nothing said why (the failure was only a log line).
+// The last failure is kept (KV) and shown by GET /api/thesis-reality; the boot catch-up below rebuilds scored days the store is missing.
+const _TR_ERR_KV = 'thesis_reality_last_error';
+const _trNoteError = (date, error) => kv.put(_TR_ERR_KV, JSON.stringify({ date, error: String(error ?? '').slice(0, 300), at: new Date().toISOString() }), { expirationTtl: 30 * 86400 }).catch(() => {});
 async function _trLoad() { try { const raw = await kv.get(_TR_KV); const st = raw ? JSON.parse(raw) : null; return st && Array.isArray(st.days) ? st : { days: [] }; } catch { return { days: [] }; } }
 // the day's vol forecast (London-day high-to-low p50/p75, % of the open) and the realised range from H1 bars (js/volCheck.js)
 async function _trVol(date, insts) {
@@ -5559,7 +5563,8 @@ app.get('/api/thesis-reality', async (req, res) => {
     const raw = date ? await kv.get(_TR_DAY_KEY(date)).catch(() => null) : null, day = raw ? JSON.parse(raw) : null;
     if (req.query.brief === '1') return res.json(TR.briefFeed(day, t));
     if (!day) return res.status(date && req.query.date ? 404 : 200).json({ ok: false, error: date ? `no thesis-vs-reality record for ${date}` : 'no morning has been laid against its evening yet: the first is built after the evening score (21:10 London)', tally: t, dates: st.days.map(d => d.date), job: _trJob });
-    res.json({ ok: true, day, tally: t, dates: st.days.map(d => d.date), job: _trJob });
+    const lastError = await kv.get(_TR_ERR_KV).then(x => (x ? JSON.parse(x) : null)).catch(() => null);
+    res.json({ ok: true, day, tally: t, dates: st.days.map(d => d.date), job: _trJob, lastError });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/thesis-reality/backfill: build every stored day that has an evening score (?force=1 rebuilds days already
@@ -5581,11 +5586,13 @@ app.post('/api/thesis-reality/backfill', async (req, res) => {
   } catch (e) { job.status = 'error'; job.error = e.message; console.error('[thesis-reality] backfill:', e.message); }
   finally { job.finishedAt = Date.now(); console.log(`[thesis-reality] backfill: ${job.done.length} built, ${job.failed.length} failed, ${job.skipped} already done`); }
 });
-// Backfill once after boot when the store is empty: every stored day with an evening score is laid against its day.
+// Backfill once after boot: every stored day with an evening score that the store is missing is laid against its day (all of them when the
+// store is empty; otherwise the last 10 scored days, so a day whose evening build failed is caught up on the next boot).
 setTimeout(async () => {
   try {
-    if ((await _trLoad()).days.length || _trJob) return;
-    for (const r of await _dsLoadIndex()) { const x = await _trBuildDay(r.date).catch(e => ({ ok: false, error: e.message })); console.log(`[thesis-reality] boot backfill ${r.date}: ${x.ok ? 'built' : x.error}`); }
+    if (_trJob) return;
+    const have = new Set((await _trLoad()).days.map(d => d.date)), idx = await _dsLoadIndex(), todo = (have.size ? idx.slice(-10) : idx).filter(r => !have.has(r.date));
+    for (const r of todo) { const x = await _trBuildDay(r.date).catch(e => ({ ok: false, error: e.message })); if (!x.ok) await _trNoteError(r.date, x.error); console.log(`[thesis-reality] boot backfill ${r.date}: ${x.ok ? 'built' : x.error}`); }
   } catch (e) { console.warn('[thesis-reality] boot backfill:', e.message); }
 }, 5 * 60_000).unref?.();
 // ── Paper trades on the trade watcher's own rules (js/deskPaperTrades.js; owner request 2026-11-05) ──────────────

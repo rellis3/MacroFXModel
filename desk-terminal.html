@@ -1325,7 +1325,7 @@ function currencies() {
 
 // ── ASSETS ──
 // when each slow part of the page was written, for the live layer's "what is live and what is not" line (js/terminal/liveLayer.js speedsHtml)
-globalThis.deskCardOf = n => D.cards?.[n] ?? null; globalThis.deskCardsAll = () => D.cards ?? {}; globalThis.deskEvents = () => D.ev ?? []; globalThis.deskRiskFlags = () => E?.['risk-flags'] ?? null;
+globalThis.deskBookAt = () => D.run?.finishedAt ?? null; globalThis.deskCardOf = n => D.cards?.[n] ?? null; globalThis.deskCardsAll = () => D.cards ?? {}; globalThis.deskEvents = () => D.ev ?? []; globalThis.deskRiskFlags = () => E?.['risk-flags'] ?? null;
 globalThis.deskAsOf = () => ({ book: D.run?.finishedAt ?? null, upd: Object.fromEntries(Object.entries(D.upd?.slots ?? {}).map(([k, v]) => [k, v?.at ?? null])), cot: D.cot?.reportDate ?? null });
 let assetFilter = 'all';
 // the order of the cards: the desk call's strength (the morning view) or the biggest move today (the live view, re-sorted as reads land)
