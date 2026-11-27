@@ -83,3 +83,11 @@ the first touch. The lockbox.
   on the site as stop context.
 
 ## Amendments
+
+- **A1, 2026-11-27, PRE-RESULTS (implementation, before any run).**
+  - The target (line inside) and the next line out are fixed at their prices on the touch bar (the HL projections
+    move during the day; fixing them keeps the MAE window and the trade defined at entry).
+  - Stops are floored at 5 ticks ($0.50 on GC) so a 1-day window with a near-zero median can't produce an R of
+    hundreds from costs alone.
+  - Break-even triggers only from the bar after the touch.
+  - The placebo recomputes the rolling stops for the chosen window only (the other windows are not needed for it).
