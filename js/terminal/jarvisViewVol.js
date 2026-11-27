@@ -1,7 +1,8 @@
 // js/terminal/jarvisViewVol.js: Jarvis's VOL view: a molten terrain of "range used", drawn by the hologram engine (jarvisGL.js, real bloom); labels on the HUD canvas.
 // ENCODING: across = the desk's markets grouped by asset class (a low ravine between classes, the class named on the floor), along = time (the last ~60 completed sessions, oldest at the back, the
 // newest session the front edge), height AND colour = how stretched that day's high-low range was against that market's own normal (the median of its previous 20 sessions' ranges): height is linear
-// in the ratio, 1.0 = a normal day, clipped at 3 (clipped days carry a white tip). Colour ramp: cool below normal, grey at normal, gold to red when stretched, white-hot at 3x. A white contour marks
+// in the ratio, 1.0 = a normal day, clipped at 3 (clipped days carry a white tip). Colour ramp: cool below normal, grey at normal, gold when stretched, white-hot at 3x. A REGIME ramp, so it never
+// borrows the up/down move colours (green/red mean a price went up or down); the shape cue in the readout is ▲ above normal / ▼ below. A white contour marks
 // the 1.0 level. A gold sweep line travels along time and names its session; the tallest ridges carry a flare and a label. The camera drifts round the terrain (drag to turn, scroll to zoom; still
 // under reduced motion). SHOW: down LOW along the newest session's edge, the markets passing one by one, then up and back over the whole window with the tallest ridges named.
 // Data: /api/ohlc-range daily bars (OANDA, one request per market, in batches of 7) and the VIX curve from /api/fredhistory?keys=vix,vix3m. The maths lives in jarvisVolCore.js.
@@ -12,6 +13,7 @@ import { registerShowScene } from './showCore.js';
 import { glView, orbitPos } from './jarvisGL.js';
 import { placeBox } from './gammaHoloCore.js';
 import { keyLine } from './jarvisViewGammaPillar.js';
+import { fontPx, lineHeight, gridLayout, slotCache } from './helixLayout.js';
 import { VOL_GROUPS, VOL_MARKETS, CLIP, buildTerrain, dailyRanges, vixCurve, volScript, volBrief, volShowAct, groupColumns } from './jarvisVolCore.js';
 
 const ID = 'vol', SUB = 2, XW = 7.4, ZD = 6.2, ZF = ZD / 2, HS = 0.55, GAP_V = 0.22, LEVEL = 1;
@@ -20,8 +22,9 @@ const KEY = 'across = markets by asset class · along = time, newest session at 
 const KEY_PH = 'markets across · time along, newest at front · height = range / own normal, white line = 1.0, cut at 3 · past days, not a forecast';
 const clampN = (v, a, b) => Math.max(a, Math.min(b, v)), sm = u => u * u * (3 - 2 * u);
 const fmtD = iso => { const d = new Date(iso + 'T00:00:00Z'); return d.getUTCDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]; };
-// the colour ramp: a cool valley, a neutral normal, then gold, red and white-hot (theme tokens only, blended as three.js colours)
-const STOPS = [0, 0.85, 1.0, 1.5, 2.2, CLIP], NAMES = ['cy', 'cy', 'tx2', 'gold', 'dn', 'tx'];
+// the colour ramp: a cool valley, a neutral normal, then gold and white-hot (theme tokens only, blended as three.js colours). No red: red means a price fell.
+const STOPS = [0, 0.85, 1.0, 1.5, 2.2, CLIP], NAMES = ['cy', 'cy', 'tx2', 'gold', 'gold', 'tx'];
+const LC = slotCache();     // the readout's measured layout, recomputed only when its font or contents change
 function rampAt(v) { let k = 0; while (k < STOPS.length - 2 && v > STOPS[k + 1]) k++; return { a: NAMES[k], b: NAMES[k + 1], f: clampN((v - STOPS[k]) / (STOPS[k + 1] - STOPS[k]), 0, 1) }; }
 
 /** Load the daily ranges for every market plus the VIX curve, once per ten minutes; a failed feed leaves that market out and never throws. */
@@ -87,7 +90,7 @@ function setup(L, H, api) {
     const caps = []; for (let i = 0; i < T.nm; i++) for (let j = 0; j < nr; j++) if (T.Z[j * T.nm + i] >= CLIP - 0.005) caps.push([xOf(at[i] * SUB), CLIP * HS + 0.04, zOf(j)]);
     if (caps.length) { const p = kit.points(caps.length, H.color(C.tx), 6, { opacity: 1 }), a = p.geometry.attributes.position.array; caps.forEach((c, n) => { a[n * 3] = c[0]; a[n * 3 + 1] = c[1]; a[n * 3 + 2] = c[2]; }); data.add(p); }
     // the tallest ridges in the window (each market's biggest day, 1.6x or more), with a flare
-    const peaks = T.peaks.filter(p => p.v >= 1.6).slice(0, 6).map(p => { const w = [xOf(at[p.i] * SUB), p.v * HS, zOf(p.j)], f = kit.flare(H.color(p.v >= 2.2 ? C.dn : C.gold), 0.32, 0.9); f.position.set(w[0], w[1] + 0.02, w[2]); data.add(f); return { ...p, w }; });
+    const peaks = T.peaks.filter(p => p.v >= 1.6).slice(0, 6).map(p => { const w = [xOf(at[p.i] * SUB), p.v * HS, zOf(p.j)], f = kit.flare(H.color(C.gold), p.v >= 2.2 ? 0.4 : 0.32, 0.9); f.position.set(w[0], w[1] + 0.02, w[2]); data.add(f); return { ...p, w }; });
     // the sweep: a gold line along one session (moved, not rebuilt)
     const sp = []; for (let u = 0; u < nc; u++) sp.push([pos[u * 3], pos[u * 3 + 1] + 0.02, pos[u * 3 + 2]]); const sweep = kit.line(sp, H.color(C.gold), 2.6, 0.95); data.add(sweep);
     B = { T, nc, nr, at, cols, xOf, zOf, HT, pos, peaks, sweep, sweepRow: -1, sweepArr: new Float32Array(nc * 3) };
@@ -138,31 +141,46 @@ function overlay(ctx, g, api, H, camera, B) {
   const draw = (r, text, col, px, w) => { font(px, w); ctx.fillStyle = bg; ctx.globalAlpha = fade * 0.9; ctx.fillRect(r.x, r.y, r.w, r.h); ctx.globalAlpha = fade; ctx.fillStyle = col; ctx.fillText(text, r.x + 4, r.y + px + 1); };
   const label = (p, text, col, px, w, cands) => { if (!p.vis) return null; font(px, w); const bw = ctx.measureText(text).width + 8, bh = px + 6; const r = placeBox(cands.map(([dx, dy]) => ({ x: p.x + dx(bw), y: p.y + dy(bh), w: bw, h: bh })), taken, bounds); if (r) draw(r, text, col, px, w); return r; };
   const right = () => 10, left = w => -10 - w, mid = w => -w / 2, up = h => -h - 8, down = () => 8, cen = h => -h / 2;
-  const xv = v => (v >= CLIP - 0.005 ? '3.0x+' : `${v.toFixed(2)}x`), tone = v => (v >= 2.2 ? C.dn : v >= 1.5 ? C.gold : v < 0.85 ? C.cy : C.tx2);
+  const xv = v => (v >= CLIP - 0.005 ? '3.0x+' : `${v.toFixed(2)}x`), tone = v => (v >= 1.5 ? C.gold : v < 0.85 ? C.cy : C.tx2), glyph = v => (v >= 1 ? '▲' : '▼');      // regime colour + a shape (above / below normal)
   const mx = i => B.xOf(B.at[i] * SUB), wy = v => v * HS;
   // the readout, top left
   const sj = B.sweepRow;
   if (cp) {
-    font(11, '600 '); ctx.fillStyle = C.blue; ctx.fillText(`LATEST ${fmtD(T.dates[T.ns - 1])} · ${T.stretched} of ${T.nm} markets at 1.5x normal+`, 14, 96);
-    font(10); ctx.fillStyle = C.tx2; ctx.fillText(V ? `VIX ${V.vix.toFixed(1)}${V.vix3m != null ? ` · VIX3M ${V.vix3m.toFixed(1)} · ${V.inverted ? 'INVERTED' : 'upward'}` : ''}` : 'VIX curve: no feed', 14, 112); taken.push({ x: 8, y: 80, w: W - 16, h: 40 });
+    font(11, '600 '); const p1 = fontPx(ctx.font); ctx.fillStyle = C.blue; ctx.fillText(`LATEST ${fmtD(T.dates[T.ns - 1])} · ${T.stretched} of ${T.nm} markets at 1.5x normal+`, 14, 96);
+    font(10); const y2 = 96 + lineHeight(fontPx(ctx.font)); ctx.fillStyle = C.tx2; ctx.fillText(V ? `VIX ${V.vix.toFixed(1)}${V.vix3m != null ? ` · VIX3M ${V.vix3m.toFixed(1)} · ${V.inverted ? 'INVERTED' : 'upward'}` : ''}` : 'VIX curve: no feed', 14, y2); taken.push({ x: 8, y: 96 - p1 - 4, w: W - 16, h: y2 - 96 + p1 + 10 });
   } else {
-    const x = 24, y = 118, h = 150; ctx.fillStyle = bg; ctx.fillRect(x - 10, y - 18, 320, h);
-    font(12, '600 '); ctx.fillStyle = C.blue; ctx.fillText(`VOL · RANGE USED · latest ${fmtD(T.dates[T.ns - 1])}`, x, y);
-    font(11); ctx.fillStyle = C.tx; ctx.fillText(`${T.stretched} of ${T.nm} markets at 1.5x their normal or more`, x, y + 18);
-    T.latest.slice(0, 4).forEach((m, i) => { ctx.fillStyle = tone(m.v); ctx.fillText(`${m.v >= 1 ? '▲' : '▼'} ${marketName(m.key, { short: true })} ${xv(m.v)}`, x + (i % 2) * 150, y + 36 + Math.floor(i / 2) * 15); });
-    if (sj >= 0 && sj < T.ns) { let bi = 0; for (let i = 1; i < T.nm; i++) if (T.Z[sj * T.nm + i] > T.Z[sj * T.nm + bi]) bi = i; ctx.fillStyle = C.gold; ctx.fillText(`SWEEP ${fmtD(T.dates[sj])} · top ${marketName(T.markets[bi].key, { short: true })} ${xv(T.Z[sj * T.nm + bi])}`, x, y + 74); }
-    ctx.fillStyle = C.tx2; ctx.fillText(V ? `VIX ${V.vix.toFixed(1)}${V.vix3m != null ? ` · VIX3M ${V.vix3m.toFixed(1)} · curve ${V.inverted ? 'INVERTED' : 'upward'}` : ''}` : 'VIX curve: no feed', x, y + 92);
+    // every row and column below is placed by the MEASURED text at the real font size (the broadcast's font floor makes the 11px labels 15px), never by fixed offsets
+    const x = 24, y = 118;
+    font(12, '600 '); const tf = ctx.font;
+    font(11); const bf = ctx.font;
+    const L = LC.get('ro', tf + bf, `${S.at}|${sj}|${V ? 1 : 0}`, () => {
+      const M = s => ctx.measureText(s).width, tpx = fontPx(tf), px = fontPx(bf), lh = lineHeight(px), title = `VOL · RANGE USED · latest ${fmtD(T.dates[T.ns - 1])}`, line1 = `${T.stretched} of ${T.nm} markets at 1.5x their normal or more`;
+      const cells = T.latest.slice(0, 4).map(m => ({ t: `${glyph(m.v)} ${marketName(m.key, { short: true })} ${xv(m.v)}`, c: m.v }));
+      let sweep = null; if (sj >= 0 && sj < T.ns) { let bi = 0; for (let i = 1; i < T.nm; i++) if (T.Z[sj * T.nm + i] > T.Z[sj * T.nm + bi]) bi = i; sweep = `SWEEP ${fmtD(T.dates[sj])} · top ${marketName(T.markets[bi].key, { short: true })} ${xv(T.Z[sj * T.nm + bi])}`; }
+      const vix = V ? `VIX ${V.vix.toFixed(1)}${V.vix3m != null ? ` · VIX3M ${V.vix3m.toFixed(1)} · curve ${V.inverted ? 'INVERTED' : 'upward'}` : ''}` : 'VIX curve: no feed';
+      const y1 = y + lineHeight(tpx), gy = y1 + lh, grid = gridLayout([cells.slice(0, 2).map(c => c.t), cells.slice(2, 4).map(c => c.t)], M, { x0: x, y0: gy, gap: 18, lh });
+      const ys = gy + grid.h, yv = ys + lh, by = yv + Math.round(lh * 0.6), yb = by + 7 + px + 3;
+      ctx.font = tf; const tw = M(title); ctx.font = bf;
+      const w = Math.ceil(Math.max(320, tw, M(line1), grid.w, sweep ? M(sweep) : 0, M(vix), 220) + 20), top = y - tpx - 6;
+      return { title, line1, cells: cells.map((c, i) => ({ ...c, x: grid.xs[i % 2] ?? x, y: grid.rowY(i >> 1) })), sweep, vix, y1, ys, yv, by, yb, w, top, h: yb + 8 - top };
+    });
+    ctx.fillStyle = bg; ctx.fillRect(x - 10, L.top, L.w, L.h);
+    ctx.font = tf; ctx.fillStyle = C.blue; ctx.fillText(L.title, x, y);
+    ctx.font = bf; ctx.fillStyle = C.tx; ctx.fillText(L.line1, x, L.y1);
+    for (const c of L.cells) { ctx.fillStyle = tone(c.c); ctx.fillText(c.t, c.x, c.y); }
+    if (L.sweep) { ctx.fillStyle = C.gold; ctx.fillText(L.sweep, x, L.ys); }
+    ctx.fillStyle = C.tx2; ctx.fillText(L.vix, x, L.yv);
     // the colour bar
-    const bw = 220, by = y + 104; for (let i = 0; i < bw; i++) { const r = rampAt(i / (bw - 1) * CLIP); ctx.fillStyle = C[r.a]; ctx.globalAlpha = fade * (1 - r.f) * 0.9; ctx.fillRect(x + i, by, 1, 7); ctx.fillStyle = C[r.b]; ctx.globalAlpha = fade * r.f * 0.9; ctx.fillRect(x + i, by, 1, 7); }
-    ctx.globalAlpha = fade; font(10); ctx.fillStyle = C.tx2; ctx.fillText('0x', x, by + 19); ctx.textAlign = 'center'; ctx.fillText('1x normal', x + bw / CLIP, by + 19); ctx.textAlign = 'right'; ctx.fillText('3x+ (cut)', x + bw, by + 19); ctx.textAlign = 'left';
-    taken.push({ x: x - 10, y: y - 18, w: 320, h });
+    const bw = 220, by = L.by; for (let i = 0; i < bw; i++) { const r = rampAt(i / (bw - 1) * CLIP); ctx.fillStyle = C[r.a]; ctx.globalAlpha = fade * (1 - r.f) * 0.9; ctx.fillRect(x + i, by, 1, 7); ctx.fillStyle = C[r.b]; ctx.globalAlpha = fade * r.f * 0.9; ctx.fillRect(x + i, by, 1, 7); }
+    ctx.globalAlpha = fade; font(10); ctx.fillStyle = C.tx2; ctx.fillText('0x', x, L.yb); ctx.textAlign = 'center'; ctx.fillText('1x normal', x + bw / CLIP, L.yb); ctx.textAlign = 'right'; ctx.fillText('3x+ (cut)', x + bw, L.yb); ctx.textAlign = 'left';
+    taken.push({ x: x - 10, y: L.top, w: L.w, h: L.h });
   }
   // the newest session: each market's value at the front edge (the ones near the camera in the SHOW sweep, the stretched ones otherwise)
   const front = T.markets.map((m, i) => ({ i, key: m.key, v: T.Z[(T.ns - 1) * T.nm + i] }));
   const pick = show ? front.slice().sort((a, b) => Math.abs(Sc([mx(a.i), 0, ZF]).x - W / 2) - Math.abs(Sc([mx(b.i), 0, ZF]).x - W / 2)).slice(0, cp ? 3 : 7) : front.filter(f => f.v >= 1.5 || f.v < 0.6).sort((a, b) => b.v - a.v).slice(0, cp ? 3 : 6);
   for (const f of pick) label(Sc([mx(f.i), wy(f.v), ZF]), `${marketName(f.key, { short: true })} ${xv(f.v)}`, tone(f.v), show ? 12 : 11, '600 ', [[mid, up], [right, up], [left, up], [mid, h => -h - 26]]);
   // the tallest ridges in the window
-  if (!show || volShowAct(S.showP).act !== 'sweep') for (const p of B.peaks.slice(0, cp ? 2 : 5)) label(Sc(p.w), `${marketName(p.key, { short: true })} ${fmtD(p.date)} ${xv(p.v)}`, p.v >= 2.2 ? C.dn : C.gold, 11, '', [[right, up], [left, up], [right, down], [left, down]]);
+  if (!show || volShowAct(S.showP).act !== 'sweep') for (const p of B.peaks.slice(0, cp ? 2 : 5)) label(Sc(p.w), `${marketName(p.key, { short: true })} ${fmtD(p.date)} ${xv(p.v)}`, C.gold, 11, '', [[right, up], [left, up], [right, down], [left, down]]);
   // the sweep's date at its right end
   if (B.sweep.visible && sj >= 0) { const k = sj * nc + nc - 1; label(Sc([B.pos[k * 3] + 0.1, B.pos[k * 3 + 1], B.pos[k * 3 + 2]]), sj === nr - 1 ? `NEWEST ${fmtD(T.dates[sj])}` : fmtD(T.dates[sj]), C.gold, 11, '600 ', [[right, cen], [right, up]]); }
   // the asset classes on the floor in front of the newest edge, dates down the left edge, the levels on the back wall
@@ -173,14 +191,14 @@ function overlay(ctx, g, api, H, camera, B) {
   ctx.restore();
 }
 
-const view = glView({ id: ID, label: 'VOL', env: { accent: 'dn', chrome: 'clean', scan: false }, setup,
+const view = glView({ id: ID, label: 'VOL', env: { accent: 'pur', chrome: 'clean', scan: false }, setup,
   onEnter: api => { S.showP = -1; S.spin = api.st.spin; Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); loadVol(api); },
   onLeave: api => { S.showP = -1; if (S.spin != null) api.st.spin = S.spin; S.spin = null; } });
 
 registerJarvisModule({
   id: 'vol', label: 'VOL',
   render(pane, api) {
-    pane.innerHTML = `<h3>VOLATILITY LANDSCAPE</h3><p>A terrain you fly over. Across are the desk's markets by asset class, along is time (the last 60 completed sessions), and the height is how stretched each day's range was against that market's own normal: 1.0 is a normal day, and a white contour marks it. Cool valleys are quiet days, gold to red ridges are stretched days. Drag to take the controls.</p><p class="jv-sub">It describes what already happened. It is never a forecast.</p><div class="jv-row"><button type="button" data-w="go">FLY THE TERRAIN</button></div>`;
+    pane.innerHTML = `<h3>VOLATILITY LANDSCAPE</h3><p>A terrain you fly over. Across are the desk's markets by asset class, along is time (the last 60 completed sessions), and the height is how stretched each day's range was against that market's own normal: 1.0 is a normal day, and a white contour marks it. Cool valleys are quiet days, gold ridges are stretched days, and they turn white-hot at three times normal. Drag to take the controls.</p><p class="jv-sub">It describes what already happened. It is never a forecast.</p><div class="jv-row"><button type="button" data-w="go">FLY THE TERRAIN</button></div>`;
     pane.querySelector('[data-w="go"]').onclick = () => { api.setView('vol'); loadVol(api, true); };
   },
   views: [view],

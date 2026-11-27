@@ -1,7 +1,8 @@
 // js/terminal/jarvisViewGammaTerrain.js: Jarvis's GAMMA TERRAIN hologram (view 'gterrain'): net dealer gamma by strike over the last weeks as a glowing landscape you fly over.
 // Across (x) = strike price (absolute, so a wall that stays put is a ridge running front to back, and spot snakes across). Depth (z) = the date: the oldest capture at the back, TODAY at the front
-// edge (a bright white line, labelled). Height = net dealer gamma at that strike on that day: positive gamma rises as cyan hills above a glass floor, negative gamma sinks as red valleys below it
-// (colour AND above/below). Heights are linear, scaled to the 97th percentile of the whole window; taller cells are clipped and carry a small white tip (capped). The white line riding the terrain
+// edge (a bright white line, labelled). Height = net dealer gamma at that strike on that day: positive gamma rises as cyan hills above a glass floor, negative gamma sinks as gold valleys below it
+// (colour AND above/below; gold, not red, because short gamma is a regime, not a down move: the same long-cyan / short-gold the Gamma Fly ribbon uses). In the open-interest fallback the
+// heights are calls (up, green) and puts (down, red), never the long-gamma cyan. Heights are linear, scaled to the 97th percentile of the whole window; taller cells are clipped and carry a small white tip (capped). The white line riding the terrain
 // is spot, day by day; the gold line lying ON the glass is the gamma flip (where net gamma crosses zero nearest spot); green dots are each day's biggest call strike, red dots the biggest put strike.
 // The camera drifts slowly over the landscape (drag to look around; still under H.calm).
 // Data: /api/oi-history-raw?pair=&limit=60 (the archived per-day RAW strike ladder: rawOI, spot, basis, dte; net gamma per strike is REBUILT per day in gammaHoloCore.rawDayProfile exactly as the
@@ -16,8 +17,8 @@ import { terrainDays, buildTerrain, heightAt, niceTicks, placeBox, terrainScript
 import { GP, loadStore, buttons, keyLine } from './jarvisViewGammaPillar.js';
 
 const ID = 'gterrain', XW = 7.2, ZD = 5.2, ZF = 2.4, HY = 1.15;
-const KEY_GAMMA = 'across = strike price · depth = date, today at the front · height = net dealer gamma: cyan hills above the glass positive, red valleys below negative · white = spot · gold = gamma flip · dots = biggest call (green) and put (red) strike · description only, not a forecast';
-const KEY_OI = 'across = strike price · depth = date, today at the front · height = open interest at the biggest strikes: calls up (cyan), puts down (red) · white = spot · gold = gamma flip · description only, not a forecast';
+const KEY_GAMMA = 'across = strike price · depth = date, today at the front · height = net dealer gamma: cyan hills above the glass positive, gold valleys below negative · white = spot · gold = gamma flip · dots = biggest call (green) and put (red) strike · description only, not a forecast';
+const KEY_OI = 'across = strike price · depth = date, today at the front · height = open interest at the biggest strikes: calls up (green), puts down (red) · white = spot · gold = gamma flip · description only, not a forecast';
 const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
 const TK = { key: null, hist: new Map(), show: { p: -1, at: 0 } };
 
@@ -54,7 +55,8 @@ function setup(L, H, api) {
     data.add(kit.segments(grid, cBlue, 0.14));
     // the surface: a soft fill and a wireframe, both coloured by sign with brightness by size
     const pos = new Float32Array(nd * nx * 3), col = new Float32Array(nd * nx * 3);
-    for (let j = 0; j < nd; j++) for (let i = 0; i < nx; i++) { const k = j * nx + i, v = T.h[k], c = v >= 0 ? cPos : cNeg, b = T.missing[j] ? 0.02 : 0.03 + 0.97 * Math.abs(v);
+    const sPos = T.mode === 'gamma' ? cPos : cUp, sNeg = T.mode === 'gamma' ? cGold : cNeg;     // long / short gamma (a regime) or, in the OI fallback, calls / puts
+    for (let j = 0; j < nd; j++) for (let i = 0; i < nx; i++) { const k = j * nx + i, v = T.h[k], c = v >= 0 ? sPos : sNeg, b = T.missing[j] ? 0.02 : 0.03 + 0.97 * Math.abs(v);
       pos[k * 3] = xi(i); pos[k * 3 + 1] = Yh(v); pos[k * 3 + 2] = Zj(j); col[k * 3] = c.r * b; col[k * 3 + 1] = c.g * b; col[k * 3 + 2] = c.b * b; }
     if (nd > 1) {
       const idx = []; for (let j = 0; j < nd - 1; j++) for (let i = 0; i < nx - 1; i++) { const a = j * nx + i, b = a + 1, c = a + nx, d = c + 1; idx.push(a, c, b, b, c, d); }
@@ -153,7 +155,7 @@ const view = glView({ id: ID, label: 'GAMMA TERRAIN', env: { accent: 'blue2', ch
 registerJarvisModule({
   id: ID, label: 'GAMMA TERRAIN',
   render(pane, api) {
-    pane.innerHTML = '<h3>GAMMA TERRAIN: NET DEALER GAMMA OVER THE LAST WEEKS</h3><p>A landscape of the archived option books. Across is the strike price, depth is the date with today at the front, and height is the net dealer gamma rebuilt from each day\'s strike ladder: cyan hills above the glass are positive, red valleys below are negative. The white line is spot day by day, the gold line on the glass is the gamma flip, and the dots are each day\'s biggest call and put strikes.</p><p class="jv-sub">A record of positioning, not a forecast.</p><div class="jv-row"><button type="button" data-g="go">FLY THE TERRAIN</button></div>';
+    pane.innerHTML = '<h3>GAMMA TERRAIN: NET DEALER GAMMA OVER THE LAST WEEKS</h3><p>A landscape of the archived option books. Across is the strike price, depth is the date with today at the front, and height is the net dealer gamma rebuilt from each day\'s strike ladder: cyan hills above the glass are positive, gold valleys below are negative. The white line is spot day by day, the gold line on the glass is the gamma flip, and the dots are each day\'s biggest call and put strikes.</p><p class="jv-sub">A record of positioning, not a forecast.</p><div class="jv-row"><button type="button" data-g="go">FLY THE TERRAIN</button></div>';
     pane.querySelector('[data-g="go"]').onclick = () => { api.setView(ID); loadStore(api, true).catch(() => null); };
   },
   views: [view],

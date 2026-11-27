@@ -1,7 +1,7 @@
 // js/terminal/jarvisViewGammaPillar.js: Jarvis's GAMMA PILLAR hologram (view 'gpillar'): today's option book of one market as a glass column standing on the projector table, read like a price chart.
 // Strikes run UP the column (a vertical price axis, ticks on the left). Call open interest glows out to the right, put open interest to the left, on ONE shared scale (bar length is linear in contracts).
-// Net dealer gamma is a ribbon up the middle of the glass: it leans right and glows cyan where net gamma is positive, leans left and glows red where it is negative (colour AND side).
-// The glass itself is split at the gamma-flip strike: cyan glass on the side where the data puts dealers net LONG gamma (hedging tends to damp moves), red glass where they are net SHORT gamma
+// Net dealer gamma is a ribbon up the middle of the glass: it leans right and glows cyan where net gamma is positive, leans left and glows gold where it is negative (colour AND side).
+// The glass itself is split at the gamma-flip strike: cyan glass on the side where the data puts dealers net LONG gamma (hedging tends to damp moves), gold glass where they are net SHORT gamma
 // (hedging tends to add to moves). The flip is a bright gold ring with its price; spot is a white laser plane across the whole scene with a price tag; the biggest call and put strikes (the walls)
 // are labelled at their bar tips; max pain is a small diamond. Beside the column, a faint trail of the last 20 daily captures' spot (dots) with that day's call and put wall (short dashes), so you
 // see where price has been against the walls. The column's ribs turn slowly; the camera sways gently (drag to look around, still under H.calm).
@@ -16,7 +16,7 @@ import { GAMMA_MARKETS, marketsWithOI, fmtOI } from './jarvisGammaCore.js';
 import { buildPillar, spotTrail, niceTicks, dodge, placeBox, pillarScript, pickMain, metaOf, fmtDay, fmtPx, TRAIL_DAYS } from './gammaHoloCore.js';
 
 const ID = 'gpillar', HGT = 4.4, Y0 = 0.25, R = 0.42, BAR = 1.7, AXX = -(R + BAR + 0.4), TX0 = R + BAR + 0.55, TX1 = TX0 + 1.55, TZ = -0.6;
-const KEY_LINE = 'bars = open interest by strike · ribbon = net dealer gamma · blue = damping zone, red = amplifying zone · description only; our studies found no proven direction from these levels';
+const KEY_LINE = 'bars = open interest by strike · ribbon = net dealer gamma · cyan = damping zone, gold = amplifying zone · description only; our studies found no proven direction from these levels';
 const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
 
 // ───────────── data (shared with GAMMA TERRAIN, which imports loadStore / GP) ─────────────
@@ -54,7 +54,8 @@ function setup(L, H, api) {
     if (data) { scene.remove(data); disposeGroup(data); } data = new THREE.Group(); scene.add(data); glass = []; flipRing = null; flipFlare = null;
     if (!base.children.length) { base.add(kit.table(3.2, C.blue, 0, 7, 32)); base.add(kit.dust(900, 30, C.blue)); }
     const yOf = v => Y0 + (v - P.lo) / (P.hi - P.lo) * HGT, n = P.n, bh = HGT / n;
-    const cLong = H.color(C.cy), cShort = H.color(C.dn), cUp = H.color(C.up), cTx = H.color(C.tx), cGold = H.color(C.gold), cTx2 = H.color(C.tx2);
+    // long / short gamma is a REGIME (cyan / gold, as on the Gamma Fly ribbon); calls / puts keep the up / down colours (green / red). The two never share a token.
+    const cLong = H.color(C.cy), cShort = H.color(C.gold), cPut = H.color(C.dn), cUp = H.color(C.up), cTx = H.color(C.tx), cGold = H.color(C.gold), cTx2 = H.color(C.tx2);
     // the glass, split at the flip into the two regimes
     const seg = (y0, y1, col) => { if (!(y1 > y0 + 1e-3)) return; const m = new THREE.Mesh(new THREE.CylinderGeometry(R, R, y1 - y0, 48, 1, true), kit.holo(col, { rim: 2.2, base: 0.035, scan: 0.6, opacity: 0.5 })); m.position.y = (y0 + y1) / 2; data.add(m); glass.push(m);
       const caps = []; for (const y of [y0, y1]) for (let k = 0; k < 48; k++) { const a = k / 48 * 6.2832, b = (k + 1) / 48 * 6.2832; caps.push([Math.cos(a) * R, y, Math.sin(a) * R, Math.cos(b) * R, y, Math.sin(b) * R]); } data.add(kit.segments(caps, col, 0.35)); };
@@ -66,7 +67,7 @@ function setup(L, H, api) {
     ribs = kit.segments(rs, H.color(C.blue), 0.16); data.add(ribs);
     // the bars: instanced boxes (soft fill) and their outlines (crisp), calls right, puts left, one scale
     const sc = Math.max(1, P.maxCall, P.maxPut), dummy = new THREE.Object3D();
-    for (const [arr, side, col] of [[P.call, 1, cUp], [P.put, -1, cShort]]) {
+    for (const [arr, side, col] of [[P.call, 1, cUp], [P.put, -1, cPut]]) {
       const cnt = arr.reduce((a, v) => a + (v > 0 ? 1 : 0), 0); if (!cnt) continue;
       const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending }), cnt);
       const edges = []; let k = 0;
@@ -100,7 +101,7 @@ function setup(L, H, api) {
     // max pain: a small diamond on the front of the glass
     if (P.maxPain != null) { const d = new THREE.Mesh(new THREE.OctahedronGeometry(0.075), new THREE.MeshBasicMaterial({ color: cTx2, wireframe: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); d.position.set(0, yOf(P.maxPain), R + 0.06); data.add(d); }
     // wall tips glow
-    for (const [w, side, col] of [[P.callWall, 1, cUp], [P.putWall, -1, cShort]]) { if (!w) continue; const i = clampN(Math.floor((w.strike - P.lo) / P.w), 0, n - 1), len = (side > 0 ? P.call[i] : P.put[i]) / sc * BAR; const f = kit.flare(col, 0.38, 0.8); f.position.set(side * (R + len), yOf(P.strikes[i]), 0.07); data.add(f); }
+    for (const [w, side, col] of [[P.callWall, 1, cUp], [P.putWall, -1, cPut]]) { if (!w) continue; const i = clampN(Math.floor((w.strike - P.lo) / P.w), 0, n - 1), len = (side > 0 ? P.call[i] : P.put[i]) / sc * BAR; const f = kit.flare(col, 0.38, 0.8); f.position.set(side * (R + len), yOf(P.strikes[i]), 0.07); data.add(f); }
     // the price axis on the left
     const ticks = niceTicks(P.lo, P.hi, 7), ax = [[AXX, Y0, 0, AXX, Y0 + HGT, 0]]; for (const v of ticks) ax.push([AXX, yOf(v), 0, AXX + 0.12, yOf(v), 0]); data.add(kit.segments(ax, cTx2, 0.45));
     // the trail of recent captures beside the column
@@ -112,7 +113,7 @@ function setup(L, H, api) {
         if (r.putWall >= P.lo && r.putWall <= P.hi) dash[1].push([xOf(k) - 0.03, yOf(r.putWall), TZ, xOf(k) + 0.03, yOf(r.putWall), TZ]); });
       if (line.length > 1) trailGrp.add(kit.line(line, cTx2, 1.4, 0.55));
       const dots = kit.points(line.length, cTx, 5, { opacity: 0.85 }), a = dots.geometry.attributes.position.array; line.forEach((p, k) => { a[k * 3] = p[0]; a[k * 3 + 1] = p[1]; a[k * 3 + 2] = p[2]; }); trailGrp.add(dots);
-      if (dash[0].length) trailGrp.add(kit.segments(dash[0], cUp, 0.7)); if (dash[1].length) trailGrp.add(kit.segments(dash[1], cShort, 0.7));
+      if (dash[0].length) trailGrp.add(kit.segments(dash[0], cUp, 0.7)); if (dash[1].length) trailGrp.add(kit.segments(dash[1], cPut, 0.7));
       trailGrp.add(kit.segments([[TX0 - 0.1, Y0, TZ, TX1 + 0.1, Y0, TZ]], cTx2, 0.3));
     }
     built = { P, yOf, ticks, trail: trail ?? null, xOf, offScale: m - tr.length, sc };
@@ -165,9 +166,9 @@ function overlay(ctx, g, api, H, camera, B) {
   const l2 = longHere == null ? '' : longHere ? 'dealers long gamma: damping zone' : 'dealers short gamma: amplifying zone';
   const l3 = `${P.dte != null ? `${P.dte} DTE · ` : ''}capture ${String(P.savedAt ?? 'n/a').slice(0, 10)}`;
   ctx.textAlign = 'left';
-  if (cp) { const y = 136; font(12, '600 '); ctx.fillStyle = C.blue; ctx.fillText(head, 12, y); font(11); ctx.fillStyle = C.tx; ctx.fillText(l1, 12, y + 15); ctx.fillStyle = longHere ? C.cy : C.dn; if (l2) ctx.fillText(l2, 12, y + 30); taken.push({ x: 8, y: y - 14, w: 300, h: 50 }); bounds.y0 = y + 38; }
-  else { const x = 22, y = 176; font(13, '600 '); ctx.fillStyle = C.blue; ctx.fillText(head, x, y); font(12); ctx.fillStyle = C.tx; ctx.fillText(l1, x, y + 18); ctx.fillStyle = longHere ? C.cy : C.dn; if (l2) ctx.fillText(l2, x, y + 34); ctx.fillStyle = C.tx2; font(11); ctx.fillText(l3, x, y + 50);
-    ctx.fillText(`calls ${fmtOI(P.total.call)} · puts ${fmtOI(P.total.put)} in view`, x, y + 64); ctx.fillStyle = C.up; ctx.fillText('calls →', x, y + 82); ctx.fillStyle = C.dn; ctx.fillText('← puts', x + 70, y + 82);
+  if (cp) { const y = 136; font(12, '600 '); ctx.fillStyle = C.blue; ctx.fillText(head, 12, y); font(11); ctx.fillStyle = C.tx; ctx.fillText(l1, 12, y + 15); ctx.fillStyle = longHere ? C.cy : C.gold; if (l2) ctx.fillText(l2, 12, y + 30); taken.push({ x: 8, y: y - 14, w: 300, h: 50 }); bounds.y0 = y + 38; }
+  else { const x = 22, y = 176; font(13, '600 '); ctx.fillStyle = C.blue; ctx.fillText(head, x, y); font(12); ctx.fillStyle = C.tx; ctx.fillText(l1, x, y + 18); ctx.fillStyle = longHere ? C.cy : C.gold; if (l2) ctx.fillText(l2, x, y + 34); ctx.fillStyle = C.tx2; font(11); ctx.fillText(l3, x, y + 50);
+    ctx.fillText(`calls ${fmtOI(P.total.call)} · puts ${fmtOI(P.total.put)} in view`, x, y + 64); ctx.fillStyle = C.up; ctx.fillText('calls →', x, y + 82); ctx.fillStyle = C.dn; ctx.fillText('← puts', x + Math.max(70, ctx.measureText('calls →').width + 14), y + 82);
     font(12); const wmax = Math.max(...[head, l1, l2].map(t => ctx.measureText(t).width)) + 6; taken.push({ x: x - 4, y: y - 16, w: wmax, h: 104 }); }
   // the markers left of the price axis: spot, flip, max pain (dodged vertically, never on top of each other)
   const ax = v => S([AXX, B.yOf(v), 0]), marks = [];
@@ -220,7 +221,7 @@ const view = glView({ id: ID, label: 'GAMMA PILLAR', env: { accent: 'blue2', chr
 registerJarvisModule({
   id: ID, label: 'GAMMA PILLAR',
   render(pane, api) {
-    pane.innerHTML = '<h3>GAMMA PILLAR: TODAY\'S OPTION BOOK AS A GLASS COLUMN</h3><p>Strikes run up the column like a price chart. Call open interest glows to the right, put open interest to the left on one scale, and net dealer gamma is the ribbon up the middle. Cyan glass is where dealers are modelled long gamma (moves tend to be damped), red glass where they are short gamma (moves tend to be amplified); the gold ring is the gamma flip and the white plane is spot. Beside it, the last 20 captures of spot and the walls.</p><p class="jv-sub">A description of positioning, not a forecast.</p><div class="jv-row"><button type="button" data-g="go">SHOW THE PILLAR</button></div>';
+    pane.innerHTML = '<h3>GAMMA PILLAR: TODAY\'S OPTION BOOK AS A GLASS COLUMN</h3><p>Strikes run up the column like a price chart. Call open interest glows to the right, put open interest to the left on one scale, and net dealer gamma is the ribbon up the middle. Cyan glass is where dealers are modelled long gamma (moves tend to be damped), gold glass where they are short gamma (moves tend to be amplified); the gold ring is the gamma flip and the white plane is spot. Beside it, the last 20 captures of spot and the walls.</p><p class="jv-sub">A description of positioning, not a forecast.</p><div class="jv-row"><button type="button" data-g="go">SHOW THE PILLAR</button></div>';
     pane.querySelector('[data-g="go"]').onclick = () => { api.setView(ID); loadStore(api, true).catch(() => null); };
   },
   views: [view],

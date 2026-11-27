@@ -50,9 +50,9 @@ test('the spoken script names the real pairs, states the window, and says it is 
   assert.match(t, /last 60 trading days/); assert.match(t, /tightest pair/); assert.match(t, /most opposed pair/); assert.match(t, /not a forecast/); assert.match(t, /tightly bound group is (metals|equity indices)/);
 });
 
-test('registers the NETWORK panel, the net view (accent up, clean chrome) and a SHOW scene after the lean', () => {
+test('registers the NETWORK panel, the net view (accent pur, clean chrome) and a SHOW scene after the lean', () => {
   assert.ok(EXTRA.some(m => m.id === 'net' && m.label === 'NETWORK'));
-  const v = viewsOf().find(x => x.id === 'net'); assert.ok(v && v.env.accent === 'up' && v.env.chrome === 'clean' && typeof v.draw === 'function');
+  const v = viewsOf().find(x => x.id === 'net'); assert.ok(v && v.env.accent === 'pur' && v.env.chrome === 'clean' && typeof v.draw === 'function');
   const h = SHOW_HOOKS.find(x => x.id === 'net'); assert.ok(h && h.after === 'lean');
   assert.equal(h.build({}, null), null);
   assert.ok(buildScenes({ now: new Date() }).length >= 2);
