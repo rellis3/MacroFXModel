@@ -545,6 +545,7 @@ import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataA
 import { createSnapshotService as _createSnapshotService } from './js/deskSnapshotStore.js';   // the Desk Terminal time machine: CORE + FULL snapshots, KV window, R2 record (plans/TIME_MACHINE.md)
 import { parseFields as _snapParseFields } from './js/deskSnapshot.js';
 import { createExpiryTrackStore } from './js/expiryTrackStore.js';
+import { isExpired as _optIsExpired, usMarketHoliday as _optHoliday } from './js/optionExpiry.js';   // one expiry rule for the path, lines and terrain
 import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma, THIN_FLOOR as _SWING_THIN_FLOOR } from './js/swingMap.js';
 import { zoneWalk as _swingZoneWalk } from './js/swingPaths.js';
 import { PATH_HORIZON_DAYS as _PATH_HORIZON_DAYS, PATH_CORE_DAYS as _PATH_CORE_DAYS, PATH_SOURCES as _PATH_SOURCES, normaliseSource as _pathNormSource, sourceChoices as _pathSourceChoices, gldXauMap as _gldXauMap, indexCfdMap as _indexCfdMap, cboeExpiryRows as _cboeExpiryRows, mergeSources as _pathMergeSources, swingExpiryRow as _swingExpiryRow, beyondCoreRows as _pathBeyondCore, occOiDate as _occOiDate, sourceAsOf as _pathSourceAsOf, addDaysIso as _pathAddDays } from './js/pathSources.js';   // the path's Cboe sources (GLD for gold, SPX/NDX), horizon
@@ -26345,8 +26346,10 @@ app.get('/api/options-history', async (_req, res) => {
           .filter(r => r.pc != null);
         if (rows.length) markets[pair] = rows;
       }
+      // US exchange holidays dropped: FRED's VIXCLS carries a print on most of them (Cboe's extended-hours session; 26.8 on
+      // Thanksgiving 2026) while VXVCLS does not, so the ratio divided a holiday VIX by the day before's 3-month
       const vix = {}, errors = {};
-      for (const [k, id] of [['vix', 'VIXCLS'], ['vix3m', 'VXVCLS']]) { try { vix[k] = (await _mbFred(id, 2)).filter(p => Number.isFinite(p.value)).slice(-260); } catch (e) { errors[k] = e.message; } }
+      for (const [k, id] of [['vix', 'VIXCLS'], ['vix3m', 'VXVCLS']]) { try { vix[k] = (await _mbFred(id, 2)).filter(p => Number.isFinite(p.value) && !_optHoliday(p.date)).slice(-260); } catch (e) { errors[k] = e.message; } }
       return { ok: Object.keys(markets).length > 0, at: new Date().toISOString(), markets, vix, errors };
     });
     res.json(data);
@@ -46750,10 +46753,12 @@ async function _swingMapExpiries(names, sigmaAnnual = null) {
     for (const e of live) {
       const v = await _expiryTrack().view(pair, e.expiry, { topN: 6, sigmaAnnual, withLadder: true }).catch(() => null);
       // every field, the conveyor-belt history included: js/pathSources.js swingExpiryRow, shared with the Cboe rows
-      const row = _swingExpiryRow(pair, v, { greeks: d => _swingGreeksNotional(pair, d) });
-      if (row) out.push(row);
+      const row = _swingExpiryRow(pair, v, { greeks: d => _swingGreeksNotional(pair, d), today });
+      // an expiry that has stopped trading (FX 10:00 New York, gold 12:30 Chicago, index weeklies 15:00 Chicago) is gone:
+      // the morning capture still lists it all day, but it is no longer a book (js/optionExpiry.js)
+      if (row && !_optIsExpired(row.expiry, pair, Date.now(), row.code)) out.push(row);
     }
-    return out;
+    return out.sort((a, b) => (a.expiry < b.expiry ? -1 : a.expiry > b.expiry ? 1 : 0));
   }
   return [];
 }

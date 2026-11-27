@@ -29,6 +29,7 @@
 import { oiMatrixExpiryLegs, oiCalcMaxPain } from './oi.js';
 import { fullBookGex } from './fullBookGex.js';
 import { bsCharm, bsVanna } from './gammaGreeks.js';
+import { bookExpiry } from './optionExpiry.js';
 
 const DAY = 864e5;
 export const TAIL_FRAC = 0.35;          // strikes further than 35% from the futures price are tail hedges, not zones (as _oiNearBook)
@@ -65,7 +66,7 @@ export function expirySnapshotsFromRaw(rawEntry, { date, inverted = false, minOI
   const legs = oiMatrixExpiryLegs(rawEntry.rawOI, { basis: 0, inverted: false, minOI });   // futures terms, no shift
   if (!legs) return [];
   const futures = Number.isFinite(rawEntry.futures) ? rawEntry.futures : null;
-  const out = [];
+  const out = [], byDate = new Map();
   for (const l of legs) {
     if (!Number.isFinite(l.dte) || l.dte < 0) continue;
     const ladder = [];
@@ -75,8 +76,20 @@ export function expirySnapshotsFromRaw(rawEntry, { date, inverted = false, minOI
       ladder.push([round(l.strikes[i], 8), Math.round(c), Math.round(p)]);
     }
     if (ladder.length < 2) continue;
-    out.push({
-      expiry: weekdayExpiry(addDays(date, l.dte)), code: l.code ?? null,
+    // the date from the contract code where it decodes (js/optionExpiry.js: QuikStrike's DTE is rounded, so a late-day
+    // expiry's capture date + DTE lands a day late and took a neighbour's date: E3DZ6 on ESZ6's 18 Dec, 27 Nov 2026)
+    const expiry = bookExpiry(date, l.dte, l.code) ?? weekdayExpiry(addDays(date, l.dte)), code = l.code ?? null;
+    // two listed contracts on one date (the ES quarterly and the EW3 Friday weekly) are one book on that date: summed,
+    // so the second is not dropped as a duplicate column
+    const twin = code ? byDate.get(expiry) : null;
+    if (twin && twin.code && twin.code !== code) {
+      const m = new Map(twin.snap.ladder.map(r => [r[0], r.slice()]));
+      for (const r of ladder) { const x = m.get(r[0]); if (x) { x[1] += r[1]; x[2] += r[2]; } else m.set(r[0], r.slice()); }
+      twin.snap.ladder = [...m.values()].sort((a, b) => a[0] - b[0]); twin.code = `${twin.code}+${code}`;
+      continue;
+    }
+    const row = {
+      expiry, code,
       snap: {
         date, dte: l.dte,
         futures, spot: Number.isFinite(rawEntry.spot) ? rawEntry.spot : null,
@@ -84,7 +97,9 @@ export function expirySnapshotsFromRaw(rawEntry, { date, inverted = false, minOI
         savedAtMs: rawEntry.savedAtMs ?? null,
         ladder,
       },
-    });
+    };
+    out.push(row);
+    if (code && !byDate.has(expiry)) byDate.set(expiry, row);
   }
   return out;
 }

@@ -37,7 +37,8 @@ import * as CBV from './cbBoardView.js';
 import * as ACV from './autocorrView.js';
 import * as LLV from './leadLagView.js';
 import * as OPV from './optionsView.js';
-import { terrainHtml, mountTerrain, terrainKeys } from './terrainPanel.js';
+import { terrainHtml, mountTerrain, terrainKeys, terrainStore, bookLegs } from './terrainPanel.js';
+import { nextCotRelease } from '../cotState.js';
 import { smilePanelHtml, mountSmile, SMILE_SYMS } from '../smileChart.js';
 import { mountPathChart } from './pathChart.js';
 import * as NV from './newsView.js';
@@ -794,7 +795,7 @@ async function renderOptions() {
     root.dataset.built = '1';
     root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">Options</span><h2 style="flex-basis:100%">What the options market is positioned for</h2></div>
 <p style="margin:4px 0 0">Price shows two dimensions: up and down. Options add a third, the <b>path</b>: every contract has a strike and an expiry, so the book shows at what price, by what date, the market is protected or speculating. Read it as positioning, one lens among several: every reading below carries what the Evidence Book found when it was tested.</p></div>
-<div class="card" id="opt-mkt-bar" style="position:sticky;top:0;z-index:5;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:10px"><label class="lbl" for="opt-mkt" style="margin:0">Market</label><select id="opt-mkt" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:4px 6px;font-size:14px;font-weight:600"></select><span class="muted" style="font-size:12px">Every chart on this tab shows this market. A chart that does not cover it says so. Data-source choices (CME, Cboe) stay on their own chart.</span></div>
+<div class="card" id="opt-mkt-bar" style="position:sticky;top:0;z-index:5;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:10px"><label class="lbl" for="opt-mkt" style="margin:0">Market</label><select id="opt-mkt" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:4px 6px;font-size:14px;font-weight:600"></select><span class="muted" style="font-size:12px">Every chart on this tab shows this market. A chart that does not cover it says so. Data-source choices (CME, Cboe) stay on their own chart.</span><span id="opt-mkt-cov" style="flex-basis:100%;font-size:12px"></span></div>
 <div class="sfc" data-surface="panel.opt.terrain">${sec('The terrain', 'open interest, the IV smile or gamma by expiry, and the labelled levels on one price axis')}${terrainHtml()}</div>
 <div class="sfc" data-surface="panel.opt.smile">${sec('The IV smile', 'implied vol against strike, one curve per expiry, with the IV and realised-vol reference lines')}<div id="opt-smile-none" class="card muted" hidden></div><div id="opt-smile">${smilePanelHtml()}</div></div>
 <div class="sfc" data-surface="panel.opt.lines">${sec('Option lines', 'walls, max pain and gamma lines around the price')}<div id="opt-lad">${loading('option lines')}</div></div>
@@ -805,11 +806,19 @@ async function renderOptions() {
 <div class="sfc" data-surface="panel.opt.vix">${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loading('the VIX')}</div></div>`;
   }
   const goPair = box => box?.querySelectorAll('[data-pair]').forEach(b => (b.onclick = () => openPair(b.dataset.pair)));
-  const [oi, hist, hs, sk, tKeys] = await Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary'), J('/api/options-skew'), terrainKeys(J)]);
+  const [oi, hist, hs, sk, tKeys, store] = await Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary'), J('/api/options-skew'), terrainKeys(J), terrainStore(J)]);
   const rows = oi?.pairs ?? [];
+  // the stored books' expiries (contract code and open interest per DTE): the lines' expiry dates and the front expiry
+  const legsOf = pair => { try { return store?.[pair] ? bookLegs(store[pair]) : []; } catch { return []; } };
+  const fronts = Object.fromEntries(rows.map(r => [r.pair, OPV.frontOf(legsOf(r.pair), { pair: r.pair, capture: OPV.captureDateOf(store?.[r.pair] ?? r) })]));
   // one market for the whole tab (owner 2026-11-10: "I was looking at something which I thought was gold but turned out
-  // to be EURUSD"): the union of what any panel covers; each panel maps it to its own key and says when it has no book
-  const markets = OPV.optionMarkets(tKeys, rows.map(r => r.pair), OPV.PATH_MARKETS, SMILE_SYMS);
+  // to be EURUSD"): a market is listed only where at least one panel has data for it (GBP/JPY had none), and the bar says
+  // which panels cover it; each panel maps it to its own key and says when it has no book
+  const tIds = tKeys.map(OPV.idOf), lineIds = rows.map(r => OPV.idOf(r.pair));
+  const cov = OPV.marketCoverage({ terrain: tIds, smile: SMILE_SYMS.map(OPV.idOf), lines: lineIds, path: OPV.PATH_MARKETS.filter(id => tIds.includes(id)),
+    pc: rows.filter(r => Number.isFinite(r.pcRatio)).map(r => OPV.idOf(r.pair)), dealers: (hs?.markets ?? []).filter(m => m.state).map(m => OPV.idOf(m.pair)),
+    skew: (sk?.rows ?? []).map(r => OPV.SKEW_TO_ID[r.id] ?? OPV.idOf(r.pair)) });
+  const markets = OPV.optionMarkets([...cov.keys()]);
   const nameOf = id => OPV.NAME[id] ?? id;
   if (!T.optMkt) { try { T.optMkt = localStorage.getItem('deskOptMarket'); } catch { /* private window */ } }
   if (!markets.includes(T.optMkt)) T.optMkt = markets.includes('GOLD') ? 'GOLD' : markets[0];
@@ -820,6 +829,7 @@ async function renderOptions() {
   }
   const drawMarket = () => {
     const id = T.optMkt, name = nameOf(id);
+    const cv = el('opt-mkt-cov'); if (cv) cv.textContent = OPV.coverageLine(id, cov);
     // the terrain
     (T.terrain ??= {}).id = id;
     mountTerrain(root, J, T.terrain, { idOf: OPV.idOf, nameOf }).catch(e => console.warn('terrain', e));
@@ -828,18 +838,21 @@ async function renderOptions() {
     if (smBox && smNone) {
       smBox.hidden = !smSym; smNone.hidden = !!smSym;
       smNone.textContent = smSym ? '' : `No IV smile for ${name}. The smile needs a live Cboe chain with many strikes: S&P 500, Nasdaq 100 and Russell 2000 only. CME books carry one vol per expiry; the terrain above shows gamma by strike instead.`;
-      if (smSym) { if (!T.smile) { try { T.smile = mountSmile(smBox.querySelector('[data-sm="root"]'), { sym: smSym, fixed: true }); } catch (e) { console.warn('smile', e); } } else T.smile.setSym(smSym); }
+      if (smSym) { if (!T.smile) { try { T.smile = mountSmile(smBox.querySelector('[data-sm="root"]'), { sym: smSym, fixed: true,
+        // no Cboe chain: the CME at-the-money term structure from the same nightly capture, labelled as such
+        fallback: k => { const ts = store?.[k]?.ivTermStructure; return ts?.points?.length ? { points: ts.points.map(p => [p.dte, p.iv]), asOf: store[k].savedAt ?? null } : null; } }); } catch (e) { console.warn('smile', e); } } else T.smile.setSym(smSym); }
     }
     // option lines
     const lad = el('opt-lad'), row = rows.find(r => OPV.idOf(r.pair) === id);
-    if (lad) lad.innerHTML = row ? (OPV.ladderHtml(row) || `<div class="card muted">No option lines for ${h(name)}.</div>`) : `<div class="card muted">No CME option lines for ${h(name)} today. Option lines cover ${h(rows.map(r => nameOf(OPV.idOf(r.pair))).join(', ') || 'no market today')}.</div>`;
+    const dealer = (hs?.markets ?? []).find(m => OPV.idOf(m.pair) === id && m.state) ?? null;
+    if (lad) lad.innerHTML = row ? (OPV.ladderHtml(row, { legs: legsOf(row.pair), dealer }) || `<div class="card muted">No option lines for ${h(name)}.</div>`) : `<div class="card muted">No CME option lines for ${h(name)} today. Option lines cover ${h(rows.map(r => nameOf(OPV.idOf(r.pair))).join(', ') || 'no market today')}.</div>`;
     // the path
-    if (OPV.PATH_MARKETS.includes(id)) drawPath(id);
+    if (OPV.PATH_MARKETS.includes(id) && tIds.includes(id)) drawPath(id);
     else { const box = el('opt-path'); if (box) box.innerHTML = `<div class="ch"><span class="lbl">The path · ${h(name)}</span></div><p class="muted" style="margin:0">No path for ${h(name)}: the Swing Map covers ${h(OPV.PATH_MARKETS.map(nameOf).join(', '))}.</p>`; }
     // the all-market panels: mark the chosen market
     root.querySelectorAll('#opt-pos [data-pair], #opt-dl [data-pair]').forEach(b => { b.style.outline = b.dataset.pair === id ? '2px solid var(--pur2)' : ''; });
   };
-  const pos = el('opt-pos'); if (pos) { pos.innerHTML = OPV.positioningHtml(oi, hist); goPair(pos); }
+  const pos = el('opt-pos'); if (pos) { pos.innerHTML = OPV.positioningHtml(oi, hist, { fronts }); goPair(pos); }
   const dl = el('opt-dl'); if (dl) { dl.innerHTML = OPV.dealersHtml(hs) || '<div class="card muted">No dealer hedging read.</div>'; goPair(dl); }
   const skb = el('opt-skew'); if (skb && typeof E !== 'undefined' && E) { E['options-skew'] ??= sk; skb.innerHTML = globalThis.skewHtml?.() ?? ''; }
   const vx = el('opt-vix'); if (vx) vx.innerHTML = OPV.vixHtml(hist) || '<div class="card muted">No VIX series.</div>';
@@ -848,7 +861,8 @@ async function renderOptions() {
     box.innerHTML = loading(`the ${inst} path`);
     // the source (CME, the Cboe chain, or both) is kept for the session; a market without a Cboe book reads CME
     const src = OPV.pathSourceFor(inst, T.optSrc);
-    const sm = await J(`/api/swing-map?inst=${encodeURIComponent(inst)}${src !== 'cme' ? `&source=${src}` : ''}`);
+    // each expiry dated from its contract code, days counted from today, and today's expired books dropped (js/optionExpiry.js)
+    const sm = OPV.freshExpiries(await J(`/api/swing-map?inst=${encodeURIComponent(inst)}${src !== 'cme' ? `&source=${src}` : ''}`));
     if (T.optMkt !== inst) return;   // the market changed while this loaded
     let walk = null;
     const o = (T.optWalk ??= { ...OPV.WALK_OPTS_DEFAULT });   // the walk options (Swing Map's), kept for the session
@@ -949,6 +963,7 @@ const RENDER = { today: renderToday, pair: renderPair, deep: renderDeep, changed
   corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if ((t !== 'pair' && /pair=/.test(location.hash)) || (t !== 'deep' && /^#deep/.test(location.hash))) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
+globalThis.cotNextRelease = nextCotRelease;   // the Positioning tab's COT card (desk-terminal.html positioning(), a classic script)
 installReplayLink();                               // globalThis.openReplay(inst, ts) and the #replay/NQ/2026-11-12T14:30 deep link
 // the asset card pop-up (desk-terminal.html assetCard) carries the same Analyse box
 globalThis.analyseBoxHtml = AAV.boxHtml;

@@ -157,3 +157,22 @@ export function cotStateFor({ row, series, bars }) {
   return { ...c, ...describeCot(c), reportDate: row.reportDate ?? null, share, share4,
            move13: move13 == null ? null : +move13.toFixed(4), move4: move4 == null ? null : +move4.toFixed(4) };
 }
+
+/**
+ * When the next COT report comes out. The CFTC publishes Friday 15:30 New York for the Tuesday before; in a week with a
+ * federal holiday on the Thursday or Friday (Thanksgiving, Christmas, Independence Day, New Year) it publishes on the
+ * Monday after (owner review 27 Nov 2026: the 24 Nov report is due Mon 30 Nov). reportDate = the latest report's Tuesday.
+ * Returns { dataDate, release: 'YYYY-MM-DD', delayed } for the next report.
+ */
+export function nextCotRelease(reportDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(reportDate ?? ''))) return null;
+  const add = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+  const nthWd = (y, m, wd, n) => { const f = new Date(Date.UTC(y, m, 1)).getUTCDay(); return new Date(Date.UTC(y, m, 1 + ((wd - f + 7) % 7) + (n - 1) * 7)).toISOString().slice(0, 10); };
+  const obs = d => { const w = new Date(`${d}T12:00:00Z`).getUTCDay(); return w === 6 ? add(d, -1) : w === 0 ? add(d, 1) : d; };
+  const fed = d => { const y = +d.slice(0, 4); return [obs(`${y}-01-01`), obs(`${y + 1}-01-01`), obs(`${y}-07-04`), nthWd(y, 10, 4, 4), obs(`${y}-12-25`), obs(`${y}-06-19`), obs(`${y}-11-11`)].includes(d); };
+  const dataDate = add(reportDate, 7), fri = add(dataDate, 3), thu = add(dataDate, 2);
+  const delayed = fed(fri) || fed(thu);
+  let release = delayed ? add(fri, 3) : fri;
+  while (fed(release)) release = add(release, 1);
+  return { dataDate, release, delayed };
+}

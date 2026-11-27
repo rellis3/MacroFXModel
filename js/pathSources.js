@@ -19,6 +19,7 @@
 import { expiryView } from './expiryTracker.js';
 import { cashRefTime } from './cboeChain.js';
 import { PATH_HORIZON_DAYS, addDaysIso } from './pathSourceMeta.js';
+import { cmeCodeExpiry, dteOf } from './optionExpiry.js';
 export { PATH_HORIZON_DAYS, PATH_CORE_DAYS, PATH_SOURCES, SOURCE_IDS, normaliseSource, sourceChoices, sourceAsOf, addDaysIso, withinHorizon } from './pathSourceMeta.js';
 
 const DAY = 864e5;
@@ -83,10 +84,14 @@ export function cboeLadderRows(contracts, { mapPx = k => k, oiUnit = 1 } = {}) {
 }
 
 /** The swing-map row for one expiry from its expiryView (the same fields the server builds for CME). */
-export function swingExpiryRow(pair, v, { greeks = d => d?.greeks ?? null } = {}) {
+//  today (optional): days to expiry are counted from today's date to the expiry date, the one rule every market uses
+//  (the capture's own DTE is rounded from fractional days and differs between markets for the same date). The date comes
+//  from the contract code where it decodes (js/optionExpiry.js), else the series' own key.
+export function swingExpiryRow(pair, v, { greeks = d => d?.greeks ?? null, today = null } = {}) {
   const d = v?.days?.at(-1); if (!d) return null;
   const firstDay = v.days[0];
-  return { pair, expiry: v.expiry, code: v.code, dte: d.dte, date: d.date, stale: d.stale, totalOI: d.totalOI,
+  const expiry = cmeCodeExpiry(v.code, firstDay?.date ?? d.date) ?? v.expiry;
+  return { pair, expiry, code: v.code, dte: today ? dteOf(today, expiry) : d.dte, date: d.date, stale: d.stale, totalOI: d.totalOI,
     totalOIFirst: firstDay?.totalOI ?? null, firstSeen: firstDay?.date ?? null, nights: v.n,
     centrePx: d.centrePx, centrePxFirst: firstDay?.centrePx ?? null, maxPain: d.maxPain,
     chgNearSpot: d.chgNearSpot, chgAwayFromSpot: d.chgAwayFromSpot, zones: d.zones, ladder: d.ladder ?? null,
