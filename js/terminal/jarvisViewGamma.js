@@ -7,6 +7,7 @@
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { GAMMA_MARKETS, BINS, marketsWithOI, buildLadder, fmtPx, fmtOI, rel, gammaScript } from './jarvisGammaCore.js';
+import { asOfInfo, drawAsOf } from './helixAsOf.js';
 
 const DZ = 0.17, BD = 0.1, XI = 0.04, XO = 0.13, HMAX = 0.8, DEPTH = 9, RIB = 0.55;
 const PX = new Float32Array(16), PY = new Float32Array(16), PZ = new Float32Array(16);
@@ -40,6 +41,7 @@ function draw(ctx, g, api) {
   if (!S.key || !S.avail.some(m => m.key === S.key)) S.key = pickStart(api);
   const L = ladderOf(S.key), meta = metaOf(S.key);
   buttons(ctx, g, meta);
+  { const e = S.store?.[meta?.pair]; drawAsOf(ctx, g, asOfInfo({ asOf: e?.savedAtMs ?? e?.ivSavedAtMs ?? null }, { maxAgeMs: 4 * 864e5 })); }   // the OI capture date (0.18): a book days old is labelled, never drawn as today's
   if (!L) { ctx.globalAlpha = fade; ctx.fillStyle = C.tx2; ctx.fillText(`No open interest read for ${meta?.label ?? S.key} today`, W / 2, H / 2); ctx.restore(); return; }
   const n = L.n, zEnd = (n - 1) * DZ;
   if (st.yaw !== S.lastYaw || st.pitch !== S.lastPitch || st.zoom !== S.lastZoom || st.drag) { S.touch = t; S.lastYaw = st.yaw; S.lastPitch = st.pitch; S.lastZoom = st.zoom; }

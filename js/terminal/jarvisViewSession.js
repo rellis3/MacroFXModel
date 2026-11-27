@@ -15,6 +15,7 @@
 // Pure maths (planes, scale, ticks, EMA, crosshair hit-tests, the SHOW flight path, tag spreading) lives in jarvisChartCore.js / jarvisSessionCore.js (tested).
 // DESCRIPTION ONLY: every element is something that has happened; nothing here is a forecast, a signal or a trade.
 import { marketName } from './jarvisNames.js';
+import { asOfInfo, drawAsOf } from './helixAsOf.js';
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView, hudOrbit, orbitPos } from './jarvisGL.js';
@@ -25,14 +26,14 @@ import { TFS, TF_COUNT, ema, groupPlanes, chartScale, priceTicks, priceDecimals,
 
 const TTL = 60_000, WC = 6, HY = 3, TOP = HY * 1.03, PZ = 1.15, BAND_DZ = -0.45, FOV = 38, YAW0 = -0.22, FALLBACK = 'NQ';
 const TF_LABEL = { '5m': '5m', '15m': '15m', '1h': '1h', '1d': 'D' }, TF_WORD = { '5m': '5 minute', '15m': '15 minute', '1h': 'hourly', '1d': 'daily' };
-const VOL = { at: 0, inst: null, p: null }, DATA = new Map();
+const VOL = { at: 0, inst: null, p: null, stale: false }, DATA = new Map();
 const S = { key: null, tf: '15m', replay: false, auto: false, dolly: 0, dollyT: 0, t0: null, pan: 0, mx: null, my: null, top: 70, topAt: -9, xs: new Float32Array(300), nAct: 0, lo: null, hi: null, scT: null, scId: '', scKey: '',
   showP: -1, showAt: 0, hov: -1, hovPrice: 0, spin: null, printed: 0 };
 const showing = () => S.showP >= 0 && Date.now() - S.showAt < 1500;
 
 function loadVol(api) {
   if (VOL.inst && Date.now() - VOL.at < TTL) return Promise.resolve(VOL.inst);
-  VOL.p ??= Promise.resolve().then(() => api.jf('/api/vol-forecast/live')).then(j => { if (j?.instruments) { VOL.inst = j.instruments; VOL.at = Date.now(); } return VOL.inst; }).catch(() => VOL.inst).finally(() => { VOL.p = null; });
+  VOL.p ??= Promise.resolve().then(() => api.jf('/api/vol-forecast/live')).then(j => { if (j?.instruments) { VOL.inst = j.instruments; VOL.at = Date.now(); VOL.stale = !!j.fallback; } else if (VOL.inst) VOL.stale = true; return VOL.inst; }).catch(() => { if (VOL.inst) VOL.stale = true; return VOL.inst; }).finally(() => { VOL.p = null; });   // 0.18: old moves after a failed refresh are marked stale
   return VOL.p;
 }
 const finish = (e, r, v) => {
@@ -299,6 +300,7 @@ function overlay(ctx, g, api, H, camera) {
   if (!cur) { S.hov = -1; return msg(ctx, g, 'Reading the markets...'); }
   toolbar(ctx, g, cur.key);
   const e = cur.e;
+  if (e?.status === 'ok' && e.bars?.length) drawAsOf(ctx, g, asOfInfo({ asOf: e.bars[e.bars.length - 1].t, stale: VOL.stale }), { y: S.top + (g.compact ? 4 : 0) });   // the newest bar's time; STALE when the move feed is last session's
   if (!e || e.status === 'loading') { S.hov = -1; return msg(ctx, g, `Reading ${marketName(cur.key)} bars...`); }
   if (e.status !== 'ok' || cur.pa == null) { S.hov = -1; return msg(ctx, g, `No price bars could be loaded for ${marketName(cur.key)} right now.`); }
   const { ka, zA, lo, hi, yW, tf, pa, lastB, upNow } = cur, M = { X: s => (s - (pa.slots - 1) / 2) * Math.min(0.26, WC / pa.slots) }, X = M.X, slots = pa.slots, Wc = slots * Math.min(0.26, WC / slots), xl = -Wc / 2 - 0.12, xr = Wc / 2 + 0.12;

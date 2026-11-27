@@ -19,6 +19,7 @@
 // Data: /api/corr-terminal { ok, panel: { syms (26 OANDA names), dates (780 NY trading days), closes: { sym: [close|null] } } }, /api/vol-forecast/live for today's node sizes.
 // DESCRIPTION ONLY: how these markets moved together over a past window, which does not persist reliably. Never a forecast.
 import { marketName } from './jarvisNames.js';
+import { asOfInfo, drawAsOf } from './helixAsOf.js';
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView, orbitPos, ease } from './jarvisGL.js';
@@ -82,6 +83,7 @@ async function load(api, force) {
       const [panel, vf] = await Promise.all([api.jf('/api/corr-terminal'), api.jf('/api/vol-forecast/live').catch(() => null)]);
       const net = buildNet(panel); S.ok = !!net;
       if (net) { S.net = net; S.live = marketSizes(vf); S.at = Date.now(); S.acts = showActs(net); initScrub(net); }
+      S.asof = { asOf: panel?.panel?.generated ?? net?.asOf ?? null, stale: !!panel?.stale || !!vf?.fallback || !vf };   // 0.18: a stale panel or last-session sizes are labelled, not drawn as live
     } catch (e) { S.ok = false; } finally { S.loading = null; }
     return S.net;
   })();
@@ -359,6 +361,7 @@ function setup(L, H, api) {
       ctx.fillText(S.ok === false ? 'The correlation feed is not available right now.' : 'Reading the correlations...', W / 2, Hh / 2); ctx.restore(); return;
     }
     const top = S.hudTop + (cp ? 10 : 16), obst = [];
+    drawAsOf(ctx, g, asOfInfo(S.asof ?? null), { y: top - 4 });
     const panelTop = scrubPanel(ctx, g, net);
     const ro = cp ? readoutCompact(ctx, g, net, top) : readout(ctx, g, net, top); obst.push(ro);
     const card = S.sel >= 0 ? selCard(ctx, g, net, cp ? ro.y + ro.h + 8 : top) : null; if (card) obst.push(card);

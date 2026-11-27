@@ -4,9 +4,10 @@ import { registerJarvisModule } from './jarvisModules.js';
 import { llToVec } from './jarvisCore.js';
 import { MARKET_GEO, marketSizes, rankMarkets, moveText } from './jarvisMarkets.js';
 import { marketName } from './jarvisNames.js';
+import { asOfInfo, drawAsOf } from './helixAsOf.js';
 
 const FEED = '/api/vol-forecast/live', LS = 'jarvis.markets.layer', REFRESH_MS = 120_000;
-const S = { sizes: null, at: 0, loading: false, failed: false, sel: null, on: true };
+const S = { sizes: null, at: 0, loading: false, failed: false, sel: null, on: true, asOf: null, stale: false };
 try { S.on = globalThis.localStorage?.getItem(LS) !== 'off'; } catch (e) { /* storage blocked: layer stays on */ }
 const save = () => { try { globalThis.localStorage?.setItem(LS, S.on ? 'on' : 'off'); } catch (e) { /* ignore */ } };
 
@@ -14,9 +15,9 @@ async function load(api) {
   if (S.loading || (S.sizes && Date.now() - S.at < REFRESH_MS) || (S.failed && Date.now() - S.at < 30_000)) return;
   S.loading = true;
   try {
-    const sz = marketSizes(await api.jf(FEED));
-    if (Object.keys(sz).length) { S.sizes = sz; S.failed = false; } else S.failed = !S.sizes;
-  } catch (e) { S.failed = !S.sizes; } finally { S.loading = false; S.at = Date.now(); }
+    const j = await api.jf(FEED), sz = marketSizes(j);
+    if (Object.keys(sz).length) { S.sizes = sz; S.failed = false; S.asOf = j?.fetched_at ?? null; S.stale = !!j?.fallback; } else { S.failed = !S.sizes; if (S.sizes) S.stale = true; }
+  } catch (e) { S.failed = !S.sizes; if (S.sizes) S.stale = true; } finally { S.loading = false; S.at = Date.now(); }   // 0.18: old moves kept after a failed refresh are marked stale
 }
 
 function drawGlobe(ctx, g, api) {
@@ -35,6 +36,7 @@ function drawGlobe(ctx, g, api) {
     ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1.2, r * 0.45), 0, 6.2832); ctx.fill();
     if (sel || top.has(k) || (g.zoom > 1.7 && !g.compact)) { ctx.fillStyle = C.tx; ctx.globalAlpha = a; ctx.fillText(`${marketName(k, { short: true })} ${s.move >= 0 ? '+' : ''}${s.move.toFixed(1)}%`, p.x + r + 5, p.y); }
   }
+  if (S.stale) drawAsOf(ctx, { W: api.st?.w ?? ctx.canvas?.width ?? 800, C, fade: g.fade, compact: g.compact }, asOfInfo({ asOf: S.asOf, stale: true }));   // only when the moves are not live (weekend snapshot, failed refresh)
   ctx.restore();
 }
 
