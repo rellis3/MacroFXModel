@@ -76,4 +76,11 @@ arming rule: a separate layer after this base is measured. Trailing stops. The l
 
 ## Amendments
 
+- **A1, 2026-11-27, POST-HOC (results seen), describes only.** The concentration checks in RESULTS (stop-size quintiles,
+  top-1% trades, a $1 floor, double slippage, OOS halves) were run after the verdict; they change no verdict.
+
 ## RESULTS
+
+`analysis/output/gold-line-system-base/RESULTS.md`: S2 (rolling-MAE stop) VALIDATED, OOS +0.106R [+0.032, +0.160], n 2,119,
++224R, placebo p95 +0.090, p 0.008; S1 (0.15 × P90) UNDERPOWERED, +0.040R [−0.004, +0.085]. Edge concentrated in small
+stops and the top 1% of trades; needs tick data or a forward record.

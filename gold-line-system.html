@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gold Line System</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--violet:#a78bfa;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:13.5px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+a{color:var(--blue);text-decoration:none}
+.hdr{display:flex;gap:10px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(13,17,23,.96);z-index:5;flex-wrap:wrap}
+h1{font-size:15px}
+.wrap{max-width:1040px;margin:0 auto;padding:14px 16px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+h2{font-size:13.5px;margin-bottom:6px}
+p{color:var(--text2);margin-bottom:6px;max-width:92ch}
+p b,li b{color:var(--text)}
+ul,ol{color:var(--text2);margin:0 0 6px 18px;max-width:92ch}
+.verdict{border-left:3px solid var(--amber)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:12.5px}
+th{text-align:left;color:var(--text3);font-weight:600;font-size:11px;padding:4px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:4px 8px;border-bottom:1px solid #222a35;white-space:nowrap}
+tr.hl td{background:rgba(79,125,240,.10)}
+.neg{color:var(--bear)}.pos{color:var(--bull)}
+.tag{font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;margin-left:6px;color:var(--amber)}
+button.seg,select{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font:12px inherit;min-height:30px;cursor:pointer}
+button.seg.on{border-color:var(--blue);color:var(--blue)}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;color:var(--text3);font-size:12px}
+svg{width:100%;height:auto;display:block}
+svg text{font:11.5px var(--mono);fill:var(--text2)}
+.note{font-size:12px;color:var(--text3)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--text2);margin:4px 0 6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin:8px 0 4px}
+.kpi{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+.kpi .l{font-size:11px;color:var(--text3)}.kpi .v{font:600 18px var(--mono)}.kpi .s{font-size:11px;color:var(--text3)}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <a href="gold-rolling-mae.html">&larr; Rolling MAE stop</a>
+  <h1>Gold line system: shadow lines → gold entry → VWAP target</h1>
+  <span class="ctl" style="margin:0 0 0 auto">Instrument <select id="sym"><option>GOLD</option><option>NQ</option><option>EURUSD</option></select></span>
+</div>
+<div class="wrap">
+  <div class="box verdict" id="verdict">Loading…</div>
+
+  <div class="box">
+    <h2>The system</h2>
+    <ol>
+      <li><b>Lines:</b> the 18 shadow lines (OH, OL, Close+, Close−, HL projection up and down × P50 / P75 / P90).</li>
+      <li><b>Entry (Jordan's gold entry):</b> price goes through a line by 10% of the stop, a stop order arms at the line, and it fills when price comes back through. Cancel if price runs 1.2× the stop past the line; chase to a further line on the same side. One trade at a time.</li>
+      <li><b>Target:</b> VWAP + 0.5σ<sub>v</sub> (short) / VWAP − 0.5σ<sub>v</sub> (long), fixed when the order fills.</li>
+      <li><b>Stop:</b> S1 = 0.15 × the distance from the open to the P90 line; S2 = Jordan's rolling MAE (median line-to-line MAE of that line over the last 3 months).</li>
+      <li>Flat at 22:00 London. Pessimistic fills, costs on (1 tick in, 1 tick out on non-target exits, commission). In sample 2021–22, out of sample 2023 → 21 Aug 2026.</li>
+    </ol>
+    <p class="note">Prereg <a href="forge/GOLD_LINE_SYSTEM_BASE_PREREG.md">GOLD_LINE_SYSTEM_BASE_PREREG.md</a> · write-up <a href="analysis/output/gold-line-system-base/RESULTS.md">RESULTS.md</a></p>
+  </div>
+
+  <div class="box">
+    <h2>1 · Equity curve (the two pre-registered systems)</h2>
+    <div class="legend"><span><i style="background:var(--amber)"></i>S1: 0.15 × P90 stop</span><span><i style="background:var(--violet)"></i>S2: rolling-MAE stop</span></div>
+    <svg id="eqChart" viewBox="0 0 760 280"></svg>
+    <p class="note">Cumulative net R, one unit of risk a trade. The dashed line is where out of sample starts.</p>
+  </div>
+
+  <div class="box">
+    <h2>2 · Every variant</h2>
+    <div class="ctl">Stop
+      <button class="seg on" data-s="S1">0.15 × P90</button><button class="seg" data-s="S2">MAE per line, 3m</button><button class="seg" data-s="S2pooled">MAE pooled, 3m</button><button class="seg" data-s="S2sig6m">MAE σ-scaled, 6m</button>
+      &nbsp;Break-even <button class="seg on" data-b="off">Off</button><button class="seg" data-b="on">On</button></div>
+    <div class="scroll"><table id="armTable"></table></div>
+    <p class="note">Rows are the targets. Highlighted = the pre-registered test. "4 lines" = only OH/OL P75/P90, the earlier study's lines.</p>
+  </div>
+
+  <div class="box">
+    <h2>3 · By year</h2>
+    <div class="scroll"><table id="yearTable"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>4 · Trade examples, two from every year</h2>
+    <div class="ctl">System <button class="seg on" data-x="S1">S1: 0.15 × P90</button><button class="seg" data-x="S2">S2: rolling MAE</button></div>
+    <p class="note">Picked at random (fixed seed), not chosen. Grey dashed: the line; blue: VWAP; red: stop; green: target; ○ arm, ● fill, ◆ exit. Long trades are squeezed into wider bars.</p>
+    <div id="exGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px"></div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const UNIT = { GOLD: v => '$' + v.toFixed(2), NQ: v => v.toFixed(1) + ' pts', EURUSD: v => (v * 1e4).toFixed(1) + ' pips' };
+const LVL = { oh:'OH', ol:'OL', cup:'Close+', cdn:'Close−', hlH:'HL proj. up', hlL:'HL proj. down' };
+const TN = { 'vwap+1s': 'VWAP ± 1σ', 'vwap+0.5s': 'VWAP ± 0.5σ', 'vwap': 'VWAP', 'line-inside': 'The line inside' };
+const st = { s: 'S1', b: 'off', x: 'S1' };
+let D = null;
+const csv = t => { const [h, ...rows] = t.trim().split(/\r?\n/).map(r => r.split(',')); return rows.map(r => Object.fromEntries(h.map((k, i) => [k, r[i] === '' || isNaN(+r[i]) ? r[i] : +r[i]]))); };
+const sgn = (x, d = 3) => (x > 0 ? '+' : '') + (+x).toFixed(d);
+const lvlName = l => { const m = l.match(/^([a-zA-Z]+?)(50|75|90)$/); return m ? `${LVL[m[1]] || m[1]} P${m[2]}` : l; };
+const cls = v => v < 0 ? 'neg' : 'pos';
+
+function drawVerdict() {
+  const P = D.res.primary, U = UNIT[D.sym] || (v => v.toFixed(4));
+  const k = n => { const a = P[n]; return `<div class="kpi"><div class="l">${n === 'S1' ? 'S1: 0.15 × P90 stop' : 'S2: rolling-MAE stop'} · OOS · ${a.verdict}</div>
+    <div class="v ${cls(a.OOS_R)}">${sgn(a.OOS_R)}R</div>
+    <div class="s">[${sgn(a.OOS_lo)}, ${sgn(a.OOS_hi)}] · ${a.OOS_n} trades · total ${a.OOS_totR.toFixed(0)}R · PF ${a.OOS_pf.toFixed(2)}<br>
+    in sample ${sgn(a.IS_R)} · before costs ${sgn(a.OOS_gross)} · fake lines ${sgn(a.pl1_mean)} (real at ${(100 * a.pl1_rank).toFixed(0)}th pct) · median stop ${U(a.OOS_stop_med)}</div></div>`; };
+  $('verdict').innerHTML = `<h2>${D.sym}: the answer</h2><div class="kpis">${k('S1')}${k('S2')}</div><div id="vtext"></div>`;
+  if (D.summary) $('vtext').innerHTML = D.summary;
+}
+
+function drawEq() {
+  const E = D.eq, W = 760, H = 280, L = 52, Rr = 16, T = 14, B = 30;
+  const all = E.flatMap(r => [r.S1, r.S2]), lo = Math.min(0, ...all), hi = Math.max(0, ...all);
+  const pad = (hi - lo) * 0.05 || 1, y0 = lo - pad, y1 = hi + pad;
+  const x = i => L + i / (E.length - 1) * (W - L - Rr), y = v => T + (y1 - v) / (y1 - y0) * (H - T - B);
+  const step = Math.pow(10, Math.floor(Math.log10((y1 - y0) / 4))), tk = [];
+  for (let v = Math.ceil(y0 / step) * step; v <= y1; v += step) tk.push(v);
+  let s = tk.map(v => `<line x1="${L}" x2="${W - Rr}" y1="${y(v)}" y2="${y(v)}" stroke="${Math.abs(v) < 1e-9 ? '#6e7681' : '#232a34'}"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v.toFixed(0)}R</text>`).join('');
+  let ly = '';
+  E.forEach((r, i) => { const yy = String(r.date).slice(0, 4); if (yy !== ly) { s += `<text x="${x(i)}" y="${H - B + 18}">${yy}</text>`; ly = yy; } });
+  const oi = E.findIndex(r => String(r.date) >= '2023-01-01');
+  if (oi > 0) s += `<line x1="${x(oi)}" x2="${x(oi)}" y1="${T}" y2="${H - B}" stroke="#6e7681" stroke-dasharray="4 4"/><text x="${x(oi) + 4}" y="${T + 10}">OOS →</text>`;
+  for (const [k, col] of [['S2', '#a78bfa'], ['S1', '#d29922']]) {
+    s += `<polyline fill="none" stroke="${col}" stroke-width="2" points="${E.map((r, i) => x(i).toFixed(1) + ',' + y(r[k]).toFixed(1)).join(' ')}"/>`;
+    const end = E[E.length - 1][k]; s += `<text x="${W - Rr}" y="${y(end) - 6}" text-anchor="end" style="fill:${col}">${end.toFixed(0)}R</text>`;
+  }
+  $('eqChart').innerHTML = s;
+}
+
+function drawArms() {
+  const rows = D.arms.filter(r => r.stop === st.s && r.be === st.b);
+  let h = `<tr><th>Target</th><th>Lines</th><th>IS R</th><th>OOS R [90%]</th><th>Before costs</th><th>PF</th><th>Trades</th><th>Total R</th><th>Win %</th><th>Target / stop / BE / time %</th><th>Max DD</th></tr>`;
+  for (const r of rows) {
+    const prim = r.lines === 18 && r.target === 'vwap+0.5s' && r.be === 'off' && (r.stop === 'S1' || r.stop === 'S2');
+    h += `<tr class="${prim ? 'hl' : ''}"><td>${TN[r.target] || r.target}</td><td>${r.lines}</td><td class="${cls(r.IS_R)}">${sgn(r.IS_R)}</td>
+      <td class="${cls(r.OOS_R)}">${sgn(r.OOS_R)} [${sgn(r.OOS_lo)}, ${sgn(r.OOS_hi)}]</td><td class="${cls(r.OOS_gross)}">${sgn(r.OOS_gross)}</td><td>${r.OOS_pf.toFixed(2)}</td>
+      <td>${r.OOS_n}</td><td class="${cls(r.OOS_totR)}">${r.OOS_totR.toFixed(0)}</td><td>${r.OOS_win.toFixed(0)}</td>
+      <td>${[r.OOS_tgt, r.OOS_stop, r.OOS_be, r.OOS_time].map(v => v.toFixed(0)).join(' / ')}</td><td>${r.maxDD.toFixed(0)}R</td></tr>`;
+  }
+  $('armTable').innerHTML = h;
+}
+
+function drawYears() {
+  const by = {};
+  for (const k of ['S1', 'S2']) for (const r of D.yf[k]) { by[r.y] ??= {}; by[r.y][k] ??= { n: 0, s: 0 }; by[r.y][k].n += r.count; by[r.y][k].s += r.sum; }
+  let h = `<tr><th>Year</th><th>S1 trades</th><th>S1 R/trade</th><th>S1 total</th><th>S2 trades</th><th>S2 R/trade</th><th>S2 total</th></tr>`;
+  for (const y of Object.keys(by).sort()) {
+    const a = by[y].S1 || { n: 0, s: 0 }, b = by[y].S2 || { n: 0, s: 0 };
+    h += `<tr><td>${y}${+y <= 2022 ? ' <span class="note">IS</span>' : ''}</td><td>${a.n}</td><td class="${cls(a.s)}">${sgn(a.s / Math.max(a.n, 1))}</td><td class="${cls(a.s)}">${a.s.toFixed(0)}R</td>
+      <td>${b.n}</td><td class="${cls(b.s)}">${sgn(b.s / Math.max(b.n, 1))}</td><td class="${cls(b.s)}">${b.s.toFixed(0)}R</td></tr>`;
+  }
+  $('yearTable').innerHTML = h;
+}
+
+function drawExamples() {
+  const U = UNIT[D.sym] || (v => v.toFixed(4));
+  $('exGrid').innerHTML = D.ex.filter(t => t.arm === st.x).map(t => {
+    const W = 320, H = 190, L = 6, Rr = 6, T = 8, B = 18, bars = t.bars, n = bars.length;
+    const ps = bars.flatMap(b => [b[2], b[3]]).concat([t.stop, t.line]).concat(t.tp != null ? [t.tp] : []);
+    const lo = Math.min(...ps), hi = Math.max(...ps), pad = (hi - lo) * 0.04;
+    const y = v => T + (hi + pad - v) / (hi - lo + 2 * pad) * (H - T - B), bw = (W - L - Rr) / n, x = i => L + (i + 0.5) * bw;
+    const xi = j => x(Math.max(0, Math.min(n - 1, Math.round((j - bars[0][0]) / t.step))));
+    let s = `<line x1="${L}" x2="${W - Rr}" y1="${y(t.line)}" y2="${y(t.line)}" stroke="#9da7b3" stroke-dasharray="4 3"/>`;
+    const vw = bars.map((b, i) => b[5] != null && b[5] >= lo - pad && b[5] <= hi + pad ? `${x(i).toFixed(1)},${y(b[5]).toFixed(1)}` : null).filter(Boolean);
+    if (vw.length > 1) s += `<polyline fill="none" stroke="#4f7df0" stroke-width="1.4" points="${vw.join(' ')}"/>`;
+    s += `<line x1="${xi(t.fillbar)}" x2="${W - Rr}" y1="${y(t.stop)}" y2="${y(t.stop)}" stroke="#f85149"/>`;
+    if (t.tp != null) s += `<line x1="${xi(t.fillbar)}" x2="${W - Rr}" y1="${y(t.tp)}" y2="${y(t.tp)}" stroke="#10b981"/>`;
+    bars.forEach((b, i) => { const c = b[4] >= b[1] ? '#3fb950' : '#8b949e';
+      s += `<line x1="${x(i)}" x2="${x(i)}" y1="${y(b[2])}" y2="${y(b[3])}" stroke="${c}"/><rect x="${x(i) - Math.max(bw * 0.35, 0.5)}" width="${Math.max(bw * 0.7, 1)}" y="${y(Math.max(b[1], b[4]))}" height="${Math.max(Math.abs(y(b[1]) - y(b[4])), 0.8)}" fill="${c}"/>`; });
+    s += `<circle cx="${xi(t.armbar)}" cy="${y(t.line)}" r="4.5" fill="none" stroke="#e6edf3" stroke-width="1.5"/><circle cx="${xi(t.fillbar)}" cy="${y(t.entry)}" r="4.5" fill="#d29922" stroke="#161b22"/>`;
+    const ex = xi(t.exitbar), ey = y(t.exit);
+    s += `<path d="M${ex} ${ey - 5} L${ex + 5} ${ey} L${ex} ${ey + 5} L${ex - 5} ${ey} Z" fill="${t.R >= 0 ? '#10b981' : '#f85149'}"/><text x="${L}" y="${H - 4}">from ~${t.t0} London · ${t.step > 1 ? t.step + '-min bars' : '1-min bars'}</text>`;
+    return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px">
+      <div style="display:flex;justify-content:space-between;gap:6px;font-size:12px"><b>${t.date}</b><span>${lvlName(t.level)} · ${t.short ? 'short' : 'long'}</span><span class="${cls(t.R)}">${sgn(t.R, 2)}R ${t.oc}</span></div>
+      <div class="note">stop ${U(Math.abs(t.stop - t.entry))}${t.tp != null ? ' · target ' + U(Math.abs(t.tp - t.entry)) + ' away' : ' · no target (VWAP band on the wrong side)'}</div>
+      <svg viewBox="0 0 ${W} ${H}">${s}</svg></div>`;
+  }).join('');
+}
+
+async function load(sym) {
+  const base = `analysis/output/gold-line-system-base/${sym}/`;
+  try {
+    const f = n => fetch(base + n, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(n); return r; });
+    const [a, r, e, x, y1, y2] = await Promise.all(['arms.csv', 'results.json', 'equity.csv', 'examples.json', 'by_year_family_S1.csv', 'by_year_family_S2.csv'].map(f));
+    D = { sym, arms: csv(await a.text()), res: await r.json(), eq: csv(await e.text()), ex: await x.json(), yf: { S1: csv(await y1.text()), S2: csv(await y2.text()) } };
+    try { const s = await fetch(base + 'summary.html', { cache: 'no-store' }); if (s.ok) D.summary = await s.text(); } catch (_) {}
+  } catch (err) {
+    D = null;
+    $('verdict').innerHTML = `<h2>${sym}: not run yet</h2><p>Gold first; NQ and EURUSD use the same script (<code>scripts/gold-line-system-base/run.py ${sym}</code>).</p>`;
+    ['eqChart', 'armTable', 'yearTable', 'exGrid'].forEach(id => $(id).innerHTML = '');
+    return;
+  }
+  drawVerdict(); drawEq(); drawArms(); drawYears(); drawExamples();
+}
+document.querySelectorAll('button.seg').forEach(b => b.addEventListener('click', () => {
+  const k = Object.keys(b.dataset)[0];
+  document.querySelectorAll(`button.seg[data-${k}]`).forEach(x => x.classList.toggle('on', x === b));
+  st[k] = b.dataset[k];
+  if (!D) return;
+  k === 'x' ? drawExamples() : drawArms();
+}));
+$('sym').addEventListener('change', e => load(e.target.value));
+load('GOLD');
+</script>
+</body>
+</html>
