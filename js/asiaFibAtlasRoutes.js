@@ -21,6 +21,7 @@
  * happen if price reaches the NEXT rung out", which needs the untouched ones
  * scored too.
  */
+import { isAtlasBook, loadBookTrades } from './atlasBooks.js';
 import { loadM1ForPair, loadM1WindowForPair } from './volBacktestM1Engine.js';
 import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder } from './asiaFibAtlasEngine.js';
 import { buildAsiaFibAtlasBook, renderAsiaFibBookText, DIMENSIONS } from './asiaFibAtlasReport.js';
@@ -998,6 +999,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       const ladders = (req.query.ladders ? String(req.query.ladders).split(',') : ['asia', 'monday'])
         .map(l => l.trim().toLowerCase()).filter(l => l === 'asia' || l === 'monday');
       const LADDER_PREFIX = { asia: PREFIX, monday: 'monday-fib-atlas' };
+      const book = isAtlasBook(req.query.book) ? req.query.book : null;
       const LADDER_LABEL = { asia: 'Asia', monday: 'Monday' };
       // One constituent key per (pair, ladder) combination actually requested.
       const constituentKeys = pairs.flatMap(pair => ladders.map(ladder => `${pair}|${ladder}`));
@@ -1009,7 +1011,10 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       const rawCache = new Map();
       await Promise.all(constituentKeys.map(async key => {
         const [pair, ladder] = key.split('|');
-        rawCache.set(key, await loadVoteTrades(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`));
+        // `?book=honest|gonogo|retest` (2026-11-27): the bid/ask Atlas books (js/atlasBooks.js).
+        rawCache.set(key, book
+          ? await loadBookTrades(book, ladder, pair, { getJSON })
+          : await loadVoteTrades(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`));
       }));
       const cachedLoader = async constituentKey => {
         const [pair, ladder] = constituentKey.split('|');
@@ -1064,7 +1069,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       try { deflated = await computeFibAtlasDeflatedSharpe(opts, result.trades, cachedLoader,
         { stopTightenFrac: FIB_ATLAS_STOP_TIGHTEN_FRAC, minCostRatio: FIB_ATLAS_MIN_COST_RATIO, maxGapMin: FIB_ATLAS_MAX_GAP_MIN }); }
       catch (e) { console.error('deflatedSharpe (asia vote-portfolio-combined) failed:', e.message); }
-      res.json({ ok: true, ladders, letRide, deflated, ...result });
+      res.json({ ok: true, book, ladders, letRide, deflated, ...result });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
