@@ -7,14 +7,14 @@
 // title bar, Shift + arrows resize it. On a phone the tiles stack and cannot be dragged.
 //
 // A PREVIEW feature (registry id tab.workspace): js/terminal/terminalFeel.js only loads this file when the session may see that surface.
-import { PANELS, COLS, snap, homeSection, moveTile, resizeTile } from './workspaceCore.js';
+import { PANELS, COLS, snap, homeSection, moveTile, resizeTile, tileLabel } from './workspaceCore.js';
 import { createWorkspaceState } from './workspaceState.js';
 import { createAdopter } from './panelAdopter.js';
 
 export const ROW = 44;               // px per grid row
 export const NARROW = 720;           // below this width the tiles stack
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const label = id => (PANELS.get(id)?.label ?? id).replace(/^Macro:\s*/, '');
+const label = id => tileLabel(id);
 const on = (win, id) => win.deskSurfaceOn?.(id) !== false;
 
 /** The real network half: the shared list on the server. */
@@ -62,9 +62,23 @@ export function mountWorkspace({ doc = document, win = window, api = httpApi(win
     sec.querySelector('[data-ws="rename"]').disabled = cur.source !== 'saved';
     noteEl.textContent = flash || state.note || (state.dirty ? 'Unsaved changes. Save keeps them for the whole desk.' : '');
   }
+  // the box is drawn only as tall as its panel needs, up to the tile's size: a short panel in a tall tile left an empty bordered box (review 2026-11-27).
+  // The layout keeps the tile's size (nothing below moves); only the frame shrinks.
+  function fit(el, t) {
+    const hd = el.querySelector('.ws-head'), bd = el.querySelector('.ws-body'), kid = bd?.firstElementChild;
+    if (!hd || !bd || !kid || !open) return t.h * ROW;
+    // the body fills the tile, so its scrollHeight is never below the tile: measure how far its content reaches instead
+    // (a Range, because the adopted wrapper can be display: contents and have no box of its own)
+    const top = bd.getBoundingClientRect().top, rg = doc.createRange?.(); if (!rg) return t.h * ROW;
+    rg.selectNodeContents(bd);
+    const reach = rg.getBoundingClientRect().bottom - top + bd.scrollTop + 8;
+    const need = hd.offsetHeight + reach + 10;
+    return need > 60 ? Math.min(t.h * ROW, need) : t.h * ROW;
+  }
   function place(el, t) {
-    if (narrow()) { el.style.cssText = `min-height:${t.h * ROW}px`; return; }
+    if (narrow()) { el.style.cssText = `min-height:${Math.min(t.h * ROW, fit(el, t))}px`; return; }
     el.style.cssText = `left:${(t.x / COLS) * 100}%;width:${(t.w / COLS) * 100}%;top:${t.y * ROW}px;height:${t.h * ROW}px`;
+    if (preview == null) { const h = fit(el, t); if (h < t.h * ROW) el.style.height = `${h}px`; }
   }
   function placeAll() {
     const ts = tiles();
@@ -99,7 +113,7 @@ export function mountWorkspace({ doc = document, win = window, api = httpApi(win
   }
   const release = id => adopter.release(id);
   let timer = null;
-  const refreshAdoption = () => { clearTimeout(timer); timer = win.setTimeout(() => { if (open) for (const t of state.current.tiles) if (tileEls.has(t.id) && (!adopter.has(t.id) || adopter.stale(t.id))) adopt(t.id); }, 150); };
+  const refreshAdoption = () => { clearTimeout(timer); timer = win.setTimeout(() => { if (open) { for (const t of state.current.tiles) if (tileEls.has(t.id) && (!adopter.has(t.id) || adopter.stale(t.id))) adopt(t.id); placeAll(); } }, 150); };
   function enter() {
     if (open) return; open = true; state.refresh();
     for (const t of state.current.tiles) adopt(t.id);

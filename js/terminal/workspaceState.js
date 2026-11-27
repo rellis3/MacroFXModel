@@ -38,7 +38,7 @@ export function createWorkspaceState({ api, store = null, known = isPanel } = {}
       return s;
     },
     async refresh() {
-      try { const r = await api.list(); if (r?.ok) setSaved(r.layouts); else note = r?.error ? `Saved layouts: ${r.error}` : note; } catch { note = 'Saved layouts could not be reached; the starters and this browser still work.'; }
+      try { const r = await api.list(); if (r?.ok) setSaved(r.layouts); else note = r?.error === 'sign in first' ? 'Saved layouts need a signed-in session (this one has none); the starters and this browser still work.' : r?.error ? `Saved layouts: ${r.error}` : note; } catch { note = 'Saved layouts could not be reached; the starters and this browser still work.'; }
       emit();
     },
 
