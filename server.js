@@ -8545,7 +8545,7 @@ app.get('/api/terminal-bundle', async (req, res) => {
 });
 // GET /api/policy-rates: each central bank's policy rate from its own published series (js/policyRates.js), with its as-of
 // date and source. Cached 6 hours. (The rate-diff engine's latestRate is a 3-month interbank rate, not the policy rate.)
-let _prCache = { at: 0, data: null };
+let _prCache = { at: 0, data: null }, _prLastGood = {};
 async function _policyRatesNow() {
   if (_prCache.data && Date.now() - _prCache.at < 6 * 3600e3) return _prCache.data;
   const UA = { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' };
@@ -8555,8 +8555,13 @@ async function _policyRatesNow() {
     getJson: u => fetch(u, { headers: UA, signal: AbortSignal.timeout(20_000) }).then(x => { if (!x.ok) throw new Error(`HTTP ${x.status}`); return x.json(); }),
     rbnz: () => _dpFetchFeed({ id: 'rbnz-decisions', path: 'rbnz/decisions', timeoutMs: 30_000 }).then(f => f.json),
   });
+  // One bank's source failing (the BoJ API returned HTTP 500 once on 2026-11-27) used to blank that bank for the whole 6-hour cache: the Macro
+  // tab showed the BoJ rate as "–" all evening. Now a failed bank keeps its last good rate (its own asOf says how old), marked `carried`, and a
+  // result with any failure is cached for 30 minutes, not 6 hours, so the source is asked again soon.
+  for (const [ccy, why] of Object.entries(r.errors ?? {})) if (!r.rates[ccy] && _prLastGood[ccy]) r.rates[ccy] = { ..._prLastGood[ccy], carried: true, error: why };
+  for (const [ccy, v] of Object.entries(r.rates)) if (!v.carried) _prLastGood[ccy] = v;
   const data = { ok: Object.keys(r.rates).length > 0, fetchedAt: new Date().toISOString(), ...r };
-  if (data.ok) _prCache = { at: Date.now(), data };
+  if (data.ok) _prCache = { at: Object.keys(r.errors ?? {}).length ? Date.now() - (6 * 3600e3 - 30 * 60e3) : Date.now(), data };
   return data;
 }
 // §9af: the world's policy rates (BIS WS_CBPOL, ~39 banks, monthly) for the terminal's map and the rates analyst.
@@ -23467,7 +23472,10 @@ async function _fillActualsFromFred(events, stored) {
   if (!key) { if (!_fredFillWarned) { console.warn('[surprise] FRED_KEY not set -- live actuals cannot be filled'); _fredFillWarned = true; } return { filled: 0, tried: 0 }; }
   // srcV 2 = filled after the 2026-10-16 by-date fix for FRED gaps (Oct-2025 CPI missing made y/y read 13 months
   // back). Older FRED-filled pct rows inside the 21-day window are refilled once so the live score is corrected.
-  const stale = x => typeof x.src === 'string' && x.src.startsWith('fred:') && !x.srcV && /%$/.test(String(x.actual));
+  const stale = x => typeof x.src === 'string' && x.src.startsWith('fred:') && !x.srcV && /%$/.test(String(x.actual))
+    // a policy rate read off a bank's daily series in the first days after a decision can still be the OLD rate (the BoC's 2026-10-28 hike was
+    // stored as 2.25%, the rate before it): ask again for six days after the decision, so the stored actual follows the series once it updates
+    || (typeof x.src === 'string' && /^(boc|rba|boe|snb|boj):/.test(x.src) && Date.now() - x.ms < 6 * 864e5);
   const have = new Set((stored ?? []).filter(x => x.actual != null && x.actual !== '' && !stale(x)).map(x => `${String(x.country).toUpperCase()}|${String(x.event).trim().toLowerCase()}|${x.ms}`));
   const pend = _fredPending((events ?? []).filter(e => !have.has(`${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`))).slice(0, _FRED_FILL_MAX);
   let filled = 0, tried = 0; const notes = [];

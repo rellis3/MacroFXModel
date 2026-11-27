@@ -104,6 +104,41 @@ export function seriesKey(ev) {
   return `${String(ev?.country ?? '').toUpperCase()}|${String(ev?.event ?? '').trim().toLowerCase()}`;
 }
 
+/**
+ * Renamed calendar series, new name -> the name the history is stored under (lower case, after the country).
+ * ForexFactory renamed every central-bank decision to "<Bank> Interest Rate Decision" in 2025 and the old-name series kept getting rows too,
+ * so one decision was stored twice and counted twice: the 2026-10-28 BoC hike sat in both, the old-name copy wrong (2.25% vs 2.50%, z -3.62,
+ * CAD's largest input), and each RBNZ hold counted twice (review 2026-11-27). The BoJ and SNB old-name series stopped in March 2025, so their
+ * newer decisions had no history to be scored against. StatCan's core CPIs are stored with and without "y/y".
+ */
+export const SERIES_ALIASES = {
+  'AU|rba interest rate decision': 'Cash Rate',
+  'CA|boc interest rate decision': 'Overnight Rate',
+  'CH|snb interest rate decision': 'SNB Policy Rate',
+  'EU|ecb interest rate decision': 'Main Refinancing Rate',
+  'GB|boe interest rate decision': 'Official Bank Rate',
+  'JP|boj interest rate decision': 'BOJ Policy Rate',
+  'NZ|rbnz interest rate decision': 'Official Cash Rate',
+  'CA|trimmed cpi': 'Trimmed CPI y/y',
+  'CA|median cpi': 'Median CPI y/y',
+  'CA|common cpi': 'Common CPI y/y',
+};
+/**
+ * The releases with renamed series folded into one name, one row per series and release time. Where both names hold the same release, the row
+ * under the CURRENT name wins (the calendar's own print; the old-name copy is the one that went wrong). Input rows are not mutated.
+ */
+export function canonicalReleases(events = []) {
+  const out = new Map(), plain = [];
+  for (const ev of events ?? []) {
+    if (!ev || ev.ms == null) { plain.push(ev); continue; }
+    const to = SERIES_ALIASES[seriesKey(ev)];
+    const row = to ? { ...ev, event: to, aliasOf: ev.event } : ev;
+    const id = `${seriesKey(row)}|${row.ms}`, had = out.get(id);
+    if (!had || (to && !had.aliasOf)) out.set(id, row);
+  }
+  return [...plain, ...out.values()];
+}
+
 /** +1 if higher is economically stronger, −1 if inverted. `matched` says which. */
 export function polarityFor(eventTitle) {
   const t = String(eventTitle ?? '').toLowerCase();
@@ -121,6 +156,7 @@ export function polarityFor(eventTitle) {
  * no surprise, by definition, and is skipped rather than compared to `prev`.
  */
 export function scoreReleases(events = [], opts = {}) {
+  events = canonicalReleases(events);
   const o = { ...DEFAULTS, ...opts };
   const now = o.now ?? Date.now();
   const wanted = new Set(o.impacts.map(x => x.toLowerCase()));
@@ -254,6 +290,7 @@ export function buildSurpriseIndex(events = [], opts = {}) {
  * with no dispersion behind it is reported as a beat, not as a sigma.
  */
 export function seriesHistory(events = [], opts = {}) {
+  events = canonicalReleases(events);
   const o = { ...DEFAULTS, ...opts };
   const n = o.perSeries ?? 4;
   const { scored } = scoreReleases(events, o);
