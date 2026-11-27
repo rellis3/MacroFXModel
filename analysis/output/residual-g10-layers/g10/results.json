@@ -1,0 +1,755 @@
+{
+ "meta": {
+  "label": "EXPLORATORY, not pre-registered",
+  "seed": 20261123,
+  "B": 2000,
+  "block": 21,
+  "K": 2,
+  "first_pnl_day": "2016-06-24",
+  "oos_start": "2021-07-27",
+  "last_pnl_day": "2026-08-20",
+  "universe": "G10 on Fed H.10 noon NY"
+ },
+ "variants": {
+  "base": {
+   "net": {
+    "trades": 322,
+    "share_days_in_position": 0.994,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.4,
+     "ann_ret_pct": 0.882,
+     "ann_vol_pct": 2.203,
+     "max_dd_pct": -3.2
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.301,
+     "ann_ret_pct": 0.658,
+     "ann_vol_pct": 2.186,
+     "max_dd_pct": -3.6
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.351,
+     "ann_ret_pct": 0.77,
+     "ann_vol_pct": 2.194,
+     "max_dd_pct": -3.6
+    }
+   },
+   "net_carry": {
+    "trades": 322,
+    "share_days_in_position": 0.994,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.408,
+     "ann_ret_pct": 0.899,
+     "ann_vol_pct": 2.203,
+     "max_dd_pct": -3.19
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.326,
+     "ann_ret_pct": 0.714,
+     "ann_vol_pct": 2.19,
+     "max_dd_pct": -3.67
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.367,
+     "ann_ret_pct": 0.807,
+     "ann_vol_pct": 2.196,
+     "max_dd_pct": -3.67
+    }
+   },
+   "carry_ann_pct": 0.037
+  },
+  "+V global FX vol": {
+   "net": {
+    "trades": 270,
+    "share_days_in_position": 0.909,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.526,
+     "ann_ret_pct": 0.976,
+     "ann_vol_pct": 1.854,
+     "max_dd_pct": -2.25
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.143,
+     "ann_ret_pct": 0.315,
+     "ann_vol_pct": 2.206,
+     "max_dd_pct": -3.6
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.317,
+     "ann_ret_pct": 0.645,
+     "ann_vol_pct": 2.037,
+     "max_dd_pct": -3.6
+    }
+   },
+   "net_carry": {
+    "trades": 270,
+    "share_days_in_position": 0.909,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.541,
+     "ann_ret_pct": 1.004,
+     "ann_vol_pct": 1.855,
+     "max_dd_pct": -2.16
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.152,
+     "ann_ret_pct": 0.337,
+     "ann_vol_pct": 2.21,
+     "max_dd_pct": -3.67
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.329,
+     "ann_ret_pct": 0.67,
+     "ann_vol_pct": 2.04,
+     "max_dd_pct": -3.67
+    }
+   },
+   "carry_ann_pct": 0.025,
+   "vs_base_net": {
+    "d_full": -0.034,
+    "d_IS": 0.126,
+    "d_OOS": -0.158,
+    "ci90": [
+     -0.265,
+     0.241
+    ],
+    "call": "no clear change"
+   },
+   "vs_base_net_carry": {
+    "d_full": -0.039,
+    "d_IS": 0.133,
+    "d_OOS": -0.174,
+    "ci90": [
+     -0.271,
+     0.216
+    ],
+    "call": "no clear change"
+   }
+  },
+  "+M momentum guard": {
+   "net": {
+    "trades": 254,
+    "share_days_in_position": 0.978,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.304,
+     "ann_ret_pct": 0.653,
+     "ann_vol_pct": 2.147,
+     "max_dd_pct": -3.74
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.141,
+     "ann_ret_pct": 0.29,
+     "ann_vol_pct": 2.052,
+     "max_dd_pct": -3.76
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.225,
+     "ann_ret_pct": 0.471,
+     "ann_vol_pct": 2.1,
+     "max_dd_pct": -3.76
+    }
+   },
+   "net_carry": {
+    "trades": 254,
+    "share_days_in_position": 0.978,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.314,
+     "ann_ret_pct": 0.674,
+     "ann_vol_pct": 2.148,
+     "max_dd_pct": -3.67
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.182,
+     "ann_ret_pct": 0.374,
+     "ann_vol_pct": 2.055,
+     "max_dd_pct": -3.64
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.249,
+     "ann_ret_pct": 0.524,
+     "ann_vol_pct": 2.101,
+     "max_dd_pct": -3.67
+    }
+   },
+   "carry_ann_pct": 0.053,
+   "vs_base_net": {
+    "d_full": -0.126,
+    "d_IS": -0.096,
+    "d_OOS": -0.16,
+    "ci90": [
+     -0.381,
+     0.076
+    ],
+    "call": "no clear change"
+   },
+   "vs_base_net_carry": {
+    "d_full": -0.118,
+    "d_IS": -0.094,
+    "d_OOS": -0.144,
+    "ci90": [
+     -0.359,
+     0.091
+    ],
+    "call": "no clear change"
+   }
+  },
+  "+VAL value guard": {
+   "net": {
+    "trades": 227,
+    "share_days_in_position": 0.948,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.321,
+     "ann_ret_pct": 0.71,
+     "ann_vol_pct": 2.214,
+     "max_dd_pct": -3.2
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.05,
+     "ann_ret_pct": 0.111,
+     "ann_vol_pct": 2.226,
+     "max_dd_pct": -3.94
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.185,
+     "ann_ret_pct": 0.41,
+     "ann_vol_pct": 2.22,
+     "max_dd_pct": -3.94
+    }
+   },
+   "net_carry": {
+    "trades": 227,
+    "share_days_in_position": 0.948,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.335,
+     "ann_ret_pct": 0.741,
+     "ann_vol_pct": 2.214,
+     "max_dd_pct": -3.19
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": -0.018,
+     "ann_ret_pct": -0.039,
+     "ann_vol_pct": 2.228,
+     "max_dd_pct": -4.28
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.158,
+     "ann_ret_pct": 0.351,
+     "ann_vol_pct": 2.221,
+     "max_dd_pct": -4.28
+    }
+   },
+   "carry_ann_pct": -0.059,
+   "vs_base_net": {
+    "d_full": -0.166,
+    "d_IS": -0.08,
+    "d_OOS": -0.251,
+    "ci90": [
+     -0.436,
+     0.131
+    ],
+    "call": "no clear change"
+   },
+   "vs_base_net_carry": {
+    "d_full": -0.209,
+    "d_IS": -0.074,
+    "d_OOS": -0.344,
+    "ci90": [
+     -0.491,
+     0.093
+    ],
+    "call": "no clear change"
+   }
+  },
+  "+C carry guard": {
+   "net": {
+    "trades": 167,
+    "share_days_in_position": 0.907,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.596,
+     "ann_ret_pct": 1.221,
+     "ann_vol_pct": 2.047,
+     "max_dd_pct": -4.02
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.608,
+     "ann_ret_pct": 1.236,
+     "ann_vol_pct": 2.033,
+     "max_dd_pct": -3.84
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.602,
+     "ann_ret_pct": 1.229,
+     "ann_vol_pct": 2.039,
+     "max_dd_pct": -4.02
+    }
+   },
+   "net_carry": {
+    "trades": 167,
+    "share_days_in_position": 0.907,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.667,
+     "ann_ret_pct": 1.364,
+     "ann_vol_pct": 2.047,
+     "max_dd_pct": -3.56
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.784,
+     "ann_ret_pct": 1.594,
+     "ann_vol_pct": 2.034,
+     "max_dd_pct": -3.6
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.725,
+     "ann_ret_pct": 1.479,
+     "ann_vol_pct": 2.04,
+     "max_dd_pct": -3.6
+    }
+   },
+   "carry_ann_pct": 0.251,
+   "vs_base_net": {
+    "d_full": 0.252,
+    "d_IS": 0.196,
+    "d_OOS": 0.307,
+    "ci90": [
+     -0.171,
+     0.595
+    ],
+    "call": "no clear change"
+   },
+   "vs_base_net_carry": {
+    "d_full": 0.358,
+    "d_IS": 0.258,
+    "d_OOS": 0.458,
+    "ci90": [
+     -0.082,
+     0.726
+    ],
+    "call": "no clear change"
+   }
+  },
+  "+AL Avellaneda-Lee entry/exit": {
+   "net": {
+    "trades": 531,
+    "share_days_in_position": 0.986,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.768,
+     "ann_ret_pct": 1.815,
+     "ann_vol_pct": 2.364,
+     "max_dd_pct": -3.08
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.238,
+     "ann_ret_pct": 0.5,
+     "ann_vol_pct": 2.101,
+     "max_dd_pct": -3.51
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.517,
+     "ann_ret_pct": 1.157,
+     "ann_vol_pct": 2.237,
+     "max_dd_pct": -3.51
+    }
+   },
+   "net_carry": {
+    "trades": 531,
+    "share_days_in_position": 0.986,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.765,
+     "ann_ret_pct": 1.81,
+     "ann_vol_pct": 2.365,
+     "max_dd_pct": -3.13
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.255,
+     "ann_ret_pct": 0.536,
+     "ann_vol_pct": 2.104,
+     "max_dd_pct": -3.53
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.524,
+     "ann_ret_pct": 1.173,
+     "ann_vol_pct": 2.238,
+     "max_dd_pct": -3.53
+    }
+   },
+   "carry_ann_pct": 0.016,
+   "vs_base_net": {
+    "d_full": 0.167,
+    "d_IS": 0.368,
+    "d_OOS": -0.063,
+    "ci90": [
+     -0.111,
+     0.387
+    ],
+    "call": "no clear change"
+   },
+   "vs_base_net_carry": {
+    "d_full": 0.157,
+    "d_IS": 0.357,
+    "d_OOS": -0.071,
+    "ci90": [
+     -0.127,
+     0.37
+    ],
+    "call": "no clear change"
+   }
+  },
+  "NN factor-neutral off": {
+   "net": {
+    "trades": 322,
+    "share_days_in_position": 0.994,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.041,
+     "ann_ret_pct": 0.108,
+     "ann_vol_pct": 2.606,
+     "max_dd_pct": -3.33
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.338,
+     "ann_ret_pct": 0.816,
+     "ann_vol_pct": 2.417,
+     "max_dd_pct": -4.18
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.184,
+     "ann_ret_pct": 0.462,
+     "ann_vol_pct": 2.513,
+     "max_dd_pct": -4.18
+    }
+   },
+   "net_carry": {
+    "trades": 322,
+    "share_days_in_position": 0.994,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.067,
+     "ann_ret_pct": 0.174,
+     "ann_vol_pct": 2.606,
+     "max_dd_pct": -3.36
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.354,
+     "ann_ret_pct": 0.857,
+     "ann_vol_pct": 2.42,
+     "max_dd_pct": -4.33
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.205,
+     "ann_ret_pct": 0.515,
+     "ann_vol_pct": 2.514,
+     "max_dd_pct": -4.33
+    }
+   },
+   "carry_ann_pct": 0.054,
+   "vs_base_net": {
+    "d_full": -0.167,
+    "d_IS": -0.359,
+    "d_OOS": 0.037,
+    "ci90": [
+     -0.355,
+     0.089
+    ],
+    "call": "no clear change"
+   },
+   "vs_base_net_carry": {
+    "d_full": -0.162,
+    "d_IS": -0.342,
+    "d_OOS": 0.028,
+    "ci90": [
+     -0.36,
+     0.092
+    ],
+    "call": "no clear change"
+   }
+  },
+  "stack V+M": {
+   "net": {
+    "trades": 211,
+    "share_days_in_position": 0.884,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.413,
+     "ann_ret_pct": 0.729,
+     "ann_vol_pct": 1.767,
+     "max_dd_pct": -1.81
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": -0.071,
+     "ann_ret_pct": -0.145,
+     "ann_vol_pct": 2.046,
+     "max_dd_pct": -5.07
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.153,
+     "ann_ret_pct": 0.292,
+     "ann_vol_pct": 1.911,
+     "max_dd_pct": -5.07
+    }
+   },
+   "net_carry": {
+    "trades": 211,
+    "share_days_in_position": 0.884,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.426,
+     "ann_ret_pct": 0.753,
+     "ann_vol_pct": 1.768,
+     "max_dd_pct": -1.84
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": -0.048,
+     "ann_ret_pct": -0.099,
+     "ann_vol_pct": 2.049,
+     "max_dd_pct": -4.95
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.171,
+     "ann_ret_pct": 0.327,
+     "ann_vol_pct": 1.913,
+     "max_dd_pct": -4.95
+    }
+   },
+   "carry_ann_pct": 0.035,
+   "vs_base_net": {
+    "d_full": -0.198,
+    "d_IS": 0.012,
+    "d_OOS": -0.372,
+    "ci90": [
+     -0.527,
+     0.152
+    ],
+    "call": "no clear change"
+   },
+   "vs_base_net_carry": {
+    "d_full": -0.196,
+    "d_IS": 0.018,
+    "d_OOS": -0.374,
+    "ci90": [
+     -0.517,
+     0.156
+    ],
+    "call": "no clear change"
+   },
+   "vs_previous_step_net": {
+    "d_full": -0.164,
+    "d_IS": -0.114,
+    "d_OOS": -0.214,
+    "ci90": [
+     -0.411,
+     0.063
+    ],
+    "call": "no clear change"
+   }
+  },
+  "stack V+M+VAL": {
+   "net": {
+    "trades": 135,
+    "share_days_in_position": 0.798,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.43,
+     "ann_ret_pct": 0.721,
+     "ann_vol_pct": 1.678,
+     "max_dd_pct": -1.81
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": -0.365,
+     "ann_ret_pct": -0.655,
+     "ann_vol_pct": 1.794,
+     "max_dd_pct": -4.48
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.019,
+     "ann_ret_pct": 0.033,
+     "ann_vol_pct": 1.737,
+     "max_dd_pct": -4.48
+    }
+   },
+   "net_carry": {
+    "trades": 135,
+    "share_days_in_position": 0.798,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.452,
+     "ann_ret_pct": 0.758,
+     "ann_vol_pct": 1.678,
+     "max_dd_pct": -1.84
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": -0.449,
+     "ann_ret_pct": -0.807,
+     "ann_vol_pct": 1.796,
+     "max_dd_pct": -4.81
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": -0.014,
+     "ann_ret_pct": -0.024,
+     "ann_vol_pct": 1.738,
+     "max_dd_pct": -4.81
+    }
+   },
+   "carry_ann_pct": -0.058,
+   "vs_base_net": {
+    "d_full": -0.332,
+    "d_IS": 0.03,
+    "d_OOS": -0.666,
+    "ci90": [
+     -0.737,
+     0.077
+    ],
+    "call": "no clear change"
+   },
+   "vs_base_net_carry": {
+    "d_full": -0.381,
+    "d_IS": 0.044,
+    "d_OOS": -0.776,
+    "ci90": [
+     -0.768,
+     0.031
+    ],
+    "call": "no clear change"
+   },
+   "vs_previous_step_net": {
+    "d_full": -0.134,
+    "d_IS": 0.017,
+    "d_OOS": -0.294,
+    "ci90": [
+     -0.468,
+     0.232
+    ],
+    "call": "no clear change"
+   }
+  },
+  "stack V+M+VAL+C": {
+   "net": {
+    "trades": 70,
+    "share_days_in_position": 0.609,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.071,
+     "ann_ret_pct": 0.111,
+     "ann_vol_pct": 1.567,
+     "max_dd_pct": -2.89
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.322,
+     "ann_ret_pct": 0.468,
+     "ann_vol_pct": 1.452,
+     "max_dd_pct": -1.72
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.192,
+     "ann_ret_pct": 0.289,
+     "ann_vol_pct": 1.511,
+     "max_dd_pct": -2.89
+    }
+   },
+   "net_carry": {
+    "trades": 70,
+    "share_days_in_position": 0.609,
+    "IS": {
+     "days": 1268,
+     "sharpe": 0.125,
+     "ann_ret_pct": 0.196,
+     "ann_vol_pct": 1.568,
+     "max_dd_pct": -2.7
+    },
+    "OOS": {
+     "days": 1268,
+     "sharpe": 0.366,
+     "ann_ret_pct": 0.532,
+     "ann_vol_pct": 1.453,
+     "max_dd_pct": -1.69
+    },
+    "full": {
+     "days": 2536,
+     "sharpe": 0.241,
+     "ann_ret_pct": 0.364,
+     "ann_vol_pct": 1.511,
+     "max_dd_pct": -2.7
+    }
+   },
+   "carry_ann_pct": 0.074,
+   "vs_base_net": {
+    "d_full": -0.159,
+    "d_IS": -0.33,
+    "d_OOS": 0.021,
+    "ci90": [
+     -0.634,
+     0.353
+    ],
+    "call": "no clear change"
+   },
+   "vs_base_net_carry": {
+    "d_full": -0.127,
+    "d_IS": -0.283,
+    "d_OOS": 0.04,
+    "ci90": [
+     -0.593,
+     0.382
+    ],
+    "call": "no clear change"
+   },
+   "vs_previous_step_net": {
+    "d_full": 0.173,
+    "d_IS": -0.359,
+    "d_OOS": 0.688,
+    "ci90": [
+     -0.185,
+     0.563
+    ],
+    "call": "no clear change"
+   }
+  }
+ }
+}
