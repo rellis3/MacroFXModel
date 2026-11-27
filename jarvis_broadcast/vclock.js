@@ -46,7 +46,8 @@
   };
 
   // after freeze(), the HUD's audio context is offline and runs on the virtual clock (its currentTime counts from when it was made)
-  const AUDIO_SECONDS = 900, RATE = 48000;      // 15 min: the wide programme runs 5-8 min (was 7 min for the Short)
+  // the offline buffer's length: sized from the script before the context is made (audioSeconds(); 2026-11-27: a fixed 900 s silently cut the end of a long run), 900 s by default
+  let AUDIO_SECONDS = 900; const RATE = 48000, MAX_AUDIO_SECONDS = 3600;
   let offline = null;
   function VAudioContext() {
     if (!VC.frozen || !R.OAC) return new R.AC();
@@ -66,6 +67,9 @@
   let prevV = 0;
   window.__vclock = {
     get frozen() { return VC.frozen; }, get v() { return VC.v; }, get frame() { return VC.frame; },
+    /** Size the offline sound buffer (seconds) before the audio context is made. Returns the size in force; false once the context exists (render() then reports cut if it ran out). */
+    audioSeconds(s) { if (offline) return false; const n = Math.round(+s); if (Number.isFinite(n) && n > 0) AUDIO_SECONDS = Math.max(60, Math.min(MAX_AUDIO_SECONDS, n)); return AUDIO_SECONDS; },
+    get audioBufferSeconds() { return offline ? offline.length / RATE : AUDIO_SECONDS; },
     now: vnow,
     /** Stop the real clock: from here the page's time moves only with step(). */
     freeze() { if (VC.frozen) return vnow(); VC.v = R.now(); VC.off = realDateNow() - VC.v; prevV = VC.v; VC.frozen = true; return vnow(); },
@@ -106,7 +110,7 @@
       for (let i = 0; i < n; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i0 + i])) * 32767, true);
       const bytes = new Uint8Array(out.buffer); let bin = '';
       for (let k = 0; k < bytes.length; k += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(k, k + 0x8000));
-      this.wav = btoa(bin); return { chars: this.wav.length, seconds: n / sr, cut: i1 >= d.length };     // cut: the broadcast outran the offline buffer (AUDIO_SECONDS)
+      this.wav = btoa(bin); return { chars: this.wav.length, seconds: n / sr, cut: Math.round((b - VC.off - offline.__born) / 1000 * sr) > d.length, bufferSeconds: d.length / sr };     // cut: the broadcast outran the offline buffer (AUDIO_SECONDS)
     },
     wav: '',
   };

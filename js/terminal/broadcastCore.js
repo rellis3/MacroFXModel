@@ -292,6 +292,36 @@ export const SHORT_WORDS = 24, SHORT_BUDGET_SEC = 120, SHORT_DROP = ['chain', 'm
 export const SHORT_DROP_EVENING = ['chain', 'vol', 'pos', 'ccy', 'macro', 'rates', 'markets'];
 /** The one spoken disclaimer of the programme. */
 export const SIGNOFF_TEXT = 'That is the briefing. Description, not advice. Until tomorrow.';
+/** The programmes beyond the daily briefing (the laptop records them as their own videos): the Friday weekly recap and the release-day special. */
+export const PROGRAMMES = { briefing: 'briefing', weekly: 'weekly recap', special: 'release special' };
+/** The hook ahead of the greeting when the headline carries a number, rotated by the day of the year (deterministic, so a recording is reproducible). */
+export const HOOKS = [
+  (fig, when) => `${cap1(fig)}. That is the number ${when}.`,
+  (fig, when) => `${cap1(fig)}: the number that leads ${when}.`,
+  fig => `${cap1(fig)}. Hold that number.`,
+];
+/**
+ * The opening line. Briefing: "Good morning. This is Helix, with the morning briefing for Friday the twentieth of November." The weekly recap and the release special say what they are.
+ * With a headline figure, the line opens on it (HOOKS, by date). release = { name, ccy, hm } for the special.
+ */
+export function openerLine({ date, part, programme = 'briefing', head = null, release = null, when = 'today' }) {
+  const g = greeting(date.hour), fig = head?.figure?.value ? speakFig(head.figure) : null;
+  const hook = fig && programme !== 'special' ? `${HOOKS[((date.doy ?? 0) % HOOKS.length + HOOKS.length) % HOOKS.length](fig, when)} ` : '';
+  if (programme === 'weekly') return `${hook}${g}. This is Helix, with the weekly recap for the week to ${date.spoken}.`;
+  if (programme === 'special') {
+    const what = release?.name ? `${CCY_WORD[release.ccy] ? `${CCY_WORD[release.ccy]} ` : ''}${release.name}` : 'the big release';
+    return `${g}. This is Helix, with a release special on ${what}${release?.hm ? `, out at ${release.hm} London time` : ''}.`;
+  }
+  return `${hook}${g}. This is Helix, with the ${part} briefing for ${date.spoken}.`;
+}
+/** The sign-off: the one disclaimer, and a farewell that knows the day (Friday night says the weekend). */
+export function signoffLine({ date, part, programme = 'briefing' }) {
+  const friday = date.weekday === 'Friday';
+  if (programme === 'weekly') return 'That is the week. Description, not advice. Have a good weekend.';
+  if (programme === 'special') return `That is the special. Description, not advice. ${part === 'evening' ? 'Until tomorrow.' : 'The evening briefing has the rest of the day.'}`;
+  if (friday && part === 'evening') return 'That is the briefing. Description, not advice. Until Monday, and have a good weekend.';
+  return SIGNOFF_TEXT;
+}
 /** A sentence that is only a disclaimer or a cliché: dropped from scene bodies (the sign-off says it once for the whole programme). */
 const DISCLAIM = /\b(?:description(?: only)?\b[^.!?]*\bnot\b|not a (?:forecast|call|signal|trade|prediction)|not advice|nothing here is a|that is where the story is)/i;
 const sentences = t => String(t ?? '').trim().split(/(?<=[.!?])\s+(?=[A-Z0-9"'(])/).filter(Boolean);
@@ -324,7 +354,8 @@ export function keyFigure(text) {
  *   { kind: 'open'|'lead'|'bumper'|'scene'|'close', text, view, cam, title, hold (seconds the card holds with no voice), ...kind fields }.
  * Never throws because of a hook. A segment with no available scene is skipped and the numbering closes up.
  */
-export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick', rate = 1, budgetSec = SHORT_BUDGET_SEC } = {}) {
+export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick', rate = 1, budgetSec = SHORT_BUDGET_SEC, programme = 'briefing', pod: podAs = null, release = null } = {}) {
+  if (!PROGRAMMES[programme]) programme = 'briefing';
   const guide = mode === 'guide'; if (guide) { inp = { ...inp, guide: true }; mode = 'full'; }
   const quick = mode !== 'full', short = mode === 'short', words = short ? SHORT_WORDS : QUICK_WORDS, date = dateWords(inp.now ?? new Date()), viewOk = v => !have || have.has(v) || CORE_VIEWS.has(v);
   const built = {}, sceneFor = id => {
@@ -338,7 +369,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     return (built[id] = x);
   };
   const segs = [];
-  const pod = partOfDay(date.hour), seg = id => SEGMENTS.find(s => s.id === id), day = SEGMENTS.filter(s => !s.evening && !s.wide && s.id !== 'ahead'), w = id => (short ? null : seg(id));
+  const pod = podAs === 'morning' || podAs === 'evening' ? podAs : programme === 'briefing' ? partOfDay(date.hour) : 'evening', seg = id => SEGMENTS.find(s => s.id === id), day = SEGMENTS.filter(s => !s.evening && !s.wide && s.id !== 'ahead'), w = id => (short ? null : seg(id));
   day.splice(day.findIndex(s => s.id === 'rates') + 1, 0, ...[w('curve')].filter(Boolean));      // wide: the Treasury curve straight after rates
   day.splice(day.findIndex(s => s.id === 'vol'), 0, ...[w('cross'), w('stress')].filter(Boolean));      // wide: cross-asset before volatility
   // morning: the outlook first; afternoon: the outlook last; evening: the day and its releases first, tomorrow last, no outlook (the day is done)
@@ -361,7 +392,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     const headText = head ? [head.say, head.means].filter(Boolean).join(' ') : '';
     for (const x of sentences(headText)) said.add(norm(x));
     list.forEach((s, i) => { s.num = i + 1; s.total = total; });
-    items.push({ kind: 'open', title: guide ? 'THE VISUAL GUIDE' : `THE ${part.toUpperCase()} BRIEFING`, view: 'globe', cam: { region: 'world' }, hold: short ? 3 : 4.2, text: guide ? GUIDE_OPEN : `${greeting(date.hour)}. This is Helix, with the ${part} briefing for ${date.spoken}.` });
+    items.push({ kind: 'open', title: guide ? 'THE VISUAL GUIDE' : programme === 'briefing' ? `THE ${part.toUpperCase()} BRIEFING` : `THE ${PROGRAMMES[programme].toUpperCase()}`, view: 'globe', cam: { region: 'world' }, hold: short ? 3 : 4.2, text: guide ? GUIDE_OPEN : openerLine({ date, part, programme, head, release, when }) });
     // THE HEADLINE (the newsletter's one-line story), straight after the title: the market it names on its hourly chart behind the card (the daily feed runs a day behind, so yesterday's big day would be missing)
     if (head) items.push({ kind: 'headline', head, title: 'The Headline', view: head.key ? 'session' : 'globe', cam: head.key ? { chart: head.key, tf: '1h', back: head.day && pod !== 'evening' ? 1 : 0 } : { region: 'world' }, hold: 0.9, text: headText });
     lead.forEach((x, i) => items.push({ kind: 'lead', idx: i, n: lead.length, lead: x, title: 'The Lead', view: 'globe', cam: x.key ? { focus: x.key } : { region: 'world' }, hold: 0.6, text: lines[i] }));
@@ -382,14 +413,14 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
         if (text) items.push({ kind: 'scene', seg, scene: sc, title: sc.title, view: sc.view, cam: sc.cam, hold: 0.65, text, figure });
       });
     }
-    items.push({ kind: 'close', seg: { id: 'signoff', name: 'Sign-off', num: total, total }, title: 'Sign-off', view: 'globe', cam: { region: 'world' }, hold: 2.5, text: guide ? GUIDE_CLOSE : SIGNOFF_TEXT, date });
+    items.push({ kind: 'close', seg: { id: 'signoff', name: 'Sign-off', num: total, total }, title: 'Sign-off', view: 'globe', cam: { region: 'world' }, hold: 2.5, text: guide ? GUIDE_CLOSE : signoffLine({ date, part, programme }), date });
     return { items, total, totalSec: Math.round(items.reduce((a, x) => a + (x.text ? readSeconds(x.text) : 0) + (x.hold ?? 0), 0)) };
   };
   let segsUsed = segs, P = build(segsUsed.map(x => ({ ...x })));
   const budget = Math.max(60, Math.min(170, +budgetSec || SHORT_BUDGET_SEC)) * Math.max(0.75, Math.min(1.5, +rate || 1));      // the budget is in seconds at normal speed: a faster voice fits more of the programme in the same 2.5 minutes
   if (short) for (const id of (pod === 'evening' ? SHORT_DROP_EVENING : SHORT_DROP)) { if (P.totalSec <= budget) break; if (segsUsed.some(x => x.id === id)) { segsUsed = segsUsed.filter(x => x.id !== id); P = build(segsUsed.map(x => ({ ...x }))); } }
   const { items, total, totalSec } = P;
-  return { guide, date, lead, segments: segsUsed.map((s, i) => ({ id: s.id, name: s.name, num: i + 1, total, scenes: s.scenes.map(x => x.id) })), items, ticker: tickerItems(inp.rows ?? inp.movers ?? []), totalSec };
+  return { guide, programme, date, lead, segments: segsUsed.map((s, i) => ({ id: s.id, name: s.name, num: i + 1, total, scenes: s.scenes.map(x => x.id) })), items, ticker: tickerItems(inp.rows ?? inp.movers ?? []), totalSec };
 }
 
 /** How long an item holds on screen with the voice off, at a speed: reading time plus its card hold. */
