@@ -400,7 +400,10 @@ const fmtScore = s => (s == null || !Number.isFinite(s) ? '–' : s > 0 ? `▲ +
 const signedScore = s => (s == null || !Number.isFinite(s) ? '–' : s > 0 ? `+${s.toFixed(1)}` : s < 0 ? `−${Math.abs(s).toFixed(1)}` : '0.0');
 const scoreText = (s, word) => (s == null || !Number.isFinite(s) ? 'no data' : `${fmtScore(s)} · ${word}`);
 const assetText = c => scoreText(assetScore(c), assetWord(c));
-const ccyText = bias => scoreText(ccyScore(bias), ccyWord(bias));
+// the currency read is shown on the book's own −2..+2 scale everywhere (review 2026-11-27: the strip read +5.0 / −2.5 while the panel read +2 / −1)
+const fmtBias = b => (b == null || !Number.isFinite(b) ? '–' : b > 0 ? `▲ +${b}` : b < 0 ? `▼ −${Math.abs(b)}` : '● 0');
+const BIAS_NOTE = 'The currency read runs −2 to +2, the book\'s own scale: + bullish, − bearish, 0 no view, – no data.';
+const ccyText = bias => { const b = numOrNull(bias); return b == null ? 'no data' : `${fmtBias(b)} · ${ccyWord(b)}`; };
 const grade = c => { const d = Math.abs(DIR[c?.rating] ?? 0); if (!d || !(c.size > 0)) return null; return d === 2 && c.conviction === 'high' ? 'A+' : c.conviction === 'high' ? 'A' : c.conviction === 'medium' ? (d === 2 ? 'A-' : 'B+') : 'B'; };
 const gradeLabel = c => { const g = grade(c); return g ? `${g} conviction` : null; };
 // SCORE-DISPLAY END
@@ -554,8 +557,8 @@ async function drawMap(el, mode = 'bias') {
     .attr('style', d => (mode === 'cb' ? (ZONE[d.id] ? `fill:${fill(ZONE[d.id])}` : null) : landStyle(d, mode === 'bias' ? (el.id === 'heromap' ? HLAYER : 'bias') : mode)))
     .on('mousemove', (e, d) => { if (mode !== 'cb') return landTip(e, d, mode === 'bias' ? (el.id === 'heromap' ? HLAYER : 'bias') : mode); const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">${mode === 'cb' && cb[c] ? `${esc(cb[c].regime)} · hawkishness ${cb[c].score}` : v.bias == null ? 'no currency ruling (no data)' : `bias ${v.bias > 0 ? '+' : ''}${v.bias} · ${ccyText(v.bias)}`}</span><br><span class="muted">${esc(firstSentence(v.why).slice(0, 140))}</span>`); })
     .on('mouseleave', () => tip(null)).on('click', (e, d) => { tip(null); if (el.id === 'heromap') return openCountry(d.id); if (ZONE[d.id]) ccyModal(ZONE[d.id]); });
-  // the book's main trade: strongest against weakest, along the great circle
-  if (mode === 'bias' && D.ranking?.length >= 2) {
+  // the book's main trade: strongest against weakest, along the great circle (only when both ends are single currencies, not a tie)
+  if (mode === 'bias' && D.ranking?.length >= 2 && rankEnds().single) {
     const a = CB_GEO[D.ranking[0]], b = CB_GEO[D.ranking.at(-1)];
     if (a && b) svg.append('path').attr('class', 'arc').attr('d', path({ type: 'LineString', coordinates: [a, b] }));
   }
@@ -574,7 +577,7 @@ async function drawMap(el, mode = 'bias') {
     const sm = W < 600 ? 0.6 : 1, [lx, ly] = ({ USD: [-16, 20], CAD: [-16, -16], GBP: [-34, -26], EUR: [30, -30], CHF: [30, 26], JPY: W < 600 ? [-14, -12] : [14, -8], AUD: [-14, -6], NZD: [-16, 18] }[c]).map(v => v * sm), left = lx < 0;
     if (Math.abs(lx) > 20 || Math.abs(ly) > 18) n.append('line').attr('x1', 0).attr('y1', 0).attr('x2', lx * 0.8).attr('y2', ly * 0.8).attr('stroke', 'rgba(var(--txrgb),.35)').attr('stroke-width', 1);
     n.append('text').attr('class', 'lab').attr('x', lx).attr('y', ly).attr('text-anchor', left ? 'end' : 'start').text(`${BANKSHORT[c]} ${pol(c) ? pct(pol(c).rate) : ''}`);
-    if (mode === 'bias' && W >= 600) n.append('text').attr('class', 'lab2').attr('x', lx).attr('y', ly + 12).attr('text-anchor', left ? 'end' : 'start').attr('fill', col).text(`${c} ${D.ccy[c]?.bias == null ? '– no data' : fmtScore(ccyScore(D.ccy[c].bias))}`);
+    if (mode === 'bias' && W >= 600) n.append('text').attr('class', 'lab2').attr('x', lx).attr('y', ly + 12).attr('text-anchor', left ? 'end' : 'start').attr('fill', col).text(`${c} ${D.ccy[c]?.bias == null ? '– no data' : fmtBias(numOrNull(D.ccy[c].bias))}`);
   }
   el.innerHTML = ''; el.append(svg.node());
 }
@@ -603,7 +606,7 @@ async function drawGlobe(el) {
     .on('mousemove', (e, d) => { return landTip(e, d, HLAYER); const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">${v.bias == null ? 'no data' : `bias ${v.bias} · ${ccyText(v.bias)}`}</span>`); })
     .on('mouseleave', () => tip(null)).on('click', (e, d) => { tip(null); if (el.id === 'heromap') return openCountry(d.id); if (ZONE[d.id]) ccyModal(ZONE[d.id]); });
   const arcEl = svg.append('path').attr('class', 'arc');
-  const a = CB_GEO[D.ranking?.[0]], b = CB_GEO[D.ranking?.at(-1)];
+  const single = rankEnds().single, a = single ? CB_GEO[D.ranking?.[0]] : null, b = single ? CB_GEO[D.ranking?.at(-1)] : null;
   const dots = svg.append('g');
   const nodes = CCYS.map(c => { const bb = D.ccy[c]?.bias ?? 0, col = bb > 0 ? 'var(--up)' : bb < 0 ? 'var(--dn)' : 'var(--pur2)', g = dots.append('g').attr('class', 'cb').style('cursor', 'pointer').on('click', () => dotOpen(el, c));
     g.append('circle').attr('class', 'pulse').attr('r', 5).attr('fill', col).attr('opacity', .6); g.append('circle').attr('r', 5).attr('fill', col).attr('filter', 'url(#gglow)'); g.append('circle').attr('r', 1.8).attr('fill', 'var(--tx)');
@@ -638,9 +641,10 @@ ${arc(Math.PI - 0.02, 0.02, 'url(#rg)')}<line x1="${cx}" y1="${cy}" x2="${nx}" y
 <text x="16" y="${H - 2}" fill="var(--dn)" font-family="JetBrains Mono" font-size="10" letter-spacing="1">RISK-OFF</text><text x="${W - 16}" y="${H - 2}" text-anchor="end" fill="var(--up)" font-family="JetBrains Mono" font-size="10" letter-spacing="1">RISK-ON</text></svg>`;
 }
 // a score ring, signed −5..+5: filled by |score| / 5, coloured by direction; "–" when there is no data
-function ring(score, size = 58, word = '') {
-  const r = size / 2 - 5, C = 2 * Math.PI * r, none = score == null || !Number.isFinite(score), col = none ? 'var(--flat)' : score > 0.2 ? 'var(--up)' : score < -0.2 ? 'var(--dn)' : 'var(--flat)', fr = none ? 0 : Math.min(1, Math.abs(score) / 5);
-  return `<svg class="ring" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${none ? 'no data' : `score ${signedScore(score)} of plus or minus 5${word ? ', ' + word : ''}`}"><title>${none ? 'no data' : `${fmtScore(score)}${word ? ' · ' + word : ''}`} (−5..+5)</title><circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="var(--bg3)" stroke-width="5" fill="none"/><circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="${col}" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="${C * fr} ${C}" transform="rotate(-90 ${size / 2} ${size / 2})" style="filter:drop-shadow(0 0 4px ${col})"/><text x="50%" y="53%" text-anchor="middle" dominant-baseline="middle" fill="${none ? 'var(--tx3)' : col}" font-family="JetBrains Mono" font-weight="700" font-size="${size * (none ? 0.3 : 0.25)}">${none ? '–' : signedScore(score)}</text></svg>`;
+function ring(score, size = 58, word = '', scale = 5) {
+  const r = size / 2 - 5, C = 2 * Math.PI * r, none = score == null || !Number.isFinite(score), col = none ? 'var(--flat)' : score > 0.2 ? 'var(--up)' : score < -0.2 ? 'var(--dn)' : 'var(--flat)', fr = none ? 0 : Math.min(1, Math.abs(score) / scale);
+  const sTxt = v => (scale === 5 ? signedScore(v) : v > 0 ? `+${v}` : v < 0 ? `−${Math.abs(v)}` : '0'), fTxt = v => (scale === 5 ? fmtScore(v) : fmtBias(v));
+  return `<svg class="ring" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${none ? 'no data' : `score ${sTxt(score)} of plus or minus ${scale}${word ? ', ' + word : ''}`}"><title>${none ? 'no data' : `${fTxt(score)}${word ? ' · ' + word : ''}`} (−${scale}..+${scale})</title><circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="var(--bg3)" stroke-width="5" fill="none"/><circle cx="${size / 2}" cy="${size / 2}" r="${r}" stroke="${col}" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="${C * fr} ${C}" transform="rotate(-90 ${size / 2} ${size / 2})" style="filter:drop-shadow(0 0 4px ${col})"/><text x="50%" y="53%" text-anchor="middle" dominant-baseline="middle" fill="${none ? 'var(--tx3)' : col}" font-family="JetBrains Mono" font-weight="700" font-size="${size * (none ? 0.3 : 0.25)}">${none ? '–' : sTxt(score)}</text></svg>`;
 }
 // sparkline: the last sessions' H1 closes with today's open and p50 lines
 const BARS = new Map();
@@ -688,6 +692,17 @@ function exposureChart() {
   const cs = CCYS.filter(c => x.after[c] != null || x.before?.[c] != null), m = Math.max(x.cap ?? 4, ...cs.map(c => Math.abs(x.before?.[c] ?? 0)), 1), w = v => (Math.abs(v) / m) * 50;
   return `<div class="card"><div class="ch"><span class="lbl">Net currency exposure</span><span class="r muted">after the ±${x.cap} cap · ghost = before</span></div>${cs.map(c => { const a = x.after[c] ?? 0, b = x.before?.[c] ?? 0;
     return `<div style="display:grid;grid-template-columns:44px 1fr 52px;gap:8px;align-items:center;margin:5px 0"><b class="mono">${c}</b><div style="position:relative;height:14px;background:var(--bg3);border-radius:4px"><i style="position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--line2)"></i>${b !== a ? `<i style="position:absolute;top:3px;height:8px;border-radius:3px;${b >= 0 ? `left:50%` : `right:50%`};width:${w(b)}%;border:1px dashed ${b >= 0 ? 'var(--up)' : 'var(--dn)'};opacity:.6"></i>` : ''}<i style="position:absolute;top:2px;height:10px;border-radius:3px;${a >= 0 ? `left:50%` : `right:50%`};width:${w(a)}%;background:${a >= 0 ? 'var(--up)' : 'var(--dn)'};box-shadow:0 0 8px ${a >= 0 ? 'rgba(var(--uprgb),.5)' : 'rgba(var(--dnrgb),.5)'}"></i>${[-1, 1].map(sg => `<i style="position:absolute;top:-2px;bottom:-2px;left:${50 + sg * (x.cap / m) * 50}%;width:1px;background:var(--gold);opacity:.6"></i>`).join('')}</div><span class="mono ${dirCls(a)}" style="font-size:12px"${vsView(c, a) ? ` title="${esc(vsView(c, a))}"` : ''}>${f(a, 1)}${vsView(c, a) ? ' <b style="color:var(--gold)">⚠</b>' : ''}</span></div>`; }).join('')}${cs.some(c => vsView(c, x.after[c] ?? 0)) ? `<p class="muted" style="font-size:12px;margin:6px 0 0">⚠ against the currency view: ${esc(cs.filter(c => vsView(c, x.after[c] ?? 0)).map(c => vsView(c, x.after[c] ?? 0)).join('; '))}.</p>` : ''}</div>`;
+}
+// the ends of the Currency Manager's ranking with ties said as ties (review 2026-11-27: "USD strongest, NZD weakest" while EUR, GBP, JPY, AUD,
+// NZD and CAD all sat at -1). { text, single }: single = one strongest and one weakest, so a strongest-to-weakest arc means something.
+function rankEnds() {
+  const r = D.ranking ?? [], b = c => Number(D.ccy?.[c]?.bias), and = xs => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
+  if (r.length < 2) return { text: '', single: false };
+  if (!r.every(c => Number.isFinite(b(c)))) return { text: `${r[0]} strongest, ${r.at(-1)} weakest`, single: true };
+  const hi = Math.max(...r.map(b)), lo = Math.min(...r.map(b)), top = r.filter(c => b(c) === hi), bot = r.filter(c => b(c) === lo);
+  if (hi === lo) return { text: 'No currency ranked above another', single: false };
+  const t = top.length > 1 ? `${and(top)} tie as strongest` : `${top[0]} strongest`, w = bot.length > 1 ? `${and(bot)} tie as weakest` : `${bot[0]} weakest`;
+  return { text: top.length > 1 || bot.length > 1 ? `${t}; ${w}` : `${t}, ${w}`, single: top.length === 1 && bot.length === 1 };
 }
 // net exposure that runs against the currency ruling (net long a currency the ruling calls bearish, or short one it calls bullish), or ''
 function vsView(c, net) { const b = Number(D.ccy?.[c]?.bias); return Number.isFinite(b) && b !== 0 && Math.abs(net) >= 0.1 && Math.sign(net) !== Math.sign(b) ? `net ${net > 0 ? 'long' : 'short'} ${c} ${f(net, 1)} while the currency ruling is ${b > 0 ? 'bullish' : 'bearish'} (${f(b, 0)})` : ''; }
@@ -788,15 +803,22 @@ function enrichAll() { if (!E) return; try { globalThis.redrawHero?.(); stressSt
 const spk = (vals, w = 120, h = 28, col = 'var(--gold)') => { const v = (vals ?? []).filter(Number.isFinite); if (v.length < 2) return ''; const lo = Math.min(...v), hi = Math.max(...v), x = i => (i / (v.length - 1)) * w, y = a => h - 2 - ((a - lo) / ((hi - lo) || 1)) * (h - 4);
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><path d="${v.map((a, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(a).toFixed(1)}`).join('')}" fill="none" stroke="${col}" stroke-width="1.5"/></svg>`; };
 const sgn = (x, d = 2) => (x == null || !Number.isFinite(+x) ? '–' : `${x > 0 ? '+' : ''}${(+x).toFixed(d)}`);
+// a risk flag's number with its unit (review 2026-11-27: "Credit widening fast · 25" with no unit; an off flag read as a fact)
+const cap1 = s => String(s ?? '').replace(/^./, c => c.toUpperCase());
+function flagValue(f) {
+  const v = Number(f.value); if (!Number.isFinite(v)) return String(f.value);
+  const U = { vix_level: x => `VIX ${x}`, vix_term: x => `VIX/VIX3M ${x}`, hy_speed: x => `${x > 0 ? '+' : ''}${x}bp junk spread in 5 days`, jpy_bid: x => `USD/JPY ${x > 0 ? '+' : ''}${x}% in 5 days`, stock_bond_corr: x => `stock-bond correlation ${x}`, evz_stress: x => `EUR/USD implied vol ${x}%` };
+  return U[f.key] ? U[f.key](+v.toFixed(2)) : String(f.value);
+}
 function enrichOverview() {
   const el = $('xo'); if (!el) return;
   const rf = E['risk-flags'], em = E['em-gauges'];
   const LV = { CALM: 'up', CAUTION: 'gold', RISK_OFF: 'dn' }, EL = { calm: 'up', 'risk-on': 'up', watch: 'gold', stress: 'dn' };
   el.innerHTML = `<div class="grid g2" style="margin-top:14px">
 ${rf?.ok ? `<div class="sfc" data-surface="panel.ov.riskstate"><div class="card"><div class="ch"><span class="lbl">Risk state</span><span class="r"><span class="chip ${LV[rf.level] ?? ''}">${esc(String(rf.level).replace('_', ' ').toLowerCase())}</span> <span class="muted">${rf.active}/${rf.available} flags on</span></span></div>
-<div class="drv">${(rf.flags ?? []).map(f => `<span class="chip ${f.on ? 'dn' : ''}" title="${esc(f.detail ?? '')}">${esc(f.label)}${f.value != null ? ` · ${esc(String(f.value))}` : ''}</span>`).join(' ')}</div>${rf.note ? `<p class="muted" style="font-size:12px">${esc(rf.note)}</p>` : ''}</div></div>` : ''}
+<div class="drv">${(rf.flags ?? []).map(f => `<span class="chip ${f.on === true ? 'dn' : ''}" style="${f.on === true ? '' : 'opacity:.6'}" title="${esc(`${f.on === true ? 'ON' : f.on === false ? 'Off' : 'Not read'}: ${f.detail ?? ''}`)}"><b>${f.on === true ? 'ON' : f.on === false ? 'off' : 'not read'}</b> · ${esc(f.label)}${f.value != null ? ` · ${esc(flagValue(f))}` : ''}</span>`).join(' ')}</div>${rf.note ? `<p class="muted" style="font-size:12px">${esc(rf.note)}</p>` : ''}</div></div>` : ''}
 ${em?.ok ? `<div class="sfc" data-surface="panel.ov.em"><div class="card"><div class="ch"><span class="lbl">Emerging markets · read, not traded</span>${em.stress ? `<span class="r"><span class="chip ${EL[em.stress.level] ?? ''}">${esc(em.stress.level)}</span> <span class="muted mono">z ${sgn(em.stress.z)}</span></span>` : ''}</div>
-${em.stress ? `<p style="margin:2px 0 8px">${esc(em.stress.read)}.</p>` : ''}<div class="scroll"><table><tbody>${Object.values(em.pairs).filter(p => p.ok).map(p => `<tr title="${esc(p.role)}"><td class="mono"><b>${esc(p.label)}</b></td><td>${spk(p.spark)}</td><td class="n mono ${p.chg5d > 0 ? 'dn' : 'up'}">${sgn(p.chg5d)}% 5d</td><td class="n mono">z ${sgn(p.z5)}</td>${globalThis.liveEmCell?.(p.id) ?? ''}</tr>`).join('')}</tbody></table></div><p class="muted" style="font-size:12px">USD/EM up (red) = the EM currency weaker. MXN and ZAR are the carry gauges; CNH leads AUD and NZD.</p></div></div>` : ''}
+${em.stress ? `<p style="margin:2px 0 8px">${esc(cap1(em.stress.read))} <span class="muted" style="font-size:12px">(${esc(em.stress.horizon ?? '5-day move, daily closes')}${em.stress.asOf ? ` to ${esc(em.stress.asOf)}` : ''}; the last column is today, live)</span>.</p>` : ''}<div class="scroll"><table><tbody>${Object.values(em.pairs).filter(p => p.ok).map(p => `<tr title="${esc(p.role)}"><td class="mono"><b>${esc(p.label)}</b></td><td>${spk(p.spark)}</td><td class="n mono ${p.chg5d > 0 ? 'dn' : 'up'}">${sgn(p.chg5d)}% 5d</td><td class="n mono">z ${sgn(p.z5)}</td>${globalThis.liveEmCell?.(p.id) ?? ''}</tr>`).join('')}</tbody></table></div><p class="muted" style="font-size:12px">USD/EM up (red) = the EM currency weaker. MXN and ZAR are the carry gauges; CNH leads AUD and NZD.</p></div></div>` : ''}
 </div><div class="sfc" data-surface="panel.ov.alerts">${alertsHtml()}</div>${globalThis.overviewMoreHtml?.() ?? ''}`;
   globalThis.ccyStrengthMount?.();
   globalThis.liveLayerMount?.(() => D.ccy);
@@ -808,7 +830,7 @@ function stressStrip() {
   const C = { ok: 'up', watch: 'gold', stress: 'dn' }, O = { calm: 'up', watch: 'gold', stress: 'dn' };
   const nRed = w.tiles.filter(t => t.level === 'stress').length, nAmb = w.tiles.filter(t => t.level === 'watch').length;
   let open = false; try { open = localStorage.getItem('deskStressOpen') === '1'; } catch { /* private window: folded */ }
-  el.innerHTML = `<details class="card ws-acc" style="margin:0 0 12px;padding:10px 14px"${open ? ' open' : ''}><summary><span class="lbl" style="margin-right:4px">World stress</span><span class="chip ${O[w.overall] ?? ''}" style="font-weight:700">${esc(w.overall ?? '–')}</span><span class="muted" style="font-size:12px">${nRed} red · ${nAmb} amber · ${w.tiles.length - nRed - nAmb} green</span></summary><div class="ws-body">${w.tiles.map(t => `<span class="chip ${C[t.level] ?? ''}" title="${esc(t.detail)}">${esc(t.label)}${t.detail ? ` <span class="muted" style="font-weight:400">${esc(t.detail)}</span>` : ''}</span>`).join('')}</div></details>`;
+  el.innerHTML = `<details class="card ws-acc" style="margin:0 0 12px;padding:10px 14px"${open ? ' open' : ''}><summary><span class="lbl" style="margin-right:4px">World stress</span><span class="chip ${O[w.overall] ?? ''}" style="font-weight:700">${esc(w.overall ?? '–')}</span><span class="muted" style="font-size:12px">${w.tiles.length} areas: ${nRed} red · ${nAmb} amber · ${w.tiles.length - nRed - nAmb} green</span></summary><div class="ws-body">${w.tiles.map(t => `<span class="chip ${C[t.level] ?? ''}" title="${esc(t.detail)}">${esc(t.label)}${t.detail ? ` <span class="muted" style="font-weight:400">${esc(t.detail)}</span>` : ''}</span>`).join('')}</div></details>`;
   el.querySelector('details').addEventListener('toggle', e => { try { localStorage.setItem('deskStressOpen', e.target.open ? '1' : '0'); } catch { /* fine */ } });
 }
 // §9ag boards on the Macro tab: global yields, credit, liquidity, term premium, cross-currency basis.
@@ -1053,7 +1075,7 @@ ${v.flip?.length ? `<details><summary>What would flip it</summary><ul>${v.flip.m
 }
 function strengthStrip() {
   return `<div class="card"><div class="ch"><span class="lbl">Currency strength · analyst read, daily</span><span class="r muted">strongest → weakest, the Currency Manager's ruling · tap for the card</span></div><div class="strength">${D.ranking.map(c => { const b = numOrNull(D.ccy[c]?.bias), s = ccyScore(b);
-    return `<div class="sbox" tabindex="0" data-ccy="${c}" title="${esc(ccyText(b))} (−5..+5)"><b>${FLAG[c] ?? ''} ${c}</b><div class="vbar"><i style="height:${s == null ? 2 : Math.max(6, Math.abs(s) * 8)}px;background:${b > 0 ? 'var(--up)' : b < 0 ? 'var(--dn)' : 'var(--flat)'}"></i></div><div class="v ${dirCls(b)}">${fmtScore(s)}</div><span class="muted">${s == null ? 'no data' : ccyWord(b)}</span></div>`; }).join('')}</div><p class="muted" style="font-size:11.5px;margin:6px 0 0">${esc(SCALE_NOTE)}</p></div>`;
+    return `<div class="sbox" tabindex="0" data-ccy="${c}" title="${esc(ccyText(b))} (−5..+5)"><b>${FLAG[c] ?? ''} ${c}</b><div class="vbar"><i style="height:${s == null ? 2 : Math.max(6, Math.abs(s) * 8)}px;background:${b > 0 ? 'var(--up)' : b < 0 ? 'var(--dn)' : 'var(--flat)'}"></i></div><div class="v ${dirCls(b)}">${fmtBias(b)}</div><span class="muted">${s == null ? 'no data' : ccyWord(b)}</span></div>`; }).join('')}</div><p class="muted" style="font-size:11.5px;margin:6px 0 0">${esc(BIAS_NOTE)}</p></div>`;
 }
 function playbookCard(n, c) {
   const L = c.levels, d = Math.sign(DIR[c.rating] ?? 0);
@@ -1080,7 +1102,9 @@ function releasesCard() {
 }
 // the weekly strategist's view (agent 19): the week's ranking against today's, themes, key dates, scenarios
 function weekSection() {
-  const w = D.wk; if (!w?.ok) return '';
+  const w = D.wk; if (!w) return '';
+  // no week view (the strategist writes on Sunday afternoons): say so instead of an empty slot (review 2026-11-27)
+  if (!w.ok) return `<div class="sec"><h2>This week</h2><span class="lbl">the weekly strategist</span></div><div class="card"><p class="muted" style="margin:0">No week view yet${w.error ? `: ${esc(String(w.error).replace(/^no week view yet:?\s*/i, ''))}` : ''}.</p></div>`;
   const v = w.view, today = D.ranking ?? [];
   const pos = c => today.indexOf(c), moved = c => (pos(c) < 0 ? 0 : v.ranking.indexOf(c) - pos(c));
   return `<div class="sec"><h2>This week</h2><span class="lbl">the weekly strategist · ${esc(w.week)} · ${esc(w.label)}</span></div>
@@ -1110,7 +1134,9 @@ ${sw ? (tied.length > 1 ? `<p style="margin:4px 0 10px"><b>${esc(top)}</b> stron
 <p class="muted" style="font-size:12px">Row minus column: the conviction-weighted bias gap. Green = buy the row currency against the column.</p></div></div></div>`;
 }
 function dayShape() {
-  const d = D.dfc; if (!d?.ok) return '';
+  const d = D.dfc; if (!d) return '';
+  // no forecast for the day: the block stays folded to one line that says why (review 2026-11-27: the slot sat empty with no reason)
+  if (!d.ok || !d.forecast) return `<p class="muted" style="font-size:12px;margin:8px 0">The day's shape: no day forecast for ${esc(d.date ?? 'today')}${d.record?.days ? '' : ' (none written yet)'}. ${esc(String(d.error ?? '').replace(/^no day forecast for this date:?\s*/i, 'It ').replace(/^It it /, 'It ').replace(/([^.])$/, '$1.'))}</p>`;
   const f = d.forecast, res = d.result?.score?.rows ? Object.fromEntries(d.result.score.rows.map(r => [r.inst, r])) : {};
   const ICON = { narrow: '▭ narrow', normal: '▬ normal', wide: '█ wide', trend: '↗ trend', range: '↔ range', london: '🇬🇧 London', ny: '🇺🇸 New York', split: '⇄ split' };
   const cell = (n, k) => { const v = f.markets[n]?.[k]; if (!v) return '<td class="muted">–</td>'; const r = res[n]?.[k]; return `<td><span class="chip ${r ? (r.hit ? 'up' : 'dn') : ''}">${esc(ICON[v] ?? v)}</span>${r && !r.hit ? ` <span class="muted" style="font-size:11px">was ${esc(r.was)}</span>` : ''}</td>`; };
@@ -1210,7 +1236,7 @@ function overviewNoBook() {
 function overview() {
   if (!D.run?.ok) { overviewNoBook(); return; }
   const live = Object.entries(D.cards).filter(([, c]) => DIR[c.rating] && c.size > 0).sort((a, b) => b[1].size * (CONV[b[1].conviction] ?? .8) * Math.abs(DIR[b[1].rating]) - a[1].size * (CONV[a[1].conviction] ?? .8) * Math.abs(DIR[a[1].rating])).slice(0, 6);
-  $('overview').innerHTML = `<div data-lv-favs></div><div data-lv-strip></div><div data-lv-against></div><div data-lv-speeds></div><div class="sfc" data-surface="panel.ov.hero">${heroCard(`The desk's world · ${esc(D.run.date)}`, `${esc(D.ranking[0])} strongest, ${esc(D.ranking.at(-1))} weakest`, true)}</div>
+  $('overview').innerHTML = `<div data-lv-favs></div><div data-lv-strip></div><div data-lv-against></div><div data-lv-speeds></div><div class="sfc" data-surface="panel.ov.hero">${heroCard(`The desk's world · ${esc(D.run.date)}`, esc(rankEnds().text), true)}</div>
 <div class="sfc" data-surface="panel.ov.book">${D.run.head.book.headline ? `<div class="card" style="margin-bottom:14px"><span class="lbl">Today's book</span><div class="thesis" style="font-size:16px">${esc(D.run.head.book.headline)}</div></div>` : ''}</div><div class="sfc" data-surface="panel.ov.bookintel"><div id="bkintel" style="margin-bottom:14px"></div></div>
 <div class="grid g2"><div class="sfc" data-surface="panel.ov.regime">${regimeCard()}</div><div class="grid" style="align-content:start"><div class="sfc" data-surface="panel.ov.strength">${strengthStrip()}</div><div class="sfc" data-surface="panel.ov.engine"><div id="beov"></div></div><div class="sfc" data-surface="panel.ov.exposure">${sh(exposureChart)}</div><div class="sfc" data-surface="panel.ov.record">${sh(recordCard)}</div></div></div>
 <div class="sfc" data-surface="panel.ov.week">${sh(weekSection)}</div><div class="sfc" data-surface="panel.ov.bestpairs">${sh(bestPairs)}</div><div id="xo"></div><div class="sfc" data-surface="panel.ov.dayshape">${dayShape()}</div>
@@ -1272,10 +1298,10 @@ function rateBars(c) {
   return `<div style="flex:1;min-width:220px">${items.map(([l, v]) => `<div style="display:grid;grid-template-columns:64px 1fr 56px;gap:8px;align-items:center;margin:4px 0"><span class="lbl">${l}</span><div style="position:relative;height:10px;background:var(--bg3);border-radius:4px"><i style="position:absolute;top:0;bottom:0;left:${v >= 0 ? 0 : 0}%;width:${Math.abs(v) / m * 100}%;border-radius:4px;background:${l === 'Real 10y' ? (v >= 0 ? 'var(--up)' : 'var(--dn)') : 'linear-gradient(90deg,var(--pur),var(--gold))'}"></i></div><span class="mono" style="font-size:12px">${v.toFixed(2)}%</span></div>`).join('')}</div>`;
 }
 function ccyModal(c) {
-  const v = D.ccy[c] ?? {}, s = ccyScore(v.bias), cb = D.sc?.cbSentiment?.[c], rate = D.rd?.byCcy?.[c], real = D.ry?.byCcy?.[c], exp = D.run?.head?.book?.exposure;
+  const v = D.ccy[c] ?? {}, s = numOrNull(v.bias), cb = D.sc?.cbSentiment?.[c], rate = D.rd?.byCcy?.[c], real = D.ry?.byCcy?.[c], exp = D.run?.head?.book?.exposure;
   const drv = ccyDrivers(c), best = bestExpressions(c);
   openModal(`<div class="ch"><span style="font-size:28px">${FLAG[c] ?? ''}</span><div><h3 style="font-size:20px">${c}</h3><span class="muted">${BANK[c] ?? ''}</span></div>${biasChip(v.bias)}<button class="x" aria-label="Close">✕</button></div>
-<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><div style="text-align:center">${ring(s, 84, ccyWord(v.bias))}<div class="muted" style="font-size:11px">${esc(ccyText(v.bias))}</div></div>${rateBars(c)}</div>
+<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><div style="text-align:center">${ring(s, 84, ccyWord(v.bias), 2)}<div class="muted" style="font-size:11px">${esc(ccyText(v.bias))}</div></div>${rateBars(c)}</div>
 <div class="synth">${esc(v.why ?? (['NOK', 'SEK'].includes(c) ? 'Traded, not debated: the desk reads NOK and SEK pairs from the EUR or USD view, the central bank, oil (NOK) and the risk tone.' : 'No ruling.'))}</div>
 <div class="drv">${cb ? `<span class="chip ${cb.regime === 'HAWKISH' ? 'gold' : cb.regime === 'DOVISH' ? 'pur' : ''}">${esc(cb.regime)} · hawk ${cb.score}</span><span>last meeting ${esc(cb.meetingDate)}</span>` : ''}${pol(c) ? `<span title="${esc(pol(c).source)}">policy ${pct(pol(c).rate)} · ${esc(pol(c).asOf)}</span>` : ''}${rate ? `<span>3m rate ${rate.latestRate}%</span>` : ''}${real ? `<span>real 10y ${f(real.latestReal)}%</span>` : ''}${exp?.after?.[c] != null ? `<span>book exposure ${f(exp.after[c])}${exp.before?.[c] !== exp.after?.[c] ? ` (was ${f(exp.before[c])})` : ''}</span>` : ''}<span title="The Currency Manager's conviction in this currency's bias (not the global ruling's, not a card's)">currency conviction ${esc(v.conviction ?? '–')}</span></div>
 ${globalThis.cbToneStrip?.(E['cb-board'], c) ?? ''}
@@ -1291,7 +1317,7 @@ ${v.flip ? `<div class="sec"><h2>What would flip it</h2></div><p>${esc(v.flip)}<
 }
 function currencies() {
   $('ccy').innerHTML = `<div data-lv-strip></div><div class="card hero" style="margin-bottom:14px"><div class="hhead"><span class="lbl">Currency bias by country</span></div><div class="map" id="ccymap"></div></div><div class="grid g4">${D.ranking.map(c => { const v = D.ccy[c] ?? {}, cb = D.sc?.cbSentiment?.[c];
-    return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:22px">${FLAG[c] ?? ''}</span><h3>${c}</h3>${biasChip(v.bias)}<span class="r">${ring(ccyScore(v.bias), 52, ccyWord(v.bias))}${sf('panel.ccy.engine', beTry(() => beCcyRing(c)))}</span></div><div class="muted" style="margin-top:4px">${esc(firstSentence(v.why))}</div><div class="lv" data-lv-ccy="${c}"></div>${globalThis.ccyMacro?.miniHtml(c, D.sc) ?? ''}<div class="drv">${cb ? `<span>${BANKSHORT[c]} ${esc(cb.regime.toLowerCase())}</span>` : ''}${pol(c) ? `<span>policy ${pct(pol(c).rate)}</span>` : ''}</div></div>`; }).join('')}</div>`;
+    return `<div class="card click" tabindex="0" data-ccy="${c}"><div class="ch"><span style="font-size:22px">${FLAG[c] ?? ''}</span><h3>${c}</h3>${biasChip(v.bias)}<span class="r">${ring(numOrNull(v.bias), 52, ccyWord(v.bias), 2)}${sf('panel.ccy.engine', beTry(() => beCcyRing(c)))}</span></div><div class="muted" style="margin-top:4px">${esc(firstSentence(v.why))}</div><div class="lv" data-lv-ccy="${c}"></div>${globalThis.ccyMacro?.miniHtml(c, D.sc) ?? ''}<div class="drv">${cb ? `<span>${BANKSHORT[c]} ${esc(cb.regime.toLowerCase())}</span>` : ''}${pol(c) ? `<span>policy ${pct(pol(c).rate)}</span>` : ''}</div></div>`; }).join('')}</div>`;
   wire($('ccy'));
   drawMap($('ccymap'), 'bias');
   globalThis.liveLayer?.patch();

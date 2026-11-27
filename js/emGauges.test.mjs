@@ -14,4 +14,10 @@ t('EM stress from MXN and ZAR', () => {
   const r = emGauges({ USDMXN: shock, USDZAR: shock, USDCNH: calm });
   assert.equal(r.stress.level, 'stress'); assert.equal(r.pairs.USDTRY.ok, false); assert.equal(Object.keys(r.pairs).length, EM_PAIRS.length);
 });
+t('MXN and ZAR pointing opposite ways read as mixed, not as the carry pair weakening (27 Nov)', () => {
+  const up = series(300, i => (i < 295 ? 17 * (1 + 0.002 * Math.sin(i)) : 17 * 1.08)), dn = series(300, i => (i < 295 ? 17 * (1 + 0.002 * Math.sin(i)) : 17 * 0.985));
+  const r = emGauges({ USDMXN: up, USDZAR: dn });
+  assert.notEqual(r.stress.level, 'calm'); assert.match(r.stress.read, /^mixed: MXN weaker .* ZAR is firmer/);
+  assert.equal(r.stress.horizon, '5-day move, daily closes'); assert.equal(r.stress.asOf, 'd299');
+});
 console.log(`emGauges: ${n} tests passed`);

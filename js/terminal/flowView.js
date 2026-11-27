@@ -62,7 +62,7 @@ export function mountFlow({ doc = document, win = window } = {}) {
     try {
       const { D: d, E: ev } = page();
       const host = doc.createElement('div'); host.className = 'fl-host'; host.setAttribute('data-surface', SURFACES.glance);
-      const input = { run: d?.run ?? null, ws: ev?.['world-stress'] ?? null, ranking: d?.ranking ?? null, events: d?.ev ?? null, dqText: doc.getElementById('dqchip')?.textContent ?? '' };
+      const input = { run: d?.run ?? null, ws: ev?.['world-stress'] ?? null, ranking: d?.ranking ?? null, biases: d?.ccy ?? null, events: d?.ev ?? null, dqText: doc.getElementById('dqchip')?.textContent ?? '' };
       host.innerHTML = glanceHtml(buildGlance(input));   // first paint with what the page already holds
       sec.insertBefore(host, sec.firstChild);
       // then the two feeds the page does not hold: the price read of strength and the unusual ranking (both cached for minutes by their own routes)
