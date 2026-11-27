@@ -10,7 +10,7 @@
  *                        currencies' biases imply ("x of y cards agree with their currency bias").
  * Pure. Tested in js/terminal/bookView.test.mjs.
  */
-import { exposureRows, concentration, flagText, viewCheck, viewTally, liveCards, EQUITY } from './bookView.js';
+import { exposureRows, concentration, flagText, viewCheck, viewTally, liveCards, exposureAgainstView, EQUITY } from './bookView.js';
 import { worstRow } from './scenarioMap.js';
 import { groupOf } from '../deskPack.js';
 
@@ -38,20 +38,25 @@ export function bookIntel({ run, risk = null, matrix = null }) {
   const worstCards = worst ? Object.entries(worst.cells).filter(([, v]) => Number.isFinite(v) && v < 0).sort((a, b) => a[1] - b[1]).slice(0, 3).map(([n]) => n) : [];
   const eb = risk?.ok ? { bets: risk.effectiveBets, of: risk.cards, days: risk.days } : null;
   const cut = top ? (book.exposure?.cuts ?? []).find(c => c.ccy === top.key) : null;
+  const vsView = exposureAgainstView(book.exposure?.after ?? null, ccyView);
+  // the cards whose legs carry equal biases imply no direction, so they are out of the count; say so instead of a bare "6 of 6" out of 10
+  const noViewTxt = tally.noView.length ? `${tally.noView.length} ${tally.noView.every(n => /JPY$/.test(n)) ? `yen cross${tally.noView.length === 1 ? '' : 'es'}` : `FX card${tally.noView.length === 1 ? '' : 's'}`} ${tally.noView.length === 1 ? 'has' : 'have'} equal biases on both currencies` : '';
+  const biasWord = b => (b > 0 ? 'bullish' : 'bearish');
 
   const tiles = [
     { k: 'Global call', v: toneTxt(tone), s: conv ? `${conv} conviction · the Head's ruling` : "the Head's ruling", tone: /off/i.test(tone ?? '') ? 'dn' : /on/i.test(tone ?? '') ? 'up' : '' },
     { k: 'Largest net currency', v: top ? `${sideTxt(top.net, top.key)} ${n2(Math.abs(top.net))}` : '–', s: top ? `${top.cards.length} cards · units as the cap counts them${cap ? ` · cap ±${cap}` : ''}` : 'no FX exposure', tone: '' },
     { k: 'Effective bets', v: eb ? `${n2(eb.bets)} of ${eb.of}` : '–', s: eb ? `independent bets · ${eb.days} sessions' correlations` : (risk?.error ?? risk?.reason ?? 'risk read not loaded'), tone: '' },
     { k: 'Largest scenario loss', v: worst ? `${sgn(worst.total)} card-σ` : '–', s: worst ? `${worst.label}${worst.totalPct != null ? ` · ${sgn(worst.totalPct)}% of gross` : ''}` : matrix ? 'no listed scenario loses' : 'scenarios not loaded', tone: worst ? 'dn' : '' },
-    { k: 'Against currency view', v: tally.judged ? `${tally.against.length} of ${tally.judged}` : '–', s: tally.judged ? `FX cards · ${tally.agree} agree with their currencies' biases` : 'no FX card with a ruling on its legs', tone: tally.against.length ? 'gold' : '' },
+    { k: 'Against currency view', v: tally.judged ? `${tally.against.length} of ${tally.judged}` : '–', s: tally.judged ? `FX cards with a direction · ${tally.agree} agree with their currencies' biases${noViewTxt ? ` · ${noViewTxt}` : ''}` : 'no FX card with a ruling on its legs', tone: tally.against.length ? 'gold' : '' },
   ];
 
   const bullets = [];
   if (top) bullets.push(`The largest net currency position is ${sideTxt(top.net, top.key)}, ${n2(Math.abs(top.net))} units across ${top.cards.length} card${top.cards.length === 1 ? '' : 's'}${cap != null && Math.abs(top.net) >= cap - 1e-9 ? `, at the ±${cap} cap` : ''}${cut ? ` (the cap cut it from ${sgn(cut.net)})` : ''}.`);
+  if (vsView.length) bullets.push(`Net exposure against the currency view: ${list(vsView.map(r => `${sideTxt(r.net, r.ccy)} ${n2(Math.abs(r.net))} while the currency ruling is ${biasWord(r.bias)} (${sgn(r.bias)})`))}. The cards' legs add up the other way to the ruling.`);
   if (flag) bullets.push(`${flag.bets ? 'Tightest cluster' : 'Concentration'}: ${flagText(flag, { days: risk?.days ?? null })}`);
   if (worst) bullets.push(`The largest loss in the scenario set is "${worst.label}": ${sgn(worst.total)} card-σ${worst.totalPct != null ? ` (${sgn(worst.totalPct)}% of gross)` : ''}${worstCards.length ? `, most from ${list(worstCards)}` : ''}. Today's sensitivities, not a forecast.`);
-  if (tally.judged) bullets.push(`${tally.agree} of ${tally.judged} FX cards agree with their currencies' biases${tally.against.length ? `; against the currency view: ${list(tally.against.slice(0, 5))}${tally.against.length > 5 ? ` and ${tally.against.length - 5} more` : ''}` : ''}.`);
+  if (tally.judged) bullets.push(`${tally.agree} of the ${tally.judged} FX cards that have a direction agree with their currencies' biases${noViewTxt ? ` (${noViewTxt}: ${list(tally.noView.slice(0, 5))})` : ''}${tally.against.length ? `; against the currency view: ${list(tally.against.slice(0, 5))}${tally.against.length > 5 ? ` and ${tally.against.length - 5} more` : ''}` : ''}.`);
   if (bullets.length < 3) bullets.unshift(`The global ruling is ${toneTxt(tone)}${conv ? ` at ${conv} conviction` : ''}; the book holds ${live.length} live card${live.length === 1 ? '' : 's'}, ${fx} of them FX.`);
-  return { tiles, bullets: bullets.slice(0, 4), facts: { tone, top, flag, worst, tally, eb, live: live.length } };
+  return { tiles, bullets: bullets.slice(0, 5), facts: { tone, top, flag, worst, tally, eb, live: live.length, vsView } };
 }

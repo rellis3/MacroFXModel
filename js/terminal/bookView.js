@@ -97,6 +97,16 @@ export function viewCheck(cards, ccyView) {
   }
   return out;
 }
+/**
+ * Net currency exposure that runs against the currency view: the book is net long a currency the ruling calls bearish, or net short one it calls
+ * bullish (review 2026-11-27: net long JPY +0.6 from the yen-cross shorts being smaller than USDJPY's long, while the ruling had JPY at -1).
+ * net: { CCY: units } (book.exposure.after); ccyView: { CCY: { bias } }. Each: { ccy, net, bias }, the largest first. Nets under `min` are left out.
+ */
+export function exposureAgainstView(net, ccyView, { min = 0.1 } = {}) {
+  return Object.entries(net ?? {}).map(([ccy, v]) => ({ ccy, net: Number(v), bias: Number(ccyView?.[ccy]?.bias) }))
+    .filter(r => Number.isFinite(r.net) && Number.isFinite(r.bias) && Math.abs(r.net) >= min && r.bias !== 0 && Math.sign(r.net) !== Math.sign(r.bias))
+    .sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+}
 /** "x of y FX cards agree with their currency bias" (y counts only cards whose two biases imply a direction). */
 export function viewTally(check) {
   const v = Object.entries(check ?? {}), judged = v.filter(([, x]) => x.status === 'agrees' || x.status === 'against');
