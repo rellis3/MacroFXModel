@@ -166,7 +166,7 @@ test('bookIntel: the strip and the template sentences come from the book, the ri
   assert.equal(x.bullets.length, 4);
   assert.match(x.bullets[0], /short JPY, 2\.1 units across 3 cards, at the ±2 cap \(the cap cut it from −3\)/);
   assert.match(x.bullets[1], /^Tightest cluster: 3 cards short JPY/);
-  assert.match(x.bullets[2], /"Yen carry unwind": −40 card-σ \(−2% of gross\), most from AUDJPY, EURJPY and GBPJPY\. Today's sensitivities, not a forecast\./);
+  assert.match(x.bullets[2], /"Yen carry unwind": −40 card-σ \(−2% of the book's gross size\), most from AUDJPY, EURJPY and GBPJPY\. Today's sensitivities, not a forecast\./);
   assert.match(x.bullets[3], /^3 of the 4 FX cards that have a direction agree with their currencies' biases \(1 yen cross has equal biases on both currencies: EURJPY\); against the currency view: EURAUD\.$/);
   assert.match(x.tiles[4].s, /FX cards with a direction · 3 agree .* 1 yen cross has equal biases/);
   // nothing loaded yet: still a strip, no invented numbers

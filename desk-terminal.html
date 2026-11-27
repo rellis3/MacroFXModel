@@ -887,10 +887,18 @@ function speechDriftHtml() {
 }
 function alertsHtml() {
   const a = E?.['desk-alerts']; if (!a?.ok) return '';
-  const KIND = { stress: 'World stress', skew: 'Skew', skewslope: 'Vol slope', fair: 'Fair value', carry: 'Carry/vol', cli: 'Leading ind.', drift: 'Speech drift' };
-  return `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Desk alerts</span><span class="r">${a.muted ? '<span class="chip">telegram muted</span> ' : ''}<span class="muted">${a.watching} states watched · every ${a.everyMin} min${a.lastRun?.at ? ` · ${esc(lt(Date.parse(a.lastRun.at)))}` : ''}</span></span></div>
-${(a.alerting ?? []).length ? `<div class="drv">${a.alerting.map(x => `<span class="chip gold" title="since ${esc(x.since)}">${esc(KIND[x.key.split(':')[0]] ?? x.key)} ${esc(x.key.split(':')[1] ?? '')} · ${esc(x.state)}</span>`).join(' ')}</div>` : ''}
-${(a.log ?? []).length ? `<table style="margin-top:6px"><tbody>${a.log.slice(0, 8).map(e => `<tr><td class="mono muted" style="width:96px">${esc(lt(Date.parse(e.at)))}</td><td>${e.text}${e.send ? '' : ` <span class="muted" style="font-size:11px">(${esc(e.held ?? 'not sent')})</span>`}</td></tr>`).join('')}</tbody></table>` : '<p class="muted" style="font-size:12px">No state changes yet: the first check records a baseline silently.</p>'}
+  // plain words for the alert keys (review 2026-11-27: "CHAINZ:REAL-GOLD REAL-GOLD · BELOW", "VOL SLOPE ES" on screen)
+  const KIND = { stress: 'World stress', skew: 'Options skew', skewslope: '1-week vs 1-month vol', fair: 'Fair value', carry: 'Carry against vol', cli: 'Leading indicator', drift: 'Speech drift', chainz: 'Chain link', chainstats: 'Chain link' };
+  const WHO = { ES: 'S&P 500', NQ: 'Nasdaq 100', GOLD: 'Gold', overall: 'overall', US: 'United States', BR: 'Brazil', CA: 'Canada', SE: 'Sweden', JP: 'Japan', GB: 'United Kingdom', EU: 'euro area', AU: 'Australia', NZ: 'New Zealand', CH: 'Switzerland', CN: 'China', MX: 'Mexico', NO: 'Norway' };
+  const TOK = { real: 'real yields', gold: 'gold', dxy: 'the dollar', audusd: 'AUD/USD', vix: 'fear gauge', hy: 'junk credit', btc: 'Bitcoin', emoas: 'EM credit', ccc: 'riskiest credit', nq: 'growth stocks', spx: 'broad stocks', move: 'bond fear', funding: 'funding' };
+  const STATE = { below: 'diverging, below the usual link', above: 'diverging, above the usual link', event: 'near-term event priced', over: 'overvalued', under: 'undervalued', stress: 'stress', hawkish: 'more hawkish than its statement', dovish: 'more dovish than its statement' };
+  const chainName = id => { const e = (a.log ?? []).find(x => x.key === `chainz:${id}`), m = /Chain link <b>([^<]+)<\/b>/.exec(e?.text ?? ''); return m ? m[1] : id.split('-').map(t => TOK[t] ?? t.toUpperCase()).join(' → '); };
+  const keyTxt = k => { const [kind, id = ''] = k.split(':'); return `${KIND[kind] ?? kind}${id ? ` · ${kind === 'chainz' ? chainName(id) : (WHO[id] ?? nice(id))}` : ''}`; };
+  const heldTxt = e => `(${esc(String(e.held ?? '').replace(/\s*\(logged, not sent\)\s*/, '') || 'held back')}: shown here, not sent to Telegram)`;
+  const lastChange = (a.log ?? []).map(e => Date.parse(e.at)).filter(Number.isFinite).sort((x, y) => y - x)[0];
+  return `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Desk alerts</span><span class="r">${a.muted ? '<span class="chip">telegram muted</span> ' : ''}<span class="muted">${a.watching} states watched · checked every ${a.everyMin} min${a.lastRun?.at ? `, last ${esc(lt(Date.parse(a.lastRun.at)))}` : ''} · last change ${lastChange ? esc(lt(lastChange)) : 'none yet'}</span></span></div>
+${(a.alerting ?? []).length ? `<div class="drv">${a.alerting.map(x => `<span class="chip gold" title="since ${esc(lt(Date.parse(x.since)))}">${esc(keyTxt(x.key))} · ${esc(STATE[x.state] ?? x.state)}</span>`).join(' ')}</div>` : ''}
+${(a.log ?? []).length ? `<table style="margin-top:6px"><tbody>${a.log.slice(0, 8).map(e => `<tr><td class="mono muted" style="width:96px">${esc(lt(Date.parse(e.at)))}</td><td>${e.text}${e.send ? '' : ` <span class="muted" style="font-size:11px">${heldTxt(e)}</span>`}</td></tr>`).join('')}</tbody></table>` : '<p class="muted" style="font-size:12px">No state changes yet: the first check records a baseline silently.</p>'}
 <p class="muted" style="font-size:12px">One Telegram line per state change, deduped and rate-limited. Context, not a signal.</p></div>`;
 }
 function enrichCal() {
@@ -1059,7 +1067,7 @@ function playbookCard(n, c) {
 function recordCard() {
   const r = D.rec?.record;
   if (!r) return '';
-  return `<div class="card"><div class="ch"><span class="lbl">The desk's record</span><span class="r" style="min-width:0"><span class="chip" style="white-space:normal">${esc(r.label ?? 'running')}</span></span></div>
+  return `<div class="card"><div class="ch"><span class="lbl">The desk's record</span><span class="r" style="min-width:0"><span class="chip" style="white-space:normal">${esc(String(r.label ?? 'running').replace(/\s*\((?:[\w-]+\/)+[\w.-]+\.md\)/g, ' under the pre-registration'))}</span></span></div>
 <div class="grid g4" style="gap:10px">${[['Counted days', r.eligibleDays, ''], ['Mean day', r.S?.mean == null ? '–' : f(r.S.mean) + ' u', dirCls(r.S?.mean)], ['vs single analyst', f(r.vsControl?.mean), dirCls(r.vsControl?.mean)], ['Lean side first', r.race?.leanFirstShare == null ? '–' : Math.round(r.race.leanFirstShare * 100) + '%', '']].map(([k, v, c]) => `<div><span class="lbl">${k}</span><div class="mono ${c}" style="font-size:20px;font-weight:700">${v}</div></div>`).join('')}</div>
 <p class="muted">Judged at 120+ counted days under the pre-registration. Until then a running number, nothing tuned to it. Grades ("A+ conviction") are the book's own conviction, not a tested hit rate; scores run −5..+5, signed by direction.</p></div>`;
 }
