@@ -22,7 +22,20 @@ root=$(git rev-parse --show-toplevel) || exit 0
 cd "$root" || exit 0
 command -v node >/dev/null 2>&1 || { echo "[pre-push] node not found; guard tests skipped"; exit 0; }
 
-TESTS="js/scoreDisplay.test.mjs js/infoMap.test.mjs js/deskSnapshot.test.mjs js/serviceFlags.test.mjs js/commandHub.test.mjs js/terminal/tabRegistry.test.mjs js/feedCoverage.test.mjs js/deskEvidence.test.mjs"
+# Named guards, plus (2026-11-27) every tracked test that scans the repo (walks directories, lists files, or reads
+# server.js): those are the ones a change in ANOTHER file turns red. The fixed list alone missed
+# biasEngineV2.test.mjs (allowed-files list) and dataFeeds.test.mjs (host registry), and main was red for a day.
+# ~30 files, ~40 s in parallel.
+NAMED="js/scoreDisplay.test.mjs js/infoMap.test.mjs js/deskSnapshot.test.mjs js/serviceFlags.test.mjs js/commandHub.test.mjs js/terminal/tabRegistry.test.mjs js/feedCoverage.test.mjs js/deskEvidence.test.mjs js/biasEngineV2.test.mjs js/dataFeeds.test.mjs"
+# not guards, and they fail on this PC for local reasons only (CI passes them): a timing test and CRLF fixtures
+LOCAL_ONLY="js/paperCatalog.test.mjs js/systemExports.test.mjs"
+SCANNING=$(git ls-files '*.test.mjs' '*.test.js' | grep -v -E '(^|/)(node_modules|scratchpad|output|archive)/' \
+  | xargs grep -l -E "readdirSync|ls-files|'server\.js'|\"server\.js\"" 2>/dev/null)
+TESTS=""
+for t in $NAMED $SCANNING; do
+  case " $LOCAL_ONLY $TESTS " in *" $t "*) continue ;; esac
+  TESTS="$TESTS $t"
+done
 
 tmp=$(mktemp -d 2>/dev/null || echo "${TMPDIR:-/tmp}/prepush.$$")
 mkdir -p "$tmp"
