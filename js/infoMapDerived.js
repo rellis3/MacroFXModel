@@ -2439,7 +2439,7 @@ export const DERIVED = {
     {
      "file": "vol-forecast-v3.html",
      "exists": true,
-     "lastModified": "2026-11-24",
+     "lastModified": "2026-11-26",
      "hub": [
       "live"
      ]
@@ -2568,6 +2568,8 @@ export const DERIVED = {
      "js/terminal/jarvisViewNet.js",
      "js/terminal/jarvisViewSession.js",
      "js/terminal/jarvisViewWx.js",
+     "js/terminal/kchartCore.js",
+     "js/terminal/kchartView.js",
      "js/terminal/monitorCore.js",
      "js/terminal/monitorView.js",
      "js/terminal/reachCore.js",
@@ -3808,7 +3810,7 @@ export const DERIVED = {
     {
      "file": "oi-dashboard-v2.html",
      "exists": true,
-     "lastModified": "2026-11-24",
+     "lastModified": "2026-11-26",
      "hub": [
       "live"
      ]
@@ -4896,7 +4898,7 @@ export const DERIVED = {
     {
      "file": "oi-dashboard-v2.html",
      "exists": true,
-     "lastModified": "2026-11-24",
+     "lastModified": "2026-11-26",
      "hub": [
       "live"
      ]
@@ -5552,5 +5554,5 @@ export const DERIVED = {
  "unclassified": [],
  "rootPageCount": 265,
  "packFeeds": 115,
- "generatedAt": "2026-11-26"
+ "generatedAt": "2026-11-27"
 };
