@@ -42,7 +42,10 @@ export function carryOf(id, side, cv) {
   const b = r[id.slice(0, 3)], q = r[id.slice(3)];
   return fin(b) && fin(q) ? side * (b - q) : null;
 }
-const carryTxt = c => (fin(c) ? `<span class="${c >= 0 ? 'ct-earn' : 'ct-pay'}" title="policy-rate gap, per year, before costs">${c >= 0 ? 'earns' : 'pays'} ${Math.abs(c).toFixed(2)}%/yr</span>` : '');
+/** The FX leg(s) of `id` with no policy rate in /api/carry-vol (CNH, ZAR: the desk reads eight central banks). */
+export const carryMissing = (id, cv) => (cv?.rates && /^[A-Z]{6}$/.test(id) ? [id.slice(0, 3), id.slice(3)].filter(c => !fin(cv.rates[c])) : []);
+const carryTxt = (c, id, cv) => (fin(c) ? `<span class="${c >= 0 ? 'ct-earn' : 'ct-pay'}" title="policy-rate gap, per year, before costs">${c >= 0 ? 'earns' : 'pays'} ${Math.abs(c).toFixed(2)}%/yr</span>`
+  : carryMissing(id, cv).length ? `<span class="muted" title="no policy rate for ${esc(carryMissing(id, cv).join(', '))} in the carry feed">carry: no ${esc(carryMissing(id, cv).join('/'))} rate</span>` : '');
 
 /** One ranked row: the candidate, its side, a -1..1 track with the p10-p90 band and today's correlation. */
 export function rowHtml(r, { cv = null, w = 60 } = {}) {
@@ -56,7 +59,7 @@ export function rowHtml(r, { cv = null, w = 60 } = {}) {
 <span class="ct-hm mono" title="the same ratio from a recency-weighted fit (EWMA, 250 days, decay 0.97). Out of sample over 12 test sets it removed about 1pp more variance than the plain window ratio (hedge-method-comparison)">ewma ${fin(r.ratioEwma) ? r.ratioEwma.toFixed(2) : '–'}</span>
 <span class="ct-hm mono" title="share of the exposure's variance that ratio would have removed in-window (r²)">cuts ${Math.round(r.varCut * 100)}%</span>
 <span class="ct-hm mono" title="${fin(r.oos?.cut) ? `what this ratio really removed over the last ${esc(r.oos.n)} days, each day hedged with the ratio from the ${esc(w)} days before it${fin(r.oosEwma?.cut) ? `; the recency-weighted ratio removed ${Math.round(r.oosEwma.cut * 100)}%` : ''}` : 'not enough days'}">held up ${fin(r.oos?.cut) ? Math.round(r.oos.cut * 100) + '%' : '–'}</span>
-<span class="ct-hm">${carryTxt(carryOf(r.id, r.side === 'long' ? 1 : -1, cv))}</span></span></span></div>`;
+<span class="ct-hm">${carryTxt(carryOf(r.id, r.side === 'long' ? 1 : -1, cv), r.id, cv)}</span>${M.failedOos(r) ? '<span class="chip dn" title="this ratio added variance on the days it had not seen: ranked last">failed out of sample</span>' : ''}</span></span></div>`;
 }
 export function listHtml(rows, opts = {}) {
   return rows.length ? `<div class="ct-hlist">${rows.map(r => rowHtml(r, opts)).join('')}</div>` : '<p class="muted">No candidate with a correlation of at least 0.10 over this window.</p>';
@@ -65,7 +68,7 @@ export function listHtml(rows, opts = {}) {
 /** The Today card: one-session hedges for H.target on H.side (the evidence is in js/hedgeTodayCore.js). */
 export function todayHtml(S, panel, { err = null } = {}) {
   const head = `<div class="ch"><span class="lbl">Today · hedge for one session</span><span class="r muted">08:00–17:00 London${panel ? ` · ${esc(panel.sessions.length)} sessions to ${esc(panel.sessions.at(-1))}` : ''}</span></div>`;
-  if (!panel) return `<div class="card ct-today">${head}<p class="muted">${esc(err ?? 'Loading the session panel (OANDA hourly bars)…')}</p></div>`;
+  if (!panel) return `<div class="card ct-today">${head}<p class="muted">${esc(err ?? 'The session panel builds when this view is first opened (OANDA hourly bars for every market, about a minute); it fills in here on its own.')}</p></div>`;
   const sym = panel.syms.find(x => M.idOf(x) === H.target);
   if (!sym) return `<div class="card ct-today">${head}<p class="muted">${name(H.target)} is not in the session panel (it holds the correlation build's ${esc(panel.syms.length)} OANDA markets). Pick one of those above.</p></div>`;
   const legs = ccysOf(sym), view = legs.includes(H.view) ? H.view : '';

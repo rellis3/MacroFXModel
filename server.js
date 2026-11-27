@@ -45013,9 +45013,23 @@ app.get('/api/corr-terminal', async (_req, res) => {
       error: corrRunning ? 'The correlation build is running now (about 3 minutes).' : 'No correlation panel yet: the scheduled build has not run on this server.' });
   }
   const ageH = (Date.now() - Date.parse(p.generated)) / 3600_000;
+  const yields = await _corrYields().catch(() => null);
   res.setHeader('Content-Type', 'application/json');
-  res.send(`{"ok":true,"refreshEveryH":${CORR_STALE_MS / 3600_000},"ageH":${Number.isFinite(ageH) ? +ageH.toFixed(2) : null},"stale":${ageH > CORR_STALE_MS / 3600_000 * 2},"building":${corrRunning},"src":"${p.src}","panel":${p.body}}`);
+  res.send(`{"ok":true,"refreshEveryH":${CORR_STALE_MS / 3600_000},"ageH":${Number.isFinite(ageH) ? +ageH.toFixed(2) : null},"stale":${ageH > CORR_STALE_MS / 3600_000 * 2},"building":${corrRunning},"src":"${p.src}","yields":${JSON.stringify(yields)},"panel":${p.body}}`);
 });
+// The tab's rates factor (js/terminal/corrMath.js factorsOf): FRED's US 2y and 10y daily yields over the panel's ~3 years, as
+// [[date, %], ...], cached 12 h (a failed fetch keeps the last good copy). Without them the tab falls back to USD/JPY, labelled the proxy.
+let _corrYieldsMem = null;
+async function _corrYields() {
+  if (_corrYieldsMem && Date.now() - _corrYieldsMem.at < 12 * 3600_000) return _corrYieldsMem.body;
+  if (!process.env.FRED_KEY) return _corrYieldsMem?.body ?? null;
+  try {
+    const [y2, y10] = await Promise.all([_mbFred('DGS2', 4), _mbFred('DGS10', 4)]);
+    const body = { US2Y: y2.map(o => [o.date, o.value]), US10Y: y10.map(o => [o.date, o.value]) };
+    if (body.US2Y.length) _corrYieldsMem = { at: Date.now(), body };
+  } catch (e) { console.warn('[corr-terminal] yields', e.message); if (_corrYieldsMem) _corrYieldsMem.at = Date.now() - 11 * 3600_000; }   // retry in an hour
+  return _corrYieldsMem?.body ?? null;
+}
 
 // Hedge for today (Desk Terminal Hedges tab, "Today" card; js/hedgeTodayCore.js; evidence forge/HEDGE_TODAY_PREREG.md):
 // the 08:00-17:00 London price at each hour for the last 200 completed sessions of the correlation build's markets, from

@@ -72,6 +72,10 @@ test('changes vs 120d: gold flipped against the euro is the biggest change and i
   assert.equal(M.changeLabel(0.7, 0.4), 'strengthening');
   assert.equal(M.changeLabel(-0.2, -0.5), 'weakening');
   assert.equal(M.changeLabel(0.3, 0.25), 'steady');
+  // review 2026-11-27: USD/JPY · S&P -0.05 -> +0.18 moved 0.23 and was called steady
+  assert.equal(M.changeLabel(0.18, -0.05), 'strengthening');
+  assert.equal(M.changeLabel(-0.05, 0.18), 'weakening');
+  assert.equal(M.changeLabel(0.1, 0.02), 'steady');
   assert.equal(M.changeLabel(null, 0.2), 'n/a');
   // half way through gold turns from +0.8 to -0.8 against the euro: 25 days after the turn the 20d is negative, the 120d still positive
   const end = Math.floor(P.dates.length / 2) + 25;
@@ -147,11 +151,13 @@ test('evidence chips: real entries, verdict words, UNTESTED for the per-market h
   assert.match(chipFor('rule-a-portfolio-budget'), /UNDERPOWERED/);
   assert.equal(chipFor('no-such-entry'), '');
   // 2026-11-20: hedge-method-comparison measures the variance a ratio removed OUT OF SAMPLE (12 sets); losses, tails and drawdowns of a per-market hedge stay untested, so UNTESTED stays
-  assert.match(chipsFor('hedges'), /VALIDATED · hedge-method-comparison/);
-  assert.match(chipsFor('hedges'), /BASE RATE · hedge-downside-beta/);
+  // the pill reads the test in plain words; the id stays in data-ev and the tooltip (review 2026-11-27)
+  assert.match(chipsFor('hedges'), /data-ev="hedge-method-comparison">VALIDATED · Sizing the hedge</);
+  assert.match(chipsFor('hedges'), /data-ev="hedge-downside-beta">BASE RATE · Hedge ratio on bad days</);
   // the Book hedge: tested by hedge-finder-book (2026-11-06): daily tail cut, drawdowns not shown
-  assert.match(chipsFor('bookHedge'), /VALIDATED · hedge-finder-book-es/);
-  assert.match(chipsFor('bookHedge'), /UNDERPOWERED · hedge-finder-book</);
+  assert.match(chipsFor('bookHedge'), /data-ev="hedge-finder-book-es">VALIDATED · /);
+  assert.match(chipsFor('bookHedge'), /data-ev="hedge-finder-book">UNDERPOWERED · Drawdowns and Sharpe not shown</);
+  assert.doesNotMatch(chipsFor('hedges').replace(/title="[^"]*"|data-ev="[^"]*"/g, ''), /hedge-method-comparison/, 'no id in the text');
   assert.doesNotMatch(chipsFor('bookHedge'), /UNTESTED/);
 });
 
@@ -198,7 +204,7 @@ test('rankHedges rows carry the EWMA ratio and the out-of-sample cut', () => {
   assert.ok(r.ratioEwma > 0 && r.oos.cut > 0.3 && r.oosEwma.cut > 0.3 && r.oos.n > 60, JSON.stringify([r.ratioEwma, r.oos, r.oosEwma]));
 });
 test('todayHtml: loading line, market not in the panel, and ranked rows with the cuts-your-view split', () => {
-  assert.match(todayHtml(S, null), /Loading the session panel/);
+  assert.match(todayHtml(S, null), /builds when this view is first opened/);
   // hourly candles over 220 days: GBPUSD and USDCHF move with EURUSD inside 08:00-17:00 London, SPX500 does not
   const g = gauss(rng(11)), t0 = Date.UTC(2025, 5, 2), c = { EURUSD: [], GBPUSD: [], USDCHF: [], SPX500_USD: [] }, px = { EURUSD: 1.1, GBPUSD: 1.3, USDCHF: 0.9, SPX500_USD: 5000 };
   for (let i = 0; i < 220 * 24; i++) { const t = t0 + i * 3600e3, e = g() * 0.001; px.EURUSD *= Math.exp(e); px.GBPUSD *= Math.exp(0.9 * e + g() * 0.0004); px.USDCHF *= Math.exp(-0.8 * e + g() * 0.0004); px.SPX500_USD *= Math.exp(g() * 0.001); for (const k in c) c[k].push({ t, c: px[k] }); }
@@ -212,4 +218,32 @@ test('todayHtml: loading line, market not in the panel, and ranked rows with the
   const hv = todayHtml(S, panelT);
   assert.match(hv, /keeping the USD view/); assert.match(hv, /cuts your USD view/); assert.match(hv, /carry USD/);
   HState.view = ''; HState.side = 1;
+});
+
+// review 2026-11-27: the rates factor, pairs at an extreme for themselves, hedges that failed out of sample
+test('yields: a FRED series as daily changes on the panel dates; the rates factor is the US 2y when it loaded', () => {
+  assert.deepEqual(M.yieldChanges(['d1', 'd2', 'd3', 'd4'], [['d1', 4], ['d2', 4.1], ['d4', 4.0]]).map(v => (v == null ? null : +v.toFixed(2))), [null, 0.1, null, null], 'a day with no print breaks the chain');
+  assert.equal(M.factorsOf(S).find(f => f.k === 'RATES').label, 'USD/JPY (rates proxy)', 'no yields: USD/JPY, named the proxy');
+  const g = gauss(rng(5)); let v = 4; const y2 = P.dates.map(d => { v += g() * 0.03; return [d, v]; });
+  const SY = M.series(P, { yields: { US2Y: y2 } });
+  assert.ok(SY.ret.US2Y && !SY.ids.includes('US2Y'), 'a factor, not a market');
+  const rf = M.factorsOf(SY).find(f => f.k === 'RATES'); assert.equal(rf.id, 'US2Y'); assert.equal(rf.label, 'US 2y yield');
+  assert.ok(Number.isFinite(M.factorBoard(SY, ['EURUSD'])[0].f.RATES.r), 'the board reads the yield');
+  assert.equal(M.series(P, { yields: { US2Y: y2.slice(0, 20) } }).ret.US2Y, undefined, 'too short: left out');
+});
+test('extremes: the 60-day outside its own 1-year p10-p90', () => {
+  const g = gauss(rng(3)), n = 400, dates = [], c = { EURUSD: [1.1], XAUUSD: [2000], USDJPY: [150] };
+  for (let i = 0; i < n; i++) dates.push(new Date(Date.UTC(2024, 0, 1) + i * 864e5).toISOString().slice(0, 10));
+  for (let i = 1; i < n; i++) { const e = g() * 0.005; c.EURUSD.push(c.EURUSD.at(-1) * Math.exp(e)); c.XAUUSD.push(c.XAUUSD.at(-1) * Math.exp((i < n - 45 ? 0.8 : -0.6) * e + g() * 0.003)); c.USDJPY.push(c.USDJPY.at(-1) * Math.exp(g() * 0.005)); }
+  const SX = M.series({ syms: Object.keys(c), dates, closes: c });
+  const ex = M.extremes(SX, ['EURUSD', 'GOLD', 'USDJPY']);
+  assert.ok(ex.some(x => x.a === 'EURUSD' && x.b === 'GOLD' && x.side === 'below'), JSON.stringify(ex));
+});
+test('rankHedges: a hedge that failed out of sample ranks last and is marked; carry says when a leg has no rate', () => {
+  assert.equal(M.failedOos({ oos: { cut: -0.11 } }), 1); assert.equal(M.failedOos({ oos: { cut: 0.2 } }), 0); assert.equal(M.failedOos({}), 0);
+  const rows = M.rankHedges(S, 'EURUSD', S.ids, { w: 60 });
+  rows.forEach((r, i) => { if (i && M.failedOos(rows[i - 1])) assert.equal(M.failedOos(r), 1, `${r.id} ranks after a failed hedge`); });
+  assert.match(rowHtml({ id: 'CADJPY', rho: 0.5, side: 'short', share: 0.9, ratio: 1, varCut: 0.25, oos: { cut: -0.11, n: 250 } }), /failed out of sample/);
+  assert.match(rowHtml({ id: 'USDCNH', rho: 0.5, side: 'short', share: 0.9, ratio: 1, varCut: 0.25 }, { cv: { rates: { USD: 4 } } }), /carry: no CNH rate/);
+  assert.match(rowHtml({ id: 'USDJPY', rho: 0.5, side: 'short', share: 0.9, ratio: 1, varCut: 0.25 }, { cv: { rates: { USD: 4, JPY: 1.227 } } }), /pays 2\.77%\/yr/);
 });
