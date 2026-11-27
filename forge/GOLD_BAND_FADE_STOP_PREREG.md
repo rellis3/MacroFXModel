@@ -116,4 +116,10 @@ of 0.1 R per trade or more is detectable; smaller ones will be UNDERPOWERED.
 
 ## Amendments
 
-(none)
+- **A1, 2026-11-27, PRE-RESULTS (found by the scenario test, before any real-data run).**
+  - **Fills in the arming bar.** A fill in the bar that armed the order counts only if that bar **closes back through
+    the line**. As first written, §3 would have filled every arming bar: a bar that crosses the line on the way out
+    always has its low (or high) on the near side of the line. That fill is an artefact of how the bar is drawn, not a
+    retest.
+  - **Scenario test.** The document's four scenarios (short, long, cancel, chase) plus a stop-out are coded as bars in
+    `scripts/gold-band-fade-stop/test_scenarios.py`, and all of them pass.
