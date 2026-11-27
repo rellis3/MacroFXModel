@@ -173,6 +173,7 @@ export const EXCLUDED_PAGES = {
   'delta-at-line.html': 'research',
   'gold-rolling-mae.html': 'research',
   'gold-line-system.html': 'research',
+  'line-system-backtest.html': 'research',
   'desk-office.html': 'desk: internal analysis',
   'desk-run.html': 'desk: analysts and the book',
   'desk-terminal.html': 'the terminal itself',

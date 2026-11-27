@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Line System Backtest</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--violet:#a78bfa;--red:#f85149;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:13.5px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+a{color:var(--blue);text-decoration:none}
+.hdr{display:flex;gap:10px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(13,17,23,.96);z-index:5;flex-wrap:wrap}
+h1{font-size:15px}
+.wrap{max-width:1180px;margin:0 auto;padding:14px 16px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+h2{font-size:13.5px;margin-bottom:6px}
+h3{font-size:12.5px;margin:10px 0 4px;color:var(--text2)}
+p{color:var(--text2);margin-bottom:6px;max-width:100ch}
+p b,li b{color:var(--text)}
+ul,ol{color:var(--text2);margin:0 0 6px 18px;max-width:100ch}
+.verdict{border-left:3px solid var(--bull)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:12.5px}
+th{text-align:left;color:var(--text3);font-weight:600;font-size:11px;padding:4px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+th.s{cursor:pointer}th.s:hover{color:var(--text)}
+td{padding:4px 8px;border-bottom:1px solid #222a35;white-space:nowrap}
+tbody tr.click{cursor:pointer}tbody tr.click:hover td{background:rgba(79,125,240,.08)}
+tr.sel td{background:rgba(79,125,240,.16)!important}
+.neg{color:var(--bear)}.pos{color:var(--bull)}.mut{color:var(--text3)}
+.tag{font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;margin-left:6px}
+button,select,input{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font:12px inherit;min-height:30px}
+button{cursor:pointer}button:hover{border-color:var(--blue)}
+button.on{border-color:var(--blue);color:var(--blue)}
+input[type=number]{width:90px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;color:var(--text3);font-size:12px}
+.ctl label{display:flex;gap:6px;align-items:center}
+svg{width:100%;height:auto;display:block}
+svg text{font:11px var(--mono);fill:var(--text2)}
+.note{font-size:12px;color:var(--text3)}
+.warn{font-size:12px;color:var(--amber)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--text2);margin:4px 0 6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0 4px}
+.kpi{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+.kpi .l{font-size:11px;color:var(--text3)}.kpi .v{font:600 17px var(--mono)}.kpi .s{font-size:11px;color:var(--text3)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px}
+.heat td{text-align:center;font:11.5px var(--mono);padding:3px 4px;cursor:pointer;min-width:42px}
+.heat th{text-align:center}
+.exp{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{display:inline-block;padding:0 6px;border-radius:4px;font-size:11px;background:var(--card2);border:1px solid var(--border)}
+#tip{position:fixed;pointer-events:none;background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font:11.5px var(--mono);color:var(--text);display:none;z-index:20;white-space:pre}
+@media (max-width:640px){.wrap{padding:12px 16px}.kpi .v{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <a href="gold-line-system.html">&larr; Gold line system study</a>
+  <h1>Line System Backtest</h1>
+  <span class="note" id="hdrNote"></span>
+</div>
+<div class="wrap">
+
+  <div class="box verdict" id="verdict">Loading…</div>
+
+  <div class="box">
+    <h2>Settings</h2>
+    <div class="ctl" id="instrBox"></div>
+    <div class="ctl">
+      <label>Sample <select id="sample"><option value="OOS">Out of sample (2023 → Aug 2026)</option><option value="IS">In sample (2021–22)</option><option value="ALL">All (2021 → Aug 2026)</option></select></label>
+      <label>Costs <select id="costx"><option value="1">As tested (×1)</option><option value="0">None (×0)</option><option value="2">Double (×2)</option><option value="3">Triple (×3)</option></select></label>
+      <label>Account <input type="number" id="acct" value="100000" step="10000" min="1000"></label>
+      <label>Risk / trade % <input type="number" id="riskPct" value="0.5" step="0.1" min="0.05"></label>
+      <label>Sizing <select id="sizing"><option value="fixed">Fixed % of starting account</option><option value="comp">Compounding % of current equity</option><option value="contract">1 contract (no scaling)</option></select></label>
+    </div>
+    <div class="ctl">
+      <span>Lines (descriptive only, the validated system is all 18):</span>
+      <span id="tierBox"></span><span id="famBox"></span>
+      <label>Side <select id="side"><option value="">both</option><option>long</option><option>short</option></select></label>
+      <button id="resetF">Reset to the validated system</button>
+    </div>
+    <p class="warn" id="filterWarn" style="display:none">Line filters are on. Any split chosen after seeing the results is post-hoc: treat it as a lead, not a result.</p>
+  </div>
+
+  <div class="box">
+    <h2>Summary <span class="note" id="sumNote"></span></h2>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div><h3>In sample vs out of sample (costs as set)</h3><div class="scroll" id="isoos"></div></div>
+      <div><h3>Cost sensitivity (selected sample)</h3><div class="scroll" id="costTab"></div></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Equity curve and drawdown</h2>
+    <div class="ctl"><button class="on" data-eq="R">Cumulative R</button><button data-eq="pct">Account %</button><button data-eq="usd">Account $</button></div>
+    <div class="legend"><span><i style="background:var(--blue)"></i>equity</span><span><i style="background:var(--red)"></i>drawdown</span><span><i style="background:rgba(210,153,34,.5)"></i>in-sample period</span></div>
+    <div id="eqChart"></div>
+    <div id="ddChart"></div>
+  </div>
+
+  <div class="box">
+    <h2>Monthly and yearly returns <span class="note">(account % at the risk set; click a month or year to list its trades)</span></h2>
+    <div class="scroll" id="heat"></div>
+    <h3>By year</h3>
+    <div class="scroll" id="yearTab"></div>
+  </div>
+
+  <div class="box">
+    <h2>Where the result comes from</h2>
+    <div class="grid2">
+      <div><h3>By line</h3><div class="scroll" id="byLine"></div></div>
+      <div>
+        <h3>By line family</h3><div class="scroll" id="byFam"></div>
+        <h3>By tier</h3><div class="scroll" id="byTier"></div>
+        <h3>By side</h3><div class="scroll" id="bySide"></div>
+        <h3>By exit</h3><div class="scroll" id="byExit"></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div><h3>By fill hour (London)</h3><div class="scroll" id="byHour"></div></div>
+      <div><h3>By weekday</h3><div class="scroll" id="byDow"></div><h3>By instrument</h3><div class="scroll" id="byInst"></div></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>Robustness</h2>
+    <div class="grid2">
+      <div><h3>Outlier sensitivity: is it carried by a few trades?</h3><div class="scroll" id="outl"></div></div>
+      <div><h3>Monte Carlo: the same trades in random order (1,000 runs)</h3><div class="scroll" id="mc"></div>
+        <p class="note">This sets expectations for drawdowns and streaks. It is not evidence the edge holds on new data: that is the out-of-sample split and the fake-lines placebo.</p></div>
+    </div>
+    <h3>MAE vs result (R): every trade</h3>
+    <div class="legend"><span><i style="background:var(--bull)"></i>target</span><span><i style="background:var(--red)"></i>stop</span><span><i style="background:var(--amber)"></i>22:00 close</span></div>
+    <div id="maeChart"></div>
+    <p class="note">MAE and MFE come from the real M1 path between fill and exit (a stop caps MAE at 1R, a target caps MFE at the target).</p>
+  </div>
+
+  <div class="box" id="tradeBox">
+    <h2>Trade chart</h2>
+    <div class="ctl"><button id="prevT">◀ Prev</button><button id="nextT">Next ▶</button><button id="bestT">🏆 Best trade</button><button id="worstT">⚠ Worst trade</button><button id="bestD">Best day</button><button id="worstD">Worst day</button><button id="randT">Random trade</button><label><input type="checkbox" id="allLines" checked> all 18 lines</label></div>
+    <div class="legend"><span><i style="background:var(--violet)"></i>VWAP (bars before)</span><span><i style="background:var(--amber)"></i>traded line</span><span><i style="background:var(--bull)"></i>target</span><span><i style="background:var(--red)"></i>stop</span><span><i style="background:#4b5563"></i>other lines</span><span>▲▼ fill · ✕ exit · ┊ arm</span></div>
+    <div id="tradeInfo" class="note">Click any trade in the list below.</div>
+    <div id="tradeChart"></div>
+  </div>
+
+  <div class="box">
+    <h2>Trade list <span class="note" id="blotNote"></span></h2>
+    <div class="ctl">
+      <label>Year <select id="fYear"><option value="">all</option></select></label>
+      <label>Month <select id="fMonth"><option value="">all</option></select></label>
+      <label>Date <input id="fDate" placeholder="YYYY-MM-DD" style="width:110px"></label>
+      <label>Exit <select id="fOc"><option value="">all</option><option>target</option><option>stop</option><option>time</option><option>break-even</option></select></label>
+      <label>Line <select id="fLine"><option value="">all</option></select></label>
+      <label>Result <select id="fWin"><option value="">all</option><option value="w">winners</option><option value="l">losers</option></select></label>
+      <button id="clearB">Clear</button>
+    </div>
+    <div class="scroll" id="blotter"></div>
+    <div class="ctl" style="margin-top:6px"><button id="pgPrev">◀</button><span id="pgInfo"></span><button id="pgNext">▶</button></div>
+  </div>
+
+  <div class="box">
+    <h2>Export</h2>
+    <div class="exp">
+      <button id="csvPct">⬇ % Returns CSV</button><button id="csvR">⬇ R-Multiples CSV</button><button id="csvUsd">⬇ Currency P&amp;L CSV</button><button id="csvAll">⬇ Full trade log CSV</button>
+    </div>
+    <p class="note" id="expNote" style="margin-top:6px"></p>
+  </div>
+
+  <div class="box">
+    <h2>How it is built</h2>
+    <ul id="howList"></ul>
+  </div>
+</div>
+<div id="tip"></div>
+<script>
+// Instrument registry: one row per instrument in the book. Add an instrument by exporting it with
+// scripts/gold-line-system-base/export_backtest.py <SYM> and adding a row here (with its own banked verdict).
+const INSTR = [
+  { sym: 'GOLD', label: 'Gold (GC)', dir: 'analysis/output/line-system-backtest/GOLD', results: 'analysis/output/gold-line-system-base/GOLD/results.json', arm: 'S2', on: true, status: 'VALIDATED' },
+];
+const NOT_IN_BOOK = 'NQ (UNDERPOWERED: fake lines do as well) and EURUSD (NULL after costs) are not in the book; see the study page.';
+const TIERS = ['P50', 'P75', 'P90'], FAMS = ['OH', 'OL', 'Close+', 'Close-', 'HL up', 'HL down'];
+const LINE_NAME = { OH: 'OH (forecast high)', OL: 'OL (forecast low)', 'Close+': 'Close+', 'Close-': 'Close−', 'HL up': 'HL projection up', 'HL down': 'HL projection down' };
+const $ = id => document.getElementById(id);
+const D = { meta: {}, trades: [], res: {}, candles: {} };
+const st = { eq: 'R', tiers: new Set(TIERS), fams: new Set(FAMS), sel: null, page: 0, sort: { k: 'date', d: 1 }, list: [] };
+const f = (v, d = 2) => v == null || !isFinite(v) ? '–' : (+v).toFixed(d);
+const fs = (v, d = 2) => v == null || !isFinite(v) ? '–' : (v > 0 ? '+' : '') + (+v).toFixed(d);
+const cls = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+const td = (v, d = 2, s = true) => `<td class="${cls(v)}">${s ? fs(v, d) : f(v, d)}</td>`;
+const money = v => (v < 0 ? '−' : '') + '$' + Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
+const mm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+async function getJSON(u) { const r = await fetch(u); if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); }
+
+async function init() {
+  $('instrBox').innerHTML = 'Instruments in the book: ' + INSTR.map(i => `<label><input type="checkbox" data-sym="${i.sym}" ${i.on ? 'checked' : ''}> ${i.label} <span class="tag" style="color:var(--bull)">${i.status}</span></label>`).join('') + `<span class="note">${NOT_IN_BOOK}</span>`;
+  $('tierBox').innerHTML = TIERS.map(t => `<button class="on" data-tier="${t}">${t}</button>`).join(' ');
+  $('famBox').innerHTML = FAMS.map(t => `<button class="on" data-fam="${t}">${t === 'Close-' ? 'Close−' : t}</button>`).join(' ');
+  for (const i of INSTR) {
+    const [m, t, r] = await Promise.all([getJSON(i.dir + '/meta.json'), getJSON(i.dir + '/trades.json'), getJSON(i.results).catch(() => null)]);
+    D.meta[i.sym] = m; D.res[i.sym] = r;
+    for (const x of t) { x.sym = i.sym; x.dow = new Date(x.date + 'T12:00:00Z').getUTCDay(); x.hr = +x.fill.slice(0, 2); x.mon = x.date.slice(0, 7); D.trades.push(x); }
+  }
+  D.trades.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.fill < b.fill ? -1 : 1);
+  D.trades.forEach((t, i) => t.n = i + 1);
+  const lv = [...new Set(D.trades.map(t => t.level))];
+  $('fLine').innerHTML += lv.map(l => `<option>${l}</option>`).join('');
+  $('fYear').innerHTML += [...new Set(D.trades.map(t => t.yr))].map(y => `<option>${y}</option>`).join('');
+  $('fMonth').innerHTML += Array.from({ length: 12 }, (_, i) => `<option value="${String(i + 1).padStart(2, '0')}">${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i]}</option>`).join('');
+  wire(); renderVerdict(); renderHow(); render();
+}
+
+function wire() {
+  ['sample', 'costx', 'acct', 'riskPct', 'sizing', 'side'].forEach(id => $(id).addEventListener('change', render));
+  document.querySelectorAll('[data-sym]').forEach(c => c.addEventListener('change', () => { INSTR.find(i => i.sym === c.dataset.sym).on = c.checked; render(); }));
+  document.querySelectorAll('[data-tier]').forEach(b => b.onclick = () => { tog(st.tiers, b.dataset.tier, b); render(); });
+  document.querySelectorAll('[data-fam]').forEach(b => b.onclick = () => { tog(st.fams, b.dataset.fam, b); render(); });
+  document.querySelectorAll('[data-eq]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-eq]').forEach(x => x.classList.toggle('on', x === b)); st.eq = b.dataset.eq; drawEquity(); });
+  $('resetF').onclick = () => { st.tiers = new Set(TIERS); st.fams = new Set(FAMS); $('side').value = ''; document.querySelectorAll('[data-tier],[data-fam]').forEach(b => b.classList.add('on')); render(); };
+  ['fYear', 'fMonth', 'fOc', 'fLine', 'fWin'].forEach(id => $(id).addEventListener('change', () => { st.page = 0; renderBlotter(); }));
+  $('fDate').addEventListener('input', () => { st.page = 0; renderBlotter(); });
+  $('clearB').onclick = () => { ['fYear', 'fMonth', 'fOc', 'fLine', 'fWin', 'fDate'].forEach(id => $(id).value = ''); st.page = 0; renderBlotter(); };
+  $('pgPrev').onclick = () => { st.page = Math.max(0, st.page - 1); renderBlotter(); };
+  $('pgNext').onclick = () => { st.page++; renderBlotter(); };
+  $('prevT').onclick = () => stepTrade(-1); $('nextT').onclick = () => stepTrade(1);
+  $('bestT').onclick = () => pick(st.cur.reduce((a, b) => b.r > a.r ? b : a));
+  $('worstT').onclick = () => pick(st.cur.reduce((a, b) => b.r < a.r ? b : a));
+  $('randT').onclick = () => pick(st.cur[Math.floor(Math.random() * st.cur.length)]);
+  $('bestD').onclick = () => dayPick(1); $('worstD').onclick = () => dayPick(-1);
+  $('allLines').onchange = () => st.sel && drawTrade(st.sel);
+  $('csvPct').onclick = () => exportCsv('pct'); $('csvR').onclick = () => exportCsv('R'); $('csvUsd').onclick = () => exportCsv('usd'); $('csvAll').onclick = () => exportCsv('all');
+}
+function tog(set, v, b) { if (set.has(v)) { if (set.size > 1) set.delete(v); } else set.add(v); b.classList.toggle('on', set.has(v)); }
+
+// ---------- core: sample, sizing, stats ----------
+function filtered(sample) {
+  const on = new Set(INSTR.filter(i => i.on).map(i => i.sym)), side = $('side').value;
+  return D.trades.filter(t => on.has(t.sym) && (sample === 'ALL' || t.split === sample) && st.tiers.has(t.tier) && st.fams.has(t.fam) && (!side || t.side === side));
+}
+function sized(trades, cx) {
+  const acct = +$('acct').value || 100000, rp = (+$('riskPct').value || 0.5) / 100, mode = $('sizing').value;
+  let eq = acct;
+  return trades.map(t => {
+    const r = t.gR - cx * t.costR, pv = D.meta[t.sym].point_value;
+    let usd, riskUsd;
+    if (mode === 'contract') { riskUsd = t.risk * pv; usd = r * riskUsd; }
+    else { riskUsd = (mode === 'comp' ? eq : acct) * rp; usd = r * riskUsd; }
+    const base = mode === 'comp' ? eq : acct;
+    const pct = 100 * usd / base, maePctA = -100 * t.maeR * riskUsd / base;
+    eq += usd;
+    return Object.assign(Object.create(t), { r, usd, riskUsd, pct, maePctA, eq });
+  });
+}
+function stats(S, acct) {
+  const n = S.length; if (!n) return null;
+  const R = S.map(t => t.r), w = R.filter(x => x > 0), l = R.filter(x => x <= 0);
+  const sum = a => a.reduce((x, y) => x + y, 0), mean = a => a.length ? sum(a) / a.length : NaN;
+  const totR = sum(R), gw = sum(w), gl = -sum(l);
+  let cum = 0, pk = 0, dd = 0, ddS = 0, pkI = 0, ddDur = 0, ls = 0, lsMax = 0;
+  const days = byDay(S);
+  for (const t of S) { cum += t.r; if (cum > pk) pk = cum; dd = Math.min(dd, cum - pk); ls = t.r <= 0 ? ls + 1 : 0; lsMax = Math.max(lsMax, ls); }
+  // account path (by day)
+  const dk = Object.keys(days).sort(); let eq = acct, peq = acct, mdd = 0, cdays = 0, maxDur = 0;
+  const dr = [];
+  for (const d of dk) { const u = days[d].usd; const before = eq; eq += u; dr.push(u / before); if (eq >= peq) { peq = eq; cdays = 0; } else { cdays++; maxDur = Math.max(maxDur, cdays); } mdd = Math.min(mdd, eq / peq - 1); }
+  // daily returns over every weekday in the span (no-trade days = 0)
+  const span = weekdays(S[0].date, S[n - 1].date), all = new Array(Math.max(span - dk.length, 0)).fill(0).concat(dr);
+  const m = mean(all), sd = Math.sqrt(mean(all.map(x => (x - m) ** 2))), dn = Math.sqrt(mean(all.map(x => Math.min(x, 0) ** 2)));
+  const yrs = Math.max(span / 252, 1e-9), totPct = 100 * (eq - acct) / acct;
+  const cagrC = 100 * (Math.pow(Math.max(eq, 1e-9) / acct, 1 / yrs) - 1);
+  const months = {}; for (const t of S) months[t.mon] = (months[t.mon] || 0) + t.pct;
+  const mv = Object.values(months);
+  const rm = mean(R), rsd = Math.sqrt(mean(R.map(x => (x - rm) ** 2)));
+  const skew = mean(R.map(x => ((x - rm) / rsd) ** 3)), kurt = mean(R.map(x => ((x - rm) / rsd) ** 4)) - 3;
+  const sr = [...R].sort((a, b) => a - b), q = Math.floor(0.05 * n), var95 = sr[q], cvar95 = mean(sr.slice(0, q + 1));
+  return { n, win: 100 * w.length / n, avgR: rm, totR, pf: gl > 0 ? gw / gl : Infinity, avgW: mean(w), avgL: mean(l), ddR: dd, lsMax,
+    sharpe: sd > 0 ? m / sd * Math.sqrt(252) : NaN, sortino: dn > 0 ? m / dn * Math.sqrt(252) : NaN, mddPct: 100 * mdd, maxDur, totPct,
+    cagrS: totPct / yrs, cagrC, calmar: mdd < 0 ? (totPct / yrs) / (-100 * mdd) : NaN, tpd: n / dk.length, days: dk.length,
+    mPos: 100 * mv.filter(x => x > 0).length / mv.length, nM: mv.length, bestM: Math.max(...mv), worstM: Math.min(...mv),
+    skew, kurt, var95, cvar95, tgt: 100 * S.filter(t => t.oc === 'target').length / n, finalEq: eq, gross: mean(S.map(t => t.gR)) };
+}
+function byDay(S) { const o = {}; for (const t of S) { const x = o[t.date] ||= { usd: 0, r: 0, pct: 0, n: 0 }; x.usd += t.usd; x.r += t.r; x.pct += t.pct; x.n++; } return o; }
+function weekdays(a, b) { let n = 0; for (let d = new Date(a + 'T12:00:00Z'); d <= new Date(b + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 1)) { const w = d.getUTCDay(); if (w > 0 && w < 6) n++; } return n; }
+
+// ---------- render ----------
+function render() {
+  const sample = $('sample').value, cx = +$('costx').value, acct = +$('acct').value || 100000;
+  const filt = st.tiers.size < 3 || st.fams.size < 6 || $('side').value;
+  $('filterWarn').style.display = filt ? '' : 'none';
+  st.cur = sized(filtered(sample), cx); st.all = sized(filtered('ALL'), cx); st.acct = acct;
+  const s = stats(st.cur, acct);
+  $('hdrNote').textContent = `${st.cur.length.toLocaleString()} trades · ${INSTR.filter(i => i.on).map(i => i.sym).join(' + ')} · lockbox (after 21 Aug 2026) untouched`;
+  $('sumNote').textContent = `(${{ OOS: 'out of sample', IS: 'in sample', ALL: 'all years' }[sample]}, costs ×${cx}, ${$('sizing').value === 'contract' ? '1 contract' : $('riskPct').value + '% risk a trade'})`;
+  if (!s) { $('kpis').innerHTML = '<p>No trades.</p>'; return; }
+  const k = (l, v, sub = '', c = '') => `<div class="kpi"><div class="l">${l}</div><div class="v ${c}">${v}</div><div class="s">${sub}</div></div>`;
+  $('kpis').innerHTML = [
+    k('Trades', s.n.toLocaleString(), `${f(s.tpd, 2)} a trading day · ${s.days} days`),
+    k('Avg R a trade (net)', fs(s.avgR, 3), `before costs ${fs(s.gross, 3)}`, cls(s.avgR)),
+    k('Total R', fs(s.totR, 1), `${s.n} trades`, cls(s.totR)),
+    k('Win rate', f(s.win, 1) + '%', `target hit ${f(s.tgt, 1)}%`),
+    k('Profit factor', f(s.pf, 2), `avg win ${fs(s.avgW, 2)}R · avg loss ${fs(s.avgL, 2)}R`),
+    k('Max drawdown', f(s.mddPct, 1) + '%', `${fs(s.ddR, 1)}R · longest ${s.maxDur} trading days`, 'neg'),
+    k('Return', fs(s.totPct, 1) + '%', `${money(s.finalEq - acct)} on ${money(acct)}`, cls(s.totPct)),
+    k('Annual return', fs($('sizing').value === 'comp' ? s.cagrC : s.cagrS, 1) + '%', $('sizing').value === 'comp' ? 'compounded (CAGR)' : 'simple, not compounded'),
+    k('Sharpe (daily, ann.)', f(s.sharpe, 2), `Sortino ${f(s.sortino, 2)} · Calmar ${f(s.calmar, 2)}`),
+    k('Months positive', f(s.mPos, 0) + '%', `${s.nM} months · best ${fs(s.bestM, 1)}% · worst ${fs(s.worstM, 1)}%`),
+    k('Longest losing streak', s.lsMax, 'trades in a row'),
+    k('Tail (per trade, R)', `${fs(s.var95, 2)}`, `VaR95 · CVaR95 ${fs(s.cvar95, 2)} · skew ${f(s.skew, 2)} · kurt ${f(s.kurt, 1)}`),
+  ].join('');
+  // IS vs OOS
+  const row = (lab, S) => { const x = stats(S, acct); return x ? `<tr><td>${lab}</td><td>${x.n}</td>${td(x.avgR, 3)}${td(x.totR, 1)}<td>${f(x.win, 1)}%</td><td>${f(x.pf, 2)}</td><td class="neg">${f(x.mddPct, 1)}%</td><td>${f(x.sharpe, 2)}</td></tr>` : ''; };
+  const hdr = '<tr><th></th><th>Trades</th><th>Avg R</th><th>Total R</th><th>Win</th><th>PF</th><th>Max DD</th><th>Sharpe</th></tr>';
+  $('isoos').innerHTML = `<table>${hdr}${row('In sample 2021–22', sized(filtered('IS'), cx))}${row('Out of sample 2023 → Aug 2026', sized(filtered('OOS'), cx))}${row('All', st.all)}</table>`;
+  $('costTab').innerHTML = `<table>${hdr.replace('<th></th>', '<th>Costs</th>')}${[0, 1, 2, 3].map(c => row(['None', 'As tested', 'Double', 'Triple'][c], sized(filtered(sample), c))).join('')}</table><p class="note">Costs as tested: ${costText()}.</p>`;
+  drawEquity(); renderHeat(); renderBreakdowns(); renderRobust(); drawMae(); renderBlotter(); renderExpNote();
+  if (!st.sel || !st.cur.some(t => t.id === st.sel.id)) pick(st.cur[st.cur.length - 1], false); else drawTrade(st.cur.find(t => t.id === st.sel.id));
+}
+function costText() { return INSTR.filter(i => i.on).map(i => { const c = D.meta[i.sym].costs; return `${i.sym}: ${c.slip_in} in, ${c.slip_out} out on non-target exits, ${c.commission} commission (price units)`; }).join('; '); }
+
+function renderVerdict() {
+  const parts = INSTR.map(i => {
+    const p = D.res[i.sym]?.primary?.[i.arm]; if (!p) return '';
+    return `<p><b>${i.label}: ${p.verdict}.</b> Out of sample ${fs(p.OOS_R, 3)}R a trade [90% CI ${fs(p.OOS_lo, 3)}, ${fs(p.OOS_hi, 3)}], ${p.OOS_n.toLocaleString()} trades, ${fs(p.OOS_totR, 0)}R; in sample ${fs(p.IS_R, 3)}. Fake lines (100 shuffles) average ${fs(p.pl1_mean, 3)} (95th percentile ${fs(p.pl1_p95, 3)}); the real lines rank at the ${f(100 * p.pl1_rank, 0)}th percentile; one-sided p ${f(p.p_one_sided, 3)}.</p>`;
+  }).join('');
+  $('verdict').innerHTML = `<h2>What this is</h2><p>The gold line system as banked: <b>18 shadow lines → Jordan's gold entry → VWAP ± 0.5σ target → rolling-MAE stop</b>. Every trade 2021 → 21 Aug 2026, with the standard backtest read-outs. More instruments join the book once each has its own validated result.</p>${parts}<p class="warn">Fragile: the top 1% of trades carry the result (without them it is negative), and most of the profit comes from the smallest stops ($1.30–2.90). M1 bars can't show the fill order inside a minute, so a tick-data or forward check comes next.</p>`;
+}
+function renderHow() {
+  const m = D.meta.GOLD;
+  $('howList').innerHTML = [
+    `<b>System:</b> ${m.system}.`,
+    `<b>Fills:</b> pessimistic. The stop counts on the fill bar; the target can't fill on the fill bar; a bar opening through the stop fills at its open.`,
+    `<b>Data:</b> NT8 GC futures M1, 00:00–22:00 London; shadow-line widths walk forward (no lookahead). In sample 2021–22, out of sample 2023 → ${m.end}. The lockbox after 21 Aug 2026 is untouched.`,
+    `<b>Sizing:</b> R = net result ÷ that trade's own stop distance (the rolling-MAE stop, so the risk unit varies by trade). Account % = R × the risk % set above. "1 contract" uses the point value (GC $100 a point) with no scaling. Fractional contracts are allowed in the % modes.`,
+    `<b>Daily Sharpe</b> uses every weekday in the span, with days without a trade counted as 0.`,
+    `<b>Sources:</b> <a href="${m.prereg}">prereg</a> · <a href="${m.results}">results</a> · export script <code>scripts/gold-line-system-base/export_backtest.py</code>.`,
+  ].map(x => `<li>${x}</li>`).join('');
+}
+
+// ---------- charts ----------
+const W0 = 1100;
+function axisY(lo, hi, H, pad, fmt) { const out = []; const step = niceStep((hi - lo) / 5); for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v); return out.map(v => ({ v, y: pad + (hi - v) / (hi - lo || 1) * (H - 2 * pad), t: fmt(v) })); }
+function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1e-9)))); const r = x / p; return (r < 1.5 ? 1 : r < 3.5 ? 2 : r < 7.5 ? 5 : 10) * p; }
+function drawEquity() {
+  const S = st.cur; if (!S.length) return;
+  const acct = st.acct; let cum = 0;
+  const ys = S.map(t => (cum += t.r, st.eq === 'R' ? cum : st.eq === 'pct' ? 100 * (t.eq - acct) / acct : t.eq));
+  let pk = -Infinity; const dd = ys.map(v => { const base = st.eq === 'usd' ? v : v; pk = Math.max(pk, base); return st.eq === 'usd' ? v - pk : v - pk; });
+  const H = 260, pad = 18, L = 64, Rr = 12, n = ys.length;
+  const lo = Math.min(0, ...ys), hi = Math.max(...ys);
+  const X = i => L + i / Math.max(n - 1, 1) * (W0 - L - Rr), Y = v => pad + (hi - v) / (hi - lo || 1) * (H - 2 * pad);
+  const fmt = st.eq === 'R' ? v => v.toFixed(0) + 'R' : st.eq === 'pct' ? v => v.toFixed(0) + '%' : v => '$' + (v / 1000).toFixed(0) + 'k';
+  let isEnd = S.findIndex(t => t.split === 'OOS'); if (isEnd < 0) isEnd = S[0].split === 'IS' ? n : 0;
+  const yrs = []; S.forEach((t, i) => { if (i === 0 || t.yr !== S[i - 1].yr) yrs.push([i, t.yr]); });
+  const path = ys.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join('');
+  $('eqChart').innerHTML = `<svg viewBox="0 0 ${W0} ${H}">${isEnd > 0 ? `<rect x="${L}" y="${pad}" width="${X(isEnd) - L}" height="${H - 2 * pad}" fill="rgba(210,153,34,.08)"/>` : ''}
+    ${axisY(lo, hi, H, pad, fmt).map(a => `<line x1="${L}" x2="${W0 - Rr}" y1="${a.y}" y2="${a.y}" stroke="#222a35"/><text x="${L - 6}" y="${a.y + 4}" text-anchor="end">${a.t}</text>`).join('')}
+    ${yrs.map(([i, y]) => `<line x1="${X(i)}" x2="${X(i)}" y1="${pad}" y2="${H - pad}" stroke="#222a35"/><text x="${X(i) + 3}" y="${H - 4}">${y}</text>`).join('')}
+    <path d="${path}" fill="none" stroke="#4f7df0" stroke-width="1.6"/></svg>`;
+  const H2 = 110, dlo = Math.min(...dd, -1e-9), Y2 = v => 6 + (0 - v) / (0 - dlo) * (H2 - 14);
+  const dp = `M${X(0)},${Y2(0)}` + dd.map((v, i) => `L${X(i).toFixed(1)},${Y2(v).toFixed(1)}`).join('') + `L${X(n - 1)},${Y2(0)}Z`;
+  $('ddChart').innerHTML = `<svg viewBox="0 0 ${W0} ${H2}"><path d="${dp}" fill="rgba(248,81,73,.25)" stroke="#f85149" stroke-width="1"/><text x="${L - 6}" y="${Y2(dlo) + 4}" text-anchor="end">${fmt(dlo)}</text><text x="${L - 6}" y="14" text-anchor="end">0</text></svg>`;
+}
+function drawMae() {
+  const S = st.cur, H = 300, L = 50, pad = 16;
+  const xs = S.map(t => Math.min(t.maeR, 1.05)), ys = S.map(t => Math.max(Math.min(t.r, 12), -1.3));
+  const xhi = 1.05, ylo = -1.3, yhi = Math.max(...ys, 1);
+  const X = v => L + v / xhi * (W0 - L - 12), Y = v => pad + (yhi - v) / (yhi - ylo) * (H - 2 * pad);
+  const col = { target: '#10b981', stop: '#f85149', time: '#d29922', 'break-even': '#9da7b3' };
+  $('maeChart').innerHTML = `<svg viewBox="0 0 ${W0} ${H}">${axisY(ylo, yhi, H, pad, v => v.toFixed(0) + 'R').map(a => `<line x1="${L}" x2="${W0 - 12}" y1="${a.y}" y2="${a.y}" stroke="#222a35"/><text x="${L - 6}" y="${a.y + 4}" text-anchor="end">${a.t}</text>`).join('')}
+    ${[0, 0.25, 0.5, 0.75, 1].map(v => `<text x="${X(v)}" y="${H - 2}" text-anchor="middle">${v}R</text>`).join('')}
+    <line x1="${L}" x2="${W0 - 12}" y1="${Y(0)}" y2="${Y(0)}" stroke="#6e7681"/>
+    ${S.map((t, i) => `<circle cx="${X(xs[i]).toFixed(1)}" cy="${Y(ys[i]).toFixed(1)}" r="2" fill="${col[t.oc]}" fill-opacity=".55"/>`).join('')}
+    <text x="${W0 - 14}" y="${H - 18}" text-anchor="end">MAE (R) →</text></svg>`;
+}
+
+// ---------- tables ----------
+function group(S, key, order) {
+  const g = {}; for (const t of S) (g[key(t)] ||= []).push(t);
+  const ks = order || Object.keys(g).sort();
+  const rows = ks.filter(k => g[k]).map(k => { const a = g[k], R = a.map(t => t.r), w = R.filter(x => x > 0).length, tot = R.reduce((x, y) => x + y, 0), gw = R.filter(x => x > 0).reduce((x, y) => x + y, 0), gl = -R.filter(x => x <= 0).reduce((x, y) => x + y, 0);
+    return `<tr><td>${k}</td><td>${a.length}</td>${td(tot / a.length, 3)}${td(tot, 1)}<td>${(100 * w / a.length).toFixed(1)}%</td><td>${gl > 0 ? (gw / gl).toFixed(2) : '–'}</td></tr>`; });
+  return `<table><tr><th></th><th>Trades</th><th>Avg R</th><th>Total R</th><th>Win</th><th>PF</th></tr>${rows.join('')}</table>`;
+}
+function renderBreakdowns() {
+  const S = st.cur;
+  const order = []; for (const fm of ['oh', 'ol', 'cup', 'cdn', 'hlH', 'hlL']) for (const t of ['50', '75', '90']) order.push(fm + t);
+  $('byLine').innerHTML = group(S, t => t.level, order);
+  $('byFam').innerHTML = group(S, t => LINE_NAME[t.fam], FAMS.map(x => LINE_NAME[x]));
+  $('byTier').innerHTML = group(S, t => t.tier, TIERS);
+  $('bySide').innerHTML = group(S, t => t.side, ['long', 'short']);
+  $('byExit').innerHTML = group(S, t => t.oc, ['target', 'stop', 'time', 'break-even']);
+  $('byHour').innerHTML = group(S, t => String(t.hr).padStart(2, '0') + ':00');
+  $('byDow').innerHTML = group(S, t => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][t.dow], ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+  $('byInst').innerHTML = group(S, t => t.sym);
+}
+function renderHeat() {
+  const S = st.cur, M = {}, Y = {};
+  for (const t of S) { M[t.mon] = (M[t.mon] || 0) + t.pct; Y[t.yr] = (Y[t.yr] || 0) + t.pct; }
+  const years = [...new Set(S.map(t => t.yr))].sort(), mx = Math.max(...Object.values(M).map(Math.abs), 1e-9);
+  const col = v => v == null ? '' : `background:${v >= 0 ? `rgba(16,185,129,${0.12 + 0.7 * Math.abs(v) / mx})` : `rgba(248,81,73,${0.12 + 0.7 * Math.abs(v) / mx})`}`;
+  $('heat').innerHTML = `<table class="heat"><tr><th></th>${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(x => `<th>${x}</th>`).join('')}<th>Year</th></tr>${years.map(y => `<tr><th>${y}</th>${Array.from({ length: 12 }, (_, i) => { const k = `${y}-${String(i + 1).padStart(2, '0')}`, v = M[k]; return `<td style="${col(v)}" data-mon="${k}">${v == null ? '' : fs(v, 1)}</td>`; }).join('')}<td class="${cls(Y[y])}" data-yr="${y}"><b>${fs(Y[y], 1)}</b></td></tr>`).join('')}</table>`;
+  document.querySelectorAll('#heat [data-mon]').forEach(c => c.onclick = () => { $('fYear').value = c.dataset.mon.slice(0, 4); $('fMonth').value = c.dataset.mon.slice(5); $('fDate').value = ''; st.page = 0; renderBlotter(); $('blotter').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  document.querySelectorAll('#heat [data-yr]').forEach(c => c.onclick = () => { $('fYear').value = c.dataset.yr; $('fMonth').value = ''; st.page = 0; renderBlotter(); $('blotter').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  const acct = st.acct;
+  $('yearTab').innerHTML = `<table><tr><th>Year</th><th>Sample</th><th>Trades</th><th>Avg R</th><th>Total R</th><th>Win</th><th>PF</th><th>Return</th><th>Max DD</th><th>Sharpe</th></tr>${years.map(y => { const a = S.filter(t => t.yr === y), x = stats(a, acct); return `<tr class="click" data-y="${y}"><td>${y}</td><td class="mut">${y <= 2022 ? 'IS' : 'OOS'}</td><td>${x.n}</td>${td(x.avgR, 3)}${td(x.totR, 1)}<td>${f(x.win, 1)}%</td><td>${f(x.pf, 2)}</td>${td(x.totPct, 1)}<td class="neg">${f(x.mddPct, 1)}%</td><td>${f(x.sharpe, 2)}</td></tr>`; }).join('')}</table>`;
+  document.querySelectorAll('#yearTab [data-y]').forEach(r => r.onclick = () => { $('fYear').value = r.dataset.y; $('fMonth').value = ''; st.page = 0; renderBlotter(); $('blotter').scrollIntoView({ behavior: 'smooth' }); });
+}
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function renderRobust() {
+  const S = st.cur, R = S.map(t => t.r), n = R.length, sr = [...R].sort((a, b) => b - a);
+  const line = (lab, a) => { const tot = a.reduce((x, y) => x + y, 0); return `<tr><td>${lab}</td><td>${a.length}</td>${td(tot / a.length, 3)}${td(tot, 1)}</tr>`; };
+  const k1 = Math.ceil(0.01 * n), k5 = Math.ceil(0.05 * n);
+  $('outl').innerHTML = `<table><tr><th></th><th>Trades</th><th>Avg R</th><th>Total R</th></tr>${line('All trades', R)}${line('Without the best 10 trades', sr.slice(10))}${line('Without the best 1%', sr.slice(k1))}${line('Without the best 5%', sr.slice(k5))}${line('Without the worst 1%', sr.slice(0, n - k1))}${line('Without best and worst 1%', sr.slice(k1, n - k1))}</table><p class="note">Best 10 trades: ${sr.slice(0, 10).map(x => fs(x, 1)).join(', ')}R.</p>`;
+  const rand = rng(20261127), pct = S.map(t => t.pct), dds = [], fin = [], streak = [];
+  for (let k = 0; k < 1000; k++) {
+    const a = pct.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    let c = 0, p = 0, d = 0, ls = 0, lm = 0; for (const x of a) { c += x; p = Math.max(p, c); d = Math.min(d, c - p); ls = x <= 0 ? ls + 1 : 0; lm = Math.max(lm, ls); }
+    dds.push(d); fin.push(c); streak.push(lm);
+  }
+  const q = (a, p) => { const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
+  $('mc').innerHTML = `<table><tr><th></th><th>Worst 5%</th><th>Median</th><th>Best 5%</th></tr>
+    <tr><td>Max drawdown (account %, simple)</td><td class="neg">${f(q(dds, 0.05), 1)}%</td><td class="neg">${f(q(dds, 0.5), 1)}%</td><td class="neg">${f(q(dds, 0.95), 1)}%</td></tr>
+    <tr><td>Longest losing streak</td><td>${q(streak, 0.95)}</td><td>${q(streak, 0.5)}</td><td>${q(streak, 0.05)}</td></tr>
+    <tr><td>Final return (same trades, so fixed)</td><td colspan="3">${fs(fin[0], 1)}%</td></tr></table>`;
+}
+
+// ---------- blotter ----------
+const COLS = [['n', '#'], ['sym', 'Inst'], ['date', 'Date'], ['fill', 'Fill'], ['exit_t', 'Exit'], ['level', 'Line'], ['side', 'Side'], ['entry', 'Entry'], ['stop', 'Stop'], ['tp', 'Target'], ['exit', 'Exit px'], ['oc', 'Outcome'], ['risk', 'Risk (pts)'], ['r', 'R'], ['maeR', 'MAE R'], ['mfeR', 'MFE R'], ['dur', 'Mins'], ['pct', 'Acct %'], ['usd', 'P&L $']];
+function blotList() {
+  const y = $('fYear').value, m = $('fMonth').value, d = $('fDate').value.trim(), oc = $('fOc').value, ln = $('fLine').value, w = $('fWin').value;
+  let L = st.cur.filter(t => (!y || t.yr == y) && (!m || t.date.slice(5, 7) === m) && (!d || t.date.startsWith(d)) && (!oc || t.oc === oc) && (!ln || t.level === ln) && (!w || (w === 'w' ? t.r > 0 : t.r <= 0)));
+  const { k, d: dir } = st.sort; L = L.slice().sort((a, b) => (a[k] < b[k] ? -1 : a[k] > b[k] ? 1 : a.n - b.n) * dir);
+  return L;
+}
+function renderBlotter() {
+  const L = blotList(); st.list = L; const ps = 50, np = Math.max(1, Math.ceil(L.length / ps)); st.page = Math.min(st.page, np - 1);
+  const P = L.slice(st.page * ps, st.page * ps + ps), dp = t => D.meta[t.sym].dp;
+  $('blotNote').textContent = `(${L.length.toLocaleString()} trades match; total ${fs(L.reduce((x, t) => x + t.r, 0), 1)}R)`;
+  $('blotter').innerHTML = `<table><thead><tr>${COLS.map(([k, l]) => `<th class="s" data-k="${k}">${l}${st.sort.k === k ? (st.sort.d > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead><tbody>${P.map(t => `<tr class="click ${st.sel && st.sel.id === t.id ? 'sel' : ''}" data-id="${t.id}"><td class="mut">${t.n}</td><td>${t.sym}</td><td>${t.date}</td><td>${t.fill}</td><td>${t.exit_t}</td><td>${t.level}</td><td class="${t.side === 'long' ? 'pos' : 'neg'}">${t.side}</td><td>${f(t.entry, dp(t))}</td><td>${f(t.stop, dp(t))}</td><td>${t.tp == null ? '<span class="mut">none</span>' : f(t.tp, dp(t))}</td><td>${f(t.exit, dp(t))}</td><td>${t.oc}</td><td>${f(t.risk, dp(t))}</td>${td(t.r, 2)}<td class="neg">${f(-t.maeR, 2)}</td><td class="pos">${f(t.mfeR, 2)}</td><td>${t.dur}</td>${td(t.pct, 3)}${td(t.usd, 0)}</tr>`).join('')}</tbody></table>`;
+  $('pgInfo').textContent = `page ${st.page + 1} / ${np}`;
+  document.querySelectorAll('#blotter th.s').forEach(h => h.onclick = () => { st.sort = { k: h.dataset.k, d: st.sort.k === h.dataset.k ? -st.sort.d : 1 }; renderBlotter(); });
+  document.querySelectorAll('#blotter tr[data-id]').forEach(r => r.onclick = () => pick(st.cur.find(t => t.id === r.dataset.id)));
+}
+function pick(t, scroll = true) { if (!t) return; st.sel = t; drawTrade(t); renderBlotterSel(); if (scroll) $('tradeBox').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+function renderBlotterSel() { document.querySelectorAll('#blotter tr[data-id]').forEach(r => r.classList.toggle('sel', st.sel && r.dataset.id === st.sel.id)); }
+function stepTrade(d) { const L = st.list.length ? st.list : st.cur; let i = L.findIndex(t => t.id === st.sel?.id); i = Math.max(0, Math.min(L.length - 1, i + d)); pick(L[i], false); }
+function dayPick(sgn) { const days = byDay(st.cur); const d = Object.keys(days).reduce((a, b) => days[b].r * sgn > days[a].r * sgn ? b : a); $('fYear').value = ''; $('fMonth').value = ''; $('fDate').value = d; st.page = 0; renderBlotter(); pick(st.list[0]); }
+
+// ---------- trade chart ----------
+async function candlesFor(t) { const key = t.sym + t.yr; if (!D.candles[key]) D.candles[key] = getJSON(`${INSTR.find(i => i.sym === t.sym).dir}/candles_${t.yr}.json`); return (await D.candles[key])[t.id]; }
+async function drawTrade(t) {
+  if (!t) return; const dp = D.meta[t.sym].dp;
+  $('tradeInfo').innerHTML = `<b>#${t.n} ${t.sym} ${t.date}</b> · ${t.side} at <b>${t.level}</b> (${LINE_NAME[t.fam]} ${t.tier}) · armed ${t.arm}, filled ${t.fill} at ${f(t.entry, dp)}, exit ${t.exit_t} at ${f(t.exit, dp)} (<b>${t.oc}</b>) · stop ${f(t.stop, dp)} (${f(t.risk, dp)} pts) · target ${t.tp == null ? 'none (VWAP on the wrong side)' : f(t.tp, dp)} · VWAP at fill ${f(t.vwap, dp)}, σv ${f(t.sv, dp)} · <b class="${cls(t.r)}">${fs(t.r, 2)}R</b> (before costs ${fs(t.gR, 2)}R) · MAE ${f(t.maeR, 2)}R · MFE ${f(t.mfeR, 2)}R`;
+  $('tradeChart').innerHTML = '<p class="note">Loading candles…</p>';
+  let c; try { c = await candlesFor(t); } catch (e) { $('tradeChart').innerHTML = `<p class="warn">Candles not available (${e.message}).</p>`; return; }
+  if (st.sel !== t && st.sel?.id !== t.id) return;
+  const px = v => v == null ? null : c.open + v * c.tick;
+  const B = c.bars.map(b => ({ m: b[0], o: px(b[1]), h: px(b[2]), l: px(b[3]), c: px(b[4]), v: px(b[5]) }));
+  const keyLv = [t.entry, t.stop, t.exit, t.line].concat(t.tp == null ? [] : [t.tp]);
+  let lo = Math.min(...B.map(b => b.l), ...keyLv), hi = Math.max(...B.map(b => b.h), ...keyLv);
+  const padv = (hi - lo) * 0.08; lo -= padv; hi += padv;
+  const others = $('allLines').checked ? Object.entries(c.lines).filter(([k, v]) => k !== t.level && v > lo && v < hi) : [];
+  const H = 420, L = 8, Rr = 78, pad = 14, n = B.length, cw = (W0 - L - Rr) / n;
+  const X = i => L + (i + 0.5) * cw, Y = v => pad + (hi - v) / (hi - lo) * (H - 2 * pad - 14);
+  const xi = m => { let i = B.findIndex(b => b.m >= m); return i < 0 ? n - 1 : i; };
+  const fi = xi(c.fill_m), ei = xi(c.exit_m), ai = xi(c.arm_m);
+  const hl = (v, col, lab, dash = '', x0 = L, w = 1.2) => `<line x1="${x0}" x2="${W0 - Rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="${col}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ''}/><text x="${W0 - Rr + 4}" y="${Y(v) + 4}" style="fill:${col}">${lab}</text>`;
+  const ticks = []; for (let i = 0; i < n; i++) if (i === 0 || Math.floor(B[i].m / 30) !== Math.floor(B[i - 1].m / 30)) ticks.push(i);
+  const vw = B.map((b, i) => b.v == null ? null : `${X(i).toFixed(1)},${Y(b.v).toFixed(1)}`).filter(Boolean);
+  const sh = t.side === 'short', fy = Y(t.entry), ex = X(ei), ey = Y(t.exit);
+  $('tradeChart').innerHTML = `<svg viewBox="0 0 ${W0} ${H}" id="tsvg">
+    <rect x="${X(fi) - cw / 2}" y="${pad}" width="${Math.max(X(ei) - X(fi) + cw, 2)}" height="${H - 2 * pad - 14}" fill="rgba(79,125,240,.06)"/>
+    ${ticks.filter((_, k) => k % Math.ceil(ticks.length / 12) === 0).map(i => `<line x1="${X(i)}" x2="${X(i)}" y1="${pad}" y2="${H - pad - 14}" stroke="#1c2330"/><text x="${X(i)}" y="${H - 4}" text-anchor="middle">${mm(B[i].m)}</text>`).join('')}
+    ${others.map(([k, v]) => hl(v, '#4b5563', k, '2 3', L, 1)).join('')}
+    ${hl(t.line, '#d29922', t.level + ' line', '6 3', L, 1.4)}
+    ${hl(t.stop, '#f85149', 'stop', '', X(fi), 1.4)}
+    ${t.tp == null ? '' : hl(t.tp, '#10b981', 'target', '', X(fi), 1.4)}
+    ${vw.length > 1 ? `<polyline points="${vw.join(' ')}" fill="none" stroke="#a78bfa" stroke-width="1.4"/>` : ''}
+    ${B.map((b, i) => { const up = b.c >= b.o, col = up ? '#10b981' : '#f97316'; return `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(b.h)}" y2="${Y(b.l)}" stroke="${col}"/><rect x="${X(i) - Math.max(cw * 0.35, 0.6)}" y="${Y(Math.max(b.o, b.c))}" width="${Math.max(cw * 0.7, 1.2)}" height="${Math.max(Math.abs(Y(b.o) - Y(b.c)), 0.8)}" fill="${col}"/>`; }).join('')}
+    <line x1="${X(ai)}" x2="${X(ai)}" y1="${pad}" y2="${H - pad - 14}" stroke="#d29922" stroke-dasharray="2 3"/>
+    <path d="${sh ? `M${X(fi) - 7},${fy - 14}L${X(fi) + 7},${fy - 14}L${X(fi)},${fy - 3}Z` : `M${X(fi) - 7},${fy + 14}L${X(fi) + 7},${fy + 14}L${X(fi)},${fy + 3}Z`}" fill="#4f7df0" stroke="#fff" stroke-width=".8"/>
+    <path d="M${ex - 6},${ey - 6}L${ex + 6},${ey + 6}M${ex - 6},${ey + 6}L${ex + 6},${ey - 6}" stroke="#fff" stroke-width="2.2"/>
+    <text x="${L + 4}" y="${pad + 10}">${c.step > 1 ? c.step + '-min bars' : '1-min bars'} · London time</text>
+  </svg>`;
+  const svg = $('tsvg'), tip = $('tip');
+  svg.onmousemove = e => { const r = svg.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W0, i = Math.max(0, Math.min(n - 1, Math.floor((x - L) / cw))), b = B[i]; tip.style.display = 'block'; tip.style.left = e.clientX + 14 + 'px'; tip.style.top = e.clientY + 10 + 'px'; tip.textContent = `${mm(b.m)}  O ${f(b.o, dp)} H ${f(b.h, dp)}\n       L ${f(b.l, dp)} C ${f(b.c, dp)}\nVWAP ${f(b.v, dp)}`; };
+  svg.onmouseleave = () => tip.style.display = 'none';
+}
+
+// ---------- export ----------
+function renderExpNote() {
+  const mode = $('sizing').value, acct = st.acct, rp = $('riskPct').value;
+  $('expNote').innerHTML = `Rows: every trade in the current selection (${st.cur.length.toLocaleString()}), one row per closed trade by exit date, with the instrument as a trailing column. <b>Account ${money(acct)}</b>; <b>R unit = that trade's own stop distance</b> (the rolling-MAE stop, different on every trade). ${mode === 'contract' ? '<b>1 contract</b>: P&L $ = points × point value; Risk $ = stop distance × point value; Return % = P&L ÷ starting account.' : `<b>Risk ${rp}% a trade</b> of ${mode === 'comp' ? 'current equity (compounding)' : 'the starting account (fixed)'}; Return % = R × ${rp}%, so the % column is the R column scaled by the risk setting. MAE % uses the same scale.`} MAE is read from the real M1 path and signed negative. Costs ×${$('costx').value}.`;
+}
+function exportCsv(kind) {
+  const S = st.cur.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.exit_t < b.exit_t ? -1 : 1);
+  let rows, name;
+  if (kind === 'pct') { rows = [['Date', 'Return %', 'MAE %', 'Instrument'], ...S.map(t => [t.date, t.pct.toFixed(4), t.maePctA.toFixed(4), t.sym])]; name = 'returns'; }
+  else if (kind === 'R') { rows = [['date', 'R', 'MAE (R)', 'instrument'], ...S.map(t => [t.date, t.r.toFixed(4), (-t.maeR).toFixed(4), t.sym])]; name = 'r-multiples'; }
+  else if (kind === 'usd') { rows = [['Trade Date', 'PnL ($)', 'Risk ($)', 'Instrument'], ...S.map(t => [t.date, t.usd.toFixed(2), t.riskUsd.toFixed(2), t.sym])]; name = 'currency-pnl'; }
+  else { const K = ['n', 'sym', 'date', 'split', 'arm', 'fill', 'exit_t', 'dur', 'level', 'fam', 'tier', 'side', 'line', 'entry', 'stop', 'tp', 'exit', 'oc', 'vwap', 'sv', 'risk', 'r', 'gR', 'costR', 'maeR', 'mfeR', 'mae', 'mfe', 'pct', 'usd', 'riskUsd'];
+    rows = [K.map(k => k === 'r' ? 'R_net' : k === 'gR' ? 'R_gross' : k === 'risk' ? 'risk_pts' : k === 'pct' ? 'acct_pct' : k === 'usd' ? 'pnl_usd' : k === 'riskUsd' ? 'risk_usd' : k), ...S.map(t => K.map(k => t[k] == null ? '' : typeof t[k] === 'number' ? +t[k].toFixed(5) : t[k]))]; name = 'trade-log'; }
+  const csv = rows.map(r => r.join(',')).join('\n'), a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `line-system-${INSTR.filter(i => i.on).map(i => i.sym).join('-').toLowerCase()}-${$('sample').value.toLowerCase()}-${name}.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+init().catch(e => { $('verdict').innerHTML = `<p class="warn">Failed to load: ${e.message}</p>`; });
+</script>
+</body>
+</html>
