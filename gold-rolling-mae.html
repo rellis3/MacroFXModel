@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rolling MAE Stop</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;--bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--violet:#a78bfa;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:13.5px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+a{color:var(--blue);text-decoration:none}
+.hdr{display:flex;gap:10px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(13,17,23,.96);z-index:5;flex-wrap:wrap}
+h1{font-size:15px}
+.wrap{max-width:1040px;margin:0 auto;padding:14px 16px}
+.box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+h2{font-size:13.5px;margin-bottom:6px}
+p{color:var(--text2);margin-bottom:6px;max-width:92ch}
+p b,li b{color:var(--text)}
+ul{color:var(--text2);margin:0 0 6px 18px;max-width:92ch}
+.verdict{border-left:3px solid var(--amber)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:12.5px}
+th{text-align:left;color:var(--text3);font-weight:600;font-size:11px;padding:4px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:4px 8px;border-bottom:1px solid #222a35;white-space:nowrap}
+tr.hl td{background:rgba(79,125,240,.10)}
+td.best{color:var(--bull);font-weight:600}
+.neg{color:var(--bear)}.pos{color:var(--bull)}
+.tag{font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;margin-left:6px}
+.ctx{color:var(--blue)}.null{color:var(--text2)}
+select,button.seg{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 8px;font:12px inherit;min-height:30px;cursor:pointer}
+button.seg.on{border-color:var(--blue);color:var(--blue)}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;color:var(--text3);font-size:12px}
+svg{width:100%;height:auto;display:block}
+svg text{font:11.5px var(--mono);fill:var(--text2)}
+.note{font-size:12px;color:var(--text3)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--text2);margin:4px 0 6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:8px 0 4px}
+.kpi{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+.kpi .l{font-size:11px;color:var(--text3)}.kpi .v{font:600 17px var(--mono)}.kpi .s{font-size:11px;color:var(--text3)}
+#tip{position:fixed;display:none;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:6px 9px;font:12px var(--mono);pointer-events:none;z-index:9;max-width:320px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <a href="evidence.html">&larr; Evidence Book</a>
+  <h1>Rolling MAE stop: how much history sets today's stop?</h1>
+  <span class="ctl" style="margin:0 0 0 auto">Instrument <select id="sym"><option>GOLD</option><option>NQ</option><option>EURUSD</option></select></span>
+</div>
+<div class="wrap">
+
+  <div class="box verdict" id="verdict">Loading…</div>
+
+  <div class="box">
+    <h2>The question (Jordan's "jackets" test)</h2>
+    <p>On each of the 18 shadow lines (OH, OL, Close+, Close−, HL projection up and down, each at P50 / P75 / P90) we fade the <b>first touch</b> of the day and measure the MAE line to line: from the touch until price reaches the line inside, the next line out (MAE capped there) or 22:00 London.</p>
+    <p>Today's stop = the <b>median MAE over the last N sessions</b>, for N = 1 day … 12 months. A window is good if that stop lands close to what the <b>next month's</b> median MAE turns out to be. "Miss" is how far off it was, as a % of the truth. In-sample 2021–22, out-of-sample 2023 → 21 Aug 2026.</p>
+    <p class="note">Prereg <a href="forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md">forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md</a> · write-up <a href="analysis/output/gold-rolling-mae-window/RESULTS.md">RESULTS.md</a> · data <a id="csvlink" href="#">miss_table.csv</a></p>
+  </div>
+
+  <div class="box">
+    <h2>1 · Which window tracks next month's MAE best? <span class="tag ctx">CONTEXT</span></h2>
+    <div class="ctl">Show <button class="seg on" data-p="OOS">Out of sample</button><button class="seg" data-p="IS">In sample</button></div>
+    <div class="legend">
+      <span><i style="background:var(--blue)"></i>One pooled stop, in price</span>
+      <span><i style="background:var(--violet)"></i>One pooled stop, scaled by the day's σ</span>
+      <span><i style="background:var(--bear)"></i>A stop per line (18 stops)</span>
+    </div>
+    <svg id="missChart" viewBox="0 0 760 300"></svg>
+    <p class="note">Lower is better. Hover a dot for the number.</p>
+    <div class="scroll"><table id="missTable"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>2 · The stop per line today</h2>
+    <p class="note">Median MAE of the last 3 months (the in-sample choice) at each line, as of the last session in the sample. Lines with few touches get noisy stops, which is why one pooled stop misses less.</p>
+    <div class="scroll"><table id="levelTable"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>3 · Does fading the lines with that stop make money? <span class="tag null">NULL</span></h2>
+    <p class="note">Fade every first touch. Stop = the window's MAE stop, target = the line inside, break-even at +1R, flat 22:00. Pessimistic fills, costs on. Mean net R per trade, out of sample, with the 90% range. The shaded band is the shuffled-lines placebo (fake lines, same pipeline).</p>
+    <div class="ctl">
+      Stop <button class="seg on" data-s="per-level">Per line</button><button class="seg" data-s="pooled">Pooled</button>
+      &nbsp;Break-even <button class="seg on" data-b="on">On</button><button class="seg" data-b="off">Off</button>
+      &nbsp;Size <button class="seg on" data-m="usd">Price</button><button class="seg" data-m="sig">σ-scaled</button>
+    </div>
+    <svg id="tradeChart" viewBox="0 0 760 300"></svg>
+    <div class="scroll"><table id="tradeTable"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>4 · The last trades in the sample</h2>
+    <p class="note">Exit: target, stop, break-even or time. R is net of costs.</p>
+    <div class="scroll"><table id="exTable"></table></div>
+  </div>
+
+</div>
+<div id="tip"></div>
+<script>
+const $ = id => document.getElementById(id);
+const WIN = ['1d','2d','1w','2w','3w','1m','2m','3m','6m','12m'];
+const WNAME = {'1d':'1 day','2d':'2 days','1w':'1 week','2w':'2 weeks','3w':'3 weeks','1m':'1 month','2m':'2 months','3m':'3 months','6m':'6 months','12m':'12 months'};
+const UNIT = { GOLD: v => '$' + v.toFixed(2), NQ: v => v.toFixed(1) + ' pts', EURUSD: v => (v * 1e4).toFixed(1) + ' pips' };
+const LVL = { oh:'OH', ol:'OL', cup:'Close+', cdn:'Close−', hlH:'HL proj. up (low + HL)', hlL:'HL proj. down (high − HL)', hl:'HL' };
+const HOW = ['target', 'stop', 'break-even', 'time'];
+const st = { p: 'OOS', s: 'per-level', b: 'on', m: 'usd' };
+let D = null;
+
+function csv(t) {
+  const [h, ...rows] = t.trim().split(/\r?\n/).map(r => r.split(','));
+  return rows.map(r => Object.fromEntries(h.map((k, i) => [k, isNaN(+r[i]) || r[i] === '' ? r[i] : +r[i]])));
+}
+const sgn = (x, d = 3) => (x > 0 ? '+' : '') + x.toFixed(d);
+const lvlName = l => { const m = l.match(/^([a-zA-Z]+?)(50|75|90)$/); return m ? `${LVL[m[1]] || m[1]} P${m[2]}` : l; };
+function tip(svg) {
+  svg.querySelectorAll('[data-t]').forEach(n => {
+    n.addEventListener('pointerenter', e => { const t = $('tip'); t.textContent = n.dataset.t; t.style.display = 'block'; t.style.left = Math.min(e.clientX + 12, innerWidth - 330) + 'px'; t.style.top = e.clientY + 12 + 'px'; });
+    n.addEventListener('pointerleave', () => { $('tip').style.display = 'none'; });
+  });
+}
+function axes(W, H, L, R, T, B, ymin, ymax, ticks, fmt) {
+  const y = v => T + (ymax - v) / (ymax - ymin) * (H - T - B);
+  const x = i => L + i / (WIN.length - 1) * (W - L - R);
+  let s = '';
+  for (const v of ticks) s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0 ? '#6e7681' : '#232a34'}"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${fmt(v)}</text>`;
+  WIN.forEach((w, i) => s += `<text x="${x(i)}" y="${H - B + 18}" text-anchor="middle">${w}</text>`);
+  return { s, x, y };
+}
+
+function drawMiss() {
+  const p = st.p, rows = D.miss;
+  const get = (mode, scope) => WIN.map(w => rows.find(r => r.mode === mode && r.scope === scope && r.window === w)['miss_' + p]);
+  const series = [['usd', 'pooled', 'var(--blue)', 'Pooled, price'], ['sig', 'pooled', 'var(--violet)', 'Pooled, σ-scaled'], ['usd', 'per-level', 'var(--bear)', 'Per line, price']];
+  const ymax = Math.ceil(Math.max(...series.flatMap(([m, s]) => get(m, s))) / 10) * 10;
+  const A = axes(760, 300, 52, 16, 14, 30, 0, ymax, Array.from({ length: ymax / 10 + 1 }, (_, i) => i * 10), v => v + '%');
+  let s = A.s;
+  for (const [m, sc, col, nm] of series) {
+    const v = get(m, sc);
+    s += `<polyline fill="none" stroke="${col}" stroke-width="2.2" points="${v.map((q, i) => A.x(i) + ',' + A.y(q)).join(' ')}"/>`;
+    v.forEach((q, i) => s += `<circle cx="${A.x(i)}" cy="${A.y(q)}" r="4.5" fill="${col}" stroke="#161b22" stroke-width="2" data-t="${nm}, ${WNAME[WIN[i]]}: ${q.toFixed(1)}% miss (${p})"/>`);
+  }
+  $('missChart').innerHTML = s; tip($('missChart'));
+
+  const U = UNIT[D.sym] || (v => v.toFixed(4));
+  const cols = [['usd', 'pooled'], ['sig', 'pooled'], ['usd', 'per-level'], ['sig', 'per-level']];
+  const best = cols.map(([m, sc]) => Math.min(...get(m, sc)));
+  let h = `<tr><th>Window</th><th>Pooled, price</th><th>Pooled, σ-scaled</th><th>Per line, price</th><th>Per line, σ-scaled</th><th>Worst year (pooled price)</th><th>Pooled stop today</th></tr>`;
+  WIN.forEach(w => {
+    const r = cols.map(([m, sc]) => rows.find(q => q.mode === m && q.scope === sc && q.window === w));
+    const chosen = w === D.res.chosen_window;
+    h += `<tr class="${chosen ? 'hl' : ''}"><td>${WNAME[w]}${chosen ? ' <span class="note">(IS choice)</span>' : ''}</td>` +
+      r.map((q, i) => `<td class="${q['miss_' + p] === best[i] ? 'best' : ''}">${q['miss_' + p].toFixed(1)}%</td>`).join('') +
+      `<td>${r[0].worst_year} (${r[0].worst.toFixed(0)}%)</td><td>${U(r[0].stop_today)}</td></tr>`;
+  });
+  $('missTable').innerHTML = h;
+}
+
+function drawLevels() {
+  const U = UNIT[D.sym] || (v => v.toFixed(4));
+  let h = `<tr><th>Line</th><th>First touches</th><th>Median MAE (all years)</th><th>Mean MAE</th><th>Stop today (3 months)</th></tr>`;
+  for (const r of D.lvl) h += `<tr><td>${lvlName(r.level)}</td><td>${r.count}</td><td>${U(r.median)}</td><td>${U(r.mean)}</td><td><b>${U(r.stop_today_3m)}</b></td></tr>`;
+  $('levelTable').innerHTML = h;
+}
+
+function drawTrade() {
+  const rows = WIN.map(w => D.arms.find(r => r.mode === st.m && r.window === w && r.stops === st.s && r.be === st.b));
+  const lo = Math.min(-0.3, ...rows.map(r => r.OOS_lo)), hi = Math.max(0.1, ...rows.map(r => r.OOS_hi));
+  const ymin = Math.floor(lo * 20) / 20, ymax = Math.ceil(hi * 20) / 20;
+  const ticks = []; for (let v = ymin; v <= ymax + 1e-9; v += 0.05) ticks.push(+v.toFixed(2));
+  const A = axes(760, 300, 52, 16, 14, 30, ymin, ymax, ticks, v => sgn(v, 2));
+  let s = A.s;
+  const pr = D.res.primary;
+  if (st.m === 'usd' && st.s === 'per-level' && st.b === 'on') {
+    const pm = D.res.placebo_means.slice().sort((a, b) => a - b), p5 = pm[Math.floor(pm.length * 0.05)], p95 = pr.pl1_p95;
+    s = `<rect x="52" width="692" y="${A.y(p95)}" height="${A.y(p5) - A.y(p95)}" fill="rgba(157,167,179,.10)"/><text x="740" y="${A.y(p95) - 4}" text-anchor="end">placebo 5–95%</text>` + s;
+  }
+  rows.forEach((r, i) => {
+    const X = A.x(i), col = r.OOS_R > 0 ? 'var(--bull)' : 'var(--bear)';
+    s += `<line x1="${X}" x2="${X}" y1="${A.y(r.OOS_lo)}" y2="${A.y(r.OOS_hi)}" stroke="#9da7b3" stroke-width="2"/>`;
+    s += `<circle cx="${X}" cy="${A.y(r.OOS_R)}" r="5.5" fill="${col}" stroke="#161b22" stroke-width="2" data-t="${WNAME[r.window]}: ${sgn(r.OOS_R)}R a trade [${sgn(r.OOS_lo)}, ${sgn(r.OOS_hi)}], ${r.OOS_n} trades, total ${r.OOS_totR.toFixed(0)}R"/>`;
+  });
+  $('tradeChart').innerHTML = s; tip($('tradeChart'));
+
+  let h = `<tr><th>Window</th><th>IS R/trade</th><th>OOS R/trade [90%]</th><th>OOS trades</th><th>OOS total R</th><th>Win %</th><th>Target / stop / BE / time %</th></tr>`;
+  rows.forEach(r => {
+    const primary = r.window === pr.window && st.m === pr.mode && st.s === pr.stops && st.b === pr.be;
+    h += `<tr class="${primary ? 'hl' : ''}"><td>${WNAME[r.window]}${primary ? ' <span class="note">(the pre-registered test)</span>' : ''}</td>` +
+      `<td class="${r.IS_R < 0 ? 'neg' : 'pos'}">${sgn(r.IS_R)}</td><td class="${r.OOS_R < 0 ? 'neg' : 'pos'}">${sgn(r.OOS_R)} [${sgn(r.OOS_lo)}, ${sgn(r.OOS_hi)}]</td>` +
+      `<td>${r.OOS_n}</td><td class="${r.OOS_totR < 0 ? 'neg' : 'pos'}">${r.OOS_totR.toFixed(0)}</td><td>${r.OOS_win.toFixed(0)}</td>` +
+      `<td>${[r.OOS_tgt, r.OOS_stop, r.OOS_be, r.OOS_time].map(v => v.toFixed(0)).join(' / ')}</td></tr>`;
+  });
+  $('tradeTable').innerHTML = h;
+}
+
+function drawEx() {
+  const U = UNIT[D.sym] || (v => v.toFixed(4));
+  let h = `<tr><th>Date</th><th>Line</th><th>Side</th><th>Stop size</th><th>Exit</th><th>Net R</th></tr>`;
+  for (const r of D.ex) h += `<tr><td>${r.date}</td><td>${lvlName(r.level)}</td><td>${r.short === 'True' ? 'short' : 'long'}</td><td>${U(r.stop)}</td><td>${HOW[r.how] ?? r.how}</td><td class="${r.R < 0 ? 'neg' : 'pos'}">${sgn(r.R, 2)}</td></tr>`;
+  $('exTable').innerHTML = h;
+}
+
+function drawVerdict() {
+  const pr = D.res.primary, U = UNIT[D.sym] || (v => v.toFixed(4));
+  const pooled = WIN.map(w => D.miss.find(r => r.mode === 'usd' && r.scope === 'pooled' && r.window === w));
+  const sigBest = WIN.map(w => D.miss.find(r => r.mode === 'sig' && r.scope === 'pooled' && r.window === w)).sort((a, b) => a.miss_OOS - b.miss_OOS)[0];
+  const pBest = pooled.slice().sort((a, b) => a.miss_OOS - b.miss_OOS)[0];
+  const today = pooled.find(r => r.window === D.res.chosen_window);
+  const neg = D.arms.filter(r => r.OOS_R < 0).length;
+  $('verdict').innerHTML = `<h2>${D.sym}: the answer</h2>
+    <div class="kpis">
+      <div class="kpi"><div class="l">Best price window (pooled, OOS)</div><div class="v">${WNAME[pBest.window]}</div><div class="s">${pBest.miss_OOS.toFixed(1)}% miss · 1 day is ${pooled[0].miss_OOS.toFixed(0)}%</div></div>
+      <div class="kpi"><div class="l">Best overall (σ-scaled, OOS)</div><div class="v">${WNAME[sigBest.window]}</div><div class="s">${sigBest.miss_OOS.toFixed(1)}% miss</div></div>
+      <div class="kpi"><div class="l">Pooled stop today (${WNAME[D.res.chosen_window]})</div><div class="v">${U(today.stop_today)}</div><div class="s">last session in sample</div></div>
+      <div class="kpi"><div class="l">The trade, OOS</div><div class="v neg">${sgn(pr.OOS_R)}R</div><div class="s">[${sgn(pr.OOS_lo)}, ${sgn(pr.OOS_hi)}] · placebo ${sgn(pr.pl1_mean)} · ${neg}/${D.arms.length} variants negative</div></div>
+    </div>
+    <ul>
+      <li><b>Window (CONTEXT):</b> 1 day to 1 week of history is noise. Anything from about 1 to 6 months sizes the stop about equally well. Scaling by the day's σ helps the long windows most.</li>
+      <li><b>One pooled stop beats a stop per line</b> by about 2×: each line gets too few touches a month for its own median to settle.</li>
+      <li><b>The trade (${pr.verdict}):</b> fading every first touch with the MAE stop loses ${sgn(pr.OOS_R)}R a trade out of sample (${pr.OOS_n} trades, total ${pr.OOS_totR.toFixed(0)}R), the same as fake lines. With the stop at the median MAE about half the trades stop out by construction.</li>
+    </ul>`;
+}
+
+async function load(sym) {
+  const base = `analysis/output/gold-rolling-mae-window/${sym}/`;
+  $('csvlink').href = base + 'miss_table.csv';
+  try {
+    const f = n => fetch(base + n, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(n); return r; });
+    const [m, l, a, e, j] = await Promise.all([f('miss_table.csv'), f('by_level.csv'), f('trade_arms.csv'), f('trade_examples.csv'), f('results.json')]);
+    D = { sym, miss: csv(await m.text()), lvl: csv(await l.text()), arms: csv(await a.text()), ex: csv(await e.text()), res: await j.json() };
+  } catch (err) {
+    D = null;
+    $('verdict').innerHTML = `<h2>${sym}: not run yet</h2><p>Only GOLD has been run so far. NQ and EURUSD use the same script (<code>scripts/gold-rolling-mae-window/run.py ${sym}</code>) and will appear here once run.</p>`;
+    ['missChart', 'missTable', 'levelTable', 'tradeChart', 'tradeTable', 'exTable'].forEach(id => $(id).innerHTML = '');
+    return;
+  }
+  drawVerdict(); drawMiss(); drawLevels(); drawTrade(); drawEx();
+}
+
+document.querySelectorAll('button.seg').forEach(b => b.addEventListener('click', () => {
+  const k = Object.keys(b.dataset)[0];
+  document.querySelectorAll(`button.seg[data-${k}]`).forEach(x => x.classList.toggle('on', x === b));
+  st[k] = b.dataset[k];
+  if (!D) return;
+  k === 'p' ? drawMiss() : drawTrade();
+}));
+$('sym').addEventListener('change', e => load(e.target.value));
+load('GOLD');
+</script>
+</body>
+</html>
