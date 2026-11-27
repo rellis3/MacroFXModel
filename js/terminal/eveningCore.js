@@ -23,11 +23,27 @@ export function windowMove(bars, ms, win = WIN, step = STEP) {
   const end = ms + win, b1 = bars.find(b => Math.abs(b.t * 1000 + step - end) < 1000); if (!b1 || !(b1.c > 0) || b1.t < b0.t) return null;
   return (b1.c / b0.o - 1) * 100;
 }
-/** The reaction of `ccy` to a release at ms: { pair, movePct (signed for the currency), usualPct (median |move| over the same half hour on up to 10 earlier days), ratio } or null. */
-export function reactionOf(bars, ms, ccy) {
-  const p = REACT_PAIR[String(ccy ?? '').toUpperCase()]; if (!p) return null;
+/** The clock each currency's releases are set by (Helix review 0.6): a US 08:30 print is 08:30 New York on every earlier day, whatever London's offset did in between. */
+export const RELEASE_TZ = { USD: 'America/New_York', CAD: 'America/Toronto', EUR: 'Europe/Berlin', GBP: 'Europe/London', CHF: 'Europe/Zurich', JPY: 'Asia/Tokyo', AUD: 'Australia/Sydney', NZD: 'Pacific/Auckland' };
+// one formatter per zone, made once at module load (never per bar: Intl.DateTimeFormat holds native memory)
+const TZ_FMT = Object.fromEntries([...new Set(Object.values(RELEASE_TZ))].map(z => [z, new Intl.DateTimeFormat('en-US', { timeZone: z, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })]));
+/** The zone's UTC offset at an instant, in ms (local wall time minus UTC). */
+export function tzOffset(ms, zone) {
+  const f = TZ_FMT[zone]; if (!f) return 0; const o = {}; for (const p of f.formatToParts(new Date(ms))) o[p.type] = p.value;
+  return Date.UTC(+o.year, +o.month - 1, +o.day, +o.hour % 24, +o.minute) - Math.floor(ms / 60e3) * 60e3;
+}
+/** The same local clock time `d` days before ms in `zone` (a fixed UTC step when the zone is unknown). */
+export function sameLocalTime(ms, d, zone) {
+  const t = ms - d * DAY; if (!TZ_FMT[zone]) return t;
+  const t1 = t + (tzOffset(ms, zone) - tzOffset(t, zone));
+  return t + (tzOffset(ms, zone) - tzOffset(t1, zone));       // a second pass, with the offset read at the corrected instant (right at a clock change)
+}
+/** The reaction of `ccy` to a release at ms: { pair, movePct (signed for the currency), usualPct (median |move| over the same half hour on up to 10 earlier days, stepped back in the release's own clock), ratio } or null. */
+export function reactionOf(bars, ms, ccy, { zone } = {}) {
+  const c = String(ccy ?? '').toUpperCase(), p = REACT_PAIR[c]; if (!p) return null;
   const m = windowMove(bars, ms); if (m == null) return null;
-  const past = []; for (let d = 1; d <= 16 && past.length < 10; d++) { const x = windowMove(bars, ms - d * DAY); if (x != null) past.push(Math.abs(x)); }
+  const z = zone ?? RELEASE_TZ[c];
+  const past = []; for (let d = 1; d <= 16 && past.length < 10; d++) { const x = windowMove(bars, sameLocalTime(ms, d, z)); if (x != null) past.push(Math.abs(x)); }
   past.sort((a, b) => a - b);
   const usual = past.length >= 3 ? (past.length % 2 ? past[(past.length - 1) / 2] : (past[past.length / 2 - 1] + past[past.length / 2]) / 2) : null;
   return { pair: p[0], movePct: m * p[1], usualPct: usual, ratio: usual > 0 ? Math.abs(m) / usual : null };
@@ -36,13 +52,38 @@ export function reactionOf(bars, ms, ccy) {
 const pctWords = v => { const a = Math.abs(v); return `${a < 0.095 ? a.toFixed(2) : a.toFixed(1)} percent`; };
 const timesWords = r => (r == null ? '' : r < 0.6 ? ', less than usual for that time of day' : r < 1.4 ? ', about usual for that time of day' : r < 1.75 ? ', about one and a half times the usual for that time of day'
   : r < 2.5 ? ', about twice the usual for that time of day' : `, about ${Math.round(r)} times the usual for that time of day`);
-const num = v => { const m = /^[−-]?\d+(?:\.\d+)?/.exec(String(v ?? '').trim().replace('−', '-')); return m ? +m[0].replace('−', '-') : null; };
+// a calendar figure with its unit (Helix review 0.5): "1.2M" against "950K" is above, not below. K / M / B / T scale; % and bare numbers compare as written.
+const SCALE = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 };
+export const num = v => { const m = /^([-]?\d+(?:\.\d+)?)\s*([KMBT%])?/i.exec(String(v ?? '').trim().replace(/[−–]/g, '-').replace(/,/g, '')); if (!m) return null; const u = (m[2] ?? '').toUpperCase(); return +m[1] * (SCALE[u] ?? 1); };
 /** "came in at 54.0, above the 52.4 expected" (above / below / in line: a comparison of numbers, not a judgement of good or bad). */
 function printed(e) {
   const a = sayFig(e.actual); if (!a) return null;
   const f = sayFig(e.forecast), na = num(e.actual), nf = num(e.forecast);
   const cmp = f == null || na == null || nf == null ? '' : na > nf ? `, above the ${f} expected` : na < nf ? `, below the ${f} expected` : `, in line with the ${f} expected`;
   return `${sayRelease(e)} came in at ${a}${cmp}`;
+}
+/**
+ * The release against ITS OWN history (Helix review wave 1.4), beside the time-of-day yardstick: the release-reaction record (/api/release-reactions live + recent) for this
+ * release time and currency. Its 30-minute move in the currency's main pair against that family's usual |move| (usual30, point in time, over n30 earlier releases), and the surprise
+ * in sigma of the family's own past surprises. { z, m30, usual30, n30, ratio, family, sizeFamily } or null without a matching scored record.
+ */
+const SIZE_FAMILIES = /^(NFP|FOMC|ECB|BOE|BOJ|BOC|RBA|RBNZ|SNB)$/i, SIZE_WORDS = /rate decision|interest rate|employment|payroll|non-?farm|jobs|unemployment/i;
+export function familyRead(recs, g) {
+  const pair = REACT_PAIR[g?.ccy]?.[0]?.toLowerCase(); if (!pair || !Array.isArray(recs)) return null;
+  const rec = recs.find(r => r && Math.abs(+r.ms - g.ms) <= 3 * 60e3 && (r.ccy ? r.ccy === g.ccy : true) && (r.markets ?? []).some(m => m.id === pair && fin(m.m30)));
+  if (!rec) return null;
+  const m = rec.markets.find(x => x.id === pair), u = fin(m.usual30) && +m.usual30 > 0 ? +m.usual30 : null, z = fin(rec.surprise?.z) ? +rec.surprise.z : null;
+  return { z, m30: +m.m30, usual30: u, n30: fin(m.n30) ? +m.n30 : null, ratio: u ? Math.abs(+m.m30) / u : null, family: rec.family ?? null,
+    sizeFamily: SIZE_FAMILIES.test(String(rec.family ?? '')) || SIZE_WORDS.test(String(rec.event ?? '')) };
+}
+/** The spoken add-on for familyRead: against the family's usual, the surprise in sigma, and (rate decisions and jobs only) the validated surprise-size fact, range not direction. */
+export function familyWords(f) {
+  if (!f) return '';
+  const t = [];
+  if (f.ratio != null && f.n30 >= 5) t.push(`Against its own last ${f.n30} releases, that half hour was ${f.ratio < 0.6 ? 'smaller than' : f.ratio < 1.4 ? 'about' : f.ratio < 1.95 ? `${f.ratio.toFixed(1)} times` : `about ${Math.round(f.ratio)} times`} the usual for this release.`);
+  if (f.z != null) t.push(`The surprise was ${Math.abs(f.z) < 0.25 ? 'close to nothing' : `${Math.abs(f.z).toFixed(1)} standard deviations of its past surprises`}${Math.abs(f.z) >= 0.25 ? `, ${f.z > 0 ? 'above' : 'below'} the forecast` : ''}.`);
+  if (f.z != null && Math.abs(f.z) >= 1 && f.sizeFamily) t.push("In the desk's tests, bigger surprises in rate decisions and jobs data have gone with wider sessions: size, never direction.");
+  return t.length ? ` ${t.join(' ')}` : '';
 }
 /** The key to look a release group's reaction up by. */
 export const reactKey = (hm, ccy) => `${hm}|${ccy}`;
@@ -60,7 +101,7 @@ export function releasedGroups(day, now) {
  * The EVENING review line: up to `max` release times (the biggest reactions and the top-ranked first, then read in clock order), each with what printed against the forecast and
  * what the currency did in the half hour after. react = { [reactKey]: reactionOf(...) }. null when nothing printed today.
  */
-export function reviewScript(day, react = {}, now, max = 3) {
+export function reviewScript(day, react = {}, now, max = 3, fam = {}) {
   const groups = releasedGroups(day, now); if (!groups.length) return null;
   const score = g => (react[g.key]?.ratio ?? 0) + g.rank * 0.5;
   const pick = [...groups].sort((a, b) => score(b) - score(a)).slice(0, max).sort((a, b) => a.ms - b.ms);
@@ -68,7 +109,7 @@ export function reviewScript(day, react = {}, now, max = 3) {
     const said = g.ev.slice(0, 2).map(printed).filter(Boolean); if (!said.length) return null;
     const r = react[g.key], who = CCY_WORD[g.ccy];
     const after = r && who ? (Math.abs(r.movePct) < 0.02 ? ` ${cap(who)} barely moved in the half hour after.` : ` In the half hour after, ${who} ${r.movePct > 0 ? 'rose' : 'fell'} ${pctWords(r.movePct)}${timesWords(r.ratio)}.`) : '';
-    return `At ${g.hm}, ${said.join(', and ')}.${after}`;
+    return `At ${g.hm}, ${said.join(', and ')}.${after}${familyWords(fam[g.key])}`;
   }).filter(Boolean);
   if (!lines.length) return null;
   const rest = groups.length - pick.length, big = pick.map(g => ({ g, r: react[g.key] })).filter(x => x.r?.ratio != null).sort((a, b) => b.r.ratio - a.r.ratio)[0];

@@ -104,3 +104,48 @@ test('the move of the day: chosen from the Nasdaq, gold and the dollar majors on
   const t = dayMoveScript('GOLD', { open: 2650, lo: 2641, hi: 2702, last: 2698, movePct: 1.8, times: 3 });
   assert.match(t, /^The move of the day: gold\. It opened at 2650, traded between 2641 and 2702, and stands at 2698 this evening\. That is up 1\.8 percent on the day, about 3 times its usual move\.$/);
 });
+
+test('num: K/M/B/% units kept, so 1.2M is above 950K (Helix review 0.5)', async () => {
+  const { num } = await import('./eveningCore.js');
+  assert.equal(num('1.2M'), 1.2e6); assert.equal(num('950K'), 950e3); assert.ok(num('1.2M') > num('950K'));
+  assert.equal(num('2.5B'), 2.5e9); assert.equal(num('-0.3%'), -0.3); assert.equal(num('−12K'), -12e3); assert.equal(num('1,234'), 1234); assert.equal(num('54.0'), 54); assert.equal(num('n/a'), null);
+  const day = { events: [{ rank: 3, actual: '1.2M', forecast: '950K', ms: 1, hm: '13:30', ccy: 'USD', short: 'US jobs', event: 'Jobs', country: 'US' }] };
+  const t = reviewScript(day, {}, 2); assert.match(t, /above the/); assert.doesNotMatch(t, /below the/);
+});
+
+test('reactionOf: the baseline steps back in the release\'s own clock, so a US 08:30 print after the US clock change is compared with 08:30 New York (Helix review 0.6)', async () => {
+  const { sameLocalTime, tzOffset, RELEASE_TZ } = await import('./eveningCore.js');
+  // 3 Nov 2026 13:30 UTC = 08:30 New York (EST); the US left daylight time on 1 Nov, so 08:30 New York on 30 Oct was 12:30 UTC
+  const rel = T('2026-11-03T13:30:00Z');
+  assert.equal(new Date(sameLocalTime(rel, 4, RELEASE_TZ.USD)).toISOString(), '2026-10-30T12:30:00.000Z');
+  assert.equal(new Date(sameLocalTime(rel, 1, RELEASE_TZ.USD)).toISOString(), '2026-11-02T13:30:00.000Z');
+  assert.equal(sameLocalTime(rel, 4, 'Nowhere/Zone'), rel - 4 * 864e5, 'unknown zone: fixed UTC step');
+  assert.equal(tzOffset(rel, 'Asia/Tokyo'), 9 * 3600e3);
+  // bars: a 0.05% move in the 08:30 New York half hour on each earlier day, nothing an hour off; the release day moves 0.10%
+  const out = []; for (let d = 12; d >= 0; d--) {
+    const at = sameLocalTime(rel, d, RELEASE_TZ.USD), dow = new Date(at).getUTCDay(); if (dow === 0 || dow === 6) continue;
+    for (let k = -8; k <= 8; k++) { const t = at + k * 15 * 60e3; let o = 1.1, c = 1.1; if (k === 0) c = 1.1 * (1 - (d === 0 ? 0.0005 : 0.00025)); if (k === 1) { o = 1.1 * (1 - (d === 0 ? 0.0005 : 0.00025)); c = 1.1 * (1 - (d === 0 ? 0.001 : 0.0005)); } out.push({ t: t / 1000, o, c }); }
+  }
+  out.sort((a, b) => a.t - b.t);
+  const r = reactionOf(out, rel, 'USD');
+  assert.ok(Math.abs(r.usualPct - 0.05) < 1e-6, `usual ${r.usualPct}`); assert.ok(Math.abs(r.ratio - 2) < 1e-6);
+  assert.ok(reactionOf(out, rel, 'USD', { zone: 'Nowhere/Zone' }).usualPct < 0.05, 'a fixed UTC step reads the wrong hour on the days before the change');
+});
+
+test('the evening review against the release family\'s own history and its surprise in sigma, beside the time-of-day usual (Helix review wave 1.4)', async () => {
+  const { familyRead, familyWords } = await import('./eveningCore.js');
+  const ms = T('2026-11-06T13:30:00Z'), g = { hm: '13:30', ms, ccy: 'USD', key: reactKey('13:30', 'USD') };
+  const recs = [{ ms: ms + 60e3, ccy: 'USD', family: 'NFP', event: 'Non-Farm Employment Change', surprise: { z: -1.6 }, markets: [{ id: 'zt', m30: 0.05 }, { id: 'eurusd', m30: 0.42, usual30: 0.2, n30: 24 }] },
+    { ms: ms - 86400e3, ccy: 'USD', markets: [{ id: 'eurusd', m30: 9 }] }];
+  const f = familyRead(recs, g);
+  assert.deepEqual([f.z, f.n30, +f.ratio.toFixed(6), f.sizeFamily], [-1.6, 24, 2.1, true]);
+  const w = familyWords(f);
+  assert.match(w, /Against its own last 24 releases, that half hour was about 2 times the usual for this release\. The surprise was 1\.6 standard deviations of its past surprises, below the forecast\./);
+  assert.match(w, /bigger surprises in rate decisions and jobs data have gone with wider sessions: size, never direction\./);
+  assert.equal(familyRead(recs, { ...g, ms: ms + 3600e3 }), null, 'no record at that time'); assert.equal(familyWords(null), '');
+  assert.doesNotMatch(familyWords({ ...f, sizeFamily: false }), /desk's tests/, 'the validated fact only for the families it was shown on');
+  // the review line carries it after the time-of-day sentence
+  const day = { events: [{ rank: 3, actual: '120K', forecast: '180K', ms, hm: '13:30', ccy: 'USD', short: 'US jobs', event: 'Jobs', country: 'US' }] };
+  const t = reviewScript(day, { [g.key]: { movePct: 0.4, usualPct: 0.1, ratio: 4 } }, ms + 7200e3, 3, { [g.key]: f });
+  assert.match(t, /about 4 times the usual for that time of day\. Against its own last 24 releases/);
+});

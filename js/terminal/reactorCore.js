@@ -146,7 +146,7 @@ const NUMW = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eigh
 const nw = n => NUMW[n] ?? String(n);
 
 /** The SHOW line: 2-4 plain sentences from the summary, the broken links by name and the biggest move. Description only. names = key -> plain name for the biggest mover. */
-export function reactorScript(sum, stops, barMap, names = {}) {
+export function reactorScript(sum, stops, barMap, names = {}, floors = null) {
   if (!sum && !(stops?.length)) return null;
   const broken = Math.round(num(sum?.broken) ?? stops?.length ?? 0), judged = Math.round(num(sum?.judged) ?? ((num(sum?.holding) ?? 0) + broken));
   const moved = Object.values(barMap ?? {}).filter(b => b.moved), top = [...moved].sort((a, b) => b.ratio - a.ratio)[0];
@@ -157,6 +157,7 @@ export function reactorScript(sum, stops, barMap, names = {}) {
   } else if (judged > 0) s.push(`All ${judged} testable links are holding; none is broken.`);
   else s.push('No link has both ends moving, so nothing is being tested.');
   if (top) s.push(`${cap(nw(moved.length))} market${moved.length === 1 ? ' is' : 's are'} beyond ${moved.length === 1 ? 'its' : 'their'} normal noise, the largest ${names[top.key] ?? top.key} at ${top.ratio >= 10 ? Math.round(top.ratio) : top.ratio.toFixed(1)} times.`);
+  const fl = floors ? floorLine(floors, names) : null; if (fl) s.push(fl);      // beside the fixed floors, never instead of them (Helix review wave 1.5)
   s.push('A description of the window, not a forecast.');
   return s.join(' ');
 }
@@ -166,4 +167,31 @@ const cap = w => w.charAt(0).toUpperCase() + w.slice(1);
 export function plainName(label) {
   const s = String(label ?? '').replace(/\s*\(.*\)\s*$/, '').trim();
   return /^(Fear gauge|Dollar|Inflation expectations|Real yield|Funding|Crack spread)/.test(s) ? `the ${s.charAt(0).toLowerCase()}${s.slice(1)}` : s;
+}
+
+// ── adaptive noise floors, shown beside the fixed ones (Helix review wave 1.5) ──
+// The chain's floors (js/macroChain.js CHAIN_NODES[k].floor) are fixed 20-day sizes. Here each node's own history gives an adaptive floor: the median absolute 20-session change over
+// its last `look` sessions (the drill bundle, /api/drill-series: FRED yields and spreads in percent, so bp = 100 x the change; OANDA prices, so pct = the % change; VIX in points).
+// Where the fixed floor is under half the adaptive one, the node reads as "moved" more easily than its own history would say: that is flagged and said, never changed in the live chain.
+export const DRILL_KEY = { oil: 'oil', bei: 'bei', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', real: 'tips', dxy: 'dxy', gold: 'gold', copper: 'copper', audusd: 'audusd', usdcad: 'usdcad', usdjpy: 'usdjpy',
+  vix: 'vix', hy: 'hy', nq: 'nq', spx: 'spx', smh: 'smh', xle: 'xle', xlre: 'xlre' };
+/** { key: { fixed, adaptive, n, low } } for every node with a drill series of at least 60 sessions. drill = { dates, series: { k: [value|null] } }. */
+export function adaptiveFloors(drill, nodes, { window = 20, look = 500 } = {}) {
+  const out = {};
+  for (const [k, def] of Object.entries(nodes ?? {})) {
+    const col = drill?.series?.[DRILL_KEY[k]]; if (!Array.isArray(col) || !(def?.floor > 0)) continue;
+    const v = col.map(Number).filter(Number.isFinite).slice(-(look + window)); if (v.length < window + 60) continue;
+    const ch = []; for (let i = window; i < v.length; i++) { const a = v[i - window], b = v[i]; const d = def.unit === 'pct' ? (a > 0 ? (b / a - 1) * 100 : NaN) : def.unit === 'bp' ? (b - a) * 100 : b - a; if (Number.isFinite(d)) ch.push(Math.abs(d)); }
+    if (ch.length < 60) continue; ch.sort((x, y) => x - y);
+    const adaptive = ch.length % 2 ? ch[(ch.length - 1) / 2] : (ch[ch.length / 2 - 1] + ch[ch.length / 2]) / 2;
+    out[k] = { fixed: def.floor, adaptive, n: ch.length, low: def.floor < adaptive / 2 };
+  }
+  return out;
+}
+/** The spoken sentence for the flagged nodes (names = key -> plain name), or null when no fixed floor is under half its adaptive one. */
+export function floorLine(af, names = {}) {
+  const all = Object.entries(af ?? {}), low = all.filter(([, x]) => x.low).sort((a, b) => b[1].adaptive / b[1].fixed - a[1].adaptive / a[1].fixed);
+  if (!all.length || !low.length) return null;
+  const nm = low.slice(0, 3).map(([k]) => names[k] ?? k);
+  return `Against each market's own history, the fixed noise floor is under half its usual twenty-day move for ${listWords(nm)}${low.length > 3 ? ` and ${nw(low.length - 3)} more` : ''}, so ${low.length === 1 ? 'it reads' : 'they read'} as moved more easily than ${low.length === 1 ? 'its' : 'their'} history alone would say.`;
 }

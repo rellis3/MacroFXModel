@@ -212,6 +212,10 @@ export const fmtDay = d => { const x = new Date(`${d}T12:00:00Z`); return Number
 const say = v => (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString('en-US') : Math.abs(v) >= 100 ? v.toFixed(1) : v.toFixed(Math.abs(v) >= 10 ? 2 : 4));
 const pctOf = (v, spot) => { const p = Math.abs((v - spot) / spot * 100); return `${p < 10 ? p.toFixed(1) : Math.round(p)} percent`; };
 
+/** True for a currency pair (the gamma-range result is an equity-index one: Evidence Book gex-range-es, "FX still does not carry it"). */
+export const isFxKey = k => /^(EUR|GBP|AUD|NZD|USD)(USD|JPY|CAD|CHF)$/.test(String(k ?? '')) && k !== 'USDUSD';
+/** The open-interest capture date in words ("26 Nov"), from an oi-store savedAt; null without one. */
+export const oiDateWords = savedAt => { const d = String(savedAt ?? '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(d) ? fmtDay(d) : null; };
 /** The SHOW line for the pillar: where spot sits against the flip and the walls, plain words, at most ~60 words, one caveat. null without a ladder. */
 export function pillarScript(P, key) {
   if (!P || !fin(P.spot)) return null; const who = spoken(key), s = [];
@@ -223,6 +227,9 @@ export function pillarScript(P, key) {
   if (P.putWall) w.push(`the biggest put wall is ${say(P.putWall.strike)}, ${pctOf(P.putWall.strike, P.spot)} ${P.putWall.strike >= P.spot ? 'above' : 'below'}`);
   if (w.length) s.push(`${w.join(', and ')}.`.replace(/^t/, 'T'));
   if (P.flip != null) s.push(`In our tests the gamma regime has been a guide to the size of the day, not its direction, so ${P.longAt(P.spot) ? 'a tighter day is the likelier shape' : 'allow for a wider day'}.`);
+  // Helix review wave 1.9, side by side with the wording above (kept as it is): the FX qualifier in its own sentence, and the capture date of the open interest
+  if (P.flip != null && isFxKey(key)) s.push('That test is on equity indices; in currencies the gamma regime has not carried it.');
+  const od = oiDateWords(P.savedAt); if (od) s.push(`The open interest is from the ${od} capture.`);
   s.push('A description of positioning, not a forecast.');
   return s.join(' ');
 }

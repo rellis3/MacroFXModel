@@ -90,6 +90,19 @@ export function tilts(B, { days = 30, now } = {}) {
   for (const ccy of B?.ccys ?? CCYS) { const zs = xs.filter(x => x.cell.ccy === ccy).map(x => x.s.z); out[ccy] = { n: zs.length, mean: zs.length >= 2 ? Math.round(zs.reduce((a, b) => a + b, 0) / zs.length * 100) / 100 : null }; }
   return out;
 }
+/**
+ * Side by side with leaders (Helix review wave 1.8): "k of n beat" instead of "mostly beaten". Per currency over the last `days`: n scored prints, beat (z > 0), miss (z < 0) and the median of
+ * the z values winsorised at +-CAP. A currency is a beater only with n >= minN, a median >= thr and more beats than misses (a misser the mirror). { up: [{ ccy, k, n, med }], dn: [...] }.
+ */
+export function leadersKN(B, { days = 30, now, minN = 4, thr = 0.3 } = {}) {
+  const t = num(now) ?? B?.asOf ?? Date.now(), xs = scoredSlices(B, t - days * DAY), up = [], dn = [];
+  for (const ccy of B?.ccys ?? CCYS) {
+    const zs = xs.filter(x => x.cell.ccy === ccy).map(x => Math.max(-CAP, Math.min(CAP, x.s.z))).sort((a, b) => a - b), n = zs.length; if (n < minN) continue;
+    const med = n % 2 ? zs[(n - 1) / 2] : (zs[n / 2 - 1] + zs[n / 2]) / 2, beat = zs.filter(z => z > 0).length, miss = zs.filter(z => z < 0).length;
+    if (med >= thr && beat > miss) up.push({ ccy, k: beat, n, med }); else if (med <= -thr && miss > beat) dn.push({ ccy, k: miss, n, med });
+  }
+  return { up: up.sort((a, b) => b.med - a.med), dn: dn.sort((a, b) => a.med - b.med), minN };
+}
 /** Which currencies have been mostly beating / missing (|mean z| >= thr). Sorted strongest first. */
 export function leaders(T, thr = 0.3) {
   const e = Object.entries(T ?? {}).filter(([, v]) => v.mean != null);
@@ -161,15 +174,17 @@ export function placeLabels(items, { W = 1280, H = 720, pad = 3, obstacles = [],
 /** The SHOW line: which economies have been surprising up / down lately and the biggest recent beat and miss, plain words. null when there is nothing to say. */
 export function surpriseScript(B, { now } = {}) {
   if (!B?.ok) return null;
-  const X = extremes(B, { now }), L = leaders(tilts(B, { now }));
+  const X = extremes(B, { now }), L = leadersKN(B, { now });
   if (!X.beat && !X.miss) return null;
   const list = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
   const t = ['Data surprises across the eight economies.'];
-  const up = L.up.slice(0, 3).map(c => CCY_SPOKEN[c]), dn = L.dn.slice(0, 3).map(c => CCY_SPOKEN[c]);
-  if (up.length && dn.length) t.push(`Over the past month ${list(up)} ${up.length > 1 ? 'have' : 'has'} mostly beaten expectations, while ${list(dn)} ${dn.length > 1 ? 'have' : 'has'} mostly missed.`);
-  else if (up.length) t.push(`Over the past month ${list(up)} ${up.length > 1 ? 'have' : 'has'} mostly beaten expectations, and no economy has been missing much.`);
-  else if (dn.length) t.push(`Over the past month ${list(dn)} ${dn.length > 1 ? 'have' : 'has'} mostly missed expectations, and none has been beating much.`);
-  else t.push('Over the past month no economy has been far from expectations on balance.');
+  // counts, not "mostly" (Helix review wave 1.8): k of n prints, at least four of them, the median winsorised
+  const kn = (a, w) => a.slice(0, 2).map(c => `${CCY_SPOKEN[c.ccy]} ${w} in ${c.k} of ${c.n} prints`);
+  const up = kn(L.up, 'beat expectations'), dn = kn(L.dn, 'missed');
+  if (up.length && dn.length) t.push(`Over the past month ${list(up)}, while ${list(dn)}.`);
+  else if (up.length) t.push(`Over the past month ${list(up)}, and no economy has been missing much.`);
+  else if (dn.length) t.push(`Over the past month ${list(dn)}, and none has been beating much.`);
+  else t.push(`Over the past month no economy has had ${L.minN} or more prints leaning one way.`);
   const name = x => `${CCY_ADJ[x.ccy]} ${FAM_SPOKEN[x.fam]}${x.fam === 'cpi' || x.fam === 'ppi' ? `, ${x.z > 0 ? 'hotter' : 'cooler'} than expected` : ''}`, size = x => (x.capped ? `more than ${CAP} times` : `about ${Math.abs(x.z).toFixed(1)} times`);
   const win = X.days <= 14 ? 'in the last two weeks' : X.days <= 30 ? 'in the last month' : 'in the last three months';
   if (X.beat && X.miss) t.push(`The biggest beat ${win} was ${name(X.beat)}, ${size(X.beat)} its usual surprise; the biggest miss was ${name(X.miss)}, ${size(X.miss)} its usual.`);

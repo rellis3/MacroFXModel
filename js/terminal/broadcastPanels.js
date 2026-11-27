@@ -128,16 +128,18 @@ export function biasText(calls, issuedAt, source = 'v1') {
   if (!calls.length) return '';
   const up = calls.filter(c => c.dir === 'up'), dn = calls.filter(c => c.dir === 'dn');
   const names = a => list(a.slice(0, 5).map(c => say(c.key))) + (a.length > 5 ? `, and ${numWord(a.length - 5)} more` : '');
-  const t = [source === 'desk' ? `The desk's calls. These come from this morning's desk run: untested, and scored every night.` : `The bias engine. The desk run is not in yet, so this is the engine's lean, not a forecast we stand behind: it is unproven, and it is scored every night.`];
-  if (dn.length) t.push(source === 'desk' ? `Short: ${names(dn)}.` : `It leans lower on ${names(dn)}.`);
-  if (up.length) t.push(source === 'desk' ? `Long: ${names(up)}.` : `It leans higher on ${names(up)}.`);
-  t.push(source === 'desk' ? `${cap1(numWord(calls.length))} markets have a call; the rest are flat.` : `${cap1(numWord(calls.length))} markets have a lean; the rest are neutral.`);
+  // description, never a call (Helix review 0.1, 27 Nov 2026): the engine's reading said as a reading; no long/short words, no scoring line in a public render
+  const who = source === 'desk' ? "The desk run's reading" : "The bias engine's reading";
+  const t = [source === 'desk' ? `The desk's reading, from this morning's desk run, which is untested.` : `The bias engine. The desk run is not in yet, so this is the engine's reading, and the engine is unproven.`];
+  const parts = [dn.length ? `negative on ${names(dn)}` : '', up.length ? `positive on ${names(up)}` : ''].filter(Boolean);
+  if (parts.length) t.push(`${who} is ${parts.join('; ')}. A reading, not a call.`);
+  t.push(`${cap1(numWord(calls.length))} markets have a reading; the rest are neutral.`);
   return t.join(' ');
 }
 function biasHtml(calls, issuedAt, source = 'v1') {
   const col = (dir, title) => { const a = calls.filter(c => c.dir === dir); return `<section class="bp-box"><h3 class="bp-${dir}">${title} · ${a.length}</h3>${a.map((c, i) => `<div class="bp-call" style="--i:${i}"><span class="g">${c.group}</span><b>${esc(label(c.key))}</b><span class="pips">${Array.from({ length: source === 'desk' ? 3 : 6 }, (_, k) => `<i class="${k < c.strength ? `on ${dir}` : ''}"></i>`).join('')}</span><small>${esc(c.driver)}</small></div>`).join('') || '<div class="bp-foot">none</div>'}</section>`; };
-  return `<div class="bp-grid bp-g2">${col('up', '▲ LEANS HIGHER')}${col('dn', '▼ LEANS LOWER')}</div>
-  <div class="bp-foot">${source === 'desk' ? 'Desk run' : 'Bias Engine V1 (the desk run was not in)'} · ${issuedAt ? londonHM(Date.parse(issuedAt)) : ''} London · ${source === 'desk' ? 'conviction 1–3' : 'strength 0–6'} · main reason shown · untested, scored nightly · not advice</div>`;
+  return `<div class="bp-grid bp-g2">${col('up', '▲ READING POSITIVE')}${col('dn', '▼ READING NEGATIVE')}</div>
+  <div class="bp-foot">${source === 'desk' ? 'Desk run' : 'Bias Engine V1 (the desk run was not in)'} · ${issuedAt ? londonHM(Date.parse(issuedAt)) : ''} London · ${source === 'desk' ? 'conviction 1–3' : 'strength 0–6'} · main reason shown · a reading, not a call · untested, not advice</div>`;
 }
 
 // ───────────────────────── THE BIAS AGAINST THE DAY (evening) ─────────────────────────
@@ -228,7 +230,7 @@ registerShowScene({
     if (dr) return { calls: deskCalls(dr), issuedAt: dr.finishedAt, source: 'desk' };
     const b = await ok(api.jf('/api/bias-engine')); return b ? { calls: biasCalls(b), issuedAt: b.issuedAt, source: 'v1' } : null;
   },
-  build(inp, d) { const text = biasText(d?.calls ?? [], d?.issuedAt, d?.source); if (!text) return null; return { title: d.source === 'desk' ? "The desk's calls" : 'The bias engine', view: 'globe', cam: { region: 'world' }, text, figure: { value: String(d.calls.length), label: 'markets with a lean' }, panel: panel('bias', 'THE BIAS', d.source === 'desk' ? "The desk run's calls for today: untested" : "The desk run is not in yet: Bias Engine V1's lean, unproven", biasHtml(d.calls, d.issuedAt, d.source)) }; },
+  build(inp, d) { const text = biasText(d?.calls ?? [], d?.issuedAt, d?.source); if (!text) return null; return { title: d.source === 'desk' ? "The desk's reading" : 'The bias engine', view: 'globe', cam: { region: 'world' }, text, figure: { value: String(d.calls.length), label: 'markets with a reading' }, panel: panel('bias', 'THE BIAS', d.source === 'desk' ? "The desk run's reading for today: untested, not a call" : "The desk run is not in yet: Bias Engine V1's reading, unproven", biasHtml(d.calls, d.issuedAt, d.source)) }; },
 });
 registerShowScene({
   id: 'biasday', after: 'biasboard',
@@ -304,8 +306,9 @@ export function deskViewText(dr) {
   const t = [`The desk's view, from this morning's desk run. ${String(b.headline).replace(/\s+/g, ' ').replace(/[.!?]?$/, '.')}`];
   const cc = Object.entries(b.currencies ?? {}).filter(([, v]) => fin(v?.bias) && v.bias !== 0).sort((a, b2) => b2[1].bias - a[1].bias);
   const up = cc.filter(([, v]) => v.bias > 0).map(([k]) => CCYN[k] ?? k), dn = cc.filter(([, v]) => v.bias < 0).map(([k]) => CCYN[k] ?? k);
-  if (up.length || dn.length) t.push(`On currencies it favours ${up.length ? list(up.slice(0, 3)) : 'none'}${dn.length ? `, against ${list(dn.slice(0, 4))}` : ''}.`);
-  t.push('That is the desk run, untested, not advice.');
+  const cp = [up.length ? `positive on ${list(up.slice(0, 3))}` : '', dn.length ? `negative on ${list(dn.slice(0, 4))}` : ''].filter(Boolean);
+  if (cp.length) t.push(`On currencies its reading is ${cp.join('; ')}.`);
+  t.push('That is the desk run, untested: a reading, not a call.');
   return t.join(' ');
 }
 function deskViewHtml(dr) {

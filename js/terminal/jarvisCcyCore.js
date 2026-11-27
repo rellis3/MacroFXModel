@@ -53,5 +53,11 @@ export function ccyScript(R) {
   const hi = R.list[0], lo = R.list[R.list.length - 1], p = R.pairs[0];
   const spoke = spokenName;
   const dirWord = p.ratio >= 0 ? 'up' : 'down';
-  return `${cap(CCY_NAMES[hi.ccy])} is the strongest of the eight majors so far today, and ${CCY_NAMES[lo.ccy]} the weakest. Each currency is scored as the average of its pair moves against their usual size. The biggest single pair move is ${spoke(p.key)}, ${dirWord} ${Math.abs(p.ratio).toFixed(1)} times its usual move. This describes the day so far; it is not a forecast.`;
+  // no leader is named when the currencies are flat (Helix review 0.9): under FLAT usual moves a "strongest" is noise
+  const up = dirOf(hi.s) === 'up', dn = dirOf(lo.s) === 'dn';
+  const lead = up && dn ? `${cap(CCY_NAMES[hi.ccy])} is the strongest of the eight majors so far today, and ${CCY_NAMES[lo.ccy]} the weakest.`
+    : up ? `${cap(CCY_NAMES[hi.ccy])} is the strongest of the eight majors so far today; none of them is clearly weaker than the rest.`
+    : dn ? `${cap(CCY_NAMES[lo.ccy])} is the weakest of the eight majors so far today; none of them is clearly stronger than the rest.`
+    : 'There is no clear leader among the eight majors so far today: every one is close to flat.';
+  return `${lead} Each currency is scored as the average of its pair moves against their usual size. The biggest single pair move is ${spoke(p.key)}, ${dirWord} ${Math.abs(p.ratio).toFixed(1)} times its usual move. This describes the day so far; it is not a forecast.`;
 }

@@ -26,7 +26,7 @@ import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView } from './jarvisGL.js';
 import { familiesOf, releasesOf, unitFor, resample, bandStats, typical30, biggest, depthOf, dateTicks, fanOf, areaScale, nextToday, placeLabels, nativeText, shockwaveScript,
-  MARKETS, FAMILY_MARKET, FAMILY_SHORT, familyLabel, marketLabel, marketUnit, CAP, OFFS, GRID_STEP, fin, shockTodayScript } from './shockwaveCore.js';
+  MARKETS, FAMILY_MARKET, FAMILY_SHORT, familyLabel, marketLabel, marketUnit, CAP, OFFS, GRID_STEP, fin, shockTodayScript, typicalInRegime } from './shockwaveCore.js';
 import { isEvening } from './eveningCore.js';
 import { londonParts } from './dayAheadCore.js';
 
@@ -391,14 +391,17 @@ registerJarvisModule({
 await import('./jarvisViewDayAhead.js').catch(() => null);     // so the 'dayahead' scene is registered before this one asks to follow it
 registerShowScene({
   id: ID, after: 'dayahead',
-  prepare: api => loadRecord(api).then(() => {
+  prepare: api => loadRecord(api).then(async () => {
     if (!S.rl) return null; const now = nowMs(api), fams = familiesOf(S.rl.rows, now).map(f => f.f); if (!fams.length) return null;
     const next = nextToday(S.evday, S.rl, now, fams), family = next?.family ?? S.rl.rows.filter(r => fams.includes(r.family) && Date.parse(r.t) <= now).sort((a, b) => Date.parse(b.t) - Date.parse(a.t))[0]?.family;
     if (!family) return null; const mkt = FAMILY_MARKET[family] ?? 'eurusd', typ = typical30(S.rl.rows, family, mkt, now);
-    return typ ? { family, mkt, typ, next } : null;
+    if (!typ) return null;
+    // today's VIX band: the same family's typical in a like regime, beside the all-regime figure (Helix review wave 1.6); optional, a missing VIX only drops that sentence
+    let regime = null; try { const h = await api.jf('/api/fredhistory?keys=vix'); regime = typicalInRegime(S.rl.rows, family, mkt, now, h?.vix); } catch (e) { regime = null; }
+    return { family, mkt, typ, next, regime };
   }).catch(() => null),
   build: (inp, data) => {
-    if (!data) return null; const text = shockwaveScript(data); if (!text) return null;
+    if (!data) return null; const text = shockwaveScript({ ...data, allowRecent: !!inp?.guide }); if (!text) return null;
     return { title: 'Release shockwave', view: ID, cam: null, text, figure: { value: nativeText(data.typ.med, data.typ.unit), label: `typical 30-min ${marketLabel(data.mkt)} move after ${FAMILY_SHORT[data.family] ?? data.family}` },
       enter: api => { S.mode = 'stack'; S.abs = false; S.sel = null; S.family = null; setFamily(api, data.family); S.mkt = data.mkt; S.showP = 0; S.showAt = Date.now(); Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); },
       motion: (api, p) => { S.showP = clamp(p, 0, 1); S.showAt = Date.now(); } };

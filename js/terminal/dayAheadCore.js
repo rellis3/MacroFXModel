@@ -15,6 +15,7 @@
 // Nasdaq's printed rows carry no impact rating, so a printed row is kept only when its TYPE is a high-impact one (rate decision, CPI, jobs, GDP, retail sales, PMI) and is flagged rankFrom: 'type'.
 // DESCRIPTION ONLY: a schedule and a typical-activity profile. Nothing here says which way anything goes or what a release will print.
 import { SESSIONS as LONDON_SESSIONS } from '../londonSession.js';
+import { closuresBetween } from '../marketCalendars.js';
 
 export const DAY_MIN = 1440, LANE_MIN = 15, RANK_MAX = 3;
 const TAU = Math.PI * 2;
@@ -263,4 +264,46 @@ export function dayScript(day, now) {
 export function sweepMins(nowMins, lastMins, p) {
   let span = ((lastMins ?? nowMins) - nowMins + DAY_MIN) % DAY_MIN; if (span < 360) span = 360;
   const e = clamp(p, 0, 1), s = e * e * (3 - 2 * e); return nowMins + span * s;
+}
+
+// ── validated context for the day ahead (Helix review wave 1.7 and 1.10) ──
+// Each sentence is a Evidence Book result said with its scope, never as a signal:
+//   pre-release-ranging (VALIDATED): on a tier-1 US release day (CPI, payrolls, FOMC; PPI near normal) the 07:00 London -> release window ran about 12% narrower in sigma than a matched morning
+//   surprise-size (VALIDATED): for CPI the surprise's size shows up in the SESSION AFTER (EUR/USD, USD/CAD); size, never direction
+//   calendar-range-profile (CONTEXT): Monday the quietest day on all eight instruments tested (0.87-0.96x ATR); the first two sessions of a month wider on seven of eight (1.09-1.16x)
+//   holidays (js/marketCalendars.js): a US closure or 1pm early close, a UK bank holiday, a TARGET closing day: a quiet session there is the holiday, not a calm market
+const TIER1 = e => e && e.rank >= 3 && e.ccy === 'USD' && !/\bPPI\b|producer/i.test(`${e.family ?? ''} ${e.name ?? ''}`) && (/^(CPI|NFP|FOMC)$/i.test(String(e.family ?? '')) || /\bCPI\b|consumer price|non-?farm|payroll|FOMC|federal funds|fed (interest )?rate/i.test(String(e.name ?? '')));
+const isCpi = e => e && e.ccy === 'USD' && (/^CPI$/i.test(String(e.family ?? '')) || /\bCPI\b|consumer price/i.test(String(e.name ?? '')));
+const addDay = (iso, n) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+/** The market closures on a London date: [{ date, market, name, kind }] (js/marketCalendars.js rules: NYSE, UK bank holidays, TARGET). */
+export const closuresOn = iso => (/^\d{4}-\d{2}-\d{2}$/.test(String(iso)) ? closuresBetween(iso, iso) : []);
+/** A holiday tag for the day: { today: [closures], yesterday: [closures], text } where text is the spoken line, or null when neither day is a holiday. */
+export function holidayTag(now) {
+  const d = londonParts(now).date, today = closuresOn(d), yesterday = closuresOn(addDay(d, -1));
+  if (!today.length && !yesterday.length) return null;
+  const who = c => (c.market === 'Euro area' ? 'euro-area markets' : c.market === 'UK' ? 'UK markets' : `the ${c.market}`);
+  const nm = c => c.name.replace(/^Day after/, 'the day after');
+  const one = (c, past) => (/early close/.test(c.kind) ? `${past ? 'Yesterday was' : 'Today is'} ${nm(c)}: ${who(c)} ${past ? 'closed' : 'closes'} at 1pm New York, a half day`
+    : `${past ? 'Yesterday was' : 'Today is'} ${nm(c)}: ${who(c)} ${past ? 'were' : 'are'} shut`.replace(/the US stock market were/, 'the US stock market was').replace(/the US stock market are/, 'the US stock market is'));
+  const t = [];
+  const pick = a => a.find(c => c.market === 'US stock market') ?? a[0];      // the desk's markets answer to the US close first
+  if (today.length) { const c = pick(today); t.push(`${one(c, false)}, so ${/early close/.test(c.kind) ? 'thin trade this afternoon' : 'a quiet session'} is the holiday, not a calm market.`); }
+  if (yesterday.length) t.push(`${one(pick(yesterday), true)}, so yesterday's ranges are holiday ranges.`);
+  return { today, yesterday, text: t.join(' ') };
+}
+/** The weekday sessions of the month up to and including the London date (1 = the first session). */
+const sessionOfMonth = iso => { let n = 0; for (let k = 1; k <= +iso.slice(8, 10); k++) { const s = `${iso.slice(0, 8)}${String(k).padStart(2, '0')}`, w = new Date(`${s}T12:00:00Z`).getUTCDay(); if (w !== 0 && w !== 6 && !closuresOn(s).some(c => c.market === 'US stock market' && c.kind === 'closed')) n++; } return n; };
+/**
+ * The day-ahead context line: validated or context results that apply TODAY, each with its scope, plus the holiday tag. day = mergeDay(...) for today, yday = the same for the day before
+ * (optional). Returns { text, tags: ['holiday'|'prerelease'|'aftercpi'|'monday'|'monthstart'] } or null when nothing applies. Size and timing only, never direction.
+ */
+export function dayContext({ day, yday = null, now }) {
+  const lp = londonParts(now), t = [], tags = [];
+  const h = holidayTag(now); if (h) { t.push(h.text); tags.push('holiday'); }
+  const t1 = (day?.events ?? []).filter(e => TIER1(e) && e.ms > now && !e.actual).sort((a, b) => a.ms - b.ms)[0];
+  if (t1 && lp.mins < londonParts(t1.ms).mins) { t.push(`On tier-one US release days the morning into the print has run about ten to twelve percent narrower than a normal morning, in the desk's tests; that is the size of the morning, not a direction.`); tags.push('prerelease'); }
+  if ((yday?.events ?? []).some(e => isCpi(e) && (e.actual != null || e.ms < now))) { t.push(`Yesterday was US CPI: in the desk's tests, the size of a CPI surprise shows up in the session after, on euro-dollar and dollar-Canada, as range, never direction.`); tags.push('aftercpi'); }
+  if (lp.dow === 'Mon' && !h?.today.length) { t.push('Mondays have been the quietest day of the week on all eight markets tested, about four to thirteen percent under an average day.'); tags.push('monday'); }
+  const som = sessionOfMonth(lp.date); if (som >= 1 && som <= 2 && !['Sat', 'Sun'].includes(lp.dow)) { t.push(`This is the ${som === 1 ? 'first' : 'second'} session of the month; the first two sessions of a month have run about nine to sixteen percent wider on seven of eight markets tested.`); tags.push('monthstart'); }
+  return t.length ? { text: t.join(' '), tags } : null;
 }

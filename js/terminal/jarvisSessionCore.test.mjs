@@ -57,3 +57,10 @@ test('the SHOW scene registers after candles and builds from data, null when mis
   assert.equal(ids[ids.indexOf('candles') + 1], 'session'); const s = sc.find(x => x.id === 'session'); assert.equal(s.view, 'session'); assert.equal(typeof s.enter, 'function'); assert.equal(typeof s.motion, 'function');
   assert.ok(!buildScenes({ ...base, extra: {} }).some(x => x.id === 'session'));
 });
+
+test('timesWord: one decimal below 2, so 1.25-1.5 never reads "about 1 times" (Helix review 0.4)', async () => {
+  const { timesWord } = await import('./jarvisSessionCore.js');
+  assert.equal(timesWord(1.3), 'about 1.3 times'); assert.equal(timesWord(1.49), 'about 1.5 times'); assert.equal(timesWord(1.8), 'about 1.8 times');
+  assert.equal(timesWord(1.97), 'about 2 times'); assert.equal(timesWord(3.4), 'about 3 times'); assert.equal(timesWord(1.1), 'about the same as'); assert.equal(timesWord(12), 'more than nine times');
+  for (let t = 1.25; t < 9.5; t += 0.05) assert.doesNotMatch(timesWord(t), /about 1 times/, String(t));
+});

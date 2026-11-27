@@ -49,9 +49,10 @@ export function previousSameKind(rows, focus, n = GHOSTS) {
 const median = a => { const s = a.filter(fin).sort((x, y) => x - y); if (!s.length) return null; const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const quant = (a, q) => { const s = a.filter(fin).sort((x, y) => x - y); if (!s.length) return null; const i = (s.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi] - s[lo]) * (i - lo); };
 
-/** The unit of one market for one kind of release: the median absolute 30-minute move across the releases of that kind we hold (from the rows' own m30), or null when fewer than 5. */
-export function unitFor(rows, family, mkt) {
-  const v = listReleases(rows).filter(r => r.family === family).map(r => r.M?.[mkt]?.m30).filter(fin).map(Math.abs);
+/** The unit of one market for one kind of release: the median absolute 30-minute move across the releases of that kind printed by `now` (from the rows' own m30), or null when fewer than 5.
+ *  `now` is passed through by a replay (Helix review 0.8), so a past day is never sized with releases that came after it. */
+export function unitFor(rows, family, mkt, now = Date.now()) {
+  const v = listReleases(rows, now).filter(r => r.family === family).map(r => r.M?.[mkt]?.m30).filter(fin).map(Math.abs);
   return v.length >= 5 ? median(v) : null;
 }
 

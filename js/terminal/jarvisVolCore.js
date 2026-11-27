@@ -2,9 +2,10 @@
 // (as a percent of price) divided by that market's OWN normal range, the median of its previous 20 sessions' ranges (point-in-time, so a day never sets its own yardstick). 1.0 = a normal day for that market.
 // Source: /api/ohlc-range daily bars (OANDA), the VIX curve from /api/fredhistory. DESCRIPTION ONLY: how stretched each day was; never a forecast, never a trade.
 import { spokenName } from './jarvisNames.js';
+import { closuresBetween } from '../marketCalendars.js';
 const num = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-export const CLIP = 3, LOOKBACK = 20, MIN_PRIOR = 10, SESSIONS = 60;
+export const CLIP = 3, LOOKBACK = 20, MIN_PRIOR = 10, SESSIONS = 60, BASE_N = 250;
 
 /** The markets on the x axis, grouped by asset class: [desk key, the symbol the range feed takes]. */
 export const VOL_GROUPS = [
@@ -44,34 +45,60 @@ export function buildTerrain(barsByKey, { sessions = SESSIONS, lookback = LOOKBA
   const count = new Map(); for (const m of mk) for (const b of barsByKey[m.key]) count.set(b.date, (count.get(b.date) ?? 0) + 1);
   const dates = [...count.entries()].filter(([, c]) => c >= mk.length / 2).map(([d]) => d).sort().slice(-sessions);
   if (dates.length < 10) return null;
-  const nm = mk.length, ns = dates.length, Z = new Float32Array(nm * ns).fill(1); let missing = 0;
+  // Z keeps 1 in a missing cell so the drawn terrain stays level there; `has` marks the cells that were measured, and every READ (latest, peaks, stretched, recentRange)
+  // uses only those, so a market with no bar is never said to be "1.0 times normal" nor averaged in as normal (Helix review 0.7)
+  const nm = mk.length, ns = dates.length, Z = new Float32Array(nm * ns).fill(1), has = new Uint8Array(nm * ns), Zraw = new Float32Array(nm * ns).fill(NaN); let missing = 0;
+  const own = [];       // per market, every session's unclipped ratio (null under minPrior), for the point-in-time base rates (Helix review wave 1.2)
   mk.forEach((m, i) => {
     const bars = barsByKey[m.key], at = new Map(bars.map((b, k) => [b.date, k]));
+    const rs = bars.map((b, k) => { const prior = bars.slice(Math.max(0, k - lookback), k).map(x => x.r); return prior.length < minPrior ? null : b.r / median(prior); }); own.push({ rs, at });
     for (let j = 0; j < ns; j++) {
-      const k = at.get(dates[j]); if (k == null) { missing++; continue; }
-      const prior = bars.slice(Math.max(0, k - lookback), k).map(b => b.r); if (prior.length < minPrior) { missing++; continue; }
-      Z[j * nm + i] = clamp(bars[k].r / median(prior), 0, CLIP);
+      const k = at.get(dates[j]); if (k == null || rs[k] == null) { missing++; continue; }
+      Z[j * nm + i] = clamp(rs[k], 0, CLIP); Zraw[j * nm + i] = rs[k]; has[j * nm + i] = 1;
     }
   });
-  const latest = mk.map((m, i) => ({ key: m.key, v: Z[(ns - 1) * nm + i] })).sort((a, b) => b.v - a.v);
-  const peaks = mk.map((m, i) => { let bj = 0; for (let j = 1; j < ns; j++) if (Z[j * nm + i] > Z[bj * nm + i]) bj = j; return { key: m.key, date: dates[bj], v: Z[bj * nm + i], j: bj, i }; }).sort((a, b) => b.v - a.v);
-  return { markets: mk.map(m => ({ key: m.key, group: m.group })), dates, Z, nm, ns, missing, latest, stretched: latest.filter(x => x.v >= 1.5).length, peaks };
+  /** How often market i ran at least x times normal over its own `base` sessions BEFORE date (point in time): { c, n } or null under 40 sessions. */
+  const rarity = (i, date, x, base = BASE_N) => { const { rs, at } = own[i], k = at.get(date); if (k == null) return null; const pr = rs.slice(Math.max(0, k - base), k).filter(v => v != null); return pr.length >= 40 ? { c: pr.filter(v => v >= x).length, n: pr.length } : null; };
+  const latest = mk.map((m, i) => (has[(ns - 1) * nm + i] ? { key: m.key, v: Z[(ns - 1) * nm + i] } : null)).filter(Boolean).sort((a, b) => b.v - a.v);
+  const peaks = mk.map((m, i) => { let bj = -1; for (let j = 0; j < ns; j++) if (has[j * nm + i] && (bj < 0 || Z[j * nm + i] > Z[bj * nm + i])) bj = j; return bj < 0 ? null : { key: m.key, date: dates[bj], v: Z[bj * nm + i], j: bj, i }; }).filter(Boolean).sort((a, b) => b.v - a.v);
+  // the base rates, beside the clipped reads: the tallest ridge's own unclipped size and how rare it was for that market; how many markets a typical day runs at 1.5x
+  const pk0 = peaks[0]; if (pk0) { pk0.raw = Zraw[pk0.j * nm + pk0.i]; pk0.rare = rarity(pk0.i, pk0.date, pk0.raw); }
+  let expStretched = 0, expN = 0; const dl = dates[ns - 1];
+  mk.forEach((m, i) => { if (!has[(ns - 1) * nm + i]) return; const r = rarity(i, dl, 1.5); if (r) { expStretched += r.c / r.n; expN++; } });
+  return { markets: mk.map(m => ({ key: m.key, group: m.group })), dates, Z, Zraw, has, nm, ns, missing, latest, latestN: latest.length, stretched: latest.filter(x => x.v >= 1.5).length, peaks,
+    base: expN ? { stretched: expStretched, n: expN } : null };
 }
 /** The VIX curve read: spot against three-month. Above 1 = inverted (the front costs more than the three-month). null when VIX is missing. */
 export function vixCurve(h) {
   const last = s => { const a = Array.isArray(s) ? s : []; for (let i = a.length - 1; i >= 0; i--) { const v = num(a[i]?.value); if (v != null) return { v, date: a[i].date }; } return null; };
   const v = last(h?.vix); if (!v) return null; const m = last(h?.vix3m), ratio = m && m.v > 0 ? v.v / m.v : null;
-  return { vix: v.v, vix3m: m?.v ?? null, ratio, inverted: ratio != null && ratio > 1, date: v.date };
+  // side by side (Helix review 0.2): how many sessions the inversion has run, so the validated first-day fact (Evidence Book vix-inversion) is said only on day one
+  const m3 = new Map((Array.isArray(h?.vix3m) ? h.vix3m : []).map(p => [p?.date, num(p?.value)])), rs = [];
+  for (const p of (Array.isArray(h?.vix) ? h.vix : []).slice().reverse()) { const a = num(p?.value), b = m3.get(p?.date); if (a != null && b > 0) rs.push(a / b); if (rs.length >= 30) break; }
+  let runDays = 0; while (runDays < rs.length && rs[runDays] > 1) runDays++;
+  const firstDay = ratio != null && ratio > 1 && runDays === 1 && rs.length >= 2;
+  return { vix: v.v, vix3m: m?.v ?? null, ratio, inverted: ratio != null && ratio > 1, date: v.date, runDays, firstDay };
+}
+/** The VIX-curve sentence for the BRIEF: description, plus the Evidence Book's vix-inversion result (range, not direction) on the first day of an inversion only. */
+export function vixLine(V) {
+  if (!V || V.ratio == null) return null;
+  if (!V.inverted) return 'The VIX curve slopes upward, the calm shape.';
+  if (V.firstDay) return 'The VIX curve inverted today: spot is above the three-month. In the desk\'s tests, the first day of an inversion has been followed by a wider week than usual, in range, not direction.';
+  return `The VIX curve is inverted: spot is above the three-month${V.runDays > 1 ? `, for ${V.runDays} sessions now` : ''}. The desk's tested result, a wider week, is for the first day of an inversion only.`;
 }
 const say = spokenName;
 const dayWord = iso => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso + 'T00:00:00Z'));
 /** The spoken script: from the real numbers only. null when there is no terrain. */
 export function volScript(T, V) {
   if (!T) return null;
-  const hi = T.latest[0], pk = T.peaks[0], n = T.nm;
+  const hi = T.latest[0], pk = T.peaks[0], n = T.latestN ?? T.nm; if (!hi || !pk) return null;
   let s = `Now the volatility landscape. Each ridge is how stretched a day's range was against that market's own normal, over the last ${T.ns} sessions. `;
-  s += T.stretched ? `On the latest session, ${T.stretched} of ${n} markets ran at least one and a half times their normal range, led by ${say(hi.key)} at ${hi.v.toFixed(1)} times. ` : `On the latest session, none of the ${n} markets ran at one and a half times its normal range; the highest was ${say(hi.key)} at ${hi.v.toFixed(1)} times. `;
-  s += `The tallest ridge in the window is ${say(pk.key)} on ${dayWord(pk.date)}, at ${pk.v >= 2.995 ? 'three times or more' : pk.v.toFixed(1) + ' times'} its normal. `;
+  const typ = T.base && T.base.n >= 3 ? ` On a typical day, ${T.base.stretched < 0.5 ? 'fewer than one' : `about ${Math.round(T.base.stretched)}`} would.` : '';
+  s += T.stretched ? `On the latest session, ${T.stretched} of ${n} markets ran at least one and a half times their normal range, led by ${say(hi.key)} at ${hi.v.toFixed(1)} times.${typ} ` : `On the latest session, none of the ${n} markets ran at one and a half times its normal range; the highest was ${say(hi.key)} at ${hi.v.toFixed(1)} times.${typ} `;
+  // the real size of the tallest ridge (not the drawn cap) and how rare that was for that market, from its own sessions before it (Helix review wave 1.2)
+  const raw = Number.isFinite(pk.raw) ? pk.raw : pk.v, rr = pk.rare;
+  const rare = !rr ? '' : rr.c === 0 ? `, the biggest in its previous ${rr.n} sessions` : rr.n / rr.c >= 2 ? `, about a one-in-${Math.round(rr.n / rr.c)} day for it` : '';
+  s += `The tallest ridge in the window is ${say(pk.key)} on ${dayWord(pk.date)}, at ${raw.toFixed(1)} times its normal${raw > CLIP ? ', above the top of the scale' : ''}${rare}. `;
   if (V && V.ratio != null) s += `The VIX curve is ${V.inverted ? 'inverted: spot is above the three-month, so the front is priced dearer' : 'sloping upward: spot is below the three-month'}. `;
   return s + 'This describes what already happened. It is not a forecast.';
 }
@@ -81,19 +108,27 @@ export const VOL_CORE = ['NQ', 'GOLD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', '
 /** Each core market's average range used over the last `n` sessions (1 = normal), busiest first: [{ key, v, last }]. */
 export function recentRange(T, n = 5) {
   if (!T) return [];
-  return VOL_CORE.map(key => { const i = T.markets.findIndex(m => m.key === key); if (i < 0) return null; let s = 0, c = 0; for (let j = Math.max(0, T.ns - n); j < T.ns; j++) { s += T.Z[j * T.nm + i]; c++; } return c ? { key, v: s / c, last: T.Z[(T.ns - 1) * T.nm + i] } : null; })
+  const ok = (j, i) => !T.has || T.has[j * T.nm + i] === 1;      // a missing cell is not a normal day
+  return VOL_CORE.map(key => { const i = T.markets.findIndex(m => m.key === key); if (i < 0) return null; let s = 0, c = 0; for (let j = Math.max(0, T.ns - n); j < T.ns; j++) { if (!ok(j, i)) continue; s += T.Z[j * T.nm + i]; c++; } return c ? { key, v: s / c, last: ok(T.ns - 1, i) ? T.Z[(T.ns - 1) * T.nm + i] : null } : null; })
     .filter(Boolean).sort((a, b) => b.v - a.v);
 }
-/** The spoken read: which of our markets are running hot or quiet this week and what that means for today's stops and size; the VIX curve. null without a terrain. */
+/** The spoken read: which of our markets are running hot or quiet this week, and the VIX curve. Description only (no stop or size advice). null without a terrain. */
 export function volBrief(T, V) {
   const r = recentRange(T); if (!r.length) return null;
   const hot = r.filter(x => x.v >= 1.3), quiet = r.filter(x => x.v <= 0.8).reverse(), t = [];
   const one = x => `${say(x.key)} at ${x.v.toFixed(1)} times`;
-  if (hot.length) t.push(`Over the last five sessions, ${listW(hot.slice(0, 3).map(one))} ${hot.length === 1 ? 'has' : 'have'} run above ${hot.length === 1 ? 'its' : 'their'} normal range. Big ranges tend to follow big ranges, so allow for a wider day there: wider stops, smaller size.`);
+  if (hot.length) t.push(`Over the last five sessions, ${listW(hot.slice(0, 3).map(one))} ${hot.length === 1 ? 'has' : 'have'} run above ${hot.length === 1 ? 'its' : 'their'} normal range.`);
   else t.push(`Over the last five sessions none of the markets we trade has run hot; the busiest is ${one(r[0])} its normal range.`);
-  if (quiet.length) t.push(`Quiet: ${listW(quiet.slice(0, 2).map(one))}. Tight ranges there, so a breakout needs more proof.`);
-  if (V && V.ratio != null) t.push(V.inverted ? 'The VIX curve is inverted: options price more stress now than in three months, a market on edge.' : 'The VIX curve slopes upward, the calm shape.');
-  return t.join(' ') + ' Context for sizing, not a forecast of direction.';
+  if (quiet.length) t.push(`Quiet: ${listW(quiet.slice(0, 2).map(one))}, where ranges have run tight.`);
+  const vl = vixLine(V); if (vl) t.push(vl);
+  const hn = holidayNote(T); if (hn) t.push(hn);
+  return t.join(' ') + ' A description of ranges, not a forecast.';
+}
+/** The latest session's holiday, said as such (Helix review wave 1.10): "The latest session, Thursday 26 November, was Thanksgiving, a US holiday: its range is a holiday range." null on an ordinary day. */
+export function holidayNote(T) {
+  const d = T?.dates?.[T.ns - 1]; if (!d) return null;
+  const c = closuresBetween(d, d), us = c.find(x => x.market === 'US stock market') ?? c[0]; if (!us) return null;
+  return `The latest session, ${dayWord(d)}, was ${us.name.replace(/^Day after/, 'the day after')}, ${/early/.test(us.kind) ? 'a US half day' : us.market === 'US stock market' ? 'a US holiday' : `a ${us.market === 'UK' ? 'UK' : 'euro-area'} holiday`}: its range is a holiday range, not a calm market.`;
 }
 const listW = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
 

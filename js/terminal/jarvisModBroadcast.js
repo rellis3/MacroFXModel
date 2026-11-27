@@ -9,7 +9,8 @@ import { registerJarvisModule, viewsOf } from './jarvisModules.js';
 import { SHOW_HOOKS } from './showCore.js';
 import { glWarm } from './jarvisGL.js';
 import { helixLogo } from './helixLogo.js';
-import { planBroadcast, wantedSceneIds, subtitleChunks, chunkAt, itemSeconds, durText, tickerText, dateWords, partOfDay } from './broadcastCore.js';
+import { planBroadcast, wantedSceneIds, subtitleChunks, chunkAt, itemSeconds, durText, tickerText, dateWords, partOfDay, todShare } from './broadcastCore.js';
+import { hourProfile } from './dayAheadCore.js';
 import { boardSummary, topMovers } from './jarvisCandles.js';
 import { enterScene, sceneMotion, makeRecorder, voiceButton, voiceWord } from './jarvisModShow.js';
 import { buildHeadline } from './broadcastHeadline.js';
@@ -277,7 +278,8 @@ registerJarvisModule({
       const CORE = ['morning', 'drill', 'brief', 'sess', 'fc', 'mc', 'asia', 'events'], bad = Array.isArray(hb?.degraded) ? hb.degraded : [];
       const helix = hb ? Object.fromEntries(['g10', 'funding', 'wider', 'hitRates', 'qlike', 'xccy', 'cvol', 'fxCarry', 'fundingRead', 'eventImpact', 'releaseReactions', 'dxyIce', 'rollHealth', 'stress'].map(k => [k, blk(k)])) : null;
       const degraded = hb ? { partial: CORE.some(k => bad.includes(k)), core: CORE.filter(k => bad.includes(k)), blocks: bad, stale: Object.values(hb.blocks ?? {}).filter(b => b.stale).map(b => b.id) } : { partial: false, core: [], blocks: ['bundle'], stale: [], bundle: 'unavailable: fetched route by route' };
-      cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra, headline, helix, degraded, bundleAsOf: hb?.builtAt ?? null } };
+      let tod = null; try { tod = todShare(hourProfile(await api.jf('/api/vol-forecast/intraday-profile')), Date.now()); } catch (e) { tod = null; }      // the share of a usual day done by now (Helix wave 1.1)
+      cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra, headline, helix, degraded, bundleAsOf: hb?.builtAt ?? null, todShare: tod } };
       // THE HELIX DAILY RECORD (3.7): when the programme is about to play, what it was given and what it will say goes to R2 (helix/days/<date>.json). Fire and forget.
       if (force) { try { postDayRecord(api.jf, dayRecordBody(cache.inp, plan(cache.inp, q('len').value), { mode: q('len').value, part: partOfDay(dateWords(new Date()).hour) })); } catch (e) { /* the record never touches the broadcast */ } }
       return cache;

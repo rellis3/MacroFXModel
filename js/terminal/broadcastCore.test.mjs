@@ -278,7 +278,9 @@ test('THE OUTLOOK: today\'s typical ranges (sizes, not direction) join the calen
   const v = { NQ: { oc: -0.3, oh: 0.2, ol: 0.5, hl: 0.7, forecast: { oc_median: 0.6, hl_median: 1.4, hl_75: 1.9 } }, GOLD: { oc: 0.4, oh: 0.6, ol: 0.1, hl: 0.7, forecast: { oc_median: 0.5, hl_median: 1.2, hl_75: 1.6 } },
     EURUSD: { oc: 0.05, oh: 0.1, ol: 0.1, hl: 0.2, forecast: { oc_median: 0.28, hl_median: 0.59, hl_75: 0.73 } } };
   const rows = candleRows(v, {}), r = BUILTIN.ranges({ rows });
-  assert.equal(r.text, "The vol model's typical range for today, high to low: Nasdaq about 1.4 percent, gold about 1.2 percent and Euro Dollar about 0.59 percent. Gold has already used 58 percent of it. One day in four runs bigger. Those are sizes, not direction.");
+  assert.equal(r.text, "The vol model's typical range for today, high to low: Nasdaq about 1.4 percent, gold about 1.2 percent and Euro Dollar about 0.59 percent. Gold has already used 58 percent of it. Half of all days run bigger than the typical range; one day in four runs past 1.9 percent on Nasdaq. Those are sizes, not direction.");
+  // Helix review 0.3: the median is not the one-in-four line; without a p75 only the half-the-days fact is said
+  assert.match(BUILTIN.ranges({ rows: rows.map(x => ({ ...x, range75: null })) }).text, /Half of all days run bigger than the typical range\. Those are sizes/);
   assert.deepEqual(r.figure, { value: '1.4%', label: `${r.figure.label}` }); assert.equal(r.view, 'vol');
   assert.equal(BUILTIN.ranges({ rows: rows.slice(0, 1) }), null, 'one market is not an outlook');
   const P = planBroadcast({ ...inp, rows, movers: topMovers(rows, 6), board: boardSummary(rows) }, { hooks: HOOKS, have: new Set(['ahead', 'vol']), mode: 'quick' });
@@ -311,4 +313,23 @@ test('the VISUAL GUIDE: every section explained, no headline or lead, the guide 
   assert.equal(net.text, GUIDE_TEXT.net); assert.equal(vol.text, GUIDE_TEXT.vol);
   const b = planBroadcast({ now: new Date('2026-11-26T07:00:00Z') }, { hooks, mode: 'quick' });
   assert.match(b.items.find(x => x.scene?.id === 'vol').text, /Gold ran hot: wider stops\./);
+});
+
+test('the quiet lead says a US holiday or half day, so a thin board reads as the calendar (Helix review wave 1.10)', () => {
+  const bd = { n: 30, quiet: 25, up: 3, dn: 2 };
+  assert.match(pickLead({ now: new Date('2026-11-27T07:05:00Z'), board: bd })[0].text, /Today is the day after Thanksgiving, a US half day, so a thin board is the calendar, not a calm market\.$/);
+  assert.doesNotMatch(pickLead({ now: new Date('2026-11-18T07:05:00Z'), board: bd })[0].text, /holiday|half day/);
+});
+
+test('the move against the usual move BY THIS HOUR, beside the full-day ratio (Helix review wave 1.1)', async () => {
+  const { todShare, ratioByHour } = await import('./broadcastCore.js');
+  const flat = { mean: new Float64Array(24).fill(4) };
+  assert.ok(Math.abs(todShare(flat, Date.parse('2026-11-27T06:00:00Z')) - 0.25) < 1e-9, 'a flat profile: 6 of 24 hours is a quarter of the variance');
+  const busy = { mean: new Float64Array(24).map((_, h) => (h >= 7 && h < 17 ? 6 : 2)) };
+  const s7 = todShare(busy, Date.parse('2026-11-27T07:00:00Z')); assert.ok(s7 > 0 && s7 < 0.1, String(s7));
+  assert.equal(todShare(null, 1), null); assert.equal(ratioByHour(1.5, 0.9), null, 'late in the day the full-day yardstick stands'); assert.ok(Math.abs(ratioByHour(1, 0.25) - 2) < 1e-12);
+  const lead = pickLead({ now: new Date('2026-11-18T07:00:00Z'), todShare: 0.25, movers: [{ key: 'GOLD', ratio: 1.5, oc: 0.6, tone: 'up' }] });
+  assert.match(lead[0].text, /That is 1\.5 times its usual move\. By this hour of the day, that is three times the usual so far\./);
+  assert.doesNotMatch(pickLead({ now: new Date('2026-11-18T07:00:00Z'), movers: [{ key: 'GOLD', ratio: 1.5, oc: 0.6, tone: 'up' }] })[0].text, /this hour/, 'no profile: the full-day line only');
+  assert.match(pickLead({ now: new Date('2026-11-18T07:00:00Z'), todShare: 0.2, board: { n: 30, quiet: 25, up: 3, dn: 2 } })[0].text, /a usual day has done only about 20 percent of its moving, so part of the quiet is the clock/);
 });

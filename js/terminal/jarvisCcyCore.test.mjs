@@ -31,3 +31,9 @@ test('ccyScript: names strongest, weakest and the biggest pair; says it is not a
   const t = ccyScript(ccyStrength(mk({ USD: 3, EUR: 2, GBP: 1, JPY: -3, AUD: 0, NZD: -1, CAD: 0.5, CHF: -0.5 })));
   assert.match(t, /The dollar is the strongest/); assert.match(t, /the yen the weakest/); assert.match(t, /Dollar Yen, up/); assert.match(t, /not a forecast/); assert.equal(ccyScript(null), null);
 });
+
+test('ccyScript: no strongest / weakest is named when every currency is flat (Helix review 0.9)', () => {
+  const flat = ccyScript(ccyStrength(mk({ USD: 0.05, EUR: 0.02, GBP: 0, JPY: -0.04, AUD: 0.01, NZD: -0.02, CAD: 0, CHF: -0.01 })));
+  assert.match(flat, /^There is no clear leader among the eight majors so far today/); assert.doesNotMatch(flat, /strongest|weakest/);
+  assert.match(ccyScript(ccyStrength(mk({ USD: 0, EUR: 0, GBP: 0, JPY: 0, AUD: 0, NZD: 0, CAD: 0, CHF: -3 }))), /strongest.*and the Swiss franc the weakest/, 'a real move still names both');
+});

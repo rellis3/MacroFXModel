@@ -20,3 +20,7 @@ test('market list and price format', () => {
   assert.deepEqual(marketsWithOI({ NAS100_USD: { spot: 5, gexProfile: [{ strike: 5, callOI: 1, putOI: 0 }] }, 'EUR/USD': { spot: 1, gexProfile: [] } }).map(m => m.key), ['NQ']);
   assert.equal(fmtPx(27613.4), '27,613'); assert.equal(fmtPx(1.0997), '1.0997');
 });
+
+test('gammaScript says the open-interest capture date (Helix review wave 1.9)', () => {
+  assert.match(gammaScript(buildLadder({ ...e, savedAt: '2026-11-25T22:00:00Z' }), 'NQ'), /The open interest is from the 25 Nov capture\. Positioning, not a forecast\.$/);
+});

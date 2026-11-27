@@ -95,3 +95,17 @@ test('script: names the broken links in plain words, 2-4 sentences, says descrip
   assert.equal(spokenLink('funding → $'), 'funding to the dollar'); assert.equal(spokenLink('dollar → USD/JPY'), 'dollar to dollar yen'); assert.equal(spokenLink('10Y yield → property stocks'), 'ten-year yield to property stocks');
   assert.equal(plainName('Fear gauge (VIX)'), 'the fear gauge'); assert.equal(plainName('Gold'), 'Gold');
 });
+
+test('adaptive noise floors beside the fixed ones: flagged where the fixed floor is under half the node\'s own usual 20-session move (Helix review wave 1.5)', async () => {
+  const { adaptiveFloors, floorLine, reactorScript } = await import('./reactorCore.js');
+  const n = 300;
+  // us2y swings ~1 percentage point (100 bp) over 20 sessions against a fixed floor of 8 bp; gold barely moves against its 2% floor
+  const drill = { dates: [], series: { us2y: Array.from({ length: n }, (_, i) => 4 + (Math.floor(i / 20) % 2 ? 1 : 0)), gold: Array.from({ length: n }, (_, i) => 2000 * (1 + 0.001 * (i % 2))) } };
+  const af = adaptiveFloors(drill, { us2y: { unit: 'bp', floor: 8 }, gold: { unit: 'pct', floor: 2 }, oil: { unit: 'pct', floor: 3 } });
+  assert.equal(af.us2y.low, true); assert.ok(af.us2y.adaptive > 16, JSON.stringify(af.us2y)); assert.equal(af.gold.low, false); assert.equal(af.oil, undefined, 'no series, no adaptive floor');
+  assert.match(floorLine(af, { us2y: 'the two-year yield' }), /^Against each market's own history, the fixed noise floor is under half its usual twenty-day move for the two-year yield, so it reads as moved more easily than its history alone would say\.$/);
+  assert.equal(floorLine({ gold: af.gold }), null);
+  const s = reactorScript({ broken: 0, judged: 3 }, [], {}, { us2y: 'the two-year yield' }, af);
+  assert.match(s, /fixed noise floor is under half.*A description of the window, not a forecast\.$/);
+  assert.doesNotMatch(reactorScript({ broken: 0, judged: 3 }, [], {}, {}), /noise floor/, 'without floors the line is as before');
+});

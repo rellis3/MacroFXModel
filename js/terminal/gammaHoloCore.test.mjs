@@ -95,3 +95,13 @@ test('box placement takes the first free candidate inside the bounds, else null'
   const b = placeBox([{ x: 50, y: 5, w: 40, h: 10 }, { x: 50, y: 40, w: 40, h: 10 }], taken); assert.equal(b.y, 40); assert.equal(taken.length, 2);
   assert.equal(placeBox([{ x: 500, y: 0, w: 40, h: 10 }], taken, { x0: 0, y0: 0, x1: 400, y1: 400 }), null); assert.equal(placeBox([{ x: NaN }], taken), null);
 });
+
+test('pillarScript: the OI capture date, and for FX the "does not carry it" qualifier in its own sentence; the amplified wording unchanged (Helix review wave 1.9)', () => {
+  const rows = []; for (let k = 1.08; k <= 1.12; k += 0.0025) rows.push({ strike: +k.toFixed(4), callOI: k > 1.1 ? 500 : 10, putOI: k < 1.1 ? 600 : 10, netGex: (k - 1.105) * 1e4 });
+  const P = buildPillar({ spot: 1.1, gexProfile: rows, gammaFlip: 1.105, callWall: 1.11, putWall: 1.09, savedAt: '2026-11-26T21:40:00Z' }, 'EUR/USD');
+  const t = pillarScript(P, 'EURUSD');
+  assert.match(t, /short gamma, where moves have tended to be amplified/, 'the amplified wording stays as it is');
+  assert.match(t, /That test is on equity indices; in currencies the gamma regime has not carried it\./); assert.match(t, /The open interest is from the 26 Nov capture\./);
+  const idx = pillarScript(buildPillar({ spot: 5930, gexProfile: [{ strike: 5900, callOI: 5, putOI: 9, netGex: -1 }, { strike: 5950, callOI: 9, putOI: 5, netGex: 1 }], gammaFlip: 5925 }, 'SPX500_USD'), 'SPX500');
+  assert.doesNotMatch(idx, /in currencies/); assert.doesNotMatch(idx, /open interest is from/, 'no date when the store has none');
+});

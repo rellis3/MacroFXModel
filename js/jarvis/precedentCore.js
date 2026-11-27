@@ -29,11 +29,21 @@ export function histogram(sizes, edge = EDGE, bin = BIN) {
   return out;
 }
 
-/** Stats of the sizes (units). shareUp only when n >= SHARE_N, else null. */
+/** The Wilson 95% interval of a share k / n: { share, lo, hi, k, n } or null when n is 0. */
+export function wilson(k, n, z = 1.96) {
+  if (!(n > 0)) return null; const p = k / n, d = 1 + z * z / n, c = (p + z * z / (2 * n)) / d, h = (z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / d;
+  return { share: p, lo: Math.max(0, c - h), hi: Math.min(1, c + h), k, n };
+}
+/** Stats of the sizes (units). shareUp only when n >= SHARE_N, else null; beside it (Helix review wave 1.11) its Wilson 95% interval, shareUpLo / shareUpHi. */
 export function sizeStats(sizes, unit) {
-  const s = sizes.filter(fin), abs = s.map(Math.abs);
+  const s = sizes.filter(fin), abs = s.map(Math.abs), up = s.filter(v => v > 0).length, w = s.length >= SHARE_N ? wilson(up, s.length) : null;
   return { medianAbs: r2(quant(abs, 0.5)), p25: r2(quant(abs, 0.25)), p75: r2(quant(abs, 0.75)), p90: r2(quant(abs, 0.9)),
-    shareUp: s.length >= SHARE_N ? r2(s.filter(v => v > 0).length / s.length) : null, typical30mMove: r2(unit) };
+    shareUp: s.length >= SHARE_N ? r2(up / s.length) : null, shareUpLo: w ? r2(w.lo) : null, shareUpHi: w ? r2(w.hi) : null, typical30mMove: r2(unit) };
+}
+/** The market's up-share over EVERY release the record holds by `now` (all families): the yardstick the family's share is read against. { share, n } or null under SHARE_N. */
+export function baseShareUp(rows, mkt, now = Date.now()) {
+  const v = listReleases(rows, now).map(r => r.M?.[mkt]?.m30).filter(x => fin(x) && x !== 0); if (v.length < SHARE_N) return null;
+  return { share: r2(v.filter(x => x > 0).length / v.length), n: v.length };
 }
 
 export const dirWord = size => (!fin(size) ? 'n/a' : Math.abs(size) < FLAT ? 'flat' : size > 0 ? 'up' : 'down');
@@ -60,7 +70,7 @@ export function caveatsFor({ n, family, market, unitFallback = false, pathsMissi
 
 /** Everything for one pair, from the Release Reaction rows and a function that returns a release's stored paths (or null). */
 export async function buildPrecedent(rows, family, market, getPaths, now = Date.now()) {
-  const rr = reactionRows(rows, family, market, now), unit = unitFor(rows, family, market), u = unit > 0 ? unit : null;
+  const rr = reactionRows(rows, family, market, now), unit = unitFor(rows, family, market, now), u = unit > 0 ? unit : null;      // point in time: the unit from releases printed by `now` only
   const sizes = rr.map(r => (u ? r.m30 / u : r.m30)), last = [];
   let pathsMissing = 0;
   for (const r of rr.slice(0, 5)) {
@@ -69,7 +79,7 @@ export async function buildPrecedent(rows, family, market, getPaths, now = Date.
     const size = u ? r.m30 / u : r.m30;
     last.push({ date: String(r.t).slice(0, 10), label: r.name, size: r2(size), dirWord: dirWord(u ? size : r.m30 / 0.3), path });
   }
-  return { ok: true, family, market, n: rr.length, unit: u ? 'typical 30-minute reaction' : '% of price', stats: sizeStats(sizes, u), histogram: histogram(sizes), last,
+  return { ok: true, family, market, n: rr.length, unit: u ? 'typical 30-minute reaction' : '% of price', stats: sizeStats(sizes, u), base: baseShareUp(rows, market, now), histogram: histogram(sizes), last,
     caveats: caveatsFor({ n: rr.length, family, market, unitFallback: !u, pathsMissing }) };
 }
 
@@ -77,6 +87,6 @@ export async function buildPrecedent(rows, family, market, getPaths, now = Date.
 export function askText(d) {
   if (!d || !d.n) return '';
   const s = d.stats;
-  return `Describe how ${marketLabel(d.market)} reacted to ${familyLabel(d.family)} releases (${d.n} of them): median size ${s.medianAbs}, p25 ${s.p25}, p75 ${s.p75}, p90 ${s.p90} typical 30-minute reactions${s.shareUp != null ? `, up in ${Math.round(s.shareUp * 100)}%` : ''}. What does history show and what does it not show? History only, no forecast.`;
+  return `Describe how ${marketLabel(d.market)} reacted to ${familyLabel(d.family)} releases (${d.n} of them): median size ${s.medianAbs}, p25 ${s.p25}, p75 ${s.p75}, p90 ${s.p90} typical 30-minute reactions${s.shareUp != null ? `, up in ${Math.round(s.shareUp * 100)}%${s.shareUpLo != null ? ` (95% interval ${Math.round(s.shareUpLo * 100)}-${Math.round(s.shareUpHi * 100)}%)` : ''}${d.base ? `, against ${Math.round(d.base.share * 100)}% up over all ${d.base.n} releases held` : ''}` : ''}. What does history show and what does it not show? History only, no forecast.`;
 }
 export { MARKETS, FAMILY_LABEL, familyLabel, marketLabel };

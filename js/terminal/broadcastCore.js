@@ -7,6 +7,7 @@
 // screen). DESCRIPTION ONLY: nothing here is a forecast, a signal or a trade.
 import { spokenName, marketName } from './jarvisNames.js';
 import { readSeconds } from './showCore.js';
+import { holidayTag, londonParts } from './dayAheadCore.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const list = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
@@ -72,6 +73,21 @@ export function normEvent(e) {
 }
 const evName = e => (e.where && !e.event.toLowerCase().startsWith(e.where.toLowerCase()) ? `${e.where} ${e.event}` : e.event);
 
+// ── the move so far against the usual move BY THIS HOUR (Helix review wave 1.1) ──
+/**
+ * The share of a day's variance done between the vol forecaster's anchor (00:00 UTC, where the day's `oc` starts) and now, from the hourly range profile (dayAheadCore.hourProfile:
+ * mean = % of the day's range traded in each London hour). Range in an hour goes with its sigma, so variance per hour goes with mean^2. 0..1, or null without a profile.
+ * A full-day ratio divided by sqrt(share) is the move against the usual move by this hour (first-hour-fraction, Evidence Book: by 08:00 UK an FX pair has done about a fifth of its day).
+ */
+export function todShare(prof, nowMs, anchorMs = null) {
+  const m = prof?.mean; if (!m || m.length !== 24) return null;
+  const a = anchorMs ?? Math.floor(nowMs / 864e5) * 864e5, tot = Array.from(m).reduce((s, v) => s + (Number.isFinite(v) ? v * v : 0), 0); if (!(tot > 0) || !(nowMs > a)) return null;
+  let done = 0; for (let t = a; t < nowMs; t += 15 * 60e3) { const h = Math.floor(londonParts(t).mins / 60), v = m[h]; if (Number.isFinite(v)) done += v * v * Math.min(15 * 60e3, nowMs - t) / 3600e3; }
+  return Math.max(0, Math.min(1, done / tot));
+}
+/** The full-day ratio scaled to the hour: ratio / sqrt(share). null when the share is missing or the day is nearly done (>= 0.85: the full-day yardstick is already right). */
+export const ratioByHour = (ratio, share) => (fin(ratio) && fin(share) && share > 0.02 && share < 0.85 ? ratio / Math.sqrt(share) : null);
+
 // ── THE LEAD ──
 /**
  * The top things that matter this morning, best first. inp = { movers: candle rows biggest first, board: boardSummary, chain: st.sum, events: [{time, ccy, event}] }.
@@ -89,9 +105,10 @@ export function pickLead(inp = {}, n = 3) {
     // an obscure cross or a soft commodity leads only on an extraordinary day
     if (!inp.leadAll && !LEAD_CORE.has(m.key) && a < LEAD_INSANE) continue;
     const up = m.ratio > 0, tw = timesWords(m.ratio), k = nm++;
-    // two phrasings, so two movers in one lead never share a sentence
-    const say = k === 0 ? `${spokenName(m.key)} is ${up ? 'up' : 'down'} ${pctWords(m.oc)}. That is ${tw === 'about' ? 'about its usual move' : `${tw} its usual move`}.`
-      : `${spokenName(m.key)}, ${up ? 'up' : 'down'} ${pctWords(m.oc)}: ${tw === 'about' ? 'a normal-sized day' : `${tw} a normal day's travel`}.`;
+    // two phrasings, so two movers in one lead never share a sentence; beside the full-day ratio, the same move against the usual move by this hour (when the day is young)
+    const rh = ratioByHour(m.ratio, inp.todShare), byHour = rh != null && Math.abs(rh) >= Math.abs(m.ratio) * 1.15 ? ` By this hour of the day, that is ${timesWords(rh) === 'about' ? 'about the usual' : `${timesWords(rh)} the usual`} so far.` : '';
+    const say = k === 0 ? `${spokenName(m.key)} is ${up ? 'up' : 'down'} ${pctWords(m.oc)}. That is ${tw === 'about' ? 'about its usual move' : `${tw} its usual move`}.${byHour}`
+      : `${spokenName(m.key)}, ${up ? 'up' : 'down'} ${pctWords(m.oc)}: ${tw === 'about' ? 'a normal-sized day' : `${tw} a normal day's travel`}.${byHour}`;
     cand.push({ kind: 'mover', key: m.key, score: Math.min(a, 6), figure: timesFig(m.ratio), figLabel: 'its usual move', headline: `${marketName(m.key)} ${up ? 'up' : 'down'} ${pctFig(m.oc).replace(/^[+−]/, '')}`, sub: `${up ? '▲ Up' : '▼ Down'} ${pctFig(m.oc).replace(/^[+−]/, '')} so far today, against its own usual move`, tone: up ? 'up' : 'dn', say });
   }
   // the textbook-links count no longer competes for the lead (owner, 24 Nov 2026: it led both programmes, and the desk's tests give those macro links little weight); it stays a
@@ -111,7 +128,9 @@ export function pickLead(inp = {}, n = 3) {
   for (const c of cand) { if (out.length >= n) break; if (cnt[c.kind] >= lim[c.kind]) continue; cnt[c.kind]++; out.push(c); }
   for (const c of cand) { if (out.length >= n) break; if (!out.includes(c)) out.push(c); }       // a thin morning may lean on a third mover
   const bd = inp.board;
-  if (!out.length && bd && bd.n) out.push({ kind: 'quiet', score: 0, figure: `${bd.quiet} of ${bd.n}`, figLabel: 'markets barely moving', headline: 'A quiet start', sub: 'No market is far outside its usual move', tone: 'tx', say: `a quiet start. ${cap1(numWord(bd.quiet))} of the ${bd.n} markets are barely moving against their usual size.` });
+  // a holiday or half day is said with the quiet start, so a thin board is read as the calendar (Helix review wave 1.10)
+  let hol = ''; try { const h = holidayTag(+(inp.now ?? Date.now())); const c = h?.today.find(x => x.market === 'US stock market'); if (c) hol = ` Today is ${c.name.replace(/^Day after/, 'the day after')}, ${/early/.test(c.kind) ? 'a US half day' : 'a US holiday'}, so a thin board is the calendar, not a calm market.`; } catch (e) { hol = ''; }
+  if (!out.length && bd && bd.n) out.push({ kind: 'quiet', score: 0, figure: `${bd.quiet} of ${bd.n}`, figLabel: 'markets barely moving', headline: 'A quiet start', sub: hol ? 'A US holiday session' : 'No market is far outside its usual move', tone: 'tx', say: `a quiet start. ${cap1(numWord(bd.quiet))} of the ${bd.n} markets are barely moving against their usual size.${fin(inp.todShare) && inp.todShare < 0.5 ? ` By this hour a usual day has done only about ${Math.round(inp.todShare * 100)} percent of its moving, so part of the quiet is the clock.` : ''}${hol}` });
   for (const x of out) x.text = cap1(x.say);
   return out;
 }
@@ -143,7 +162,10 @@ export const BUILTIN = {
     const t = [`The vol model's typical range for today, high to low: ${list(pick.map(r => `${spokenName(r.key)} about ${pctWords(r.range)}`))}.`];
     const used = pick.filter(r => fin(r.hl) && r.hl > 0).map(r => ({ r, u: r.hl / r.range })).sort((a, b) => b.u - a.u)[0];
     if (used && used.u >= 0.25) t.push(`${cap1(spokenName(used.r.key))} has already used ${used.u >= 1 ? 'all' : `${Math.round(used.u * 100)} percent`} of its${used.u >= 1 ? ' typical range, and more' : ''}.`.replace(/of its\.$/, 'of it.'));
-    if (pick.some(r => fin(r.range75))) t.push('One day in four runs bigger. Those are sizes, not direction.');
+    // the typical range is the MEDIAN day, so half of all days run bigger (Helix review 0.3); "one day in four" belongs to the p75 figure, said with it
+    const p75 = pick.find(r => fin(r.range75) && r.range75 > r.range);
+    if (p75) t.push(`Half of all days run bigger than the typical range; one day in four runs past ${pctWords(p75.range75)} on ${spokenName(p75.key)}. Those are sizes, not direction.`);
+    else t.push('Half of all days run bigger than the typical range. Those are sizes, not direction.');
     return { title: "Today's ranges", view: 'vol', cam: null, text: t.join(' '), figure: { value: `${pick[0].range >= 1 ? pick[0].range.toFixed(1) : String(+pick[0].range.toFixed(2))}%`, label: `${marketName(pick[0].key, { short: true })} typical range` } };
   },
   // EVENING: how much of its typical high-to-low range each headline market actually used today (the morning's ranges scene, told looking back). Sizes, never direction.
@@ -225,7 +247,7 @@ export const SEGMENTS = [
   { id: 'tone', name: 'Market Tone', wide: true, keep: 2, segue: '', tiers: [['tone', 'wire'], ['wire']] },
   { id: 'deskview', name: "The Desk's View", wide: true, morning: true, segue: '', tiers: [['deskview']] },
   { id: 'bias', name: 'The Bias', wide: true, morning: true, segue: '', tiers: [['biasboard']] },
-  { id: 'biasday', name: 'The Bias, Scored', wide: true, evening: true, segue: '', tiers: [['biasday']] },
+  { id: 'biasday', name: 'The Bias Against the Day', wide: true, evening: true, segue: '', tiers: [['biasday']] },
   { id: 'curve', name: 'The Curve', wide: true, segue: '', tiers: [['curve']] },
   { id: 'stress', name: 'Stress & Positioning', wide: true, keep: 2, segue: '', tiers: [['stress', 'skew'], ['skew']] },
   { id: 'cross', name: 'Cross-Asset', wide: true, words: 75, segue: '', tiers: [['net']] },

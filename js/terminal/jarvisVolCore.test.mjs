@@ -45,13 +45,52 @@ test('volShowAct runs sweep -> rise -> over, and groupColumns puts a ravine betw
   const g = groupColumns([{ group: 'a' }, { group: 'a' }, { group: 'b' }]); assert.deepEqual(g.cols, [0, 1, -1, 2]); assert.deepEqual(g.at, [0, 1, 3]); assert.deepEqual(groupColumns(null).cols, []);
 });
 
-test('the BRIEF read: our markets running hot or quiet over five sessions, with what it means for stops and size', async () => {
+test('the BRIEF read: our markets running hot or quiet over five sessions, described, with no stop or size advice', async () => {
   const { volBrief, recentRange } = await import('./jarvisVolCore.js');
   const markets = [{ key: 'GOLD' }, { key: 'NQ' }, { key: 'USDJPY' }, { key: 'WTI' }], nm = 4, ns = 6, Z = new Float32Array(nm * ns).fill(1);
   for (let j = 1; j < ns; j++) { Z[j * nm] = 2; Z[j * nm + 2] = 0.6; }
   const T = { markets, nm, ns, Z };
   assert.deepEqual(recentRange(T).map(x => x.key), ['GOLD', 'NQ', 'USDJPY']);
   const t = volBrief(T, { ratio: 1.05, inverted: true });
-  assert.match(t, /gold at 2\.0 times has run above its normal range/); assert.match(t, /wider stops, smaller size/); assert.match(t, /Quiet: Dollar Yen at 0\.6 times/); assert.match(t, /VIX curve is inverted/);
+  assert.match(t, /gold at 2\.0 times has run above its normal range/); assert.match(t, /Quiet: Dollar Yen at 0\.6 times/); assert.match(t, /VIX curve is inverted/);
+  assert.doesNotMatch(t, /stops?\b|size\b|breakout|on edge|allow for/i, 'Helix review 0.2: description, never advice');
   assert.equal(volBrief(null), null);
+});
+test('the VIX inversion: the validated wider-week fact is said on the first day only', async () => {
+  const { vixLine } = await import('./jarvisVolCore.js');
+  const s = (vs, ms) => ({ vix: vs.map((v, i) => ({ date: day(i), value: v })), vix3m: ms.map((v, i) => ({ date: day(i), value: v })) });
+  const d1 = vixCurve(s([18, 19, 25], [20, 20, 24])); assert.equal(d1.runDays, 1); assert.equal(d1.firstDay, true);
+  assert.match(vixLine(d1), /inverted today.*first day of an inversion has been followed by a wider week.*range, not direction/);
+  const d3 = vixCurve(s([25, 26, 27], [24, 24, 24])); assert.equal(d3.runDays, 3); assert.equal(d3.firstDay, false);
+  assert.match(vixLine(d3), /for 3 sessions now.*first day of an inversion only/); assert.doesNotMatch(vixLine(d3), /has been followed/);
+  assert.equal(vixLine(vixCurve(s([15], [18]))), 'The VIX curve slopes upward, the calm shape.');
+  assert.equal(vixLine(null), null);
+});
+
+test('a missing cell is missing, not "1.0 times normal": left out of latest, peaks, stretched and the five-session average (Helix review 0.7)', async () => {
+  const { recentRange } = await import('./jarvisVolCore.js');
+  const bars = data(5, 40, i => (i >= 35 ? 0.5 : 1));                     // every market quiet for its last five sessions
+  bars.NQ = bars.NQ.filter(b => b.date < day(37));                         // ...and NQ has no bar for the last three
+  const T = buildTerrain(bars, { sessions: 30 });
+  assert.equal(T.has.length, T.Z.length); assert.equal(T.Z[(T.ns - 1) * T.nm], 1, 'the drawn terrain keeps its level fill');
+  assert.ok(!T.latest.some(x => x.key === 'NQ'), 'NQ has no newest bar'); assert.equal(T.latestN, 4);
+  const nq = recentRange(T).find(x => x.key === 'NQ'); assert.ok(Math.abs(nq.v - 0.5) < 1e-6, `NQ's two measured quiet days, not diluted by fills: ${nq.v}`); assert.equal(nq.last, null);
+  assert.match(volScript(T, null), /none of the 4 markets/);
+});
+
+test('holidayNote: a latest session on Thanksgiving is said as a holiday range (Helix review wave 1.10)', async () => {
+  const { holidayNote } = await import('./jarvisVolCore.js');
+  assert.match(holidayNote({ dates: ['2026-11-25', '2026-11-26'], ns: 2 }), /^The latest session, Thursday 26 November, was Thanksgiving, a US holiday: its range is a holiday range, not a calm market\.$/);
+  assert.match(holidayNote({ dates: ['2026-11-27'], ns: 1 }), /the day after Thanksgiving, a US half day/);
+  assert.equal(holidayNote({ dates: ['2026-11-24'], ns: 1 }), null); assert.equal(holidayNote(null), null);
+});
+
+test('base rates: the tallest ridge at its real size with how rare it was for that market, and how many markets a typical day runs at 1.5x (Helix review wave 1.2)', () => {
+  // 120 sessions of 1, every 10th session 2 (a 1.5x day one session in ten), and session 110 at 5 (past the drawn cap)
+  const T = buildTerrain(data(4, 120, i => (i === 110 ? 5 : i % 10 === 5 ? 2 : 1)), { sessions: 30 });
+  const pk = T.peaks[0]; assert.equal(pk.v, CLIP); assert.ok(Math.abs(pk.raw - 5) < 1e-6); assert.equal(pk.rare.c, 0);
+  const s = volScript(T, null);
+  assert.match(s, /at 5\.0 times its normal, above the top of the scale, the biggest in its previous \d+ sessions\./); assert.doesNotMatch(s, /three times or more/);
+  assert.ok(T.base.n === 4 && Math.abs(T.base.stretched - 0.4) < 0.05, JSON.stringify(T.base));
+  assert.match(s, /On a typical day, fewer than one would\./);
 });

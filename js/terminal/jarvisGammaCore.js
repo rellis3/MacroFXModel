@@ -67,5 +67,7 @@ export function gammaScript(L, key) {
   if (L.callWall) parts.push(`the biggest call wall is ${num(L.callWall.strike)}, ${rel(L.callWall.strike, L.spot)}`);
   if (L.putWall) parts.push(`the biggest put wall is ${num(L.putWall.strike)}, ${rel(L.putWall.strike, L.spot)}`);
   const side = L.long == null ? '' : L.long ? ' Spot is above the gamma flip, so dealers are net long gamma here.' : ' Spot is below the gamma flip, so dealers are net short gamma here.';
-  return `In ${spoken(key)} options, ${parts.join(' and ')}.${side} Positioning, not a forecast.`;
+  // Helix review wave 1.9: say whose open interest this is, by its capture date
+  const d = String(L.savedAt ?? '').slice(0, 10), when = /^\d{4}-\d{2}-\d{2}$/.test(d) ? ` The open interest is from the ${new Date(`${d}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })} capture.` : '';
+  return `In ${spoken(key)} options, ${parts.join(' and ')}.${side}${when} Positioning, not a forecast.`;
 }
