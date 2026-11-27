@@ -15,6 +15,8 @@ import './js/intlCache.js';
 import { intlCacheStats } from './js/intlCache.js';
 import { dxySeries as _dxyIceSeries } from './js/dxyIce.js';
 import { archiveMacro as _archiveMacro, FRED_EXTRA as _FRED_EXTRA } from './js/macroCapture.js';
+import { createRefreshGuard } from './js/refreshGuard.js';
+import { mountHelixRoutes } from './js/helixRoutes.js';
 import express              from 'express';
 import zlib from 'node:zlib';
 import path                from 'path';
@@ -22899,7 +22901,11 @@ const _DRILL_OANDA = { gold: 'XAU_USD', oil: 'WTICO_USD', copper: 'XCU_USD', aud
   eurjpy: 'EUR_JPY', audjpy: 'AUD_JPY', nzdusd: 'NZD_USD', eurgbp: 'EUR_GBP', usdchf: 'USD_CHF',
   // USD/SEK (2026-11-27): the sixth DXY leg, so the ICE dollar index can be rebuilt daily beside the weekly Fed index (js/dxyIce.js).
   usdsek: 'USD_SEK' };
-async function _refreshDrillBundle() {
+// Every reader asks for a refresh when the bundle is old, and a failed run leaves `at` unchanged, so before 2026-11-27 each request in a burst started its own six-year
+// FRED/Yahoo/OANDA pull (a refresh storm). One shared promise in flight and a back-off after a failure (js/refreshGuard.js); readers keep the last good bundle meanwhile.
+const _drillGuard = createRefreshGuard(() => _refreshDrillBundleRun(), { isFail: r => !!r?.error, idle: () => _drillBundle, log: m => console.warn('[drill] refresh', m) });
+function _refreshDrillBundle(opts) { return _drillGuard(opts); }
+async function _refreshDrillBundleRun() {
   try {
     const since = new Date(Date.now() - 6 * 365.25 * 864e5).toISOString().slice(0, 10);
     const raw = {};
@@ -23141,6 +23147,16 @@ app.get('/api/drill-series', async (req, res) => {
     if (!_drillBundle.data) return res.status(503).json({ ok: false, error: _drillBundle.error ?? 'no bundle yet' });
     res.set('Cache-Control', 'public, max-age=3600');
     const d = _drillBundle.data;
+    // ?keys=eurusd,gold&tail=60 (plans/HELIX_IMPROVEMENTS.md 3.5): only the named series and the last `tail` dates (default 60, at most 400), so a headline
+    // feed polled every few minutes moves a few KB instead of the whole ~236 KB bundle. Unknown keys are listed in `missing`. Same shape as the full reply.
+    if (req.query.keys) {
+      const want = [...new Set(String(req.query.keys).split(',').map(s => s.trim()).filter(Boolean))].slice(0, 60);
+      const tail = Math.max(1, Math.min(400, parseInt(req.query.tail, 10) || 60)), from = Math.max(0, d.dates.length - tail);
+      const series = {}, missing = [];
+      for (const k of want) { const a = d.series?.[k]; if (Array.isArray(a)) series[k] = a.slice(from); else missing.push(k); }
+      const dates = d.dates.slice(from);
+      return res.json({ ok: true, tail, dates, series, from: dates[0] ?? null, to: d.to, n: dates.length, missing, carried: (d.carried ?? []).filter(k => k in series), at: new Date(_drillBundle.at).toISOString() });
+    }
     if (req.query.slim === '1') {
       const series = {}, missing = [];
       for (const k of _DRILL_SERIES) {
@@ -23158,7 +23174,8 @@ app.get('/api/drill-series', async (req, res) => {
     res.json({ ok: true, ...d, at: new Date(_drillBundle.at).toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-svcInterval('drill', () => _refreshDrillBundle().catch(e => console.error('[drill]', e.message)), 24 * 3600_000);
+// Fixed 22:30 UK (after the FRED and Cboe end-of-day prints) instead of boot + 24 h, which drifted with every deploy (plans/HELIX_IMPROVEMENTS.md 3.12).
+if (svcEnabled('drill')) { _svcStat('drill').started = true; _svcStat('drill').intervalsMs.push(24 * 3600_000); _scheduleDailyLondon(22, 30, () => svcRun('drill', () => _refreshDrillBundle({ force: true }).catch(e => console.error('[drill]', e.message)))); }
 // boot runs, as rates above: the bundle first, then the chapters, which are built from it
 svcTimeout('drill', () => _refreshDrillBundle().catch(e => console.error('[drill] boot run:', e.message)), 9 * 60_000);
 svcTimeout('drill', () => _refreshChapters().catch(e => console.error('[chapters] boot run:', e.message)), 12 * 60_000);
@@ -29679,12 +29696,18 @@ app.get('/api/oi-levels', async (_req, res) => {
 // ?cmdty=1 also merges `oi_store_cmdty` (silver, copper, crude, gas, grains — the secondary
 // pull). Opt-in: oi-dashboard.html asks for it; cot-extremes.html and indexv2.html read this
 // route too and get exactly what they always did.
+// Memoised per KV version (plans/HELIX_IMPROVEMENTS.md 3.4): the ~1.5 MB parse, the GEX self-heal and the ladder are rebuilt only when the stored text changes. Two entries at most
+// (with and without cmdty), each holding the raw text it was built from and the JSON it sends, so the reply is byte-identical to a fresh build.
+const _oiStoreMemo = new Map();
 app.get('/api/oi-store', async (req, res) => {
   try {
     const raw = await kv.get('oi_store').catch(() => null);
+    const wantC = String(req.query.cmdty || '') === '1', rawC0 = wantC ? await kv.get('oi_store_cmdty').catch(() => null) : null;
+    const memo = _oiStoreMemo.get(wantC);
+    if (memo && memo.raw === raw && memo.rawC === rawC0) return res.type('application/json').send(memo.body);
     const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
-    if (String(req.query.cmdty || '') === '1') {
-      const rawC = await kv.get('oi_store_cmdty').catch(() => null);
+    if (wantC) {
+      const rawC = rawC0;
       const cm = rawC ? (JSON.parse(rawC).data ?? JSON.parse(rawC)) : {};
       for (const [k, v] of Object.entries(cm || {})) if (!(k in store)) store[k] = v;
     }
@@ -29700,7 +29723,9 @@ app.get('/api/oi-store', async (req, res) => {
         try { inst.gexLadder = _oiGexLadder(inst); } catch { inst.gexLadder = null; }
       }
     }
-    res.json({ data: store });
+    const body = JSON.stringify({ data: store });
+    _oiStoreMemo.set(wantC, { raw, rawC: rawC0, body });
+    res.type('application/json').send(body);
   } catch (e) { res.status(e.status ?? 500).json({ error: e.message }); }
 });
 
@@ -37574,6 +37599,22 @@ _mountGhostWalk(app, {
     catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') console.warn(`[jarvis] ${name} not mounted:`, e.message); }
   }
 }
+// Helix data routes (js/helixRoutes.js): /api/g10-rates, /api/funding-board, /api/vol-terrain, /api/helix/{bundle,record,roll-health,stress}. R2 reads and the owner's own routes only;
+// the one write is the owner-only daily record (helix/days/<date>.json). Every cache is a single slot with one build in flight.
+try {
+  mountHelixRoutes(app, {
+    ownerOnly: _ownerOnly, r2GetJSON: _r2GetJSON, r2ListKeys: _r2ListKeys, r2Ok: _r2Ok, archive: _archive,
+    drill: async () => { if (!_drillBundle.data || Date.now() - _drillBundle.at > 24 * 3600_000) await _refreshDrillBundle().catch(() => {}); return _drillBundle.data; },
+    fetchRange: process.env.OANDA_KEY ? (sym, gran, fromISO, toISO) => fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO) : null,
+    selfFetch: async (p, { cookie = '' } = {}) => {
+      const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { headers: { cookie, accept: 'application/json' }, redirect: 'manual', signal: AbortSignal.timeout(20_000) });
+      let j = null; try { j = await r.json(); } catch { /* not JSON */ }
+      if (!r.ok) throw new Error(j?.error ? String(j.error).slice(0, 160) : `HTTP ${r.status}`);
+      if (j == null) throw new Error('not JSON');
+      return j;
+    },
+  });
+} catch (e) { console.warn('[helix] routes not mounted:', e.message); }
 // OI over time (js/oiTimeRoutes.js): read-only, daily candles + the option-OI history; no model call, nothing is written.
 _mountOiTime(app, {
   fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },

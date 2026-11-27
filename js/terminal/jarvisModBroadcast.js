@@ -15,6 +15,7 @@ import { enterScene, sceneMotion, makeRecorder, voiceButton, voiceWord } from '.
 import { buildHeadline } from './broadcastHeadline.js';
 import { PANEL_CSS } from './broadcastPanels.js';
 import { chartCommand } from './jarvisViewSession.js';
+import { dayRecordBody, postDayRecord } from './helixRecord.js';
 
 const LS = 'jarvisBroadcast:v1';
 const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { return {}; } };
@@ -252,19 +253,33 @@ registerJarvisModule({
     // the morning's data, gathered once (two minutes' cache): candles, the chain summary, the calendar, and the prepared data of every scene the programme may use
     async function gather(force = false) {
       if (!force && cache && Date.now() - cache.at < 120_000) return cache;
+      // THE SERVER BUNDLE (/api/helix/bundle, plans/HELIX_IMPROVEMENTS.md 3.1): the morning's feeds in one request, each block { asOf, source, stale, degraded, data }. A block that
+      // is missing or degraded falls back to its own route below, so the broadcast never depends on the bundle. Full-reply blocks also fill the loader cache for the scenes.
+      let hb = null; try { hb = await api.jf('/api/helix/bundle', force ? { cache: 'no-store', timeoutMs: 40_000 } : { timeoutMs: 40_000 }); } catch (e) { hb = null; } if (!hb?.blocks) hb = null;
+      const blk = id => { const b = hb?.blocks?.[id]; return b && !b.degraded && b.data != null ? b.data : null; };
+      for (const b of Object.values(hb?.blocks ?? {})) if (b?.prime && b.data != null && !b.degraded) api.jf.prime?.(b.prime, b.data);
       const cd = await api.candles().catch(() => null), rows = cd?.rows ?? [];
-      let events = null; try { const m = await api.jf('/api/jarvis/morning'); if (m?.ok && Array.isArray(m.events)) events = m.events; } catch (e) { /* the digest is optional */ }
+      let events = null; const mb = blk('morning');
+      if (mb?.ok && Array.isArray(mb.events)) events = mb.events;
+      else { try { const m = await api.jf('/api/jarvis/morning'); if (m?.ok && Array.isArray(m.events)) events = m.events; } catch (e) { /* the digest is optional */ } }
       const want = new Set(wantedSceneIds()), extra = {};
       await Promise.all(SHOW_HOOKS.filter(h => want.has(h.id)).map(async h => { try { extra[h.id] = (await h.prepare?.(api)) ?? null; } catch (e) { extra[h.id] = null; } }));
-      // THE HEADLINE: the newsletter's one-line story, from the feeds the newsletter reads (broadcastHeadline.js)
+      // THE HEADLINE: the newsletter's one-line story, from the feeds the newsletter reads (broadcastHeadline.js); the bundle carries them trimmed to what the headline reads
       let headline = null;
       try {
         const F = { drill: '/api/drill-series', brief: '/api/daily-brief', sess: '/api/vol-forecast/session', fc: '/api/vol-forecast', mc: '/api/macro-changes', asia: '/api/asia-today', events: '/api/events' }, feeds = {};
-        await Promise.all(Object.entries(F).map(async ([k, u]) => { try { const j = await api.jf(u); feeds[k] = j?.ok === false ? null : j; } catch (e) { feeds[k] = null; } }));
+        await Promise.all(Object.entries(F).map(async ([k, u]) => { const b = blk(k); if (b != null) { feeds[k] = b?.ok === false ? null : b; return; } try { const j = await api.jf(u); feeds[k] = j?.ok === false ? null : j; } catch (e) { feeds[k] = null; } }));
         headline = buildHeadline(feeds, { nowMs: Date.now(), evening: partOfDay(dateWords(new Date()).hour) === 'evening' });
       } catch (e) { headline = null; }
       const s = st.sum, chain = s ? { holding: s.holding, broken: s.broken, quiet: s.quiet, judged: s.judged, brokenShort: s.brokenShort, headline: s.headline } : null;
-      cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra, headline } };
+      // NEW OPTIONAL INPUTS for the narration (it may read them; nothing here is spoken by itself): the data Helix did not use before (3.9), the G10 and funding boards (3.6), roll
+      // health (3.10), the intraday stress line (3.13), and `degraded` (3.11): partial = a block the broadcast's own lines read is missing or failed.
+      const CORE = ['morning', 'drill', 'brief', 'sess', 'fc', 'mc', 'asia', 'events'], bad = Array.isArray(hb?.degraded) ? hb.degraded : [];
+      const helix = hb ? Object.fromEntries(['g10', 'funding', 'wider', 'hitRates', 'qlike', 'xccy', 'cvol', 'fxCarry', 'fundingRead', 'eventImpact', 'releaseReactions', 'dxyIce', 'rollHealth', 'stress'].map(k => [k, blk(k)])) : null;
+      const degraded = hb ? { partial: CORE.some(k => bad.includes(k)), core: CORE.filter(k => bad.includes(k)), blocks: bad, stale: Object.values(hb.blocks ?? {}).filter(b => b.stale).map(b => b.id) } : { partial: false, core: [], blocks: ['bundle'], stale: [], bundle: 'unavailable: fetched route by route' };
+      cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra, headline, helix, degraded, bundleAsOf: hb?.builtAt ?? null } };
+      // THE HELIX DAILY RECORD (3.7): when the programme is about to play, what it was given and what it will say goes to R2 (helix/days/<date>.json). Fire and forget.
+      if (force) { try { postDayRecord(api.jf, dayRecordBody(cache.inp, plan(cache.inp, q('len').value), { mode: q('len').value, part: partOfDay(dateWords(new Date()).hour) })); } catch (e) { /* the record never touches the broadcast */ } }
       return cache;
     }
     let shortSec;                                   // the short cut's budget (seconds at normal speed); the recorder may ask for more (undefined = the planner's default)

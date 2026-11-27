@@ -863,12 +863,19 @@ function computeSessionMetrics(bar, fc, bars = []) {
 let _sessionCache   = null;
 let _sessionCacheAt = 0;
 const SESSION_TTL_MS = 90 * 1000;  // 90 seconds
+// A cold cache used to start one OANDA fan-out (every instrument) per concurrent caller; callers now share the one in flight (plans/HELIX_IMPROVEMENTS.md 3.4).
+let _sessionInflight = null;
 
 export async function getSessionStatus() {
   if (!forecastState.latest)        return { ok: false, reason: 'no_forecast' };
   if (!process.env.OANDA_KEY)       return { ok: false, reason: 'no_oanda_key', message: 'Live session tracking requires Oanda API key.' };
   if (_sessionCache && (Date.now() - _sessionCacheAt) < SESSION_TTL_MS) return _sessionCache;
+  if (_sessionInflight) return _sessionInflight;
+  _sessionInflight = _buildSessionStatus().finally(() => { _sessionInflight = null; });
+  return _sessionInflight;
+}
 
+async function _buildSessionStatus() {
   const fc          = forecastState.latest;
   const instruments = {};
 

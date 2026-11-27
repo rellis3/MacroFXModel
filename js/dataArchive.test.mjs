@@ -94,3 +94,12 @@ test('mergeTable keeps every week and records revisions', async () => {
   assert.equal(doc.first, '2006-06-13'); assert.equal(doc.last, '2026-10-27');
   assert.equal(doc.rows[1].oi, 111); assert.equal(doc.rows[1].firstSeen.oi, 110);
 });
+
+test('putRecord read-modify-writes a document at its own key, skips unchanged, refuses dot-dot keys', async () => {
+  const r2 = fakeR2(); const ar = createDataArchive({ ...r2 });
+  const a = await ar.putRecord('helix/days/2026-11-27.json', prev => ({ date: '2026-11-27', n: (prev?.n ?? 0) + 1 }));
+  assert.equal(a.wrote, true); assert.deepEqual(r2.store.get('helix/days/2026-11-27.json'), { date: '2026-11-27', n: 1 });
+  await ar.putRecord('helix/days/2026-11-27.json', prev => ({ ...prev, n: prev.n + 1 })); assert.equal(r2.store.get('helix/days/2026-11-27.json').n, 2);
+  assert.equal((await ar.putRecord('helix/days/2026-11-27.json', prev => prev)).reason, 'unchanged');
+  assert.equal((await ar.putRecord('helix/../x.json', {})).reason, 'bad key');
+});

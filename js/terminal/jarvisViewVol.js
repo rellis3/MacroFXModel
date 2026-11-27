@@ -30,7 +30,10 @@ export async function loadVol(api, force) {
   S.busy = (async () => {
     const ok = p => Promise.resolve(p).catch(() => null), now = new Date(), today = now.toISOString().slice(0, 10), from = new Date(now.getTime() - 135 * 864e5).toISOString().slice(0, 10), bars = {};
     const vp = ok(api.jf('/api/fredhistory?keys=vix,vix3m'));
-    for (let k = 0; k < VOL_MARKETS.length; k += 7) {
+    // one server reply with every market's daily ranges (/api/vol-terrain, the same dailyRanges rule); the old per-market fan-out below runs only when it is missing
+    const vt = await ok(api.jf('/api/vol-terrain'));
+    if (vt?.ok && vt.markets) for (const [key, a] of Object.entries(vt.markets)) { const d = (Array.isArray(a) ? a : []).filter(x => x[0] < today).map(([date, r]) => ({ date, r })); if (d.length) bars[key] = d; }
+    if (Object.keys(bars).length < 3) for (let k = 0; k < VOL_MARKETS.length; k += 7) {
       await Promise.all(VOL_MARKETS.slice(k, k + 7).map(async m => { const r = await ok(api.jf(`/api/ohlc-range?symbol=${m.oanda}&granularity=D&from=${from}&to=${today}`)); const d = dailyRanges(r, today); if (d.length) bars[m.key] = d; }));
     }
     let T = null; try { T = buildTerrain(bars); } catch (e) { T = null; }

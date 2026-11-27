@@ -10,6 +10,7 @@ import { CHAIN_NODES } from '../macroChain.js';
 import { marketName, getNameStyle, setNameStyle } from './jarvisNames.js';
 import { candleRows, candleLayout, candleBox, boardSummary, ROWS as CD_ROWS } from './jarvisCandles.js';
 import { EXTRA, loadModules, viewsOf } from './jarvisModules.js';
+import { createHelixFetch } from './helixFetch.js';
 import { SECTIONS, COMPANION, labelOf, itemsFor, activeSection } from './jarvisNav.js';
 import { shortLabel } from './chainBoard.js';
 import { glDisposeAll, glInstance } from './jarvisGL.js';
@@ -282,7 +283,8 @@ export async function openJarvis(win = window) {
   const cineAct = a => { const c = st.cinemaCtl; if (!c) return; try { c[a]?.(); } catch (e) { /* the director must never break the HUD */ } };
 
   // ── data ──
-  const jf0 = (u, o) => win.fetch(u, o).then(r => r.json());
+  // one loader for every view (helixFetch.js): r.ok checked, 15 s timeout, in-flight dedupe, per-route TTL cache; jf.load(u) -> { data, asOf, stale } for the as-of chip
+  const hfx = createHelixFetch((u, o) => win.fetch(u, o)), jf0 = hfx.jf;
   // WEEKEND / PRE-OPEN FALLBACK: the live move feed is empty until the new session prints ("No bars since midnight"), which left the currency, weather, board and book pictures blank all
   // weekend. When fewer than 3 markets have a move, every view is handed the LAST COMPLETE session snapshot instead, clearly labelled with when it was taken (never passed off as today).
   const usable = j => Object.values(j?.instruments ?? {}).filter(x => x && !x.error && x.oc != null).length;
@@ -295,6 +297,7 @@ export async function openJarvis(win = window) {
     return null;
   })() }).p;
   const jf = (u, o) => jf0(u, o).then(async j => (String(u).split('?')[0] === '/api/vol-forecast/live' && usable(j) < 3) ? ((await lastSession().catch(() => null)) ?? j) : j);
+  Object.assign(jf, { load: hfx.load, meta: hfx.meta, prime: hfx.prime });
   async function loadAt(w, date = null) {
     let r = null; try { r = await win.deskChainData?.(w, date); } catch (e) { r = null; }
     if (!r?.links?.length) return null;
