@@ -17,6 +17,7 @@
 // markets with different units can stand side by side in ALL MARKETS. The native size is always given beside it.
 // DESCRIPTION ONLY: history of past reactions. The direction of a release reaction is not predictable from the release alone (Evidence Book news-asymmetry NULL); nothing here says where the next one goes.
 import { londonParts } from './dayAheadCore.js';
+import { wilson } from '../jarvis/precedentCore.js';
 
 export const OFFS = [-30, 240];
 export const SPAN = OFFS[1] - OFFS[0];
@@ -221,11 +222,37 @@ export function shockTodayScript({ rel, mkt, typ, hm }) {
   return `Today's big one: the ${fam}${hm ? ` at ${hm}` : ''}.${pr} In the first thirty minutes, ${mk} ${m > 0 ? 'rose' : 'fell'} ${sz(m)}, ${size} ${sz(typ.med)} over the last ${typ.n} of them.`;
 }
 const fmtNum = v => { const a = Math.abs(v); return a >= 1000 ? `${Math.round(v / 1000)} thousand` : String(+(+v).toFixed(2)).replace(/^-/, 'minus '); };
-/** The SHOW line: the size (not the direction) of the main market's first 30 minutes after this kind of release. */
-export function shockwaveScript({ family, mkt, typ, next }) {
+/** The VIX band of a level (the release-reaction study's: calm < 16 <= normal < 24 <= stressed). */
+export const vixBand = v => (!fin(v) ? null : v < 16 ? 'calm' : v < 24 ? 'normal' : 'stressed');
+/** The last VIX close dated strictly before ms's UTC date (point in time). vix: [{ date, value }] in any order. */
+export function vixBefore(vix, ms) {
+  const day = new Date(ms).toISOString().slice(0, 10); let best = null;
+  for (const p of Array.isArray(vix) ? vix : []) { const v = +p?.value; if (p?.date < day && Number.isFinite(v) && (!best || p.date > best.date)) best = { date: p.date, value: v }; }
+  return best?.value ?? null;
+}
+/**
+ * Today's volatility regime for the shockwave (Helix review wave 1.6): the family's past 30-minute moves in today's VIX band only, beside the all-regime typical.
+ * { band, vixNow, med, n, unit } or null without a VIX, or under MIN_UNIT releases in the band. Description of history in a like regime, not a forecast.
+ */
+export function typicalInRegime(rows, family, mkt, now, vix) {
+  const vixNow = vixBefore(vix, now + 864e5), band = vixBand(vixNow); if (!band) return null;
+  const v = releasesOf(rows, family, now).filter(r => vixBand(vixBefore(vix, Date.parse(r.t))) === band).map(r => r.M?.[mkt]?.m30).filter(fin).map(Math.abs);
+  return v.length >= MIN_UNIT ? { band, vixNow, med: median(v), n: v.length, unit: marketUnit(mkt) } : null;
+}
+const pctW = x => `${Math.round(x * 100)} percent`;
+/**
+ * The SHOW line: the size (not the direction) of the main market's first 30 minutes after this kind of release. On a day with no release of a family we hold still to come, the
+ * "most recent big release" filler is skipped (null) unless allowRecent (the visual guide). The up / down count carries its Wilson 95% interval; regime (typicalInRegime) adds the
+ * same family's typical in today's VIX band, beside the all-regime figure.
+ */
+export function shockwaveScript({ family, mkt, typ, next, regime = null, allowRecent = false }) {
   if (!family || !typ || !fin(typ.med) || typ.n < MIN_FAMILY) return null;
+  if (!next && !allowRecent) return null;
   const fam = familyLabel(family), mk = SPOKEN[mkt] ?? marketLabel(mkt), med = spokenNative(typ.med, typ.unit), lo = spokenNative(typ.lo, typ.unit), hi = spokenNative(typ.hi, typ.unit);
   const lead = next ? `${fam} is due at ${next.hm} London.` : `The most recent big release was the ${fam}.`;
-  return `${lead} Over the last ${typ.n} of them, ${mk} typically moved about ${med} in the first thirty minutes, with half of them between ${lo} and ${hi}. `
-    + `That is the size of the reaction; its direction came out ${typ.up} times up and ${typ.dn} times down, so history, not a forecast.`;
+  const rg = regime && fin(regime.med) ? ` With the VIX at ${Math.round(regime.vixNow)}, in its ${regime.band} band, the ${regime.n} past ones in that band moved a median ${spokenNative(regime.med, regime.unit)}.` : '';
+  const w = typ.up + typ.dn >= 10 ? wilson(typ.up, typ.up + typ.dn) : null;
+  const iv = w ? `, an up share of ${pctW(w.share)} with a 95 percent range of ${pctW(w.lo)} to ${pctW(w.hi)}` : '';
+  return `${lead} Over the last ${typ.n} of them, ${mk} typically moved about ${med} in the first thirty minutes, with half of them between ${lo} and ${hi}.${rg} `
+    + `That is the size of the reaction; its direction came out ${typ.up} times up and ${typ.dn} times down${iv}, so history, not a forecast.`;
 }

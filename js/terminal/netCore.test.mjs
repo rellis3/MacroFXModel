@@ -184,3 +184,20 @@ test('the BRIEF figure shows the narration headline (split, else one trade, else
   assert.doesNotMatch(JSON.stringify([f, g]), /0\.45|0\.16/);
   assert.equal(netBriefFigure({ ids: ['A', 'B'], m: [[1, 0.1], [0.1, 1]] }, {}), null);
 });
+
+test('a split needs a residual z of 2 on the pair\'s spread, said against the count chance gives (Helix review wave 1.3)', async () => {
+  const { splits, splitsZ, netBriefParts, netBriefFigure, Z_TAIL_2 } = await import('./netCore.js');
+  const ids = ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF'], m = ids.map(() => ids.map(() => 0.7)); ids.forEach((_, i) => { m[i][i] = 1; });
+  const net = { ids, m };
+  // a small sign disagreement: EURUSD +0.6 sd, GBPUSD -0.6 sd at r 0.7 -> d = 1.2 / sqrt(0.6) = 1.55: noise, though the old rule calls it a split
+  const mv = Object.fromEntries(ids.map(k => [k, { move: 0.1, ratio: 0.6 }])); mv.GBPUSD = { move: -0.1, ratio: 0.6 };
+  assert.ok(splits(net, mv).length > 0, 'the old sign rule fires');
+  const Z = splitsZ(net, mv); assert.equal(Z.list.length, 0); assert.equal(Z.tested, 15); assert.ok(Math.abs(Z.expected - 15 * Z_TAIL_2) < 1e-12);
+  const t = netBriefParts(net, mv).map(x => x.text).join(' ');
+  assert.match(t, /no tight pair split by two sigma or more\. Of 15 tight pairs, zero are two sigma or more out of line today; chance alone gives fewer than one./);
+  // a real break: +2 sd against -1.5 sd -> d = 3.5 / 0.77 = 4.5
+  mv.GBPUSD = { move: -0.3, ratio: 1.5 }; mv.EURUSD = { move: 0.4, ratio: 2 };
+  const t2 = netBriefParts(net, mv).map(x => x.text).join(' ');
+  assert.match(t2, /Euro Dollar and .* normally move together, at 0\.70, but today .* rose while .* fell, 4\.5 sigma out of line/);
+  assert.match(netBriefFigure(net, mv).value, /EURUSD ▲ · GBPUSD ▼/);
+});

@@ -233,6 +233,28 @@ export function splits(net, moves, thr = 0.6, minRatio = 0.5) {
   }
   return out.sort((x, y) => y.score - x.score);
 }
+/**
+ * Side by side with splits() (Helix review wave 1.3): a baseline for a "split". At r = 0.6 the day's signs disagree about 30% of the time by chance, so a sign split alone is noise.
+ * For each tight pair (|r| >= thr, both moves measured) the residual z of the spread: d = (za - sign(r) zb) / sqrt(2 (1 - |r|)), za / zb = each signed move in its own 60-day sd (ratio).
+ * A pair is OUT OF LINE when |d| >= zMin; a SPLIT also needs the signs to disagree with the relationship. Under the null |d| >= 2 happens 4.55% of the time, so
+ * expected = tested x 0.0455 is how many out-of-line pairs chance alone gives. { list: splits (|d| >= zMin, signs split; biggest |d| first, a core pair first), out, tested, expected }.
+ */
+export const Z_TAIL_2 = 0.0455;
+export function splitsZ(net, moves, thr = 0.6, zMin = 2) {
+  const list = [], ids = net?.ids ?? [], core = new Set(NET_CORE); let tested = 0, out = 0;
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+    const r = net.m[i][j], a = moves?.[ids[i]], b = moves?.[ids[j]];
+    if (!Number.isFinite(r) || Math.abs(r) < thr || !a || !b || !Number.isFinite(a.ratio) || !Number.isFinite(b.ratio) || !a.move || !b.move) continue;
+    tested++;
+    const za = Math.sign(a.move) * a.ratio, zb = Math.sign(b.move) * b.ratio, d = (za - Math.sign(r) * zb) / Math.sqrt(2 * (1 - Math.min(0.95, Math.abs(r))));
+    if (Math.abs(d) < zMin) continue; out++;
+    if (Math.sign(a.move * b.move) === Math.sign(r)) continue;
+    list.push({ a: ids[i], b: ids[j], r, ma: a.move, mb: b.move, z: d, core: core.has(ids[i]) || core.has(ids[j]) });
+  }
+  list.sort((x, y) => (y.core - x.core) || (Math.abs(y.z) - Math.abs(x.z)));
+  return { list, out, tested, expected: tested * Z_TAIL_2 };
+}
+const chanceWords = e => (e < 1 ? 'fewer than one' : e < 1.5 ? 'about one' : `about ${Math.round(e)}`);
 /** Where the day's move was: the cluster with the biggest average move against its usual (>= 0.8), with its direction when most agree: { id, name, mean, ids, dir: 'up'|'dn'|null } or null. */
 export function moveGroup(net, moves) {
   let best = null;
@@ -251,9 +273,11 @@ export function netBriefParts(net, moves, when = 'today') {
   const s = [], Day = when === 'yesterday' ? 'Yesterday' : 'Today', day = when === 'yesterday' ? 'yesterday' : 'today';
   const g = moveGroup(net, moves);
   s.push({ act: 'intro', ids: g?.ids ?? [], text: g ? `What moved together ${day}. The move was in ${g.name.toLowerCase()}${g.dir ? `, ${g.dir === 'up' ? 'higher' : 'lower'} as a group` : ''}, at ${xWord(g.mean)} their usual size on average.` : `What moved together ${day}. Nothing moved much: no group ran at its usual size.` });
-  const sp = splits(net, moves)[0];
-  if (sp) s.push({ act: 'split', ids: [sp.a, sp.b], text: `The break: ${spokenName(sp.a)} and ${spokenName(sp.b)} normally move ${sp.r > 0 ? 'together' : 'opposite'}, at ${f2(sp.r)}, but ${day} ${dirWord(sp.a, sp.ma)} while ${dirWord(sp.b, sp.mb)}. For the day, the pair has moved against its usual relationship.` });
-  else s.push({ act: 'split', ids: [], text: `${Day}'s moves kept to their usual pattern: no tight pair split.` });
+  // a break must be two sigma out of line on the pair's own spread, said with how many chance alone gives (Helix review wave 1.3)
+  const Zs = splitsZ(net, moves), sp = Zs.list[0];
+  const base = Zs.tested >= 5 ? ` Of ${Zs.tested} tight pairs, ${numW(Zs.out)} ${Zs.out === 1 ? 'is' : 'are'} two sigma or more out of line ${day}; chance alone gives ${chanceWords(Zs.expected)}.` : '';
+  if (sp) s.push({ act: 'split', ids: [sp.a, sp.b], text: `The break: ${spokenName(sp.a)} and ${spokenName(sp.b)} normally move ${sp.r > 0 ? 'together' : 'opposite'}, at ${f2(sp.r)}, but ${day} ${dirWord(sp.a, sp.ma)} while ${dirWord(sp.b, sp.mb)}, ${Math.abs(sp.z).toFixed(1)} sigma out of line. For the day, the pair has moved against its usual relationship.${base}` });
+  else s.push({ act: 'split', ids: [], text: `${Day}'s moves kept to their usual pattern: no tight pair split by two sigma or more.${base}` });
   const ot = oneTrade(net);
   if (ot) {
     const w = ot.mem.filter(x => x.r > 0).map(x => spokenName(x.k)), ag = ot.mem.filter(x => x.r < 0).map(x => spokenName(x.k));
@@ -270,7 +294,7 @@ export function netBriefParts(net, moves, when = 'today') {
 export function netBriefFigure(net, moves, when = 'today', name = k => k) {
   if (!net?.m) return null;
   const day = when === 'yesterday' ? 'yesterday' : 'today', arw = m => (m > 0 ? '▲' : '▼');
-  const sp = splits(net, moves)[0];
+  const sp = splitsZ(net, moves).list[0];
   if (sp) return { value: `${name(sp.a)} ${arw(sp.ma)} · ${name(sp.b)} ${arw(sp.mb)}`, label: `split ${day}; usually ${f2(sp.r)} ${sp.r > 0 ? 'together' : 'opposite'}` };
   const ot = oneTrade(net);
   if (ot) return { value: `1 move, not ${ot.mem.length + 1}`, label: `${[ot.a, ...ot.mem.map(x => x.k)].map(name).join(', ')}` };

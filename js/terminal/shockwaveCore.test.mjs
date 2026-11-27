@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { familiesOf, releasesOf, unitFor, rawAt, resample, lineAt, bandStats, typical30, biggest, depthOf, dateTicks, fanOf, areaScale, nextToday, placeLabels, nativeText, shockwaveScript, CAP, OFFS, MARKETS } from './shockwaveCore.js';
+import { familiesOf, releasesOf, unitFor, rawAt, resample, lineAt, bandStats, typical30, biggest, depthOf, dateTicks, fanOf, areaScale, nextToday, placeLabels, nativeText, shockwaveScript, CAP, OFFS, MARKETS, typicalInRegime, vixBefore, vixBand } from './shockwaveCore.js';
 
 const dir = fileURLToPath(new URL('../../analysis/output/release_layer1/', import.meta.url));
 const sum = JSON.parse(readFileSync(dir + 'summary.json', 'utf8')), PATHS = JSON.parse(readFileSync(dir + 'paths.json', 'utf8'));
@@ -105,8 +105,23 @@ t('words: native units and the SHOW line (size, not direction; no forecast words
   const typ = typical30(rows, 'NFP', 'eurusd', NOW), s = shockwaveScript({ family: 'NFP', mkt: 'eurusd', typ, next: { hm: '13:30' } });
   assert.match(s, /US payrolls is due at 13:30 London/); assert.match(s, /first thirty minutes/); assert.match(s, /not a forecast/);
   assert.doesNotMatch(s, /\bwill\b|\bexpect|\btarget/i);
-  assert.match(shockwaveScript({ family: 'CPI', mkt: 'nq', typ: typical30(rows, 'CPI', 'nq', NOW) }), /most recent big release was the US CPI/);
+  assert.match(shockwaveScript({ family: 'CPI', mkt: 'nq', typ: typical30(rows, 'CPI', 'nq', NOW), allowRecent: true }), /most recent big release was the US CPI/);
+  assert.equal(shockwaveScript({ family: 'CPI', mkt: 'nq', typ: typical30(rows, 'CPI', 'nq', NOW) }), null, 'no release today: the filler scene is skipped (Helix review wave 1.6)');
   assert.equal(shockwaveScript({ family: 'CPI', mkt: 'nq', typ: null }), null);
+});
+
+t('the up / down count carries its 95% interval, and today\'s VIX band gives the like-regime typical beside the all-regime one (Helix review wave 1.6)', () => {
+  const typ = { med: 0.2, lo: 0.1, hi: 0.3, n: 24, up: 14, dn: 10, unit: '%' };
+  const s = shockwaveScript({ family: 'NFP', mkt: 'eurusd', typ, next: { hm: '13:30' } });
+  assert.match(s, /14 times up and 10 times down, an up share of 58 percent with a 95 percent range of 39 percent to 76 percent, so history/);
+  assert.equal(vixBand(15.9), 'calm'); assert.equal(vixBand(16), 'normal'); assert.equal(vixBand(30), 'stressed'); assert.equal(vixBand(null), null);
+  const vix = [{ date: '2026-01-01', value: 14 }, { date: '2026-03-01', value: 30 }, { date: '2026-11-26', value: 28 }];
+  assert.equal(vixBefore(vix, Date.parse('2026-03-01T13:30:00Z')), 14, 'strictly before the release date'); assert.equal(vixBefore(vix, Date.parse('2026-03-02T13:30:00Z')), 30);
+  const R = Array.from({ length: 12 }, (_, i) => ({ id: `r${i}`, family: 'NFP', t: new Date(Date.UTC(2026, i < 6 ? 1 : 3, 1 + i)).toISOString(), M: { eurusd: { m30: i < 6 ? 0.1 : 0.4 } } }));
+  const g = typicalInRegime(R, 'NFP', 'eurusd', Date.parse('2026-11-27T08:00:00Z'), vix);
+  assert.deepEqual([g.band, g.n, g.med, g.vixNow], ['stressed', 6, 0.4, 28]);
+  assert.match(shockwaveScript({ family: 'NFP', mkt: 'eurusd', typ, next: { hm: '13:30' }, regime: g }), /With the VIX at 28, in its stressed band, the 6 past ones in that band moved a median 0.4 percent./);
+  assert.equal(typicalInRegime(R, 'NFP', 'eurusd', Date.parse('2026-11-27T08:00:00Z'), []), null);
 });
 
 console.log(`shockwaveCore: ${n} tests passed`);
