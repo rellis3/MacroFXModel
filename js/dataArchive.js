@@ -106,6 +106,22 @@ export function createDataArchive({ putJSON, getJSON, listKeys = async () => [],
     } catch (e) { log.warn?.(`[archive] ${key}: ${e?.message}`); return { wrote: false, error: e?.message, key }; }
   }
 
+  /**
+   * A record kept at its own key outside archive/ (e.g. helix/days/<date>.json, the Helix daily record). Read-modify-write: merge(prev) -> next document; skipped when the
+   * merged document is unchanged. Best-effort like everything here. Returns { wrote, key, doc }.
+   */
+  async function putRecord(key, merge) {
+    if (!isOn() || !key || /(^|\/)\.\.(\/|$)/.test(key)) return { wrote: false, reason: isOn() ? 'bad key' : 'no R2' };
+    try {
+      const prev = await getJSON(key).catch(() => null), doc = typeof merge === 'function' ? merge(prev) : merge;
+      if (doc == null) return { wrote: false, reason: 'empty', key };
+      const sig = JSON.stringify(doc);
+      if (prev && JSON.stringify(prev) === sig) return { wrote: false, reason: 'unchanged', key, doc };
+      const ok = await putJSON(key, doc);
+      return { wrote: !!ok, key, doc };
+    } catch (e) { log.warn?.(`[archive] ${key}: ${e?.message}`); return { wrote: false, error: e?.message, key }; }
+  }
+
   /** Dates already archived for a snapshot source (cached per process, refreshed daily). */
   const known = new Map();
   async function archivedDates(source) {
@@ -135,7 +151,7 @@ export function createDataArchive({ putJSON, getJSON, listKeys = async () => [],
     return done;
   }
 
-  return { get enabled() { return isOn(); }, snapshot, mergeSeries, mergeTable, backfill, archivedDates };
+  return { get enabled() { return isOn(); }, snapshot, mergeSeries, mergeTable, backfill, archivedDates, putRecord };
 }
 
 /** FRED series whose only free source is a rolling window: archive daily or lose them (ICE BofA on FRED: 3 years). */

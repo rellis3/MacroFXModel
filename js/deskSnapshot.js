@@ -208,6 +208,14 @@ export const FULL_EXCLUDED = [
   { path: 'desk-bias-process/h2h', why: 'the head to head and the weekly review are computed on demand from the stored process issues (desk_bias_process_<date>), the bias scoreboard\'s same-day records in R2 and OANDA bars; a copy would only repeat what those records already rebuild' },
   { path: 'fundabias-log', why: 'the owner\'s FundaBias log is itself a write-once KV record per day (fundabias_log_<date>, served by /api/fundabias-log?date=)' },
   { path: 'desk-run', why: 'about 275 KB; the morning book is already kept for good, one key a day (desk_run_<date>); CORE carries its ratings, convictions and exposure' },
+  // Helix data routes (js/helixRoutes.js, 2026-11-27): each is rebuilt from R2 records or OANDA bars that are already stored, so a daily copy would repeat them
+  { path: 'g10-rates', why: 'rebuilt on request from the R2 archive series (archive/series/g10_yields, archive/series/fred), which are themselves the permanent record' },
+  { path: 'funding-board', why: 'rebuilt on request from the R2 archive (archive/series/nyfed, ofr, fred, treasury and archive/tables/ust_auctions), already the permanent record' },
+  { path: 'vol-terrain', why: 'the daily ranges the VOL view draws, recomputed from OANDA daily bars on request; nothing in it is not in the bars' },
+  { path: 'helix/bundle', why: 'owner-only: the morning payload of the broadcast, a trimmed copy of other routes; the Helix record of the day is kept in R2 at helix/days/<date>.json' },
+  { path: 'helix/record', why: 'owner-only: the Helix daily record itself, written once per broadcast run to R2 helix/days/<date>.json' },
+  { path: 'helix/roll-health', why: 'a reader of rates-legs/_health.json in R2, which the IBKR roll job rewrites; the file is the record' },
+  { path: 'helix/stress', why: 'rebuilt from the stored 15-minute bars in R2 (archive/i15_MOVE, archive/i15_DXY)' },
 ];
 /** Feeds that carry trade levels or the owner's own record: stored in FULL for the owner, removed from a desk viewer's copy. */
 export const OWNER_ONLY_FEEDS = ['trade-watch', 'pair-select', 'desk-alerts', 'desk-score/record', 'desk-quality'];
