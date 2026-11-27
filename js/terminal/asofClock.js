@@ -179,7 +179,9 @@ ${warn}<p class="asof-p muted" id="asof-cov">${esc(cv ? C.coverageText(cv) : 'Re
   // ── the docked time bar: pinned to the bottom of the page whenever the feature is on, in live mode too (collapsible to a small tab, remembered) ──
   const DOCK_KEY = 'deskAsofDock';
   const ls = () => { try { return win.localStorage; } catch { return null; } };
-  { const saved = ls()?.getItem?.(DOCK_KEY); st.dockOpen = saved == null ? !((win.innerWidth || 1024) <= 700) : saved !== '0'; }   // phone: the time bar starts as a small LIVE tab until you open it st.heat = null; st.heatP = null; st.preview = null; st.loading = false; st.loadT = null;
+  // closed until opened, on every screen (review 2026-11-27: open by default it took ~125px of every screen and covered the Chart pane); the LIVE tab and the
+  // top-bar chip open it, and the choice is remembered
+  { const saved = ls()?.getItem?.(DOCK_KEY); st.dockOpen = saved == null ? false : saved !== '0'; }   // phone: the time bar starts as a small LIVE tab until you open it st.heat = null; st.heatP = null; st.preview = null; st.loading = false; st.loadT = null;
   const chip = doc.getElementById('asofchip');
   const dock = doc.createElement('div'); dock.id = 'asofdock'; dock.className = 'asof-dock'; dock.setAttribute('role', 'region'); dock.setAttribute('aria-label', 'Time machine: the recorded history and where you are in it'); dock.setAttribute('data-surface', 'widget.asof'); dock.hidden = true;
   dock.innerHTML = `<div class="ad-main"><span class="ad-livewrap" id="ad-livewrap"></span>

@@ -5,6 +5,7 @@
  * the index has tended to give back about 7% of VIX over a month (vvix-ratio-range: a vol read, not an index call); skew-fade is NULL. Dear vol is
  * not a sell signal and cheap vol is not a buy: the board shows where each reading sits in its own history.
  */
+import { ordinal } from './ordinal.js';
 import { describeVol } from '../volBoardCore.js';
 import { radar, arcGauge, glowLine, stateStrip, esc, fin } from './boardViz.js';
 import { chipFor } from './corrEvidence.js';
@@ -35,13 +36,13 @@ function termCard(vb) {
 }
 
 function tilesCard(vb) {
-  const tiles = vb.gauges.map(g => `<div class="bv-tile"><div class="bv-th"><b>${esc(g.label)}</b><span class="mono ${g.pct5y >= 90 ? 'gold' : ''}">${g.last}</span></div>${glowLine(g.spark, { w: 220, h: 46, tone: g.pct5y >= 90 ? 'var(--gold)' : 'var(--pur2)', label: `${g.label} over one year` })}<div class="muted bv-tn">${g.pct5y ?? '–'}th of 5y · ${fin(g.high?.value) ? `high ${Math.round(g.high.value * 10) / 10} (${esc(String(g.high.date ?? '').slice(0, 4))})` : ''}</div></div>`).join('');
+  const tiles = vb.gauges.map(g => `<div class="bv-tile"><div class="bv-th"><b>${esc(g.label)}</b><span class="mono ${g.pct5y >= 90 ? 'gold' : ''}">${g.last}</span></div>${glowLine(g.spark, { w: 220, h: 46, tone: g.pct5y >= 90 ? 'var(--gold)' : 'var(--pur2)', label: `${g.label} over one year` })}<div class="muted bv-tn">${ordinal(g.pct5y ?? '–')} of 5y · ${fin(g.high?.value) ? `high ${Math.round(g.high.value * 10) / 10} (${esc(String(g.high.date ?? '').slice(0, 4))})` : ''}</div></div>`).join('');
   return `<div class="card"><div class="ch"><span class="lbl">The year in each reading</span><span class="r muted">${dailyChip('daily closes')} closes, about every third day</span></div><div class="bv-tiles">${tiles}</div></div>`;
 }
 
 function realisedCard(vb) {
   const r = vb.realised; if (!r?.n) return '';
-  const cells = stateStrip(r.rows.map(x => ({ tone: x.pct >= 90 ? 'gold' : x.pct >= 60 ? 'pur' : x.pct <= 10 ? 'flat' : null, title: `${x.sym}: realised vol at the ${x.pct}th percentile of its own history (${x.ann}% a year)` })), { cell: 10, gap: 2 });
+  const cells = stateStrip(r.rows.map(x => ({ tone: x.pct >= 90 ? 'gold' : x.pct >= 60 ? 'pur' : x.pct <= 10 ? 'flat' : null, title: `${x.sym}: realised vol at the ${ordinal(x.pct)} percentile of its own history (${x.ann}% a year)` })), { cell: 10, gap: 2 });
   const top = r.rows.slice(0, 6).map(x => `${esc(x.sym)} ${x.pct}`).join(' · '), bot = r.rows.slice(-6).reverse().map(x => `${esc(x.sym)} ${x.pct}`).join(' · ');
   return `<div class="card"><div class="ch"><span class="lbl">Realised volatility, ${r.n} markets, against their own history</span><span class="r muted">hottest left</span></div>${cells}
 <div class="bv-legend"><span><i class="bv-dot" style="background:var(--gold)"></i>above the 90th</span><span><i class="bv-dot" style="background:var(--pur2)"></i>60th to 90th</span><span><i class="bv-dot" style="background:var(--line2)"></i>below the 10th</span></div>

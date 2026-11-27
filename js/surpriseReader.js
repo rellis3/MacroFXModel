@@ -3,7 +3,7 @@
  * surprise (actual - consensus, in the release's own units, and as a z against that release's own past surprises
  * where the desk has them), look up the economist's playbook for the release family (js/releasePlaybook.js: the
  * typical 30-minute and 4-hour moves, how much of the move is usually kept, and the median move after hot and cold
- * prints) and say it on Telegram within a minute, once per release.
+ * prints) and say it on Telegram once per release, as soon as the free feed has the actual (usually 25-30 minutes after the print).
  *
  * It is history, labelled with its count: never a forecast that this print will move markets the same way.
  *
@@ -12,7 +12,9 @@
 import { familyOf, playbook } from './releasePlaybook.js';
 
 /** Keep watching a release for this long after its time for the actual to appear. */
-export const WATCH_BEFORE_MS = 2 * 60_000, WATCH_AFTER_MS = 30 * 60_000;
+// The free feed (Nasdaq) posts actuals about 25-30 minutes after the print: a 30-minute window recorded most high-impact releases as
+// "no actual" (18 of 26 in Nov 2026) and never asked again. Three hours catches them; the lag is kept on each row.
+export const WATCH_BEFORE_MS = 2 * 60_000, WATCH_AFTER_MS = 3 * 3600_000;
 const COUNTRY_NAME = { US: 'United States', EU: 'Euro Zone', GB: 'United Kingdom', JP: 'Japan', AU: 'Australia', NZ: 'New Zealand', CA: 'Canada', CH: 'Switzerland', DE: 'Germany', CN: 'China' };
 const NAME_COUNTRY = Object.fromEntries(Object.entries(COUNTRY_NAME).map(([k, v]) => [v, k]));
 export const CCY_OF = { US: 'USD', EU: 'EUR', DE: 'EUR', GB: 'GBP', JP: 'JPY', AU: 'AUD', NZ: 'NZD', CA: 'CAD', CH: 'CHF', CN: 'CNY' };
@@ -39,7 +41,7 @@ const fmt = (x, unit) => {
 export const releaseKey = e => `${e.country}|${String(e.event ?? '').trim().toLowerCase()}|${Math.round(Number(e.ms) / 60_000)}`;
 
 /** Calendar rows that never carry a number (speeches, pressers, statements, minutes): nothing to read a surprise from. */
-export const NO_NUMBER = /speaks|speech|testif|press conference|statement|minutes|hearing|summit|meetings?\b|holiday|outlook|report\b|votes?\b|election|auction|projections|forecasts?\b/i;
+export const NO_NUMBER = /speaks|speech|testif|press conference|statement|minutes|hearing|summit|meetings?\b|holiday|outlook|report\b|votes?\b|election|auction|projections|forecasts?\b|summary/i;
 /** High-impact releases whose time is inside the watch window and that have not been sent yet. */
 export function dueReleases(events = [], now, sent = {}, { before = WATCH_BEFORE_MS, after = WATCH_AFTER_MS } = {}) {
   return (events ?? []).filter(e => /high/i.test(String(e.impact ?? '')) && !NO_NUMBER.test(String(e.event ?? '')) && Number.isFinite(Number(e.ms))
@@ -48,24 +50,67 @@ export function dueReleases(events = [], now, sent = {}, { before = WATCH_BEFORE
 /** Is any high-impact release near enough that the reader should fetch actuals this minute? */
 export const anyDue = (events, now, sent) => dueReleases(events, now, sent).length > 0;
 
-const words = s => String(s ?? '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length > 1 && !['m', 'y', 'q', 'mm', 'yy', 'qq', 'the', 'of', 's'].includes(w));
-/** Word overlap of two event names (0..1, against the shorter name). */
+// Release names are compared as word sets. Period tags (m/m, y/y, MoM, YoY), print stages (prelim, flash, final) and filler words carry no
+// identity; "n.s.a" / "s.a" do, so they are kept as one word each.
+const DROP = new Set(['m', 'y', 'q', 'mm', 'yy', 'qq', 'mom', 'yoy', 'qoq', 'the', 'of', 'prelim', 'preliminary', 'flash', 'final', 'advance', 'estimate', 'u.k', 'uk']);
+const words = s => String(s ?? '').toLowerCase().replace(/n\.s\.a\.?/g, ' nsa ').replace(/\bs\.a\.?/g, ' sa ').replace(/non-farm/g, 'nonfarm')
+  .replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(w => w.length > 1 && !DROP.has(w));
+/** Word overlap of two event names (0..1, against the shorter name). Kept for callers that only need a rough likeness. */
 export function nameSimilarity(a, b) {
   const A = new Set(words(a)), B = new Set(words(b)); if (!A.size || !B.size) return 0;
   let n = 0; for (const w of A) if (B.has(w)) n++;
   return n / Math.min(A.size, B.size);
 }
-/** The Nasdaq row ({ ms, country (name), event, raw.actual, raw.consensus, released }) for a ForexFactory event, or null. */
-export function matchActual(ev, rows = [], { slackMs = 5 * 60_000, minSim = 0.5 } = {}) {
+// ForexFactory and Nasdaq name a few releases with no words in common.
+const NAME_ALIAS = [
+  // whole names only: "ADP Non-Farm Employment Change" is a different release from payrolls
+  [/^non-?farm employment change$/i, 'Nonfarm Payrolls'],
+  [/^(official bank rate|cash rate|overnight rate|main refinancing rate|federal funds rate|(boj |snb )?policy rate|official cash rate)$/i, 'Interest Rate Decision'],
+  [/^ism non-manufacturing pmi$/i, 'ISM Services PMI'],
+];
+export const aliasName = n => { for (const [rx, to] of NAME_ALIAS) if (rx.test(String(n ?? ''))) return to; return n; };
+/** A release name as the matcher sees it: lower-case words, period tags and print stages dropped, vendor aliases applied. */
+export const nameWords = n => words(aliasName(n));
+// Words a candidate may carry beyond the calendar's name without becoming a different release ("Monthly CPI Indicator" is Australia's CPI y/y,
+// "BoE Interest Rate Decision" is the Official Bank Rate). Any OTHER extra word ("U6", "Core", "Common", "Private", "n.s.a") makes it a
+// different series: the old matcher scored "U6 Unemployment Rate" (7.9%) and "Common CPI" (2.5%) as perfect matches for the headline prints.
+export const HARMLESS = new Set(['monthly', 'indicator', 'change', 'rate', 'fed', 'fomc', 'boe', 'ecb', 'boc', 'rba', 'rbnz', 'snb', 'boj']);
+const close = (a, b) => a && b && a.unit === b.unit && Math.abs(a.v - b.v) <= (a.unit === '%' ? 0.0501 : Math.max(1e-9, Math.abs(b.v) * 0.01));
+/**
+ * Can `actual` be the print the calendar expects? Rejects a value in the wrong units, or a percentage too far from the calendar's own
+ * consensus and previous to be the same release (a y/y 3.8% against an m/m consensus of 0.3%: the old matcher stored Canadian CPI m/m as
+ * 2.5% vs 0.3%, z +10).
+ */
+export function plausibleActual(ev, actual) {
+  const a = parseValue(actual); if (!a) return false;
+  const refs = [parseValue(ev?.estimate), parseValue(ev?.prev)].filter(Boolean); if (!refs.length) return true;
+  if (refs.every(r => r.unit !== a.unit) && !(refs.every(r => r.unit === '') && a.unit === '')) return false;
+  if (a.unit !== '%') return true;
+  return refs.some(r => r.unit === '%' && Math.abs(a.v - r.v) <= Math.max(1.0, 2 * Math.abs(r.v)));
+}
+/**
+ * The Nasdaq row ({ ms, country (name), event, raw.actual, raw.consensus, raw.previous, released }) for a ForexFactory event, or null.
+ * Scored on: how much of the calendar's name the row covers, extra words that make it a different series, whether its consensus and previous
+ * agree with the calendar's (which tells Nasdaq's same-named m/m and y/y rows apart), and whether its value is plausible at all.
+ */
+export function matchActual(ev, rows = [], { slackMs = 5 * 60_000, minCover = 0.5 } = {}) {
   const name = COUNTRY_NAME[ev.country] ?? ev.country;
-  let best = null, bestSim = 0;
+  const E = new Set(words(aliasName(ev.event))); if (!E.size) return null;
+  const est = parseValue(ev.estimate), prev = parseValue(ev.prev);
+  let best = null, bestScore = -Infinity;
   for (const r of rows ?? []) {
     if (!r?.released || Math.abs(r.ms - Number(ev.ms)) > slackMs) continue;
     if (r.country !== name && NAME_COUNTRY[r.country] !== ev.country) continue;
-    const sim = nameSimilarity(ev.event, r.event);
-    if (sim > bestSim) { best = r; bestSim = sim; }
+    const C = new Set(words(r.event));
+    let hit = 0; for (const w of E) if (C.has(w)) hit++;
+    const cover = hit / E.size; if (cover < minCover) continue;
+    if (!plausibleActual(ev, r.raw?.actual)) continue;
+    const extra = [...C].filter(w => !E.has(w) && !HARMLESS.has(w)).length;
+    const cons = parseValue(r.raw?.consensus), pr = parseValue(r.raw?.previous);
+    const score = cover - 0.6 * extra + (close(cons, est) ? 2 : cons && est ? -0.5 : 0) + (close(pr, prev) ? 1 : 0);
+    if (score > bestScore) { best = r; bestScore = score; }
   }
-  return bestSim >= minSim ? best : null;
+  return bestScore > 0.3 ? best : null;
 }
 
 /** Past surprises for the same release (same country and event name) from the surprise store rows { country, event, ms, estimate, actual }. */
@@ -95,6 +140,13 @@ export function surprise({ actual, estimate, history = [] }) {
     sd = Math.sqrt(h.reduce((s, x) => s + (x - m) ** 2, 0) / (h.length - 1));
     z = sd > 0 ? +(diff / sd).toFixed(2) : null;
   }
+  // A "surprise" several times larger than any in the release's last 60 prints, at |z| >= 5, is almost always the wrong row on the feed
+  // (U6 unemployment 7.9% read as the headline rate; Canada's y/y CPI read as m/m): it is held back, shown, and not scored.
+  const maxAbs = h.length >= 12 ? Math.max(...h.map(Math.abs)) : null;
+  if (maxAbs > 0 && z != null && Math.abs(z) >= 5 && Math.abs(diff) > 3 * maxAbs) {
+    return { ok: false, heldBack: true, actual: a.v, estimate: e.v, unit, diff, diffText: fmt(diff, unit), z, n: h.length,
+      why: `held back: ${fmt(diff, unit)} is ${+(Math.abs(diff) / maxAbs).toFixed(1)}× the largest surprise in its last ${h.length} prints, most likely a different release on the feed` };
+  }
   const size = z == null ? (diff === 0 ? 'in line' : null) : Math.abs(z) >= 2 ? 'large' : Math.abs(z) >= 1 ? 'clear' : Math.abs(z) >= 0.5 ? 'small' : 'in line';
   return { ok: true, actual: a.v, estimate: e.v, unit, diff, diffText: fmt(diff, unit), direction: diff > 0 ? 'above' : diff < 0 ? 'below' : 'in line', z, sd: sd == null ? null : +sd.toPrecision(3), n: h.length, size };
 }
@@ -123,6 +175,21 @@ export function readRelease(ev, nasRow, { store = [], studyRows = [], now } = {}
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const sg = (x, u) => (x == null ? '?' : `${x > 0 ? '+' : ''}${x}${u}`);
 /** Telegram HTML for one release. */
+/**
+ * Re-checks a stored log against today's rules: a row whose actual is implausible for the release, or whose surprise is now held back, is kept
+ * (so it shows) but marked `rejected` and no longer counts as a read. Rows logged before the 2026-11-27 matcher fix stored U6 unemployment and
+ * Canada's y/y CPI as headline prints; this stops them feeding "Expectations vs reality" and the live layer.
+ */
+export function recheckLog(log = [], store = []) {
+  return (log ?? []).map(r => {
+    if (!r || r.rejected || r.actual == null || !r.surprise?.ok) return r;
+    const bad = !plausibleActual({ estimate: r.estimate, prev: r.prev }, r.actual);
+    const s = bad ? null : surprise({ actual: r.actual, estimate: r.estimate, history: historyFor(store, r, { before: Number(r.ms) }) });
+    if (!bad && s.ok) return r;
+    return { ...r, rejected: true, surprise: { ok: false, heldBack: true, diffText: r.surprise.diffText, z: r.surprise.z ?? null,
+      why: bad ? 'held back: not a plausible value for this release (a different row on the feed)' : s.why } };
+  });
+}
 export function surpriseMessage(r) {
   const s = r.surprise, head = `⚡ <b>${esc(r.country)} ${esc(r.event)}</b> · ${r.at.slice(11, 16)} UTC`;
   const line = s.ok ? `Actual <b>${esc(r.actual)}</b> vs consensus ${esc(r.estimate)}: <b>${esc(s.diffText)}</b> ${s.direction === 'in line' ? '(in line)' : `${s.direction} consensus`}`

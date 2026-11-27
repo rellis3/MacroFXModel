@@ -145,9 +145,14 @@ export function thenNowHtml(o) {
   return `<div class="ct-tn">${c ? row('Morning', `<b>${E(WORD[c.rating] ?? c.rating ?? 'no call')}</b>${c.conviction ? `, ${E(c.conviction)} conviction` : ''}: ${E(tidyText(firstSentence(c.why)))}`) : row('Morning', '<span class="muted">no desk card for this market today</span>')}
 ${m ? row('Since', E(since.join(' · ')), o.against?.length ? 'gold' : '') : ''}
 ${change.length ? row('Next levels', E(change.join(' · '))) : ''}
-${fin(plan.invalid) && c ? row('Plan out', `${px(plan.invalid)}: ${E(tidyText(c.plan?.invalidation ?? c.invalidation ?? ''))}`, 'muted') : ''}</div>`;
+${fin(plan.invalid) && c ? row('Plan out', planOut(px(plan.invalid), tidyText(c.plan?.invalidation ?? c.invalidation ?? '')), 'muted') : ''}</div>`;
 }
 
+/** "1.41837: a close above …", or just "1.41837" when the plan's wording is only the number again (it printed "1.41837: 1.41837"). */
+export function planOut(level, words) {
+  const w = String(words ?? '').trim(), bare = w.replace(/[\s,]/g, '');
+  return !w || bare === String(level).replace(/[\s,]/g, '') || Number(bare) === Number(String(level).replace(/[\s,]/g, '')) ? E(level) : `${E(level)}: ${E(w)}`;
+}
 /** An accordion with a one-line summary. */
 export const details = (summary, body, open = false, cls = '') => (body ? `<details class="ct-acc ${cls}"${open ? ' open' : ''}><summary>${summary}</summary><div class="ct-acc-body">${body}</div></details>` : '');
 

@@ -70,6 +70,13 @@ export function mountFlow({ doc = document, win = window } = {}) {
       let rank = null, expected = null;
       if (bundle?.ok) { try { rank = rankBundle(bundle); expected = expectedByChance(rank.rows); } catch { /* leave it out */ } }
       if (host.isConnected) host.innerHTML = glanceHtml(buildGlance({ ...input, ws: page().E?.['world-stress'] ?? input.ws, strength, rank, expected }));
+      // the world-stress feed can land after both paints (the tile then read "not available" beside a red STRESS strip, review 2026-11-27):
+      // look again a few times and repaint once it is there
+      if (!page().E?.['world-stress']) {
+        let tries = 0;
+        const again = () => { const ws = page().E?.['world-stress']; if (ws && host.isConnected) host.innerHTML = glanceHtml(buildGlance({ ...input, ws, strength, rank, expected })); else if (++tries < 12 && host.isConnected) win.setTimeout(again, 5000); };
+        win.setTimeout(again, 5000);
+      }
     } finally {
       glanceBusy = false;
       // Overview was redrawn while the feeds were loading (the page does that as its own feeds arrive): the block went with it, so draw it again (a few tries at most)

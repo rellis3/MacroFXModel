@@ -22,7 +22,9 @@ const SNAPS = { '2026-11-14': { ts: T('2026-11-14T10:03Z'), ld: '2026-11-14', fe
 const core = (iso, e, u) => ({ ts: T(iso), d: { strength: { dataAsOf: iso, h: { '4H': { flat: false, lead: e, lag: u, spread: 3, s: { USD: u === 'USD' ? -1.5 : 1.5, EUR: e === 'EUR' ? 1.5 : -1.5 } } } } } });
 const POINTS = [core('2026-11-14T17:49:00Z', 'USD', 'EUR'), core('2026-11-15T09:00:00Z', 'USD', 'EUR'), core('2026-11-15T11:55:00Z', 'EUR', 'USD'), core('2026-11-16T12:00:00Z', 'USD', 'EUR')];
 
-function setup({ search = '', now = T('2026-11-16T12:30Z'), lsStore = memStore(), hangIndex = false } = {}) {
+// the dock starts folded until opened (review 2026-11-27); most tests below exercise the open bar, so their browser has opened it before
+const openedStore = () => { const m = memStore(); m.setItem('deskAsofDock', '1'); return m; };
+function setup({ search = '', now = T('2026-11-16T12:30Z'), lsStore = openedStore(), hangIndex = false } = {}) {
   const doc = makePage(); const btn = new El('button'); btn.attrs.id = 'asofbtn'; btn.attrs.hidden = ''; doc.body.appendChild(btn);
   const chipEl = new El('button'); chipEl.attrs.id = 'asofchip'; chipEl.attrs.hidden = ''; doc.body.appendChild(chipEl);
   const live = [], assigned = [], replaced = [], events = [], loads = [];
@@ -60,6 +62,8 @@ test('live page: the button, the chip and the docked bar show; no banner; nothin
   assert.equal(s.ok, true); assert.equal(s.btn.hidden, false); assert.match(s.btn.textContent, /Time machine/);
   assert.equal(s.doc.getElementById('asofbar').hidden, true); assert.equal(s.A.active, false); assert.equal(s.A.holding, false);
   assert.equal(s.doc.getElementById('asofdock').hidden, false, 'the bar is always there when the feature is on'); assert.equal(s.doc.getElementById('asofdocktab').hidden, true);
+  const fresh = setup({ lsStore: memStore() }); await settle();
+  assert.equal(fresh.doc.getElementById('asofdock').hidden, true, 'a browser that never opened it starts with the small tab'); assert.equal(fresh.doc.getElementById('asofdocktab').hidden, false);
   assert.equal(s.chipEl.hidden, false); assert.equal(s.chipEl.textContent, 'LIVE'); assert.match(s.chipEl.attrs.class, /\bup\b/);
   assert.ok(s.live.every(u => /desk-snapshots\/index|fields=stress/.test(u)), 'only the index and the light stress points were read: ' + s.live.join(' '));
   assert.ok(!s.live.some(u => /\/full|fields=strength/.test(u)));

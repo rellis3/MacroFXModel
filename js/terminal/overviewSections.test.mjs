@@ -71,14 +71,15 @@ test('the map is pinned for every section: never hidden by a section, on every p
   }
 });
 
-test('the fold control: a laptop starts open everywhere; Fold shrinks the map to a slim strip with its title; Show brings it back and redraws it; one choice for Today and one for the other four', () => {
-  const { sec, doc, store, win } = setup();
+test('the fold control: once opened, Fold shrinks the map to a slim strip with its title; Show brings it back and redraws it; one choice for Today and one for the other four', () => {
+  assert.equal(folded(setup().sec), true, 'with no choice yet the map starts folded (review 2026-11-27)');
+  const { sec, doc, store, win } = setup({ hero: { today: 'open', other: 'open' } });   // an owner who opened it on both
   assert.equal(folded(sec), false);
   doc.fire('click', sec.querySelector('[data-ovsub="currencies"]'));
   assert.equal(folded(sec), false);
   doc.fire('click', sec.querySelector('[data-ovs-hero]'));
   assert.equal(folded(sec), true, 'folded on the other four');
-  assert.deepEqual(JSON.parse(store.getItem(HERO_LS)), { other: 'folded' });
+  assert.deepEqual(JSON.parse(store.getItem(HERO_LS)), { today: 'open', other: 'folded' });
   const bar = sec.querySelector('.ovs-herobar');
   assert.match(bar.textContent, /USD strongest, NZD weakest/, 'the strip carries the map title');
   assert.match(bar.textContent, /Show map/);
@@ -91,14 +92,12 @@ test('the fold control: a laptop starts open everywhere; Fold shrinks the map to
   assert.equal(folded(sec), false, 'Show map expands it again');
   win.flush();
   assert.ok(win.redrawn >= 1, 'it was hidden, so the map is drawn again at its real width');
-  assert.deepEqual(JSON.parse(store.getItem(HERO_LS)), { other: 'open' });
+  assert.deepEqual(JSON.parse(store.getItem(HERO_LS)), { today: 'open', other: 'open' });
 });
 
-test('on a phone the map starts folded on the other four sections (open on Today) unless the owner expanded it; the choice is remembered on the next visit', () => {
+test('the map starts folded on every section and device until the owner opens it; the choice is remembered on the next visit', () => {
   const a = setup({ phone: true });
-  assert.equal(folded(a.sec), false, 'Today is expanded on a phone');
-  a.doc.fire('click', a.sec.querySelector('[data-ovsub="risk"]'));
-  assert.equal(folded(a.sec), true, 'a phone folds it on Risk and markets');
+  assert.equal(folded(a.sec), true, 'folded on Today too');
   assert.match(a.sec.querySelector('.ovs-herobar').textContent, /Show map/);
   a.doc.fire('click', a.sec.querySelector('[data-ovs-hero]'));   // the owner expands it
   assert.equal(folded(a.sec), false);
@@ -106,8 +105,8 @@ test('on a phone the map starts folded on the other four sections (open on Today
   assert.equal(folded(b.sec), false, 'the owner expanded it: it stays open');
   const c = setup({ phone: true, saved: 'news', hero: {} });
   assert.equal(folded(c.sec), true);
-  const d = setup({ phone: false, saved: 'news', hero: { today: 'folded' } });
-  assert.equal(folded(d.sec), false, 'a Today choice does not change the other four');
+  const d = setup({ phone: false, saved: 'news', hero: { today: 'open' } });
+  assert.equal(folded(d.sec), true, 'a Today choice does not change the other four');
 });
 
 test('choosing a section shows its blocks only, remembers it, and puts it in the address', () => {

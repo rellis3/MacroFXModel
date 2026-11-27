@@ -7,6 +7,7 @@
  * its noise band, the eight questions as three cards (view / timing / trade), four checks with a chart each, and the
  * scenarios with the line that would end the story. Nothing here forecasts: every check is labelled untested.
  */
+import { ordinal } from './ordinal.js';
 import * as CB from './chainBoard.js';
 import * as TR from '../traderRead.js';
 
@@ -176,7 +177,7 @@ function crowdSvg(rows) {
     const mv = r.move == null ? '' : `<text class="val" x="${L + G + 18}" y="${y + 4}" ${r.against ? 'style="fill:var(--gold)"' : ''}>${h(r.move)}${r.against ? '  against the crowd' : r.withIt ? '  with the crowd' : ''}</text>`;
     return `<text class="lab" x="10" y="${y + 4}">${h(r.key)}</text>
 <rect x="${L}" y="${y - 3}" width="${G}" height="6" rx="3" fill="var(--bg3)"/><rect x="${L}" y="${y - 3}" width="${G * 0.2}" height="6" rx="3" fill="rgba(var(--goldrgb),.18)"/><rect x="${L + G * 0.8}" y="${y - 3}" width="${G * 0.2}" height="6" rx="3" fill="rgba(var(--goldrgb),.18)"/>
-${px == null ? '' : `<circle cx="${px.toFixed(1)}" cy="${y}" r="5.5" fill="${col}"><title>${h(r.key)}: speculators at the ${r.pct}th percentile of their own history. ${h(r.label)}</title></circle>`}${mv}`;
+${px == null ? '' : `<circle cx="${px.toFixed(1)}" cy="${y}" r="5.5" fill="${col}"><title>${h(r.key)}: speculators at the ${ordinal(r.pct)} percentile of their own history. ${h(r.label)}</title></circle>`}${mv}`;
   }).join('');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="crowding and today's move"><text class="ax" x="${L}" y="11">short ← speculators' position, own history → long</text>${body}</svg>`;
 }
