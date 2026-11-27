@@ -24,7 +24,7 @@ export function asOfLabel(info, now = Date.now()) {
 export function drawAsOf(ctx, g, info, { x = null, y = null, align = 'right', now = Date.now() } = {}) {
   const text = asOfLabel(info, now), stale = !!info?.stale;
   ctx.save(); ctx.globalAlpha = (g.fade ?? 1) * (stale ? 0.95 : 0.7); ctx.font = `${g.compact ? 9 : 10}px ${g.mono ?? 'ui-monospace,monospace'}`;
-  ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = stale ? (g.C?.gold ?? '#e0b040') : (g.C?.tx2 ?? '#9aa');
+  ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = stale ? g.C?.gold : g.C?.tx2;
   ctx.fillText(text, x ?? (align === 'right' ? g.W - 14 : 14), y ?? (g.compact ? 74 : 60)); ctx.restore();
   return text;
 }
