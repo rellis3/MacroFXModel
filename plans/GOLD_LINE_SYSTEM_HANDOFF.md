@@ -117,23 +117,30 @@ The code is `hits_and_gap()` in `scripts/gold-calc-upgrades/score.py`.
 
 ## 7. Excluded (don't bring these in)
 
-- **Ken's "Ken BASIC" system**, all of it:
-  - $4.85 median-MAE stop;
-  - 5R target;
-  - $5 rule;
-  - 22:00 roll;
-  - "last price, no spread";
-  - 18 levels;
-  - 75-session percentile levels.
-
-  Reviewed only, never adopted.
+- **Ken BASIC:** excluded entirely.
 - **Trailing stops** (Jordan: strip them out).
 - **Trading the touch without an entry rule** (F6).
 - **QLIKE fitting of the HARCJ features alone** (NULL in `gold-calc-upgrades`).
 - **Results without costs.**
 - **The first, faulty gold-calc-upgrades numbers** (FRESH −6.9%, all-in −8.8%): lookahead, superseded.
 
-## 8. Standing rules
+## 8. The library: where each piece is documented in full
+
+Each study has a prereg (`forge/`), a results file (`analysis/output/<id>/RESULTS.md`) and an Evidence Book entry
+(`js/deskEvidence.js`). Read a study's files only when the next job needs it.
+
+| Piece | Study id | Prereg |
+|---|---|---|
+| Horse race of calcs per line (futures / CFD) | `ladder-qlike-per-line-fut`, `ladder-qlike-per-line-cfd` | `forge/LADDER_QLIKE_PER_LINE_FUT_PREREG.md`, `forge/LADDER_QLIKE_PER_LINE_CFD_PREREG.md` |
+| Lines validated: reach odds | `line-touch-reach` | `forge/LINE_TOUCH_REACH_PREREG.md` |
+| Shadow lines (gold calc upgrades) | `gold-calc-upgrades` | `forge/GOLD_CALC_UPGRADES_PREREG.md` |
+| Shadow lines on other markets | `calc-upgrades-wide` | `forge/CALC_UPGRADES_WIDE_PREREG.md` |
+| Probability of reach / turn, entering before the line (C.OG binary vs probabilistic) | `level-near-miss-entry` | `forge/LEVEL_NEAR_MISS_ENTRY_PREREG.md` |
+| Context at the line (time, touch number, approach) | `level-context-engine` | `forge/LEVEL_CONTEXT_ENGINE_PREREG.md` |
+| Jordan's MAE table and VWAP band targets | `jordan-vwap-band-tp` | `forge/JORDAN_VWAP_BAND_TP_PREREG.md` |
+| Gold fade (arm then retest) | `gold-band-fade-stop` | `forge/GOLD_BAND_FADE_STOP_PREREG.md` |
+
+## 9. Standing rules
 
 - Shadow only: never edit live calcs or the live export params.
 - PAID APIs: stop on failure.
