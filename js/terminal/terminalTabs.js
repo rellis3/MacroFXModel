@@ -377,7 +377,9 @@ function drawTimeline() {
   const logIn = (a, b) => (w?.log ?? []).filter(e => { const t = Date.parse(e.at); return e.event === 'started' && t <= now - a * dd && t > now - b * dd; });
   const logLines = (a, b) => { const L = logIn(a, b), seen = new Set(), u = L.filter(e => !seen.has(e.id) && seen.add(e.id)); return u.length ? `<div><span class="lbl">watch</span> ${u.slice(0, 4).map(e => h(String(e.label).replace(/^Chain link broken: /, 'broke: ').replace(/^Setup watch · /, ''))).join(' · ')}${u.length > 4 ? ` +${u.length - 4}` : ''}</div>` : ''; };
   const G10 = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ']);
-  const ahead = [...(D.ev ?? []), ...((T.cache['/api/calendar-ahead'] && T._calAhead) || [])].map(e => ({ ...e, ms: Number(e.ms ?? Date.parse(e.time)) })).filter(e => /high/i.test(e.impact ?? '') && G10.has(e.country) && Number.isFinite(e.ms));
+  // /api/events carries the rated forward rows too (review 2026-11-27): one copy of each release
+  const seenAhead = new Set();
+  const ahead = [...(D.ev ?? []), ...((T.cache['/api/calendar-ahead'] && T._calAhead) || [])].map(e => ({ ...e, ms: Number(e.ms ?? Date.parse(e.time)) })).filter(e => /high/i.test(e.impact ?? '') && G10.has(e.country) && Number.isFinite(e.ms)).filter(e => { const k = `${e.country}|${String(e.event).toLowerCase()}|${e.ms}`; return !seenAhead.has(k) && seenAhead.add(k); });
   const evIn = (a, b) => { const seen = new Set(); return ahead.filter(e => e.ms > now + a * dd && e.ms <= now + b * dd).sort((x, y) => x.ms - y.ms).filter(e => { const k = `${e.country}|${e.event}|${Math.round(e.ms / 36e5)}`; return !seen.has(k) && seen.add(k); }); };
   const evLines = L => (L.length ? L.slice(0, 5).map(e => `<div><span class="mono">${h(dayName(e.ms))}</span> ${h(e.country)} ${h(e.event)}</div>`).join('') + (L.length > 5 ? `<div class="muted">+${L.length - 5} more</div>` : '') : '<div class="muted">No high-impact release on the calendar yet.</div>');
   const chainNowN = (w?.states ?? []).filter(t => t.id.startsWith('chain-') && t.firing), firing = (w?.states ?? []).filter(t => t.firing && !t.id.startsWith('chain-'));

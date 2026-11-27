@@ -1,6 +1,6 @@
 // Tests for js/surpriseReader.js.   node js/surpriseReader.test.mjs
 import assert from 'node:assert/strict';
-import { parseValue, releaseKey, dueReleases, nameSimilarity, matchActual, historyFor, surprise, playbookRead, readRelease, surpriseMessage, addToLog, pruneSent } from './surpriseReader.js';
+import { parseValue, releaseKey, dueReleases, nameSimilarity, matchActual, historyFor, surprise, playbookRead, readRelease, surpriseMessage, addToLog, pruneSent, plausibleActual, recheckLog } from './surpriseReader.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const T0 = Date.parse('2026-11-06T13:30:00Z');
@@ -17,7 +17,8 @@ t('due: high impact, numeric, inside the window, not yet sent', () => {
   const evs = [nfp, { ...nfp, event: 'FOMC Member Waller Speaks' }, { ...nfp, impact: 'medium', event: 'X' }, { ...nfp, event: 'CPI m/m', ms: T0 + 3600e3 }];
   assert.deepEqual(dueReleases(evs, T0 + 60e3).map(e => e.event), ['Non-Farm Employment Change']);
   assert.equal(dueReleases(evs, T0 - 60e3).length, 1, 'two minutes before counts');
-  assert.equal(dueReleases(evs, T0 + 31 * 60e3).length, 0, 'gone after 30 minutes');
+  assert.equal(dueReleases(evs, T0 + 31 * 60e3).length, 1, 'still watched after 30 minutes: the free feed posts actuals 25-30 minutes late');
+  assert.equal(dueReleases(evs, T0 + 241 * 60e3).length, 0, 'gone three hours after the last of them');
   assert.equal(dueReleases(evs, T0 + 60e3, { [releaseKey(nfp)]: 1 }).length, 0, 'sent once only');
 });
 t('the Nasdaq row is matched by country, time and name', () => {
@@ -62,5 +63,41 @@ t('the log is one row per release, newest first; old sent keys are pruned', () =
   assert.deepEqual(addToLog(addToLog([], a), b).map(x => x.key), ['b', 'a']);
   assert.equal(addToLog([a, b], { key: 'a', ms: 1, x: 1 }).length, 2);
   assert.deepEqual(Object.keys(pruneSent({ old: 0, fresh: T0 }, T0 + 864e5)), ['fresh']);
+});
+// Real Nasdaq rows, 6-25 Nov 2026 (the old matcher read U6 unemployment as the headline rate, Common CPI as CPI m/m, core as headline, and
+// found no row for payrolls or the BoE decision)
+t('matchActual on real same-time rows: headline over core/U6, m/m vs y/y by consensus, vendor names', () => {
+  const T = Date.parse('2026-11-06T13:30:00Z'), US = 'United States', CA = 'Canada', GB = 'United Kingdom', AU = 'Australia';
+  const row = (country, event, actual, consensus, previous, ms = T) => ({ ms, country, event, released: true, raw: { actual, consensus, previous } });
+  const jobs = [row(US, 'Average Hourly Earnings', '0.4%', '0.3%', '0.3%'), row(US, 'Average Hourly Earnings (YoY)', '3.1%', '2.9%', '3.2%'), row(US, 'Nonfarm Payrolls', '165K', '65K', '60K'),
+    row(US, 'Private Nonfarm Payrolls', '159K', '64K', '78K'), row(US, 'U6 Unemployment Rate', '7.9%', ' ', '7.6%'), row(US, 'Unemployment Rate', '4.1%', '4.2%', '4.2%')];
+  const m = (country, event, estimate, prev, rows, ms = T) => matchActual({ country, event, ms, estimate, prev }, rows)?.raw.actual ?? null;
+  assert.equal(m('US', 'Unemployment Rate', '4.2%', '4.2%', jobs), '4.1%');
+  assert.equal(m('US', 'Non-Farm Employment Change', '65K', '29K', jobs), '165K');
+  assert.equal(m('US', 'Average Hourly Earnings m/m', '0.3%', '0.1%', jobs), '0.4%');
+  const cpi = [row(CA, 'Common CPI', '2.5%', '2.5%', '2.4%'), row(CA, 'Core CPI', '0.4%', '0.2%', '0.0%'), row(CA, 'CPI', '3.1%', '3.2%', '3.1%'), row(CA, 'CPI', '0.2%', '0.3%', '0.1%'),
+    row(CA, 'Median CPI', '2.0%', '2.0%', '2.0%'), row(CA, 'Trimmed CPI', '1.8%', '1.9%', '1.9%')];
+  assert.equal(m('CA', 'CPI m/m', '0.3%', '0.1%', cpi), '0.2%');
+  assert.equal(m('CA', 'Trimmed CPI y/y', '1.9%', '1.8%', cpi), '1.8%');
+  assert.equal(m('CA', 'Median CPI y/y', '2.0%', '1.9%', cpi), '2.0%');
+  const uk = [row(GB, 'Core CPI', '2.8%', '2.8%', '2.8%'), row(GB, 'CPI', '3.6%', '3.6%', '3.5%'), row(GB, 'CPI', '0.5%', '0.5%', '0.4%'), row(GB, 'BoE Interest Rate Decision', '4.00%', '4.00%', '3.75%')];
+  assert.equal(m('GB', 'CPI y/y', '3.6%', '3.5%', uk), '3.6%');
+  assert.equal(m('GB', 'Official Bank Rate', '4.00%', '3.75%', uk), '4.00%');
+  const au = [row(AU, 'Trimmed Mean CPI', '3.8%', '3.6%', '3.6%'), row(AU, 'Monthly CPI Indicator', '4.90%', '4.70%', '4.30%')];
+  assert.equal(m('AU', 'CPI y/y', '4.7%', '4.3%', au), '4.90%');
+  assert.equal(m('AU', 'CPI m/m', '0.4%', '0.8%', au), null, 'no m/m row on the feed: nothing, not the y/y');
+});
+t('plausibility and the held-back surprise', () => {
+  assert.equal(plausibleActual({ estimate: '0.3%', prev: '0.1%' }, '2.5%'), false);
+  assert.equal(plausibleActual({ estimate: '65K', prev: '29K' }, '4.1%'), false, 'units differ');
+  assert.equal(plausibleActual({ estimate: '4.2%', prev: '4.2%' }, '4.1%'), true);
+  const hist = [0.1, -0.1, 0, 0.1, -0.2, 0.1, 0, -0.1, 0.2, 0, -0.1, 0.1];
+  const s = surprise({ actual: '7.9%', estimate: '4.2%', history: hist });
+  assert.equal(s.ok, false); assert.equal(s.heldBack, true); assert.match(s.why, /held back/);
+  assert.equal(surprise({ actual: '4.5%', estimate: '4.2%', history: hist }).ok, true, 'a big but possible surprise still counts');
+  const store = hist.map((x, i) => ({ country: 'US', event: 'Unemployment Rate', ms: i + 1, estimate: '4.0%', actual: `${(4 + x).toFixed(1)}%` }));
+  const log = recheckLog([{ country: 'US', event: 'Unemployment Rate', ms: 100, actual: '7.9%', estimate: '4.2%', prev: '4.2%', surprise: { ok: true, diffText: '+3.7pp', z: 4.4 } },
+    { country: 'US', event: 'Unemployment Rate', ms: 101, actual: '4.1%', estimate: '4.2%', prev: '4.2%', surprise: { ok: true } }], store);
+  assert.equal(log[0].rejected, true); assert.equal(log[0].surprise.ok, false); assert.equal(log[1].rejected, undefined);
 });
 console.log(`surpriseReader: ${n} tests passed`);
