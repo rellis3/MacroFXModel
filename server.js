@@ -22295,18 +22295,18 @@ async function computeRiskFlags() {
 
   const flags = [
     { key: 'vix_level', label: 'VIX elevated',
-      on: vix != null ? vix >= 25 : null, value: vix,
-      detail: vix != null ? `VIX ${vix.toFixed(1)} (flag ≥25)` : 'VIX unavailable' },
+      on: vix != null ? vix >= 25 : null, value: vix, asOf: fred.vix?.asOf ?? null,   // dated: other cards show a later Cboe close, so the reader can tell which day each number is
+      detail: vix != null ? `VIX ${vix.toFixed(1)}${fred.vix?.asOf ? ` (FRED close ${fred.vix.asOf})` : ''} (flag ≥25)` : 'VIX unavailable' },
     { key: 'vix_term', label: 'VIX curve backwardated',
       on: (vix != null && vix3m != null) ? vix / vix3m >= 1.0 : null,
-      value: (vix != null && vix3m != null) ? +(vix / vix3m).toFixed(3) : null,
+      value: (vix != null && vix3m != null) ? +(vix / vix3m).toFixed(3) : null, asOf: fred.vix3m?.asOf ?? fred.vix?.asOf ?? null,
       detail: (vix != null && vix3m != null)
-        ? `VIX/VIX3M ${(vix / vix3m).toFixed(2)} (flag ≥1.00 — near-term fear above 3-month)`
+        ? `VIX/VIX3M ${(vix / vix3m).toFixed(2)}${fred.vix?.asOf ? ` (FRED closes, VIX ${fred.vix.asOf}, VIX3M ${fred.vix3m?.asOf ?? '?'})` : ''} (flag ≥1.00 — near-term fear above 3-month)`
         : 'VIX3M (VXVCLS) unavailable' },
     { key: 'hy_speed', label: 'Credit widening fast',
       on: hyChg != null ? hyChg >= 0.25 : null,
-      value: hyChg != null ? +(hyChg * 100).toFixed(0) : null,
-      detail: hyChg != null ? `HY OAS ${hyChg >= 0 ? '+' : ''}${(hyChg * 100).toFixed(0)}bp / 5 obs (flag ≥+25bp)` : 'HY OAS history unavailable' },
+      value: hyChg != null ? +(hyChg * 100).toFixed(0) : null, asOf: Array.isArray(hyHist) ? hyHist.at(-1)?.date ?? null : null,
+      detail: hyChg != null ? `HY OAS ${hyChg >= 0 ? '+' : ''}${(hyChg * 100).toFixed(0)}bp over the last 5 daily prints${Array.isArray(hyHist) && hyHist.at(-1)?.date ? ` to ${hyHist.at(-1).date}` : ''} (flag ≥+25bp)` : 'HY OAS history unavailable' },
     { key: 'jpy_bid', label: 'JPY safe-haven bid',
       on: jpyChg != null ? jpyChg <= -1.5 : null,
       value: jpyChg != null ? +jpyChg.toFixed(2) : null,

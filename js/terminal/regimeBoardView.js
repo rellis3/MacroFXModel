@@ -33,7 +33,7 @@ ${CELLS.map(cell).join('')}
 
 function lights(risk) {
   if (!risk?.flags?.length) return '';
-  return `<div class="bv-lights">${risk.flags.map(f => `<span class="bv-light ${f.on ? 'on' : f.on === null ? 'na' : ''}" title="${esc(f.detail)}"><i></i>${esc(f.label)}${f.value != null ? ` <b class="mono">${esc(String(f.value))}</b>` : ''}</span>`).join('')}</div>`;
+  return `<div class="bv-lights">${risk.flags.map(f => `<span class="bv-light ${f.on ? 'on' : f.on === null ? 'na' : ''}" title="${esc(f.detail)}"><i></i>${esc(f.label)}${f.value != null ? ` <b class="mono">${esc(String(f.value))}</b>` : ''}${f.asOf ? ` <span class="muted mono" style="font-size:10.5px">${esc(String(f.asOf).slice(5, 10))}</span>` : ''}</span>`).join('')}</div>`;
 }
 
 const LVL = { CALM: 'up', CAUTION: 'gold', RISK_OFF: 'dn' };
@@ -59,10 +59,17 @@ function lensesCard(rb) {
 
 function hmmCard(rb) {
   const h = rb.hist, m = rb.hmm; if (!h && !m) return '';
-  const rows = h ? h.rows.slice(0, 40).map(r => `<div class="bv-hrow"><span class="bv-hl">${esc(r.sym)}</span>${stateStrip([...r.s].map((ch, i) => ({ tone: ch === 'a' ? 'gold' : ch === 'q' ? 'pur' : null, title: `${r.sym} ${h.days[i] ?? ''}: ${ch === 'a' ? 'active' : ch === 'q' ? 'quiet' : 'not recorded'}` })), { cell: 7, gap: 1 })}<span class="mono muted bv-hn">${r.active}a</span></div>`).join('') : '';
+  // the strips are the recorded history; the chips are TODAY's state. Say which markets the two cover and when the history was last written.
+  const ALIAS = { XAUUSD: 'GOLD', NAS100USD: 'NQ', SPX500USD: 'SPX500', US30USD: 'US30', US2000USD: 'US2000', DE30USD: 'DE30', DE30EUR: 'DE30', UK100GBP: 'UK100' };
+  const norm = s => { const k = String(s ?? '').replace(/[^A-Z0-9]/gi, '').toUpperCase(); return ALIAS[k] ?? k; };
+  const todaySet = new Set((m?.rows ?? []).map(r => norm(r.sym)));
+  const noToday = h && m?.rows?.length ? h.rows.filter(r => !todaySet.has(norm(r.sym))).map(r => r.sym) : [];
+  let lastIx = -1; for (const r of h?.rows ?? []) { const s = String(r.s ?? ''); for (let i = s.length - 1; i > lastIx; i--) if (s[i] === 'a' || s[i] === 'q') { lastIx = i; break; } }
+  const lastDay = lastIx >= 0 ? h.days?.[lastIx] : null, gapDays = lastIx >= 0 ? (h.days?.length ?? 0) - 1 - lastIx : 0;
+  const rows = h ? h.rows.slice(0, 40).map(r => `<div class="bv-hrow"><span class="bv-hl">${esc(r.sym)}</span>${stateStrip([...r.s].map((ch, i) => ({ tone: ch === 'a' ? 'gold' : ch === 'q' ? 'pur' : null, title: `${r.sym} ${h.days[i] ?? ''}: ${ch === 'a' ? 'active' : ch === 'q' ? 'quiet' : 'not recorded'}` })), { cell: 7, gap: 1 })}<span class="mono muted bv-hn" title="${r.active} active and ${r.quiet ?? 0} quiet days recorded in the window">${r.active} act.</span></div>`).join('') : '';
   return `<div class="card"><div class="ch"><span class="lbl">Quiet or active · the last ${h?.days?.length ?? 30} days</span><span class="r">${m ? `<span class="chip pur">${m.quiet} quiet</span> <span class="chip gold">${m.active} active</span>` : ''}</span></div>
 <div class="bv-hhead"><span><i class="bv-dot" style="background:var(--pur2)"></i>quiet (RANGE)</span><span><i class="bv-dot" style="background:var(--gold)"></i>active (TREND)</span><span class="muted">oldest left · today right · gaps are weekends</span></div>
-${rows}<p class="muted bv-note">The daily two-state model's read of each market. <b>Quiet means moves have been small and mean-reverting, not that price has no direction; active means moves have been big, and says nothing about which way.</b> Most active first.</p></div>`;
+${rows}<p class="muted bv-note">${m ? `The chips count today's state for ${m.n} markets; the strips list ${h?.rows?.length ?? 0} with a recorded history${noToday.length ? ` (${esc(noToday.join(', '))}: no state today)` : ''}. ` : ''}${lastDay && gapDays > 2 ? `<b>The history was last recorded ${esc(lastDay)}</b>; the empty cells after it are days not recorded, not quiet days. ` : ''}The daily two-state model's read of each market. <b>Quiet means moves have been small and mean-reverting, not that price has no direction; active means moves have been big, and says nothing about which way.</b> Most active first.</p></div>`;
 }
 
 function edgesCard(rb) {

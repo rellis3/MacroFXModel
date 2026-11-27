@@ -17,7 +17,10 @@ import { esc, fin } from './boardViz.js';
 
 const sg = (v, d = 1) => (!fin(v) ? '–' : Number(Math.abs(+v).toFixed(d)) === 0 ? (0).toFixed(d) : `${v > 0 ? '+' : '−'}${Math.abs(+v).toFixed(d)}`);
 const tone = v => (!fin(v) || Number(Math.abs(+v).toFixed(2)) === 0 ? '' : v > 0 ? 'up' : 'dn');
-const pairName = n => (/^[A-Z]{6}$/.test(n) ? `${n.slice(0, 3)}/${n.slice(3)}` : n);
+// only a real currency pair is split (COPPER and SILVER are not "COP/PER" and "SIL/VER")
+const FXC = new Set(['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD', 'NOK', 'SEK', 'DKK', 'MXN', 'ZAR', 'TRY', 'CNH', 'CNY', 'HKD', 'SGD', 'PLN', 'HUF', 'CZK', 'BTC', 'ETH', 'XAU', 'XAG']);
+const NICE = { COPPER: 'Copper', SILVER: 'Silver', WHEAT: 'Wheat', CORN: 'Corn', SOYBEAN: 'Soybeans', PLATINUM: 'Platinum', PALLADIUM: 'Palladium', GOLD: 'Gold', NATGAS: 'Natural gas' };
+const pairName = n => (/^[A-Z]{6}$/.test(n) && FXC.has(n.slice(0, 3)) && FXC.has(n.slice(3)) ? `${n.slice(0, 3)}/${n.slice(3)}` : NICE[n] ?? n);
 const FLAG = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', CHF: '🇨🇭', CAD: '🇨🇦', AUD: '🇦🇺', NZD: '🇳🇿' };
 const London = iso => (iso ? new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '–');
 
@@ -52,7 +55,7 @@ ${pts.map(r => `<circle cx="${X(r).toFixed(1)}" cy="${Y(r.implied).toFixed(1)}" 
 function yieldsCard(y) {
   if (!y?.ok) return `<div class="card"><div class="ch"><span class="lbl">Yields, live (implied)</span></div><p class="muted">${esc(y?.error ?? 'not available')}. The official daily prints are on the global yields and curve boards.</p></div>`;
   const rows = y.rows.map(r => `<tr title="official ${r.official ? `${r.official.value}% on ${esc(r.official.date)}` : 'not loaded'}; implied from the bond CFD through a duration of ${r.D ?? '–'}">
-<td><b>${esc(r.label)}</b></td><td class="n mono">${r.official ? r.official.value.toFixed(2) : '–'}<span class="muted ll-d">${r.official ? esc(r.official.date.slice(5)) : ''}</span></td><td class="n mono"><b>${fin(r.implied) ? r.implied.toFixed(3) : '–'}</b></td><td class="n mono ${r.deltaBp > 0 ? 'dn' : r.deltaBp < 0 ? 'up' : ''}">${sg(r.deltaBp, 1)}bp</td></tr>`).join('');
+<td><b>${esc(r.label)}</b></td><td class="n mono">${r.official ? r.official.value.toFixed(2) : '–'}<span class="muted ll-d">${r.official ? ` · ${esc(r.official.date.slice(5))}` : ''}</span></td><td class="n mono"><b>${fin(r.implied) ? r.implied.toFixed(3) : '–'}</b></td><td class="n mono ${r.deltaBp > 0 ? 'dn' : r.deltaBp < 0 ? 'up' : ''}">${sg(r.deltaBp, 1)}bp</td></tr>`).join('');
   const slopes = (y.slopes ?? []).map(s => `<span class="chip ll-nc">${esc(s.label)} <b class="mono">${sg(s.nowBp, 0)}bp</b> <span class="muted mono">${sg(s.deltaBp, 1)}</span></span>`).join(' ');
   const gap = y.bundGap ? `<span class="chip ll-nc">Bund–UST 10y <b class="mono">${sg(y.bundGap.nowBp, 0)}bp</b> <span class="muted mono">${sg(y.bundGap.deltaBp, 1)}</span></span>` : '';
   return `<div class="card"><div class="ch"><span class="lbl">Yields, live (implied)</span><span class="r muted">beside the official prints, which are unchanged</span></div>
@@ -79,11 +82,11 @@ function rangeCard(rs) {
   const rows = rs.rows.slice(0, 12).map(r => {
     const w = Math.min(100, (r.used / 2) * 100), mid = 50;       // the track is 0 to 200% of the forecast day's median range; the tick is 100%
     return `<div class="ll-rr" title="${esc(pairName(r.name))}: ${r.hl}% from the London open against a median day of ${r.forecast}%"><b>${esc(pairName(r.name))}</b>
-<div class="ll-rt" aria-hidden="true"><i class="ll-rf ${PSTATE[r.state] ?? ''}" style="width:${w}%"></i><i class="ll-rm" style="left:${mid}%"></i></div><span class="mono">${Math.round(r.used * 100)}%</span><span class="chip ${PSTATE[r.state] ?? ''}">${r.state}</span></div>`;
+<div class="ll-rt" aria-hidden="true"><i class="ll-rf ${PSTATE[r.state] ?? ''}" style="width:${w}%"></i><i class="ll-rm" style="left:${mid}%"></i></div><span class="mono" title="pace ${r.pace ?? '–'}: the share used against the share of this market's own day gone (${r.hours} hours)">${Math.round(r.used * 100)}% · ${r.hours}h</span><span class="chip ${PSTATE[r.state] ?? ''}">${r.state}</span></div>`;
   }).join('');
   return `<div class="card"><div class="ch"><span class="lbl">Range used so far</span><span class="r"><span class="chip ${rs.market === 'active' ? 'gold' : ''}">${esc(rs.market ?? 'too early')}</span></span></div>
 ${rows}<p style="margin:8px 0 0">${esc(rs.line)}</p>
-<p class="muted bv-note">Range since London midnight as a share of the forecast day's median range; the tick is 100%. A range grows with the square root of time, so "active" means wider than the forecast day implies for this hour. A size reading, not a direction: quiet means small moves so far.</p></div>`;
+<p class="muted bv-note">Range since London midnight as a share of the forecast day's median range; the tick is 100%. A range grows with the square root of time, so "active" means wider than the forecast day implies for the hours this market has traded (shown beside the share): a market that has traded fewer hours is active at a smaller share. A size reading, not a direction: quiet means small moves so far.</p></div>`;
 }
 
 function corrCard(c) {
@@ -93,7 +96,7 @@ function corrCard(c) {
 <div class="ll-rail" aria-hidden="true"><i class="ll-z lo" style="width:20%"></i><i class="ll-z hi" style="left:80%;width:20%"></i><i class="ll-mk" style="left:${Math.max(1, Math.min(99, c.pctile))}%"></i></div>
 <div class="bv-legend"><span>mean |rho| <b class="mono">${c.value.toFixed(2)}</b> (median ${c.median.toFixed(2)})</span><span>${ordinal(c.pctile)} percentile of ${c.windows} earlier 5-day windows</span></div>
 <p style="margin:8px 0 0">${esc(c.line)}</p>
-<p class="muted bv-note">Hourly returns across the seven majors' ${c.pairs} pairs. A price-based, intraday rebuild of the correlation idea, not the daily regime board's reading and not the validated HMM.</p></div>`;
+<p class="muted bv-note">Hourly returns across the seven majors' ${c.pairs} pairs over five days, against the 60 earlier five-day windows. A price-based, intraday rebuild of the correlation idea, not the daily regime board's reading (325 pair combinations, daily, against five-year norms), so the two can disagree; not the validated HMM.</p></div>`;
 }
 
 /** The Macro tab block. p = /api/live-layer (or the freshest copy the refresh holds). */
