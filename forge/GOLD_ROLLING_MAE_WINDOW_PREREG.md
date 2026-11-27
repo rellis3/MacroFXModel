@@ -92,6 +92,28 @@ the first touch. The lockbox.
   - Break-even triggers only from the bar after the touch.
   - The placebo recomputes the rolling stops for the chosen window only (the other windows are not needed for it).
 
+- **A2, 2026-11-27, POST-HOC (T results seen): adds trade arm E, the system's real entry.** Owner: the trade must use
+  Jordan's gold entry (ForecastBandFade.cs, the arm-then-retest of `gold-band-fade-stop`), not a fill at the first
+  touch. T's NULL stands as recorded (it was the pre-registered first-touch fill) and is not re-labelled. Arm E is a
+  second test, judged by T's gates; with two tests, a pass also needs its one-sided bootstrap p to clear BH q = 0.10
+  over {T, E}. Fixed before E is run:
+  - **Entry (PDF, generalised to the 18 lines):** a line arms when the bar goes through it by 0.10 × that line's stop
+    (high ≥ line + a for upper lines, low ≤ line − a for lower ones); a stop order sits at the line's price on the
+    arming bar. Fill when price comes back through the line (on the arming bar only if that bar closes back through;
+    if a later bar opens past the line, the fill is at that open). Cancel if price runs 1.2 × stop beyond the line
+    before filling. Chase: if a more extreme unspent line on the same side arms, the older order is cancelled and the
+    new one arms. Lines passed on the way are spent. One trade at a time; a fill cancels the other side's order; each
+    line once a session; unfilled orders cancel at 22:00.
+  - **Stop:** the rolling median line-to-line MAE exactly as W (same touches, same windows), per level or pooled, $ or
+    σ-scaled; 5-tick floor. **Target:** the nearest same-side line inside the entry (> 0.05 σ), at the arming bar,
+    else the open (as T); a target cannot fill on the fill bar. BE at +1R from the bar after the fill. Pessimistic:
+    the stop counts on the fill bar. Costs as T.
+  - **Primary E:** the IS-chosen window (3 months), per-level $, BE on. Placebo: 100 same-year shuffles of the
+    widths, whole pipeline (touches → stops → entry). Descriptive: all 10 windows × per-level / pooled × BE on / off ×
+    $ / σ; gross (before costs) alongside net; **K** = Ken's variant (any poke arms, no cancel, no chase, fill only from
+    the bar after the poke, several orders may rest, the first fill cancels the rest); the equity curve and trade
+    examples from every year, for the page.
+
 ## RESULTS
 
 `analysis/output/gold-rolling-mae-window/RESULTS.md`: W CONTEXT (1-6 months about equal; the IS choice, 3 months, ranks
