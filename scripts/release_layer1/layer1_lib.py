@@ -28,6 +28,18 @@ def _rd(p, cols=('time', 'close')):
     return d.set_index('time')['close'].sort_index()
 
 
+def _next(root, name):
+    """Stored files of the contracts after `name` (scripts/ibkr/continuous.successor_files, 2026-11-27): appended to a chain so a release after
+    the named contract expires is measured on its successor (ZNZ6 -> ZNH7 ...). Tried after every file listed before, so no existing row changes."""
+    try:
+        import sys as _s
+        _s.path.insert(0, str(ROOT / 'scripts' / 'ibkr')); _s.path.insert(0, str(ROOT / 'scripts' / 'rates_line'))
+        from continuous import successor_files
+        return successor_files(DEEP, root, name)
+    except Exception:
+        return []
+
+
 def _chain(files):
     """1-minute close series from several contract files (later files win on a clash); the contract is chosen per event by coverage, so levels are never spliced across a roll."""
     return [(Path(f).stem, _rd(f)) for f in files if Path(f).exists()]
@@ -61,18 +73,18 @@ def load_sources():
     S = {
         'sofr': Src('sofr', _chain([DEEP / 'CME_SR3U6.parquet']), rate),
         'eur': Src('eur', _chain([DEEP / 'ICEEU_IH7.parquet']), rate),
-        'zt': Src('zt', _chain([DEEP / 'CBOT_ZTZ6.parquet', S1M / 'CBOT_ZTZ6.parquet', S1M / 'CBOT_ZTU6.parquet']), logp, cfd=_cfd15('USB02Y_USD')),
-        'zn': Src('zn', _chain([DEEP / 'CBOT_ZNZ6.parquet', BONDS / 'CBOT_ZNZ6.parquet']), logp, cfd=_cfd15('USB10Y_USD')),
-        'dx': Src('dx', _chain([DEEP / 'NYBOT_DXZ6.parquet']), logp),
-        'nq': Src('nq', [('nq_m1_cfd', nqcfd.sort_index())] + _chain([S1M / 'CME_NQU6.parquet', S1M / 'CME_NQZ6.parquet', DEEP / 'CME_NQZ6.parquet']), logp),
+        'zt': Src('zt', _chain([DEEP / 'CBOT_ZTZ6.parquet', S1M / 'CBOT_ZTZ6.parquet', S1M / 'CBOT_ZTU6.parquet', *_next('ZT', 'ZTZ6')]), logp, cfd=_cfd15('USB02Y_USD')),
+        'zn': Src('zn', _chain([DEEP / 'CBOT_ZNZ6.parquet', BONDS / 'CBOT_ZNZ6.parquet', *_next('ZN', 'ZNZ6')]), logp, cfd=_cfd15('USB10Y_USD')),
+        'dx': Src('dx', _chain([DEEP / 'NYBOT_DXZ6.parquet', *_next('DX', 'DXZ6')]), logp),
+        'nq': Src('nq', [('nq_m1_cfd', nqcfd.sort_index())] + _chain([S1M / 'CME_NQU6.parquet', S1M / 'CME_NQZ6.parquet', DEEP / 'CME_NQZ6.parquet', *_next('NQ', 'NQZ6')]), logp),
     }
     ident = lambda s: s                                                           # volatility indices in points
     S.update({
-        'eurusd': Src('eurusd', [('oanda_cfd', _rd_ba('eurusd'))] + _chain([DEEP / 'CME_6EZ6.parquet']), logp),
-        'gbpusd': Src('gbpusd', [('oanda_cfd', _rd_ba('gbpusd'))] + _chain([DEEP / 'CME_6BZ6.parquet']), logp),
-        'usdjpy': Src('usdjpy', [('oanda_cfd', _rd_ba('usdjpy'))] + [(n, _inv(x)) for n, x in _chain([DEEP / 'CME_6JZ6.parquet'])], logp),        # the yen future is USD per JPY: invert to USD/JPY
-        'gold': Src('gold', [('oanda_cfd', _rd_ba('gold'))] + _chain([DEEP / 'COMEX_GCZ6.parquet']), logp),
-        'es': Src('es', [('oanda_cfd', _rd_ba('spx'))] + _chain([DEEP / 'CME_ESZ6.parquet']), logp),
+        'eurusd': Src('eurusd', [('oanda_cfd', _rd_ba('eurusd'))] + _chain([DEEP / 'CME_6EZ6.parquet', *_next('6E', '6EZ6')]), logp),
+        'gbpusd': Src('gbpusd', [('oanda_cfd', _rd_ba('gbpusd'))] + _chain([DEEP / 'CME_6BZ6.parquet', *_next('6B', '6BZ6')]), logp),
+        'usdjpy': Src('usdjpy', [('oanda_cfd', _rd_ba('usdjpy'))] + [(n, _inv(x)) for n, x in _chain([DEEP / 'CME_6JZ6.parquet', *_next('6J', '6JZ6')])], logp),        # the yen future is USD per JPY: invert to USD/JPY
+        'gold': Src('gold', [('oanda_cfd', _rd_ba('gold'))] + _chain([DEEP / 'COMEX_GCZ6.parquet', *_next('GC', 'GCZ6')]), logp),
+        'es': Src('es', [('oanda_cfd', _rd_ba('spx'))] + _chain([DEEP / 'CME_ESZ6.parquet', *_next('ES', 'ESZ6')]), logp),
         'vix': Src('vix', _chain([DEEP / 'CBOE_VIX.parquet']), ident),
         'vxn': Src('vxn', _chain([DEEP / 'CBOE_VXN.parquet']), ident),
     })
