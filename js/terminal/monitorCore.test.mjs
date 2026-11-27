@@ -1,7 +1,7 @@
 // node --test js/terminal/monitorCore.test.mjs: the Monitor's pure rules (list cleaning, change, age, next release, rows, sort, export table).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanItems, sanitizeStore, lastAndChange, ageOf, nextEventFor, dawnOf, buildRows, sortRows, rowsToTable, fmtPrice, fmtPct, COLUMNS, inWords, eventCcys, STARTERS, isKnown } from './monitorCore.js';
+import { cleanItems, sanitizeStore, lastAndChange, ageOf, nextEventFor, deskCallOf, planDistance, impactOk, buildRows, sortRows, rowsToTable, fmtPrice, fmtPct, COLUMNS, inWords, eventCcys, STARTERS, isKnown } from './monitorCore.js';
 
 test('starters are all known markets; cleanItems keeps known, upper-cased, de-duplicated', () => {
   for (const s of STARTERS) assert.ok(s.items.every(isKnown), s.name);
@@ -38,12 +38,31 @@ test('next release: both legs of a pair, USD for indices, high impact only, past
   assert.deepEqual(eventCcys('EURUSD'), ['EUR', 'USD']); assert.deepEqual(eventCcys('GOLD'), ['USD']);
   assert.equal(inWords(now + 90 * 6e4, now), 'in 2h'); assert.equal(inWords(now + 10 * 6e4, now), 'in 10m');
 });
-test('the morning read is a word and a share, two-way near 50%, null with no live inputs', () => {
-  assert.deepEqual(dawnOf({ direction: { story: { nLive: 3, pUp: 0.62 } } }), { word: 'Up', pct: 62, sign: 1 });
-  assert.equal(dawnOf({ direction: { story: { nLive: 3, pUp: 0.4 } } }).word, 'Down');
-  assert.equal(dawnOf({ direction: { story: { nLive: 3, pUp: 0.51 } } }).word, 'Two-way');
-  assert.equal(dawnOf({ direction: { story: { nLive: 0, pUp: 0.9 } } }), null);
-  assert.equal(dawnOf(null), null);
+test('the desk call is the book\'s own card (review 2026-11-27: USDCAD read "Two-way" while the book was B+ long)', () => {
+  assert.deepEqual(deskCallOf({ rating: 'LONG', conviction: 'B+', size: 1 }), { word: 'Long', grade: 'B+', size: 1, sign: 1 });
+  assert.deepEqual(deskCallOf({ rating: 'FLAT', conviction: 'C', size: 0 }), { word: 'Flat', grade: 'C', size: null, sign: 0 });
+  assert.equal(deskCallOf(undefined), null, 'no card (NZDUSD on 27 Nov): no call, not a guess');
+});
+test('distance to entry and invalidation in u, from the plan check (the live USDCAD card of 27 Nov)', () => {
+  const card = { rating: 'LONG', size: 1, planCheck: { ok: true, zone: [1.42255, 1.42416], invalid: 1.41837, u: 0.002635 } };
+  const d = planDistance(card, 1.42680);
+  assert.equal(d.entry.side, 'above'); assert.ok(Math.abs(d.entry.u - (1.4268 - 1.42416) / 0.002635) < 1e-9);
+  assert.ok(Math.abs(d.invalid - (1.4268 - 1.41837) / 0.002635) < 1e-9);
+  assert.equal(planDistance(card, 1.4230).entry.side, 'in');
+  assert.ok(planDistance(card, 1.4180).invalid <= 0, 'through the invalidation');
+  const short = { rating: 'SHORT', size: 0.3, planCheck: { ok: false, zone: [3594.87, 3613.2], invalid: 3613.2, u: 43.9 } };
+  assert.ok(planDistance(short, 3650).invalid < 0); assert.equal(planDistance(short, 3650).ok, false);
+  assert.equal(planDistance({ rating: 'FLAT' }, 1), null);
+});
+test('the release filter: headline releases skip regional and minor prints rated high', () => {
+  const now = Date.parse('2026-11-29T12:00:00Z');
+  const ev = [{ country: 'JP', event: 'Large Scale Retail Sales YoY', impact: 'High', ms: now + 36e5 }, { country: 'DE', event: 'Bavaria CPI', impact: 'High', ms: now + 2 * 36e5 },
+    { country: 'US', event: 'ISM Manufacturing PMI', impact: 'High', ms: now + 3 * 36e5 }, { country: 'US', event: 'Construction Spending', impact: 'Medium', ms: now + 60000 }];
+  assert.equal(nextEventFor('USDJPY', ev, now, 'high').label, 'Large Scale Retail Sales YoY');
+  assert.equal(nextEventFor('USDJPY', ev, now, 'headline').label, 'ISM Manufacturing PMI');
+  assert.equal(nextEventFor('EURUSD', ev, now, 'headline').label, 'ISM Manufacturing PMI');
+  assert.equal(nextEventFor('NQ', ev, now, 'medium').label, 'Construction Spending');
+  assert.equal(impactOk({ event: 'CPI', impact: 'Low' }, 'headline'), false);
 });
 const bars = t => ({ bars: [{ time: 0, close: 1.1 }, { time: 86400, close: 1.11 }], asOf: t });
 test('buildRows joins the sources, shows nothing invented for a market a source does not cover', () => {
