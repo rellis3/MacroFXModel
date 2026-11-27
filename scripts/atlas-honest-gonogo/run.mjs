@@ -17,7 +17,7 @@
 // close. The vote then picks one; the shuffled-decision placebo picks others.
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { atlasWalk } from '../../js/levelAtlasEngine.js';
 import { asiaFibAtlasWalk } from '../../js/asiaFibAtlasEngine.js';
 import { mondayFibAtlasWalk } from '../../js/mondayFibAtlasEngine.js';
@@ -31,7 +31,7 @@ import { assetClassFor } from '../../js/forecastAnalyserStore.js';
 import { holm, benjaminiHochberg, mdeMeanDiff } from '../../js/preregStats.js';
 import { randomWalkPacked } from '../../js/atlasNullCheck.js';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = path.join(ROOT, 'analysis', 'output', 'atlas-honest-gonogo');
 const SEED = 20261101, B = 2000, BLOCK = 21, PASS_BAR = 0.05, REARM = 0.3, PERMS = 2000;
 
