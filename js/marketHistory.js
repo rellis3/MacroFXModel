@@ -24,6 +24,15 @@ export const YAHOO_LONG = {
   FVX: { t: '^FVX', seed: 'analysis/output/nbfi-rates-vol/cache/fvx_daily.json', label: 'US 5Y yield (^FVX, %)' },
   HYG: { t: 'HYG', seed: 'analysis/output/hy-spread-vol/HYG_d.json', label: 'High-yield credit ETF' }, JNK: { t: 'JNK', seed: 'analysis/output/hy-spread-vol/JNK_d.json', label: 'High-yield credit ETF (JNK)' },
   IEF: { t: 'IEF', seed: 'analysis/output/hy-spread-vol/IEF_d.json', label: '7-10Y Treasury ETF' }, LQD: { t: 'LQD', label: 'Investment-grade credit ETF' }, TLT: { t: 'TLT', label: '20Y+ Treasury ETF' },
+  // 2026-11-27 (plans/DATA_CAPTURE_G10.md): the real ICE dollar index, the rest of the US curve, Treasury and STIR futures
+  // (continuous front month), and funding / credit / bank ETFs, so the G10 and funding work has the dailies from now on.
+  DXY: { t: 'DX-Y.NYB', label: 'ICE US dollar index (DXY)' }, TYX: { t: '^TYX', label: 'US 30Y yield (^TYX, %)' }, IRX: { t: '^IRX', label: 'US 13-week bill (^IRX, %)' },
+  ZT: { t: 'ZT=F', label: '2Y Treasury future (front)' }, ZF: { t: 'ZF=F', label: '5Y Treasury future (front)' }, ZN: { t: 'ZN=F', label: '10Y Treasury future (front)' },
+  ZB: { t: 'ZB=F', label: 'Treasury bond future (front)' }, UB: { t: 'UB=F', label: 'Ultra bond future (front)' },
+  SR3: { t: 'SR3=F', label: '3M SOFR future (front)' }, ZQ: { t: 'ZQ=F', label: '30-day fed funds future (front)' },
+  TIP: { t: 'TIP', label: 'TIPS ETF' }, SHY: { t: 'SHY', label: '1-3Y Treasury ETF' }, BIL: { t: 'BIL', label: 'T-bill ETF' },
+  EMB: { t: 'EMB', label: 'EM dollar bond ETF' }, BKLN: { t: 'BKLN', label: 'Leveraged loan ETF' }, IHYG: { t: 'IHYG.L', label: 'Euro high-yield ETF' },
+  KRE: { t: 'KRE', label: 'US regional banks ETF' }, KBE: { t: 'KBE', label: 'US banks ETF' }, EUFN: { t: 'EUFN', label: 'European financials ETF' },
 };
 const FX_SEED = 'analysis/output/fx-dollar-funding-exposure/cache';
 export const YAHOO_FX = ['AUDUSD', 'EURUSD', 'GBPUSD', 'NZDUSD', 'BRL', 'CAD', 'CHF', 'IDR', 'INR', 'JPY', 'KRW', 'MXN', 'MYR', 'NOK', 'PHP', 'SEK', 'SGD', 'THB', 'TRY', 'TWD'];

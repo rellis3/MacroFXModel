@@ -14,6 +14,7 @@
 import './js/intlCache.js';
 import { intlCacheStats } from './js/intlCache.js';
 import { dxySeries as _dxyIceSeries } from './js/dxyIce.js';
+import { archiveMacro as _archiveMacro, FRED_EXTRA as _FRED_EXTRA } from './js/macroCapture.js';
 import express              from 'express';
 import zlib from 'node:zlib';
 import path                from 'path';
@@ -46599,7 +46600,7 @@ let _cotArchiveAt = 0;
 async function _archiveDaily() {
   if (!_archive.enabled) return { ok: false, reason: 'R2 not configured' };
   const out = { fred: 0, failed: [], oiRaw: 0, oiSummary: 0, gold: false };
-  const fredIds = [...new Set([...Object.values(_FREDHISTORY_SERIES).filter(id => !_isBoeSeries(id)), ..._ICE_SPREAD_IDS])];
+  const fredIds = [...new Set([...Object.values(_FREDHISTORY_SERIES).filter(id => !_isBoeSeries(id)), ..._ICE_SPREAD_IDS, ..._FRED_EXTRA])];
   for (const id of fredIds) {
     try { await _fredCsv(id); out.fred++; } catch (e) { out.failed.push(`${id}: ${e.message}`); }
     await new Promise(r => setTimeout(r, 1500));        // keyless fredgraph CSV: be gentle
@@ -46642,6 +46643,8 @@ async function _archiveDaily() {
   }
   try { const w = await _archive.mergeSeries('rates', 'SONIA', await _fetchBoeSeries('IUDSOIA', '1997-01-01'), { label: 'SONIA', via: 'BoE IADB' }); if (!w.error) out.overnight++; } catch (e) { out.failed.push(`SONIA: ${e.message}`); }
   try { const m = await _fetchDtsTga('2005-01-01'); const w = await _archive.mergeSeries('treasury', 'TGA_DTS', [...m].map(([date, value]) => ({ date, value })), { unit: '$bn', via: 'Daily Treasury Statement' }); if (!w.error) out.overnight++; } catch (e) { out.failed.push(`TGA: ${e.message}`); }
+  // G10 yields, NY Fed money markets, OFR repo, Treasury auctions, 15-min MOVE / DXY / rates (js/macroCapture.js, plans/DATA_CAPTURE_G10.md)
+  try { out.macro = await _archiveMacro(_archive, { fetchBoe: _fetchBoeSeries, getJSON: _r2GetJSON }); } catch (e) { out.failed.push(`macro capture: ${e.message}`); }
   // The desk's own forecast and session records (the data behind the proven range results; KV is the only copy).
   for (const [prefix, source] of [['vol_forecast_', 'vol_forecast'], ['vol_session_', 'vol_session']]) {
     try {
