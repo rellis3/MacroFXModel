@@ -91,3 +91,9 @@ the first touch. The lockbox.
     hundreds from costs alone.
   - Break-even triggers only from the bar after the touch.
   - The placebo recomputes the rolling stops for the chosen window only (the other windows are not needed for it).
+
+## RESULTS
+
+`analysis/output/gold-rolling-mae-window/RESULTS.md`: W CONTEXT (1-6 months about equal; the IS choice, 3 months, ranks
+2/10 OOS; σ-scaled 6-12 months best at about 25% pooled miss); T NULL (OOS −0.089R [−0.152, −0.041], placebo −0.095;
+all 80 arms negative).

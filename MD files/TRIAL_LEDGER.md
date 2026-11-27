@@ -10,15 +10,15 @@ Generated 2026-11-27.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **638** |
+| claims tested (validated + null + underpowered) | **639** |
 | validated | 200 |
-| null | 254 |
+| null | 255 |
 | underpowered | 184 |
-| context (base rates, descriptions: not counted as tests) | 85 |
+| context (base rates, descriptions: not counted as tests) | 86 |
 | pre-registrations with no banked verdict (below) | 91 |
 
-**What the count says (Lesson 02 §05).** If none of the 638 claims were real, tests at the usual 5% size would still pass
-about **31.9** of them by luck. 200 passed, so most passes are unlikely to be luck alone, but
+**What the count says (Lesson 02 §05).** If none of the 639 claims were real, tests at the usual 5% size would still pass
+about **32** of them by luck. 200 passed, so most passes are unlikely to be luck alone, but
 **roughly 32 of the 200 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
@@ -750,6 +750,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-27 | gold-band-fade-stop | volatility | null | forge/GOLD_BAND_FADE_STOP_PREREG.md |
 | 2026-11-27 | gold-line-target-stop | volatility | underpowered | forge/GOLD_LINE_TARGET_STOP_PREREG.md |
 | 2026-11-27 | gold-line-target-stop-wide | volatility | null | forge/GOLD_LINE_TARGET_STOP_PREREG.md |
+| 2026-11-27 | gold-rolling-mae-trade | volatility | null | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |
+| 2026-11-27 | gold-rolling-mae-window | volatility | context | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
