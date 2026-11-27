@@ -65,3 +65,7 @@ test('ttl table, as-of and stale rules', () => {
   assert.equal(staleOf({ fetched_at: '2026-11-25T11:00:00Z' }, '/api/vol-forecast/live', now), true);
   assert.equal(staleOf({ to: '2026-11-24' }, '/api/drill-series', now), false, 'daily bundles get four days');
 });
+test('opts.timeoutMs lengthens one call and is not passed to fetch', async () => {
+  let seen = null; const h = createHelixFetch(async (u, o) => { seen = o; return reply({ ok: true }); }, { timeoutMs: 10 });
+  await h.jf('/api/helix/bundle', { timeoutMs: 40_000 }); assert.equal('timeoutMs' in seen, false); assert.ok(seen.signal);
+});

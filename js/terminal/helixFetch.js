@@ -10,9 +10,9 @@
 export const ROUTE_TTL = [
   [/^\/api\/(vol-forecast\/live|market-live|live-layer)$/, 30_000],
   [/^\/api\/(services|jarvis\/watch)$/, 20_000],
-  [/^\/api\/(bias-engine|bias-engine-v2\/intraday|desk-news|events|calendar-events|calendar-feed)$/, 120_000],
+  [/^\/api\/(bias-engine|desk-news|events|calendar-events|calendar-feed|helix\/bundle)$/, 120_000],
   [/^\/api\/(desk-run|cog-chart\/candles|ohlc|vol-forecast\/session|vol-forecast|daily-brief|jarvis\/morning|asia-today)$/, 300_000],
-  [/^\/api\/(oi-store|oi-history|oi-history-raw|corr-terminal|ohlc-range|vol-terrain|drill-series|wider-market|g10-rates|funding-board|helix\/bundle)$/, 600_000],
+  [/^\/api\/(oi-store|oi-history|oi-history-raw|corr-terminal|ohlc-range|vol-terrain|drill-series|wider-market|g10-rates|funding-board)$/, 600_000],
   [/^\/api\/(chapters|intl-yields|fredhistory|cot-state|desk-cot-history|newsletter\/archive)$/, 1_800_000],
 ];
 export const DEFAULT_TTL = 60_000, TIMEOUT_MS = 15_000, MAX_ENTRIES = 120;
@@ -50,9 +50,10 @@ export function createHelixFetch(fetchImpl, { timeoutMs = TIMEOUT_MS, maxEntries
   const put = (u, data) => { cache.delete(u); cache.set(u, { at: now(), data, asOf: asOfOf(data) }); while (cache.size > maxEntries) cache.delete(cache.keys().next().value); };
   const isGet = o => !o || ((!o.method || String(o.method).toUpperCase() === 'GET') && o.body == null);
 
-  async function raw(u, o = {}) {
+  async function raw(u, o0 = {}) {
+    const { timeoutMs: tms = timeoutMs, ...o } = o0 ?? {};          // opts.timeoutMs: a longer limit for one call (the server bundle)
     const ctl = typeof AbortController === 'function' ? new AbortController() : null;
-    const timer = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), tms) : null;
     let signal = ctl?.signal;
     if (o.signal && ctl) { if (o.signal.aborted) ctl.abort(); else o.signal.addEventListener?.('abort', () => ctl.abort(), { once: true }); }
     try {
@@ -63,7 +64,7 @@ export function createHelixFetch(fetchImpl, { timeoutMs = TIMEOUT_MS, maxEntries
       if (parseErr) { const e = new Error(`not JSON: ${parseErr.message}`); e.status = r.status; throw e; }
       return body;
     } catch (e) {
-      if (e?.name === 'AbortError' && !o.signal?.aborted) { const t = new Error(`timed out after ${Math.round(timeoutMs / 1000)} s: ${pathOf(u)}`); t.timeout = true; throw t; }
+      if (e?.name === 'AbortError' && !o.signal?.aborted) { const t = new Error(`timed out after ${Math.round(tms / 1000)} s: ${pathOf(u)}`); t.timeout = true; throw t; }
       throw e;
     } finally { if (timer) clearTimeout(timer); }
   }
