@@ -15,6 +15,18 @@
  * priced inside 30 minutes and does not predict the next-day dollar.
  */
 
+/**
+ * The stance WORD for a tone score (-1 dovish .. +1 hawkish): one threshold rule for every bank and every panel. The statement reader's own word
+ * (`aiRegime`) is kept beside it but no longer drawn, because it did not follow the score (2026-11-27: SNB "HAWKISH" at +0.30 while the Fed was
+ * "MIXED" at +0.35). The threshold is the bias engine's (js/biasEngine.js TH.stance = 0.5; cbBoard.test.mjs checks they match), so the chip and the
+ * engine's "stance hawkish / neutral / dovish" always agree.
+ */
+export const STANCE_TH = 0.5;
+export function stanceOf(score) {
+  if (!fin(score)) return null;
+  return score >= STANCE_TH ? 'HAWKISH' : score <= -STANCE_TH ? 'DOVISH' : 'NEUTRAL';
+}
+
 /** The nine tiles, in display order. `prefix` is the KV key stem of the statement analysis (key = prefix + meeting date). */
 export const CB_BANKS = [
   { id: 'fomc', ccy: 'USD', bank: 'Fed', name: 'Federal Reserve', prefix: 'fomc_analysis_statement_', page: 'fomc-sentiment.html', doc: 'FOMC statement' },
@@ -147,7 +159,7 @@ export function readOf(date, payload, now) {
   const clip = (s, n) => (typeof s === 'string' && s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : (typeof s === 'string' ? s : null));
   return {
     date, kind: payload.kind ?? null,
-    score: r2(a.hawkishScore), regime: a.regime ?? null, confidence: a.confidence ?? null,
+    score: r2(a.hawkishScore), regime: stanceOf(a.hawkishScore), aiRegime: a.regime ?? null, confidence: a.confidence ?? null,
     headline: clip(a.headline, 220), whatChanged: clip(a.whatChanged, 260), voteNote: clip(a.voteNote, 200),
     vote: voteText(payload.vote ?? a.vote),
     dims: dimsOf(a), dimsRaw: dimsRaw(a),

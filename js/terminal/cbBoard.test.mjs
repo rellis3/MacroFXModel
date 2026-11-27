@@ -2,7 +2,8 @@
 // HTML (js/terminal/cbBoardView.js).   node --test js/terminal/cbBoard.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CB_BANKS, pastDates, nextMeeting, voteText, dimsOf, readOf, shapeBank, rankBanks, boardPayload } from './cbBoardCore.js';
+import { CB_BANKS, pastDates, nextMeeting, voteText, dimsOf, readOf, shapeBank, rankBanks, boardPayload, stanceOf, STANCE_TH } from './cbBoardCore.js';
+import { TH as BE_TH } from '../biasEngine.js';
 import { boardHtml, tileHtml, rankHtml, toneBar, spark, changeHtml, dimsHtml, dshort } from './cbBoardView.js';
 globalThis.deskAccessState = { role: 'owner' };   // the owner sees the links to the main site (js/terminal/links.test.mjs covers the viewer)
 
@@ -163,4 +164,12 @@ test('the small parts', () => {
   assert.match(changeHtml({ delta: 0.02, from: '2026-09-16', fromScore: 0.3 }), /unchanged vs 16 Sep/);
   assert.match(changeHtml({ delta: -0.3, from: '2026-09-16', fromScore: 0.3 }), /▼ -0\.30/); assert.equal(changeHtml(null), '');
   assert.equal(dimsHtml(null), ''); assert.match(dimsHtml([{ label: 'Growth', v: 0.5 }]), /width:50%/);
+});
+
+test('stance word: one threshold for every bank, the bias engine\'s own', () => {
+  assert.equal(STANCE_TH, BE_TH.stance, 'the chip and the engine read the same threshold');
+  assert.equal(stanceOf(0.30), 'NEUTRAL'); assert.equal(stanceOf(0.35), 'NEUTRAL'); assert.equal(stanceOf(0.55), 'HAWKISH'); assert.equal(stanceOf(-0.5), 'DOVISH'); assert.equal(stanceOf(null), null);
+  // the reader's own word is kept beside, never drawn: an SNB read at +0.30 the reader called HAWKISH is NEUTRAL on screen
+  const r = readOf('2026-09-24', { analysis: { hawkishScore: 0.3, regime: 'HAWKISH' } }, NOW);
+  assert.equal(r.regime, 'NEUTRAL'); assert.equal(r.aiRegime, 'HAWKISH');
 });

@@ -12,6 +12,7 @@
  */
 import { ownerLink } from './links.js';
 import * as TT from './toneTimelineView.js';
+import { stanceOf } from './cbBoardCore.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fin = v => v != null && v !== '' && Number.isFinite(+v);
 const sg = (v, dp = 2) => (fin(v) ? `${+v > 0 ? '+' : ''}${(+v).toFixed(dp)}` : '–');
@@ -21,6 +22,8 @@ export const dshort = d => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d 
 
 const REGIME = r => (/HAWK/i.test(r ?? '') ? 'gold' : /DOV/i.test(r ?? '') ? 'pur' : '');
 const regimeWord = r => String(r ?? '').toLowerCase();
+// the word drawn is the one threshold rule on the score (cbBoardCore stanceOf), whatever word an older server payload carries
+const stance = x => stanceOf(x?.score) ?? x?.regime ?? null;
 
 /** Tone on its own scale: -1 dovish to +1 hawkish, a diverging bar from the centre line (gold right, purple left). */
 export function toneBar(score) {
@@ -67,13 +70,13 @@ export function tileHtml(b, beige = null) {
 <p class="muted" style="margin:0">${b.blocked ? `The statement and the record of the meeting are blocked by the ${esc(b.bank)}'s firewall (403), so there is no tone score for this meeting. Nothing is estimated in its place.` : 'The statement and record of the meeting have not been captured, so there is no tone score for this meeting.'}</p>${TT.stripHtml(b)}${foot}</div>`;
   }
   if (b.status === 'no_read' || !b.read) {
-    const old = b.read ? `<p class="muted" style="margin:6px 0 0">Last read: ${esc(dshort(b.read.date))}, tone <b class="mono">${esc(sg(b.read.score))}</b> ${b.read.regime ? `(${esc(regimeWord(b.read.regime))})` : ''} · <b>older than the latest meeting</b>, not ranked.</p>` : '';
+    const old = b.read ? `<p class="muted" style="margin:6px 0 0">Last read: ${esc(dshort(b.read.date))}, tone <b class="mono">${esc(sg(b.read.score))}</b> ${stance(b.read) ? `(${esc(regimeWord(stance(b.read)))})` : ''} · <b>older than the latest meeting</b>, not ranked.</p>` : '';
     return `<div class="card" data-cb="${esc(b.id)}">${head(`<span class="chip">no read</span>`)}
 <p style="margin:0">${b.unreadMeeting ? `No read yet for the ${esc(dshort(b.unreadMeeting))} ${b.id === 'beige' ? 'release' : 'meeting'}.` : 'No statement has been read yet.'}</p>${old}${TT.stripHtml(b)}${foot}</div>`;
   }
   const r = b.read;
   const stale = r.ageDays != null && r.ageDays > 120;
-  return `<div class="card" data-cb="${esc(b.id)}">${head(`${r.regime ? `<span class="chip ${REGIME(r.regime)}">${esc(regimeWord(r.regime))}</span>` : ''}<span class="chip" title="the meeting this read is from">${esc(dshort(r.date))}</span>${stale ? '<span class="chip gold" title="over four months old">old</span>' : ''}`)}
+  return `<div class="card" data-cb="${esc(b.id)}">${head(`${stance(r) ? `<span class="chip ${REGIME(stance(r))}" title="tone ${esc(sg(r.score))}: hawkish from +0.50, dovish from -0.50, neutral between (the bias engine's rule)">${esc(regimeWord(stance(r)))}</span>` : ''}<span class="chip" title="the meeting this read is from">${esc(dshort(r.date))}</span>${stale ? '<span class="chip gold" title="over four months old">old</span>' : ''}`)}
 <div class="score"><b>${esc(sg(r.score))}</b><small>tone, ${b.id === 'beige' ? 'Beige Book' : 'last statement'} · ${changeHtml(b.change) || 'no earlier read to compare'}</small></div>
 <div style="margin:6px 0 2px">${toneBar(r.score)}</div>
 ${r.headline ? `<p style="margin:8px 0 0;font-size:13px">${esc(r.headline)}</p>` : ''}
@@ -91,7 +94,7 @@ export function rankHtml(d, cbx) {
   if (!rk.length) return '';
   return `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Hawkish to dovish</span><span class="r muted">banks with a read for their latest meeting · tone -1 dovish to +1 hawkish</span></div>
 <div class="scroll"><table><thead><tr><th>Bank</th><th class="n">Tone</th><th class="n">Change</th><th>Latest statement</th>${cbx ? '<th class="n">Priced, ~6 months</th>' : ''}</tr></thead><tbody>${rk.map(x => { const p = pricedOf(cbx, x.ccy);
-    return `<tr><td><b>${esc(x.bank)}</b> <span class="muted">${esc(x.ccy)}</span></td><td class="n"><span class="${REGIME(x.regime)}" style="color:var(${/DOV/i.test(x.regime ?? '') ? '--pur2' : /HAWK/i.test(x.regime ?? '') ? '--gold' : '--tx2'})">${esc(sg(x.score))}</span></td><td class="n">${fin(x.delta) ? `<span style="color:var(${x.delta > 0.049 ? '--gold' : x.delta < -0.049 ? '--pur2' : '--tx3'})">${Math.abs(x.delta) < 0.05 ? '·' : x.delta > 0 ? '▲' : '▼'} ${esc(sg(x.delta))}</span>` : '<span class="muted">–</span>'}</td><td class="muted">${esc(dshort(x.date))}</td>${cbx ? `<td class="n ${p == null ? 'muted' : p > 0 ? 'up' : p < 0 ? 'dn' : ''}">${p == null ? '–' : `${p > 0 ? '+' : ''}${Math.round(p)}bp`}</td>` : ''}</tr>`; }).join('')}</tbody></table></div>
+    return `<tr><td><b>${esc(x.bank)}</b> <span class="muted">${esc(x.ccy)}</span></td><td class="n"><span class="${REGIME(stance(x))}" style="color:var(${/DOV/i.test(stance(x) ?? '') ? '--pur2' : /HAWK/i.test(stance(x) ?? '') ? '--gold' : '--tx2'})">${esc(sg(x.score))}</span></td><td class="n">${fin(x.delta) ? `<span style="color:var(${x.delta > 0.049 ? '--gold' : x.delta < -0.049 ? '--pur2' : '--tx3'})">${Math.abs(x.delta) < 0.05 ? '·' : x.delta > 0 ? '▲' : '▼'} ${esc(sg(x.delta))}</span>` : '<span class="muted">–</span>'}</td><td class="muted">${esc(dshort(x.date))}</td>${cbx ? `<td class="n ${p == null ? 'muted' : p > 0 ? 'up' : p < 0 ? 'dn' : ''}">${p == null ? '–' : `${p > 0 ? '+' : ''}${Math.round(p)}bp`}</td>` : ''}</tr>`; }).join('')}</tbody></table></div>
 <p class="muted" style="font-size:12px">Tone and the futures-priced path are different questions: one is how hawkish the last statement read, the other is what the market expects the bank to do next. ${cbx ? 'Green = hikes priced, red = cuts.' : ''}</p></div>`;
 }
 

@@ -94,7 +94,7 @@ test('the RBNZ behind its firewall: the tone is frozen, with the date it froze a
   const b = shapeBank(META('rbnz'), { meetings: MEET, reads: { '2026-04-29': payload(0.31, 'MIXED') }, now: NOW, headline: { date: '2026-10-28', title: 'OCR held at 2.75%', rate: 2.75 }, blocked: true });
   assert.equal(b.status, 'headline_only');
   const html = TT.frozenHtml(b);
-  assert.match(html, /Tone frozen at the last captured statement \(29 Apr, \+0\.31, mixed\)/);
+  assert.match(html, /Tone frozen at the last captured statement \(29 Apr, \+0\.31, neutral\)/);
   assert.match(html, /firewall/);
   assert.match(tileHtml(b), /Tone frozen/, 'the tile says so');
   assert.equal(TT.frozenHtml({ status: 'read' }), '');

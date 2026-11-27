@@ -11,6 +11,7 @@
  *                            on ONE bp scale across the windows, so the three rows compare.
  */
 import { pricedRateOn, liquidPrefix } from '../fedPathYieldsCore.js';
+import { thinFlags } from '../fedPathZq.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const f = v => (Math.round(v * 10) / 10).toString();
@@ -37,7 +38,7 @@ const DEFS = `<defs><filter id="fpy-glow" x="-20%" y="-40%" width="140%" height=
 
 /** 1. The priced path as a ribbon. res = fedPathYields(...); zq = the strip ({asOf, meetings, weekAgo, ago}). */
 export function pathRibbonSvg(res, zq, { maxMeetings = 6 } = {}) {
-  const now = (zq?.meetings ?? []).filter(m => m && fin(m.rAfter) && fin(m.rBefore) && m.meeting >= String(zq.asOf).slice(0, 10)).slice(0, maxMeetings);
+  const now = thinFlags((zq?.meetings ?? []).filter(m => m && fin(m.rAfter) && fin(m.rBefore) && m.meeting >= String(zq.asOf).slice(0, 10))).slice(0, maxMeetings);
   if (now.length < 2) return '';
   const asOf = String(zq.asOf).slice(0, 10), liquidDates = new Set(liquidPrefix(now).map(m => m.meeting));
   const W = 560, H = 230, L = 44, R = 22, T = 26, B = 38;
@@ -49,7 +50,9 @@ export function pathRibbonSvg(res, zq, { maxMeetings = 6 } = {}) {
     if (s?.meetings?.length) series.push({ id: `w${w.win}`, strip: s, label: `${w.label} ago`, win: w.win, asOf: String(s.asOf).slice(5, 10) });
   }
   const val = (s, i) => (i === 0 ? pricedRateOn(s.strip, asOf, new Set(now.map(m => m.meeting))) : (s.strip.meetings ?? []).find(m => m.meeting === now[i - 1].meeting)?.rAfter);
-  const lines = series.map(s => ({ ...s, v: Array.from({ length: now.length + 1 }, (_, i) => val(s, i)) })).filter(s => s.v.every(fin));
+  // past the first thin contract every line is HELD FLAT at its last liquid rate, as the note under the chart says (it used to keep rising there)
+  const nCut = Math.min(now.length, liquidPrefix(now).length);
+  const lines = series.map(s => ({ ...s, v: Array.from({ length: now.length + 1 }, (_, i) => val(s, Math.min(i, nCut))) })).filter(s => s.v.every(fin));
   if (!lines.length || lines[0].id !== 'now') return '';
   const all = lines.flatMap(s => s.v);
   let lo = Math.min(...all), hi = Math.max(...all); if (hi - lo < 0.2) { const c = (hi + lo) / 2; lo = c - 0.1; hi = c + 0.1; }
