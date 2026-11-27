@@ -225,7 +225,7 @@ export const SEGMENTS = [
   { id: 'tone', name: 'Market Tone', wide: true, keep: 2, segue: '', tiers: [['tone', 'wire'], ['wire']] },
   { id: 'deskview', name: "The Desk's View", wide: true, morning: true, segue: '', tiers: [['deskview']] },
   { id: 'bias', name: 'The Bias', wide: true, morning: true, segue: '', tiers: [['biasboard']] },
-  { id: 'biasday', name: 'The Bias, Scored', wide: true, evening: true, segue: '', tiers: [['biasday']] },
+  { id: 'biasday', name: 'The Bias Against the Day', wide: true, evening: true, segue: '', tiers: [['biasday']] },
   { id: 'curve', name: 'The Curve', wide: true, segue: '', tiers: [['curve']] },
   { id: 'stress', name: 'Stress & Positioning', wide: true, keep: 2, segue: '', tiers: [['stress', 'skew'], ['skew']] },
   { id: 'cross', name: 'Cross-Asset', wide: true, words: 75, segue: '', tiers: [['net']] },

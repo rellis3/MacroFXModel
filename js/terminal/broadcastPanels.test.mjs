@@ -40,9 +40,11 @@ test('the bias: only markets with a lean, strongest first, said as the engine\'s
   const c = biasCalls(bev2);
   assert.deepEqual(c.map(x => [x.key, x.dir, x.driver]), [['USDCAD', 'up', ''], ['GOLD', 'dn', 'Real yield']]);
   const t = biasText(c);
-  assert.match(t, /^The bias engine\. The desk run is not in yet, so this is the engine's lean, not a forecast we stand behind: it is unproven, and it is scored every night\./);
-  assert.match(biasText(c, null, 'desk'), /^The desk's calls\. These come from this morning's desk run: untested, and scored every night\. Short: gold\. Long: Dollar Loonie\. Two markets have a call; the rest are flat\.$/);
-  assert.match(t, /leans lower on gold\./); assert.match(t, /Two markets have a lean; the rest are neutral\.$/);
+  assert.match(t, /^The bias engine\. The desk run is not in yet, so this is the engine's reading, and the engine is unproven\./);
+  assert.equal(biasText(c, null, 'desk'), "The desk's reading, from this morning's desk run, which is untested. The desk run's reading is negative on gold; positive on Dollar Loonie. A reading, not a call. Two markets have a reading; the rest are neutral.");
+  assert.match(t, /The bias engine's reading is negative on gold; positive on Dollar Loonie\. A reading, not a call\./); assert.match(t, /Two markets have a reading; the rest are neutral\.$/);
+  // Helix review 0.1: never long/short words, never "favours", never the nightly scoring line in a public script
+  for (const x of [t, biasText(c, null, 'desk')]) assert.doesNotMatch(x, /(short|long|favou?rs?|scored)/i);
   assert.equal(biasText([]), '');
 });
 
@@ -54,7 +56,8 @@ test("the desk: today's run only; its calls with the owner's markets first; its 
   assert.equal(deskToday(dr, Date.parse('2026-11-26T08:00:00Z')), null, "yesterday's run is not today's");
   assert.ok(deskToday(dr, Date.parse('2026-11-25T08:00:00Z')));
   assert.deepEqual(deskCalls(dr).map(c => [c.key, c.dir, c.why]), [['GOLD', 'dn', 'Real yields up, dollar bid.'], ['EURGBP', 'up', 'x']]);
-  assert.equal(deskViewText(dr), "The desk's view, from this morning's desk run. Risk-off with the dollar as the only haven. On currencies it favours the dollar, against the euro. That is the desk run, untested, not advice.");
+  assert.equal(deskViewText(dr), "The desk's view, from this morning's desk run. Risk-off with the dollar as the only haven. On currencies its reading is positive on the dollar; negative on the euro. That is the desk run, untested: a reading, not a call.");
+  assert.doesNotMatch(deskViewText(dr), /favou?rs|(long|short)/i);
   assert.equal(verdictOf('dn', { open: 100, last: 98, moveU: -1 }), 'with'); assert.equal(verdictOf('up', { open: 100, last: 98, moveU: -1 }), 'against'); assert.equal(verdictOf('up', { open: 100, last: 100.1, moveU: 0.1 }), 'flat');
 });
 
