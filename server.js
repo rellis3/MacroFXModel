@@ -13,6 +13,7 @@
 // FIRST import on purpose: replaces Intl.DateTimeFormat/NumberFormat and Date/Number toLocale*String with cached versions before any other module runs (native-memory fix, 2026-11-22).
 import './js/intlCache.js';
 import { intlCacheStats } from './js/intlCache.js';
+import { dxySeries as _dxyIceSeries } from './js/dxyIce.js';
 import express              from 'express';
 import zlib from 'node:zlib';
 import path                from 'path';
@@ -22855,7 +22856,9 @@ const _DRILL_OANDA = { gold: 'XAU_USD', oil: 'WTICO_USD', copper: 'XCU_USD', aud
   // move is American or global, and the JPY crosses are the carry trade's own tape.
   r2k: 'US2000_USD', de30: 'DE30_EUR', uk100: 'UK100_GBP', jp225: 'JP225_USD',
   silver: 'XAG_USD', platinum: 'XPT_USD', brent: 'BCO_USD',
-  eurjpy: 'EUR_JPY', audjpy: 'AUD_JPY', nzdusd: 'NZD_USD', eurgbp: 'EUR_GBP', usdchf: 'USD_CHF' };
+  eurjpy: 'EUR_JPY', audjpy: 'AUD_JPY', nzdusd: 'NZD_USD', eurgbp: 'EUR_GBP', usdchf: 'USD_CHF',
+  // USD/SEK (2026-11-27): the sixth DXY leg, so the ICE dollar index can be rebuilt daily beside the weekly Fed index (js/dxyIce.js).
+  usdsek: 'USD_SEK' };
 async function _refreshDrillBundle() {
   try {
     const since = new Date(Date.now() - 6 * 365.25 * 864e5).toISOString().slice(0, 10);
@@ -22890,6 +22893,8 @@ async function _refreshDrillBundle() {
     if (dates.length < 300) throw new Error(`only ${dates.length} dates`);
     const series = {};
     for (const [k, m] of Object.entries(raw)) series[k] = dates.map(d => { const v = m.get(d); return v == null ? null : +v.toFixed(4); });
+    // ICE DXY from its six OANDA legs, side by side with the Fed broad dollar (dxy). Prints only on days all six printed.
+    series.dxyIce = _dxyIceSeries(series, dates.length);
     // A transient upstream failure (OANDA 504s happen in bursts) must not silently
     // DELETE a market from the board -- the caller cannot tell "quiet" from "gone".
     // Carry the previous bundle's series forward and say so.
