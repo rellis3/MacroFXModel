@@ -121,6 +121,13 @@ class RollRules(unittest.TestCase):
         for (k, y, m), s in ib.items():
             self.assertEqual(K.last_trade(k, y, m), K._ltd_date(s), f'{k} {y}-{m}')
 
+    def test_front_month(self):
+        self.assertEqual(K.front_month('NQ', D(2026, 12, 9)), '202612')
+        self.assertEqual(K.front_month('NQ', D(2026, 12, 10)), '202703')
+        self.assertEqual(K.front_month('ZN', D(2026, 11, 27)), '202703')
+        self.assertEqual(K.front_month('GC', D(2026, 11, 27)), '202702')
+        self.assertEqual(K.front_month('SR3', D(2026, 11, 27)), '202609')
+
     def test_business_days(self):
         self.assertFalse(K.is_bday(D(2026, 11, 26), 'US'))       # Thanksgiving
         self.assertTrue(K.is_bday(D(2026, 11, 26), 'EU'))

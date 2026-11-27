@@ -568,6 +568,19 @@ def pull_set(root, live, today, full=False, window=ROLL_WINDOW_BD):
     return keep
 
 
+def front_month(root, day):
+    """'YYYYMM' of the contract a ROLLED root's front (ROOT1) is on, on `day`, by the rule-based roll calendar (no IBKR call): NQ on
+    2026-12-09 -> '202612', on 2026-12-10 -> '202703'. For a strip: the nearest cycle contract still trading."""
+    r = ROOTS[root] if isinstance(root, str) else root
+    y, m = _add_months(day.year, day.month, -6)      # a 3-month strip trades until after its quarter: start the scan before it
+    for _ in range(42):
+        if not r.cycle or CODES[m - 1] in r.cycle:
+            if (roll_date(r, y, m) or last_trade(r, y, m)) > day:
+                return f'{y}{m:02d}'
+        y, m = _add_months(y, m, 1)
+    raise ValueError(f'{r.key}: no front within 3 years of {day}')
+
+
 def job_roots(tier='all', minute=None):
     """Roots the 30-minute job pulls: 'core' = the ones pulled before 2026-11-27, 'g10' = the phase-2 additions, 'all' = both,
     'auto' = core on every run and the G10 roots on the run in the first half of each hour (the 30-minute job then pulls them hourly,
