@@ -13,7 +13,7 @@ import { EXTRA, loadModules, viewsOf } from './jarvisModules.js';
 import { SECTIONS, COMPANION, labelOf, itemsFor, activeSection } from './jarvisNav.js';
 import { shortLabel } from './chainBoard.js';
 import { glDisposeAll, glInstance, glBudget } from './jarvisGL.js';
-import { resolveTarget, parseHelixArgs, parseHelixHash, helixHash, collapseStyles, nextStyle, groupOf, STYLE_GROUPS, mergeInbox, sinceSummary, agoText, todayLines, frameBudget, KEYS, sectionForKey, instFor, cyTokenFor, monoFont, allItems } from './helixNav.js';
+import { resolveTarget, parseHelixArgs, parseHelixHash, helixHash, collapseStyles, nextStyle, groupOf, STYLE_GROUPS, mergeInbox, sinceSummary, agoText, todayLines, frameBudget, KEYS, sectionForKey, instFor, cyTokenFor, monoFont, mapFont, allItems } from './helixNav.js';
 import { gateTabAlerts, inQuiet, QUIET } from '../jarvis/jarvisLogic.js';
 import { THEMES } from './themes.js';
 import { GLOBE_HOLO, drawGlobeOverlay } from './jarvisGlobeHolo.js';
@@ -116,7 +116,7 @@ const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-ind
 #${ID}.jv-glon .jv-card,#${ID}.jv-glon .jv-pane,#${ID}.jv-glon .jv-scrub,#${ID}.jv-glon .jv-vpop{backdrop-filter:none;background:color-mix(in srgb,var(--bg1) 94%,transparent)}
 #${ID} .jv-head{position:absolute;left:24px;top:calc(var(--jvtop,62px) + 10px);max-width:min(560px,calc(100vw - 48px));pointer-events:none;z-index:2}#${ID} .jv-head[hidden]{display:none}
 #${ID} .jv-head .h{font-size:32px;line-height:1.1;letter-spacing:.04em;color:var(--tx);text-shadow:0 0 18px color-mix(in srgb,var(--jva) 40%,transparent)}#${ID} .jv-head .s{font-size:12px;color:var(--tx2);margin-top:4px;letter-spacing:.04em}#${ID} .jv-head .a{display:inline-block;margin-top:6px;font-size:10px;letter-spacing:.12em;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--tx2)}
-#${ID}.jv-headon .jv-hud{display:none}
+#${ID}.jv-headon .jv-hud{display:none}#${ID} .jv-head.r{left:auto;right:24px;text-align:right}#${ID}.jv-compact .jv-head.r{right:16px}#${ID}.jv-compact .jv-head.t{display:none}#${ID} .jv-help td{font-size:12px}
 #${ID} .jv-pane.jv-today{left:max(24px,calc(50% - 470px));right:max(24px,calc(50% - 470px));width:auto;font-size:14px;background:color-mix(in srgb,var(--bg1) 92%,transparent)}
 #${ID} .jv-today h3{font-size:15px;letter-spacing:.3em}#${ID} .jv-tl{display:grid;grid-template-columns:150px 1fr;gap:4px 14px;align-items:baseline;width:100%;text-align:left;border-radius:10px;margin:3px 0;padding:9px 12px;font-size:13px;line-height:1.45}#${ID} .jv-tl b{font-weight:400;letter-spacing:.18em;font-size:11px;color:var(--jva)}#${ID} .jv-tl.warn b{color:var(--gold)}#${ID} .jv-tl span{color:var(--tx);overflow-wrap:anywhere}
 #${ID} .jv-since{margin:10px 0 2px;font-size:11px;letter-spacing:.16em;color:var(--tx2)}
@@ -125,7 +125,7 @@ const CSS = `#${ID}{--jva:var(--blue2);--jvtop:62px;position:fixed;inset:0;z-ind
 #${ID} .jv-help{top:10%;max-height:78vh;overflow:auto}#${ID} .jv-help td:first-child{color:var(--jva);white-space:nowrap;padding-right:14px;text-align:left}#${ID} .jv-help td:last-child{text-align:left}
 #${ID} .jv-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #${ID} .jv-asof{position:absolute;left:24px;bottom:30px;z-index:3;display:flex;gap:6px;align-items:center;font-size:10px;letter-spacing:.1em;color:var(--tx2)}#${ID} .jv-asof[hidden]{display:none}#${ID} .jv-asof.on b{color:var(--gold)}
-#${ID} .jv-card.jv-card-l{right:auto;left:24px}
+#${ID} .jv-card.jv-card-l{right:auto;left:24px}#${ID} .jv-qbtn{display:none}#${ID}.jv-compact .jv-qbtn{display:inline-flex;padding:4px 10px}
 #${ID} canvas:focus-visible{outline:1px dashed var(--jva);outline-offset:-4px}
 #${ID} .jv-top{padding-top:max(16px,env(safe-area-inset-top));padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
 #${ID}.jv-compact .jv-top{padding:max(10px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left))}
@@ -146,7 +146,7 @@ export async function openJarvis(win = window, opts = {}) {
   const budget = frameBudget({ maxDpr: Math.min(2, win.devicePixelRatio || 1) }); // the frame governor: DPR 1 when frames run slow, 30 fps when idle or calm
   const root = doc.createElement('div'); root.id = ID; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', 'H.E.L.I.X.: the macro chain'); root.dataset.srOff = '1';      // stableRender leaves the HUD alone (a held height left stale cards)
   root.innerHTML = `<style>${CSS}</style><canvas id="${ID}-cv" tabindex="0" aria-label="The picture: Tab steps through its markets, Enter opens one"></canvas><div class="jv-bs" id="${ID}-bs"><div class="jv-bs-t"><canvas class="jv-helix" id="${ID}-hx" aria-hidden="true"></canvas><h1 id="${ID}-bst">H.E.L.I.X.</h1><div class="jv-bs-sub blink" id="${ID}-bss">&nbsp;</div></div><div class="jv-bs-b"><div class="jv-bs-log" id="${ID}-bslog"></div><div class="jv-bar"><i id="${ID}-bsbar"></i></div></div></div><div class="jv-scan"></div><div class="jv-vig"></div><i class="jv-br tl"></i><i class="jv-br tr"></i><i class="jv-br bl"></i><i class="jv-br brr"></i>
-<div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">H.E.L.I.X.</span><span class="jv-sub">holistic economic links &amp; intermarket xplorer · description only</span><span class="jv-sp"></span><span class="jv-cur" id="${ID}-cur"></span><button type="button" class="jv-menubtn" id="${ID}-menubtn" aria-expanded="false">☰ MENU</button>
+<div class="jv-top"><span class="jv-title" data-surface="widget.jarvis">H.E.L.I.X.</span><span class="jv-sub">holistic economic links &amp; intermarket xplorer · description only</span><span class="jv-sp"></span><span class="jv-cur" id="${ID}-cur"></span><button type="button" class="jv-qbtn" id="${ID}-qbtn" title="Keys, links and this picture's notes" aria-label="Help">?</button><button type="button" class="jv-menubtn" id="${ID}-menubtn" aria-expanded="false">☰ MENU</button>
 <div class="jv-menu" id="${ID}-menu"><span class="jv-mh">SECTIONS</span><div class="jv-nav" id="${ID}-nav"></div><span class="jv-mh">TIME WINDOW</span><span id="${ID}-win"></span><span class="jv-mh">OPTIONS</span><span id="${ID}-opts">
 <button type="button" id="${ID}-snd" aria-pressed="${prefs.sound !== false}" title="Sound effects">SOUND</button><button type="button" id="${ID}-vbtn" aria-expanded="false" title="Voice settings">VOICE ▾</button><button type="button" id="${ID}-nms" aria-pressed="${getNameStyle() === 'names'}" title="Show market names or codes">${getNameStyle() === 'names' ? 'NAMES' : 'CODES'}</button><button type="button" id="${ID}-wake" aria-pressed="false" title='Say "Helix, ..." (microphone, this tab only)'>HEY HELIX</button><button type="button" id="${ID}-dockb" title="Esc: drop to a slim strip over the dashboard; Helix keeps watching">DOCK ▾</button><button type="button" id="${ID}-pop" title="P: pop Helix out to a second window">⧉ POP OUT</button><button type="button" id="${ID}-help" title="?: keys and help">?</button><button type="button" id="${ID}-off" title="Switch Helix off">OFF ✕</button></span><span id="${ID}-mods" hidden></span><span id="${ID}-view" hidden></span></div></div>
 <div class="jv-vpop" id="${ID}-vpop" hidden><div class="jv-vh">VOICE</div><label><span>SPEAK THE PROGRAMMES</span><button type="button" id="${ID}-vsp" aria-pressed="${speakPref(prefs)}" title="On: the briefing and the show are read aloud. Off: subtitles at reading speed">${speakPref(prefs) ? 'ON' : 'OFF'}</button></label><label><span>NATURAL VOICE</span><button type="button" id="${ID}-nv" aria-pressed="${prefs.neural !== false}" title="Off = the browser's built-in voice">${prefs.neural !== false ? 'ON' : 'OFF'}</button></label><label><span>ENGINE</span><select id="${ID}-veng">${ENGINES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label><label id="${ID}-vkvl"><span>KOKORO VOICE</span><select id="${ID}-vkv">${KOKORO_VOICES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label><label><span>FINISH</span><select id="${ID}-vfx">${FX_LEVELS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select></label><div class="jv-vnote" id="${ID}-vnote"></div><button type="button" id="${ID}-vtest">▶ TEST</button></div><div class="jv-cap" id="${ID}-cap" hidden><div class="t" id="${ID}-capt"></div><div class="x" id="${ID}-capx"></div></div><button type="button" class="jv-cinexit" id="${ID}-stop">■ END SHOW  ·  Esc</button><div class="jv-cine" id="${ID}-cine"><button type="button" data-c="prev" title="Back one scene (left arrow)">⏮ BACK</button><button type="button" data-c="pause" id="${ID}-cpause" title="Pause or resume (space)">⏸ PAUSE</button><button type="button" data-c="next" title="Skip this scene (right arrow)">SKIP ⏭</button><button type="button" data-c="slow" title="Slower (minus)">−</button><span id="${ID}-crate">1.0×</span><button type="button" data-c="fast" title="Faster (plus)">+</button><button type="button" data-c="more" class="jv-cmore" title="More controls" aria-expanded="false">⋯</button></div><div class="jv-reg" id="${ID}-reg"></div><div class="jv-hud" id="${ID}-hud"></div><div class="jv-pane" id="${ID}-pane" hidden></div><div class="jv-boot" id="${ID}-boot"></div><div class="jv-card" id="${ID}-card" hidden></div><div class="jv-head" id="${ID}-head" hidden></div><div class="jv-live" id="${ID}-live" aria-live="polite"></div><div class="jv-asof" id="${ID}-asof" hidden></div><div class="jv-goto" id="${ID}-goto" role="dialog" aria-label="Go to" hidden><input id="${ID}-gq" type="text" list="${ID}-gl" autocomplete="off" spellcheck="false" placeholder="Go to: yields, board, gamma pillar, alerts, today…" aria-label="Go to a picture or panel"><datalist id="${ID}-gl"></datalist><div class="m" id="${ID}-gm">Enter opens it · Esc closes</div></div><div class="jv-help" id="${ID}-hlp" role="dialog" aria-label="Keys" hidden></div>
@@ -472,7 +472,7 @@ export async function openJarvis(win = window, opts = {}) {
       };
       p.onclick = e => { const b = e.target.closest('button[data-tk]'); if (b) goTarget({ kind: b.dataset.tk, id: b.dataset.ti }); };
       paint(todayBase(), st.sinceRes ?? null);
-      const inp = await todayLoad(); paint(inp, st.sinceRes ?? null);
+      const inp = await todayLoad(() => paint(todayBase(), st.sinceRes ?? null)); paint(inp, st.sinceRes ?? null);
     },
     async system() {
       const p = $('pane'); p.innerHTML = '<h3>SYSTEM</h3><p>Reading the server…</p>';
@@ -500,6 +500,7 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
     const el = $('head'); if (!h || !h.hero) { if (!el.hidden) { el.hidden = true; root.classList.remove('jv-headon'); } st.headKey = ''; return; }
     const key = `${h.hero}|${h.sub ?? ''}|${h.asOf ?? ''}`; if (key === st.headKey) return; const was = st.headKey.split('|')[0]; st.headKey = key;
     el.innerHTML = `<div class="h">${esc(h.hero)}</div>${h.sub ? `<div class="s">${esc(h.sub)}</div>` : ''}${h.asOf ? `<div class="a">AS OF ${esc(h.asOf)}</div>` : ''}`; el.hidden = false; root.classList.add('jv-headon');
+    el.classList.toggle('t', st.mod === 'today'); el.classList.toggle('r', st.mod !== 'today');      // a picture's headline sits top right, clear of its plot; TODAY's sits beside its page (hidden on a phone, where the page has the title)
     if (was !== h.hero) announce(`${h.hero}. ${h.sub ?? ''}`);
   }
   function refreshHead() {
@@ -521,21 +522,17 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
       unusual: (r?.items ?? []).slice(0, 3).map(i => ({ label: i.label, text: i.text })), board: b?.n ? { n: b.n, up: b.up, dn: b.dn, quiet: b.quiet } : null,
       next: st.todayNext ?? null, walls: st.todayWalls ?? null, alerts: alertsToday(), source: st.todaySrc ?? null, asOf: st.todayAsOf ?? null };
   }
-  async function todayLoad() {
-    const ok = p => Promise.resolve().then(p).catch(() => null);
-    const [bun, , day, gm, w, live] = await Promise.all([
-      ok(() => jf('/api/helix/bundle')),                                                         // the data lane's single payload, when the server has it (falls back below when not)
-      ok(() => ensureCandles()),
-      ok(async () => { const m = await import('./jarvisViewDayAhead.js'); return m.loadDay(xapi); }),
-      ok(async () => { const [m, c] = await Promise.all([import('./jarvisViewGamma.js'), import('./jarvisGammaCore.js')]); const store = await m.loadGamma(xapi); const mk = c.marketsWithOI(store ?? {})[0]; if (!mk) return null; const L = c.buildLadder({ ...store[mk.pair], pair: mk.pair }); return L ? { label: mk.label, call: c.fmtPx(L.callWall?.strike ?? L.callWall), put: c.fmtPx(L.putWall?.strike ?? L.putWall), flip: L.flip != null ? c.fmtPx(L.flip) : null, long: L.long } : null; }),
-      ok(() => jf('/api/jarvis/watch')),
-      st.snap ? null : ok(() => loadAt('live')),
+  const useBundle = bun => { if (!(bun && bun.ok !== false && (bun.asOf || bun.blocks))) return; st.todaySrc = 'the Helix bundle'; st.todayAsOf = bun.asOf ? new Date(bun.asOf).toUTCString().slice(5, 22).toUpperCase() + ' UTC' : null; const lead = bun.lead ?? bun.headline?.text ?? bun.blocks?.headline?.data?.text ?? (typeof bun.headline === 'string' ? bun.headline : null); if (lead) st.todayLead = String(lead); };
+  async function todayLoad(part = () => {}) {      // part() repaints as each feed lands, so one slow feed never holds the page back
+    const ok = (p, use) => Promise.resolve().then(p).catch(() => null).then(v => { try { if (v) use(v); } catch (e) { /* one line stays as it was */ } part(); return v; });
+    await Promise.all([
+      ok(() => jf('/api/helix/bundle'), useBundle),                                                         // the data lane's single payload, when the server has it (falls back below when not)
+      ok(() => ensureCandles(), () => {}),
+      ok(async () => { const m = await import('./jarvisViewDayAhead.js'); return m.loadDay(xapi); }, day => { if (day?.events) { const now = Date.now(), nx = day.events.filter(e => e.ms >= now && e.rank >= 3).sort((a, b) => a.ms - b.ms)[0]; st.todayNext = nx ? { time: nx.hm, ccy: nx.ccy, event: nx.short || nx.name } : null; } }),
+      ok(async () => { const [m, c] = await Promise.all([import('./jarvisViewGamma.js'), import('./jarvisGammaCore.js')]); const store = await m.loadGamma(xapi); const mk = c.marketsWithOI(store ?? {})[0]; if (!mk) return null; const L = c.buildLadder({ ...store[mk.pair], pair: mk.pair }); return L ? { label: mk.label, call: c.fmtPx(L.callWall?.strike ?? L.callWall), put: c.fmtPx(L.putWall?.strike ?? L.putWall), flip: L.flip != null ? c.fmtPx(L.flip) : null, long: L.long } : null; }, gm => { st.todayWalls = gm; }),
+      ok(() => jf('/api/jarvis/watch'), w => { if (w?.ok) { st.inboxServer = w; computeSince(); } }),
+      st.snap ? null : ok(() => loadAt('live'), live => { if (live?.graph && !st.snap) { st.snap = watchSnapshot(live.graph, names); st.liveSum = live.sum; computeSince(); } }),
     ]);
-    if (bun && bun.ok !== false && (bun.asOf || bun.blocks)) { st.todaySrc = 'the Helix bundle'; st.todayAsOf = bun.asOf ? new Date(bun.asOf).toUTCString().slice(5, 22).toUpperCase() + ' UTC' : null; const lead = bun.lead ?? bun.headline?.text ?? bun.blocks?.headline?.data?.text ?? (typeof bun.headline === 'string' ? bun.headline : null); if (lead) st.todayLead = String(lead); }
-    if (w?.ok) st.inboxServer = w;
-    if (day?.events) { const now = Date.now(), nx = day.events.filter(e => e.ms >= now && e.rank >= 3).sort((a, b) => a.ms - b.ms)[0]; st.todayNext = nx ? { time: nx.hm, ccy: nx.ccy, event: nx.short || nx.name } : null; }
-    if (gm) st.todayWalls = gm;
-    if (live?.graph && !st.snap) { st.snap = watchSnapshot(live.graph, names); st.liveSum = live.sum; }
     computeSince();
     return todayBase();
   }
@@ -595,7 +592,7 @@ ${sm.procs.length ? `<h3 style="margin-top:12px">WHAT IS RUNNING · ${n(sm.conta
     h.innerHTML = `<h3>KEYS</h3><table>${KEYS.map(([k, d]) => `<tr><td>${esc(k)}</td><td>${esc(d)}</td></tr>`).join('')}</table><h3 style="margin-top:12px">LINKS</h3><p class="jv-sub">#helix/&lt;picture&gt;[/1d|5d|20d][/region] opens Helix on that picture (e.g. #helix/yields, #helix/candles/1d, #helix/globe/europe). The command line takes the same words: HELIX YIELDS, HELIX BOARD 1D.</p><div class="jv-row">${vm ? '<button type="button" data-h="notes">ⓘ NOTES ON THIS PICTURE</button>' : ''}<button type="button" data-h="close">CLOSE · Esc</button></div>`;
     h.hidden = false; h.onclick = e => { const b = e.target.closest('button[data-h]'); if (!b) return; h.hidden = true; if (b.dataset.h === 'notes' && vm) setMod(vm.id); };
   }
-  $('help').onclick = () => toggleHelp(); $('pop').onclick = () => popOut();
+  $('help').onclick = () => toggleHelp(); $('qbtn').onclick = () => toggleHelp(); $('pop').onclick = () => popOut();
   // ── keyboard focus through the picture's items: Tab / Shift+Tab on the canvas steps the markets in reading order, Enter opens the card ──
   function stepFocus(d) {
     const seen = new Set(), list = st.proj.filter(p => typeof p.key === 'string' && !p.key.includes(':') && !seen.has(p.key) && seen.add(p.key)).sort((a, b) => (Math.round(a.sy / 40) - Math.round(b.sy / 40)) || a.sx - b.sx);
