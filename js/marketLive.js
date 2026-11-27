@@ -144,6 +144,16 @@ export function tapeHistory(hist, tape, nowMs) {
   if (!hist.length || hist.at(-1).label !== tape.label) hist.push({ at: nowMs, label: tape.label });
   return hist;
 }
+/**
+ * Since when the current label has held: { since: ms, atLeast }. atLeast is true when the label is the first one the history holds and the
+ * history began well after the day started (the server came up mid-day with no saved history), so the label may be older than that
+ * (review 2026-11-27: "RISK-ON SINCE 18:31" was the restart time). fromMs: when this history began; dayStartMs: 00:00 London.
+ */
+export function tapeSince(hist, fromMs, dayStartMs, graceMs = 15 * 60_000) {
+  if (!hist?.length) return null;
+  const since = hist.at(-1).at;
+  return { since, atLeast: hist.length === 1 && Number.isFinite(fromMs) && Number.isFinite(dayStartMs) && fromMs > dayStartMs + graceMs };
+}
 
 /** The close at or before t on a 5-minute path, or null. */
 export function priceAt(path, t) {

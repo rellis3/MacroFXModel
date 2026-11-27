@@ -91,6 +91,9 @@ test('retailHtml, tapeChip, againstHtml, favsHtml', () => {
   assert.equal(c.cls, 'up');
   assert.match(c.title, /VIX elevated/);
   assert.equal(tapeChip(null).text, 'tape –');
+  const c2 = tapeChip({ label: 'risk-on', score: 0.4, since: '2026-11-27T18:31:00Z', sinceAtLeast: true, legs: {} });
+  assert.equal(c2.text, 'live tape: risk-on since at least 18:31');
+  assert.match(c2.title, /may have held before that/);
   assert.match(againstHtml([{ n: 'GBPJPY', label: 'GBPJPY short', why: ['x'] }], 41), /1 of 41/);
   assert.match(againstHtml([], 41), /not against any of the 41/);
   assert.match(favsHtml([{ n: 'GBPJPY', call: 'SHORT', dir: -1, m: { nowU: 0.9, dayType: 'trend up' }, against: ['x'], next: '' }]), /⚠ against/);

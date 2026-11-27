@@ -1048,10 +1048,10 @@ function strengthStrip() {
 function playbookCard(n, c) {
   const L = c.levels, d = Math.sign(DIR[c.rating] ?? 0);
   const tgt = L && d ? (d > 0 ? `p50 ${L.up?.p50} · p75 ${L.up?.p75}` : `p50 ${L.down?.p50} · p75 ${L.down?.p75}`) : null;
-  return `<div class="card click${twState(n)?.k === 'invalid' ? ' tw-dead' : ''}" tabindex="0" data-inst="${esc(n)}"><div class="ch"><h3>${esc(nice(n))}</h3>${rateChipC(c)}<span class="r">${gradeChip(c)}</span></div>
+  return `<div class="card click${/^(invalid|issue)$/.test(twState(n)?.k ?? '') ? ' tw-dead' : ''}" tabindex="0" data-inst="${esc(n)}"><div class="ch"><h3>${esc(nice(n))}</h3>${rateChipC(c)}<span class="r">${gradeChip(c)}</span></div>
 <div style="display:flex;gap:12px;align-items:center"><div style="text-align:center">${ring(assetScore(c), 54, assetWord(c))}<div class="muted" style="font-size:10.5px">${esc(assetWord(c))}</div></div><div class="muted" style="flex:1">${esc(firstSentence(c.why))}</div></div>
 <div class="spk" data-spk="${esc(n)}"></div>
-<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${tgt ? `<div class="tg"><b>Target</b><span class="mono">${esc(tgt)} <span class="muted">(today's forecast lines)</span></span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div></div>
+<div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${tgt ? `<div class="tg"><b>Target</b><span class="mono">${esc(tgt)} <span class="muted">(today's forecast lines)</span></span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div></div>${planWarn(n)}
 <div class="muted" style="margin-top:8px">size ${f(c.size, 2).replace('+', '')}${c.cappedBy?.length ? ` · cut by the ${c.cappedBy.join('/')} cap` : ''}${c.plan?.timing ? ` · ${esc(c.plan.timing)}` : ''}</div></div>`;
 }
 function recordCard() {
@@ -1110,25 +1110,28 @@ function dayShape() {
 <p class="muted">Narrow = high-to-low inside the p50 lines' span, wide = beyond the p75 span. Trend = closes at least half its range from the open. Green = the call held, red = it did not.${recTxt ? ` Record over ${rec.days} day(s): ${esc(recTxt)}.` : ''} Not part of the desk's pre-registered test.</p></div>`;
 }
 // the trade watcher's board: each watched card, where price is against its zone, target and invalidation
+const TW_KIND = { zone: 'entry zone', target: 'first target', invalid: 'invalidation hit', 'invalid-at-issue': 'invalid at issue' };
 let TW_LIVE = {};   // /api/market-live's markets, from the live layer's 'marketlive' event
 addEventListener('marketlive', e => { TW_LIVE = e.detail?.markets ?? {}; });
 function watchBoard() {
   const t = D.tw; if (!t?.ok) return '';
   const plan = t.plan ?? {}, last = t.last ?? {}, fired = t.fired ?? {}, names = Object.keys(plan);
   if (!names.length && !(t.events ?? []).length) return `<div class="card"><div class="ch"><span class="lbl">Trade watch</span></div><p class="muted">The watcher runs on weekdays 07:00-21:00 London over today's book.</p></div>`;
-  const st = n => (fired[n] ?? []).includes('invalid') ? ['invalid', 'dn', '⛔ invalidated'] : (fired[n] ?? []).includes('target') ? ['target', 'up', '✅ target hit'] : (fired[n] ?? []).includes('zone') ? ['zone', 'gold', '🎯 zone touched'] : ['wait', '', 'waiting'];
+  const st = n => (fired[n] ?? []).includes('invalid-at-issue') ? ['invalid', 'dn', '⛔ invalid at issue'] : (fired[n] ?? []).includes('invalid') ? ['invalid', 'dn', '⛔ invalidated'] : (fired[n] ?? []).includes('target') ? ['target', 'up', '✅ target hit'] : (fired[n] ?? []).includes('zone') ? ['zone', 'gold', '🎯 zone touched'] : ['wait', '', 'waiting'];
   const rank = { invalid: 3, target: 1, zone: 0, wait: 2 };
   // a market the watcher skipped (the broker marks it untradeable: an index after the US early close, a weekend) keeps the live layer's
   // last price and says "closed", instead of a bare "–" next to "waiting" (review 2026-11-27: NQ, SPX500, US30, US2000)
   const shut = n => !Number.isFinite(last[n]) && Number.isFinite(+TW_LIVE[n]?.last);
   const rows = names.map(n => ({ n, p: plan[n], px: Number.isFinite(last[n]) ? last[n] : shut(n) ? +TW_LIVE[n].last : last[n], s: shut(n) && st(n)[0] === 'wait' ? ['wait', '', 'market closed'] : st(n) })).sort((a, b) => rank[a.s[0]] - rank[b.s[0]]);
   // a bar from invalidation to target with the live price and the zone on it
+  // a plan whose levels do not fit together is drawn faded with a dashed outline and says why, so it is not read as a working plan
+  const bad = n => planIssues(n) ?? (plan[n]?.issues?.length ? plan[n].issues : null);
   const bar = r => { const p = r.p, ends = [p.invalid, p.target, ...(p.zone ?? []), r.px].filter(Number.isFinite); if (ends.length < 2) return ''; const lo = Math.min(...ends), hi = Math.max(...ends), x = v => ((v - lo) / (hi - lo || 1)) * 100;
-    return `<div style="position:relative;height:16px;background:var(--bg3);border-radius:5px">${p.zone ? `<i style="position:absolute;top:2px;bottom:2px;left:${x(Math.min(...p.zone))}%;width:${Math.max(1.5, x(Math.max(...p.zone)) - x(Math.min(...p.zone)))}%;background:var(--purbg);border:1px solid rgba(var(--purrgb),.6);border-radius:3px"></i>` : ''}${Number.isFinite(p.invalid) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.invalid)}%;width:2px;background:var(--dn)"></i>` : ''}${Number.isFinite(p.target) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.target)}%;width:2px;background:var(--gold)"></i>` : ''}${Number.isFinite(r.px) ? `<i style="position:absolute;top:-3px;left:calc(${x(r.px)}% - 5px);width:10px;height:22px;border-radius:4px;background:var(--tx);box-shadow:0 0 10px rgba(var(--txrgb),.6)"></i>` : ''}</div>`; };
+    return `<div style="position:relative;height:16px;background:var(--bg3);border-radius:5px${bad(r.n) ? ';opacity:.45;outline:1px dashed var(--dn);outline-offset:1px' : ''}">${p.zone ? `<i style="position:absolute;top:2px;bottom:2px;left:${x(Math.min(...p.zone))}%;width:${Math.max(1.5, x(Math.max(...p.zone)) - x(Math.min(...p.zone)))}%;background:var(--purbg);border:1px solid rgba(var(--purrgb),.6);border-radius:3px"></i>` : ''}${Number.isFinite(p.invalid) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.invalid)}%;width:2px;background:var(--dn)"></i>` : ''}${Number.isFinite(p.target) ? `<i style="position:absolute;top:0;bottom:0;left:${x(p.target)}%;width:2px;background:var(--gold)"></i>` : ''}${Number.isFinite(r.px) ? `<i style="position:absolute;top:-3px;left:calc(${x(r.px)}% - 5px);width:10px;height:22px;border-radius:4px;background:var(--tx);box-shadow:0 0 10px rgba(var(--txrgb),.6)"></i>` : ''}</div>`; };
   return `<div class="card"><div class="ch"><span class="lbl">Trade watch</span><span class="r muted">live price (white) against the zone (purple), first target (gold) and invalidation (red) · ${t.live ? 'watching' : 'not running now'}</span></div>
-<div class="scroll" style="max-height:560px;overflow-y:auto"><table><tbody>${rows.map(r => `<tr><td class="n" style="width:80px"><a href="#" data-inst="${esc(r.n)}" style="color:var(--tx);text-decoration:none">${esc(r.n)}</a></td><td style="width:90px">${rateChip(D.cards[r.n]?.rating)}</td><td style="min-width:160px">${bar(r)}</td><td class="n" style="width:80px">${px(r.px)}</td><td style="width:120px"><span class="chip ${r.s[1]}">${r.s[2]}</span></td></tr>`).join('')}</tbody></table></div>
-${(t.events ?? []).length ? `<div class="drv">${t.events.slice(-8).reverse().map(e => `<span>${new Date(e.at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' })} ${esc(e.inst)} ${esc(e.kind)}</span>`).join('')}</div>` : ''}
-<p class="muted">Telegram sends each event once (⚙ Alerts → "Desk trade watcher" to mute). Context, never an order.</p></div>`;
+<div class="scroll" style="max-height:560px;overflow-y:auto"><table><tbody>${rows.map(r => `<tr><td class="n" style="width:80px"><a href="#" data-inst="${esc(r.n)}" style="color:var(--tx);text-decoration:none">${esc(r.n)}</a></td><td style="width:90px">${rateChip(D.cards[r.n]?.rating)}</td><td style="min-width:160px">${bar(r)}${bad(r.n) ? `<div style="color:var(--dn);font-size:11px;margin-top:3px">plan levels inconsistent: ${esc(bad(r.n).join('; '))}</div>` : ''}</td><td class="n" style="width:80px">${px(r.px)}</td><td style="width:120px"><span class="chip ${r.s[1]}">${r.s[2]}</span></td></tr>`).join('')}</tbody></table></div>
+${(t.events ?? []).length ? `<div class="drv">${t.events.slice(-8).reverse().map(e => `<span title="${esc(twWhenWhy(e))}">${esc(twWhen(e))} ${esc(e.inst)} ${esc(TW_KIND[e.kind] ?? e.kind)}${e.afterRestart ? ' <span class="muted">(first check after a restart; may have happened earlier)</span>' : ''}</span>`).join('')}</div>` : ''}
+<p class="muted">Telegram sends each event once (⚙ Alerts → "Desk trade watcher" to mute); a state found already true on the first check after a restart is shown as "seen" and not sent. "Invalid at issue": price was already through the invalidation when the book came out. Context, never an order.</p></div>`;
 }
 
 // the news analyst's read of a headline as arrows per currency (two arrows = a strong push, impact ±2)
@@ -1308,23 +1311,32 @@ function ladder(c, n) {
 // The desk call stays the morning's (plans/ONE_DESK_BIAS.md); this says, on the card face, whether that call's own plan still stands:
 // waiting for its entry, entry zone reached, first target reached, or invalidated. Polled every minute and patched in place.
 const twHhmm = at => (at ? new Date(at).toLocaleTimeString('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit' }) : '');
+// the plan check (js/planCheck.js, on every sized card of the desk run): a plan whose levels do not fit together (invalidation inside the zone,
+// a zone that reaches the first target) is said on the card, the playbook and the trade-watch row (review 2026-11-27: 8 of 16 live cards)
+const planIssues = n => { const pc = D.cards?.[n]?.planCheck ?? null; return pc && pc.ok === false && pc.issues?.length ? pc.issues : null; };
+const planWarn = n => { const is = planIssues(n); return is ? `<div class="pcw" style="margin-top:6px;color:var(--dn);font-size:12px"><b>⚠ Plan levels inconsistent:</b> ${esc(is.join('; '))}. Read the levels as places on the chart, not as a plan that works as written.</div>` : ''; };
+// when a trade-watch event happened: a state found already true on the first check after a restart is "seen at", since it may be older
+const twWhen = e => (!e ? '' : e.kind === 'invalid-at-issue' ? 'at issue' : e.afterRestart ? `seen ${twHhmm(e.at)}` : twHhmm(e.at));
+const twWhenWhy = e => (!e ? '' : e.kind === 'invalid-at-issue' ? `Price was ${px(e.price)} when the book was published (${twHhmm(e.at)}), already through the invalidation ${px(e.level)}: the plan was off before the watch began.` : e.afterRestart ? `Seen at ${twHhmm(e.at)}, the first check after a restart${e.since ? ` (the check before it was at ${twHhmm(e.since)})` : ''}; it may have happened earlier.` : e.firstSeen ? `Found at the watcher's first check of the day (${twHhmm(e.at)}); it may have happened earlier.` : '');
 function twState(n) {
   const t = D.tw; if (!t?.ok || !t.plan?.[n]) return null;
-  const f = t.fired?.[n] ?? [], k = f.includes('invalid') ? 'invalid' : f.includes('target') ? 'target' : f.includes('zone') ? 'zone' : 'wait';
-  return { k, ev: [...(t.events ?? [])].reverse().find(e => e.inst === n && e.kind === k) ?? null, px: t.last?.[n], plan: t.plan[n], live: !!t.live };
+  const f = t.fired?.[n] ?? [], k = f.includes('invalid-at-issue') ? 'issue' : f.includes('invalid') ? 'invalid' : f.includes('target') ? 'target' : f.includes('zone') ? 'zone' : 'wait';
+  const kind = k === 'issue' ? 'invalid-at-issue' : k;
+  return { k, ev: [...(t.events ?? [])].reverse().find(e => e.inst === n && e.kind === kind) ?? null, px: t.last?.[n], plan: t.plan[n], live: !!t.live };
 }
 function twChip(n) {
   const s = twState(n); if (!s) return '';
-  const p = s.plan, at = s.ev ? ` ${twHhmm(s.ev.at)}` : '', now = Number.isFinite(s.px) ? ` · now ${px(s.px)}` : '';
+  const p = s.plan, at = s.ev ? ` ${twWhen(s.ev)}` : '', now = Number.isFinite(s.px) ? ` · now ${px(s.px)}` : '', when = twWhenWhy(s.ev), bad = planIssues(n);
   const lv = `${p.zone ? `zone ${px(Math.min(...p.zone))}${p.zone[0] !== p.zone[1] ? `–${px(Math.max(...p.zone))}` : ''}, ` : ''}target ${px(p.target)}, invalid ${px(p.invalid)}`;
-  const [cls, txt, why] = s.k === 'invalid' ? ['dn', `⛔ invalidation hit${at}`, `Price traded through the plan's invalidation level (${px(p.invalid)}) at${at || ' some point today'} (the watcher counts a touch; read the plan's own wording for a close rule). The morning call is not changed (one call a day), but on its own terms it is in doubt or no longer stands.`]
+  const [cls, txt, why] = s.k === 'issue' ? ['dn', '⛔ invalid at issue', 'The plan was already through its invalidation when the book was published, so it never stood today. The morning call is not changed (one call a day).']
+    : s.k === 'invalid' ? ['dn', `⛔ invalidation hit${at}`, `Price traded through the plan's invalidation level (${px(p.invalid)}) at${at || ' some point today'} (the watcher counts a touch; read the plan's own wording for a close rule). The morning call is not changed (one call a day), but on its own terms it is in doubt or no longer stands.`]
     : s.k === 'target' ? ['up', `✅ first target hit${at}`, `Price reached the first target (${px(p.target)}) after the entry.`]
       : s.k === 'zone' ? ['gold', `🎯 in play since${at}`, `Price reached the entry zone; the plan is live until target or invalidation.`]
         : ['', '⏳ waiting for entry', `Price has not reached the entry yet. A call that is waiting is not a position.`];
-  return `<span class="chip ${cls}" title="${esc(`Live plan state (trade watcher, OANDA mid every 2 min${s.live ? '' : ', not running now'}). ${why} Plan: ${lv}.${now ? ` Last price ${px(s.px)}.` : ''}`)}">${esc(txt)}${esc(now)}</span>`;
+  return `<span class="chip ${cls}" title="${esc(`Live plan state (trade watcher, OANDA mid every 2 min${s.live ? '' : ', not running now'}). ${why}${when ? ` ${when}` : ''} Plan: ${lv}.${bad ? ` The plan's levels do not fit together: ${bad.join('; ')}.` : ''}${now ? ` Last price ${px(s.px)}.` : ''}`)}">${esc(txt)}${esc(now)}</span>${bad ? ` <span class="chip dn" title="${esc(bad.join('; '))}">⚠ plan levels inconsistent</span>` : ''}`;
 }
 function applyTw() {
-  document.querySelectorAll('.card[data-inst]').forEach(el => el.classList.toggle('tw-dead', twState(el.dataset.inst)?.k === 'invalid'));
+  document.querySelectorAll('.card[data-inst]').forEach(el => el.classList.toggle('tw-dead', /^(invalid|issue)$/.test(twState(el.dataset.inst)?.k ?? '')));
   document.querySelectorAll('[data-twchip]').forEach(el => { const h = twChip(el.dataset.twchip); if (el.innerHTML !== h) el.innerHTML = h; });
   document.querySelectorAll('[data-twpx]').forEach(el => {
     const lad = el.closest('.ladder'), lo = +lad?.dataset.lo, hi = +lad?.dataset.hi, v = globalThis.liveLayer?.last(el.dataset.twpx) ?? D.tw?.last?.[el.dataset.twpx];
@@ -1340,7 +1352,7 @@ function assetCard(n, c, full = false) {
 ${globalThis.ttUnreviewedNote?.(c) || `<div class="thesis" title="${esc(c.why)}">“${esc(firstSentence(c.why))}”</div>`}
 <div class="drv">${sources(c.why).map(t => `<span>${t}</span>`).join('')}<span title="The card's own conviction (the Head's), not the global ruling's or a currency's">card conviction ${esc(c.conviction ?? '–')}</span><span class="sfc" data-surface="panel.asset.size"><span>size ${c.size ?? '–'}${c.sizeBeforeCap && c.sizeBeforeCap !== c.size ? ` (from ${c.sizeBeforeCap})` : ''}</span></span></div>
 <div class="lv" data-lv-asset="${esc(n)}"></div>${full ? `${c.levels ? '' : noLevels()}<div class="tfp-host" id="achart-tf"></div><div class="achart" id="achart"></div>` : (c.levels ? ladder(c, n) : noLevels()) + (globalThis.newsLatestLine?.(D.news, n, c.rating) ?? '')}
-${full ? `<p>${esc(c.why)}</p><div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Target</b><span class="mono">${Math.sign(DIR[c.rating] ?? 0) >= 0 ? `up p50 ${c.levels.up.p50} · p75 ${c.levels.up.p75} · p90 ${c.levels.up.p90}` : `down p50 ${c.levels.down.p50} · p75 ${c.levels.down.p75} · p90 ${c.levels.down.p90}`}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${esc(c.plan.timing)}</span></div>` : ''}</div></div>
+${full ? `<p>${esc(c.why)}</p><div class="sfc" data-surface="panel.asset.plan"><div class="pb">${c.plan?.zone ? `<div class="en"><b>Entry</b><span>${esc(c.plan.zone)}</span></div>` : ''}${c.levels?.up ? `<div class="tg"><b>Target</b><span class="mono">${Math.sign(DIR[c.rating] ?? 0) >= 0 ? `up p50 ${c.levels.up.p50} · p75 ${c.levels.up.p75} · p90 ${c.levels.up.p90}` : `down p50 ${c.levels.down.p50} · p75 ${c.levels.down.p75} · p90 ${c.levels.down.p90}`}</span></div>` : ''}<div class="iv"><b>Invalid</b><span>${esc(c.plan?.invalidation ?? c.invalidation ?? '–')}</span></div>${c.plan?.timing ? `<div><b>Timing</b><span>${esc(c.plan.timing)}</span></div>` : ''}</div>${planWarn(n)}</div>
 ${sf('panel.asset.engine', beTry(() => (be ? BEV().fullBlockHtml(be, { title: `Macro tilt · ${nice(n)} (context: back-test found no direction skill)`, desk: BEV().deskSign({ rating: c.rating }), rec: D.be }) : '')))}${deskView(n)}${globalThis.analyseBoxHtml?.(n) ?? ''}${globalThis.whatDrivesHtml?.(n) ?? ''}<p class="muted">The ladder is today's forecast range (p50, p75, p90 each side of the open); the purple band is the entry zone where the plan names one. ${SCALE_NOTE} The grade is the card's conviction, not a hit rate.</p>` : `<div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="muted">Read full analysis →</span>${/LONG|SHORT/.test(c.rating ?? '') && (c.size > 0 || globalThis.deskIsViewer?.()) ? `<button class="btn" type="button" data-analyse="${esc(n)}" style="padding:3px 10px" title="A deep read of this market against its own drivers, on DeepSeek (about a cent)">✦ Analyse</button>` : ''}</div>`}</div>`;
 }
 function deskView(n) {
