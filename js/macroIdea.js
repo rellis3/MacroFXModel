@@ -27,8 +27,9 @@ const dirWord = d => (d === 'up' ? 'rose' : d === 'down' ? 'fell' : 'did not mov
 
 // window: the chain window the links were judged on (1, 5, 20 days or 'live'); the default, 20, gives the newsletter's wording unchanged.
 export function buildIdea({ links = [], events = [], rangePressure = null, fear = null, crowding = null, cotDate = null, nowMs = null, nodes = CHAIN_NODES, window: win = CHAIN_WINDOW_DAYS } = {}) {
-  const W20 = win === CHAIN_WINDOW_DAYS, over = W20 ? `over ${CHAIN_WINDOW_DAYS} days` : win === 'live' ? 'since the last close' : `over ${win} day${win === 1 ? '' : 's'}`;
-  const overCal = W20 ? `over ${CHAIN_WINDOW_DAYS} calendar days` : over, viewWord = W20 ? 'a weeks view, not an intraday one' : win === 5 ? 'a one-week view' : 'a today view, not a trend';
+  // windows count SESSIONS on a daily series (js/macroChange.js seriesDeltas), so the words say sessions
+  const W20 = win === CHAIN_WINDOW_DAYS, over = W20 ? `over ${CHAIN_WINDOW_DAYS} sessions` : win === 'live' ? 'since the last close' : win === 1 ? 'over 1 day' : `over ${win} sessions`;
+  const overCal = over, viewWord = W20 ? 'a weeks view, not an intraday one' : win === 5 ? 'a one-week view' : 'a today view, not a trend';
   const judged = links.filter(l => l.verdict === 'holding' || l.verdict === 'broken');
   if (!judged.length) return null;
   const score = new Map(judged.map(l => [l.id, strength(l, nodes, win)]));
@@ -96,5 +97,8 @@ export function buildIdea({ links = [], events = [], rangePressure = null, fear 
   const patterns = [];
   if (pattern) patterns.push({ name: 'The cause moved but price did not follow', why: `${story.a.label} ${story.a.text}, ${story.b.label} ${story.b.text}. Price is usually the better guide to what the market believes.` });
   if (rp && rp.on >= 1) patterns.push({ name: 'How loaded is the spring', why: `${rp.on} of ${rp.n} bigger-day signals are on, so a small push can do more than usual. This is about size, not direction.` });
-  return { q0, scenarios, patterns, headline: `${steps[0].label} ${steps[0].text} to ${steps.at(-1).label} ${steps.at(-1).text}`, steps, broken: story.verdict === 'broken', pattern, weakest, q, storyId: story.id, strength: Math.round(score.get(story.id) * 10) / 10 };
+  // the headline is the story LINK itself: the extended path's two ends (VIX to the Nasdaq through credit, the 10Y to gold through the real
+  // yield) are not a link on the chain and need not share dates
+  const horizon = W20 ? '20-session view' : win === 5 ? 'one-week view' : win === 'live' ? 'live view' : 'one-day view';
+  return { q0, scenarios, patterns, headline: `${story.a.label} ${story.a.text} to ${story.b.label} ${story.b.text}`, pathHeadline: `${steps[0].label} ${steps[0].text} to ${steps.at(-1).label} ${steps.at(-1).text}`, horizon, steps, broken: story.verdict === 'broken', pattern, weakest, q, storyId: story.id, strength: Math.round(score.get(story.id) * 10) / 10 };
 }

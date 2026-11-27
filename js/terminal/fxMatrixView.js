@@ -10,7 +10,7 @@ const when = iso => { const d = new Date(iso); return Number.isNaN(+d) ? '' : d.
 
 export function tableHtml(t) {
   if (!t.ok) return `<div class="in-empty">${esc(t.error)}. The Overview's own strength board stands on its own.</div>`;
-  const head = `<tr><th>Currency</th>${t.cols.map(c => `<th title="${esc(c.available ? `${c.key}: ${when(c.from)} to ${when(c.to)}. 1.0 sigma is about ${c.unitPct}% of a normal move over the window.` : c.reason)}">${c.key}${c.available ? '' : ' <i class="in-gr">n/a</i>'}</th>`).join('')}<th>Lately</th></tr>`;
+  const head = `<tr><th>Currency</th>${t.cols.map(c => `<th title="${esc(c.available ? `${c.key}: ${when(c.from)} to ${when(c.to)}. 1.0 sigma is a move of about ${Number.isFinite(+c.unitPct) ? (+c.unitPct < 0.1 ? (+c.unitPct).toFixed(3) : (+c.unitPct).toFixed(2)) : '?'}% over the window.` : c.reason)}">${c.key}${c.available ? '' : ' <i class="in-gr">n/a</i>'}</th>`).join('')}<th>Lately</th></tr>`;
   const rows = t.rows.map(r => `<tr><th scope="row"><b>${esc(r.ccy)}</b></th>${KEYS.map(k => {
     const c = r.cells[k], col = t.cols.find(x => x.key === k);
     if (!col.available || !c) return '<td class="muted">n/a</td>';
@@ -33,7 +33,7 @@ export function matrixHtml(m, hz) {
   }).join('')}</tr>`).join('');
   return `<div class="in-pills" role="group" aria-label="Window">${pills}</div>
 <div class="in-tblw"><table class="in-corr in-pmx"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
-<p class="in-foot muted">Each cell is how far the currency on the left has out-run (positive) or lagged (negative) the one across the top over ${esc(m.hz)}, in units of a normal move (1.0 sigma is about ${m.unitPct}% of one). The grid is fitted, so no triangle contradicts itself. It says what has happened over the window; it does not say what happens next. Click a cell to open that pair.</p>`;
+<p class="in-foot muted">Each cell is how far the currency on the left has out-run (positive) or lagged (negative) the one across the top over ${esc(m.hz)}, in units of a normal move (1.0 sigma is a move of about ${Number.isFinite(+m.unitPct) ? (+m.unitPct < 0.1 ? (+m.unitPct).toFixed(3) : (+m.unitPct).toFixed(2)) : '?'}%). The grid is fitted, so no triangle contradicts itself. It says what has happened over the window; it does not say what happens next. Click a cell to open that pair.</p>`;
 }
 
 export function fxHtml(payload, hz) { return `<h3 class="in-h">The eight currencies, four windows</h3>${tableHtml(strengthTable(payload))}<h3 class="in-h">Who has out-run whom</h3>${matrixHtml(pairMatrix(payload, hz), hz)}`; }

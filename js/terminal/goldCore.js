@@ -49,11 +49,16 @@ export function goldFit(bundle, { fitWin = FIT_WIN, win = 20 } = {}) {
   const end = y.length - 1, cut = end - win;                       // fit on rows up to the day before the window, so the window is out of sample
   const slice = a => a.slice(Math.max(0, cut - fitWin + 1), cut + 1);
   const fit = ols2(slice(y), slice(x1), slice(x2)); if (!fit) return null;
-  let actual = 0, fitted = 0, n = 0;
-  for (let i = cut + 1; i <= end; i++) if (fin(y[i]) && fin(x1[i]) && fin(x2[i])) { actual += y[i]; fitted += fit.a + fit.b[0] * x1[i] + fit.b[1] * x2[i]; n++; }
+  let actual = 0, fitted = 0, n = 0, whole = 0;
+  for (let i = cut + 1; i <= end; i++) {
+    if (fin(y[i])) whole += y[i];
+    if (fin(y[i]) && fin(x1[i]) && fin(x2[i])) { actual += y[i]; fitted += fit.a + fit.b[0] * x1[i] + fit.b[1] * x2[i]; n++; }
+  }
   if (n < 10) return null;
   const pct = x => (Math.exp(x) - 1) * 100;
-  return { fit, n, window: win, actualPct: pct(actual), fittedPct: pct(fitted), unexplainedPct: pct(actual) - pct(fitted),
+  // actualPct is gold's move on the n sessions where the dollar and the real yield ALSO printed (the broad dollar lags about a week), so it
+  // is not gold's whole 20-session move: wholePct is, and the board says both (review 2026-11-27: -11.3% on the tile, -5.1% in the text)
+  return { fit, n, window: win, wholePct: pct(whole), actualPct: pct(actual), fittedPct: pct(fitted), unexplainedPct: pct(actual) - pct(fitted),
     // sensitivities in plain units: gold's % move for a 1% dollar move, and for a 10bp real yield move
     perDollarPct: fit.b[0], perTenBp: fit.b[1] * 10 };   // log move per 1 pct-point of yield = b[1], so per 10bp (0.10 pt) in percent = b[1] * 0.10 * 100
 }
@@ -77,7 +82,8 @@ export function etfFlows(etf, goldByDate = null) {
 }
 function etfFlowsDollars(etf, goldByDate = null) {
   if (!etf?.ok) return { state: 'error', note: etf?.error ?? 'the gold ETF feed is not available' };
-  const s = (etf.series ?? []).filter(p => fin(p.value) && p.date);
+  // each capture carries the fund's own as-of date (the day before it is read): the change and gold's move are measured between THOSE dates
+  const s = (etf.series ?? []).filter(p => fin(p.value) && p.date).map(p => ({ ...p, date: p.asOf ?? p.date }));
   if (!s.length) return { state: 'empty', days: 0, note: `No history held yet: the daily capture of GLD and IAU assets has not recorded a day together.${etf.fetch?.reason ? ` Last try: ${etf.fetch.reason}.` : ''}` };
   const last = s[s.length - 1];
   if (s.length < 2) return { state: 'one', days: 1, last: last.value, asOf: last.date, note: 'One day held so far. A change needs two.' };
@@ -92,6 +98,22 @@ function etfFlowsDollars(etf, goldByDate = null) {
   return out;
 }
 
+/**
+ * Do the dollar totals square with the tonnes held and the gold price? A fund's assets are about tonnes x price, so a one-day fall of 4.6% while
+ * the tonnes rose and gold rose cannot be a flow: one fund's figure is from another day or is wrong. Marks each change row { squares: false, expect }
+ * when the dollar change misses tonnes-and-price by more than `tol` percentage points. tonnesPct: { k: % change in tonnes over k days }.
+ */
+export function etfCheck(deltas = {}, tonnesPct = {}, goldPct = {}, { tol = 1.5 } = {}) {
+  const out = {};
+  for (const [k, d] of Object.entries(deltas ?? {})) {
+    const tp = tonnesPct?.[k], gp = goldPct?.[k];
+    if (!fin(d?.raw) || !fin(tp) || !fin(gp)) { out[k] = { ...d, squares: null }; continue; }
+    const expect = ((1 + tp / 100) * (1 + gp / 100) - 1) * 100;
+    out[k] = { ...d, expect, squares: Math.abs(d.raw - expect) <= tol };
+  }
+  return out;
+}
+
 /** Everything the board draws. etf/cot may be null (a feed that failed): its card then says so. */
 export function goldBoard(bundle, cot, etf, { now = Date.now() } = {}) {
   const dates = bundle?.dates ?? [], s = bundle?.series ?? {}, refDate = bundle?.to ?? dates[dates.length - 1] ?? null;
@@ -99,10 +121,18 @@ export function goldBoard(bundle, cot, etf, { now = Date.now() } = {}) {
     if (!Array.isArray(s[key])) return null;
     const a = analyse(key, dates, s[key], { refDate }); if (!a || a.tooShort) return null;
     const meta = metaFor(key);
-    return { key, label: meta.label, tone, last: a.lastFmt, lastRaw: lastOf(s[key]), spark: tail(s[key], CHART_N), moves: a.moves, level: a.level, stale: a.stale, n: a.n, unit, go: meta.go };
+    return { key, label: meta.label, tone, last: a.lastFmt, lastRaw: lastOf(s[key]), spark: tail(s[key], CHART_N), moves: a.moves, level: a.level, stale: a.stale, n: a.n, unit, go: meta.go, to: a.to !== refDate ? a.to : null };
   };
   const cards = [card('gold', 'var(--gold)'), card('tips', 'var(--blue)'), card('dxy', 'var(--teal)'), card('gvz', 'var(--pur2)')].filter(Boolean);
   const rv = Array.isArray(s.gold) ? realisedVol(s.gold, 20) : null, gv = lastOf(s.gvz ?? []);
   const goldByDate = Array.isArray(s.gold) ? Object.fromEntries(dates.map((d, i) => [d, s.gold[i]]).filter(([, v]) => fin(v))) : null;
-  return { asOf: refDate, cards, vol: rv != null && gv != null ? { implied: gv, realised: rv, ratio: gv / rv } : null, fit: goldFit(bundle), positioning: positioning(cot, now), etf: etfFlows(etf, goldByDate), haveBundle: !!bundle?.ok };
+  const e = etfFlows(etf, goldByDate);
+  if (e.state === 'ok' && e.tonnes) {
+    // tonnes held (GLD alone when the pair has no joint history) against the dollar total, gold's move between the same as-of dates
+    const T = e.tonnes, base = T.total?.total ?? T.gld?.tonnes, dT = T.deltas?.total ?? T.deltas?.gld ?? {};
+    const tonnesPct = Object.fromEntries(Object.entries(dT).filter(([, v]) => fin(v) && fin(base)).map(([k, v]) => [k, v / (base - v) * 100]));
+    const goldPct = Object.fromEntries(Object.entries(e.deltas).map(([k, d]) => [k, goldByDate && fin(goldByDate[d.from]) && fin(goldByDate[e.asOf]) ? (goldByDate[e.asOf] / goldByDate[d.from] - 1) * 100 : null]));
+    e.deltas = etfCheck(e.deltas, tonnesPct, goldPct);
+  }
+  return { asOf: refDate, cards, vol: rv != null && gv != null ? { implied: gv, realised: rv, ratio: gv / rv } : null, fit: goldFit(bundle), positioning: positioning(cot, now), etf: e, haveBundle: !!bundle?.ok };
 }

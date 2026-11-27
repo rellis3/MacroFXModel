@@ -68,7 +68,7 @@ export function returnsGrid(bundle, keys = ASSET_BASKET) {
   for (const key of keys) {
     if (!Array.isArray(series[key])) continue;
     const a = analyse(key, dates, series[key], { refDate }); if (!a || a.tooShort) continue;
-    rows.push({ key, label: a.label, group: a.group, go: a.go, stale: a.stale, moves: [1, 5, 20].map(k => a.moves[k] ?? null), last: a.lastFmt, kind: a.kind });
+    rows.push({ key, label: a.label, group: a.group, go: a.go, stale: a.stale, to: a.to, moves: [1, 5, 20].map(k => a.moves[k] ?? null), last: a.lastFmt, kind: a.kind });
   }
   return { rows, asOf: refDate };
 }

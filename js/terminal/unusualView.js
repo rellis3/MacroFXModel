@@ -39,6 +39,20 @@ ${bar(r.score)}<span class="in-pc">${nth(r.score)}</span>
 ${spark(r.spark)}<span class="in-val">${esc(r.lastFmt)}</span></button>${open ? detail(r) : ''}</li>`;
 }
 
+/**
+ * What "as at" honestly is: the series end on different days (OANDA's prices on one day, an ETF or index on the next), so the header names
+ * the dates the series actually end on, not the newest date any one of them has (it said "the close of 27 Nov" over prices that end 26 Nov).
+ */
+export function asOfText(rows = [], refDate = null) {
+  const by = new Map(); for (const r of rows) { const d = r?.to; if (d) by.set(d, (by.get(d) ?? 0) + 1); }
+  const ds = [...by.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
+  if (!ds.length) return refDate ? `As at the close of <b>${esc(niceDate(refDate))}</b>.` : '';
+  if (ds.length === 1) return `As at the close of <b>${esc(niceDate(ds[0][0]))}</b>.`;
+  const main = ds.slice(0, 2).map(([d, n]) => `<b>${esc(niceDate(d))}</b> (${n} series)`).join(', ');
+  const rest = ds.slice(2).reduce((a, [, n]) => a + n, 0);
+  return `Each series to its own last close: ${main}${rest ? `, ${rest} earlier` : ''}.`;
+}
+
 /** The whole board as HTML for a ranking (rankBundle) and view state { group, all, open }. Pure. */
 export function unusualHtml(rank, { group = 'all', all = false, open = null, threshold = 0.95 } = {}) {
   const rows = rank.rows;
@@ -49,7 +63,7 @@ export function unusualHtml(rank, { group = 'all', all = false, open = null, thr
   const quiet = chance.hits <= Math.ceil(chance.expected * 1.25);
   const pills = [`<button type="button" class="in-pill" data-group="all" aria-pressed="${group === 'all'}">All <b>${rows.length}</b></button>`,
     ...gc.map(g => `<button type="button" class="in-pill" data-group="${esc(g.group)}" aria-pressed="${group === g.group}">${esc(g.label)} <b>${g.n}</b>${g.hot ? ` <span class="in-hot">${g.hot} hot</span>` : ''}</button>`)].join('');
-  return `<div class="in-head"><div class="in-asof">As at the close of <b>${esc(niceDate(rank.refDate))}</b>. ${rows.length} series, each against its own history since ${esc(niceDate(rank.windowFrom))}. A reading is "hot" at the ${ordinal(Math.round(threshold * 100))} percentile or beyond.</div>
+  return `<div class="in-head"><div class="in-asof">${asOfText(rows, rank.refDate)} ${rows.length} series, each against its own history since ${esc(niceDate(rank.windowFrom))}. A reading is "hot" at the ${ordinal(Math.round(threshold * 100))} percentile or beyond.</div>
 <div class="in-chance ${quiet ? 'quiet' : 'busy'}"><b>${chance.hits}</b> of ${chance.measures} readings are hot; about <b>${Math.round(chance.expected)}</b> would be on any day by chance alone. ${quiet ? 'So this is an ordinary-looking day: the top of the list is mostly what chance throws up.' : 'More than chance would give, so the top of the list is worth a look.'}</div></div>
 <div class="in-sky" role="group" aria-label="Every series, brightest = most unusual">${sky}</div>
 <div class="in-pills" role="group" aria-label="Filter by group">${pills}</div>

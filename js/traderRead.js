@@ -54,14 +54,20 @@ export const FT_MIN_LEAD = 1.5;   // the stock move must be at least 1.5x its no
 export function followThrough(vals = {}, win = 1) {
   const rows = FT_GROUPS.flatMap(([group, keys]) => keys.map(k => ({ group, key: k, label: CHAIN_NODES[k]?.label ?? k, z: zOf(vals, k, win), text: moveText(vals, k) }))).filter(r => r.z != null);
   const stocks = rows.filter(r => r.group === 'Stocks'), lead = stocks.slice().sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0] ?? null;
-  const others = rows.filter(r => r.group === 'Dollar and FX' || r.group === 'Rates'), moved = others.filter(r => Math.abs(r.z) >= 1);
+  // only markets that printed on the SAME day as the lead stock move can confirm it: on Thanksgiving the Nasdaq traded while FRED's
+  // yields and credit did not print, and comparing the Nasdaq's 26 Nov with the 2Y's 24 Nov called a holiday session a "liquidation"
+  const day = d => String(d ?? '').slice(0, 10), leadDay = lead ? day(vals?.[lead.key]?.asOf) : '';
+  const sameDay = r => !leadDay || win === 'live' || !day(vals?.[r.key]?.asOf) || day(vals[r.key].asOf) === leadDay;
+  const cand = rows.filter(r => r.group === 'Dollar and FX' || r.group === 'Rates'), others = cand.filter(sameDay), offDay = cand.filter(r => !sameDay(r));
+  const moved = others.filter(r => Math.abs(r.z) >= 1);
+  const offTxt = offDay.length ? ` (${offDay.map(r => r.label).join(', ')} did not print on ${leadDay}, so ${offDay.length === 1 ? 'it is' : 'they are'} left out)` : '';
   let verdict, line;
   if (!lead) { verdict = 'none'; line = 'No stock data for this window.'; }
   else if (Math.abs(lead.z) < FT_MIN_LEAD) { verdict = 'quiet'; line = `${lead.label} moved ${lead.text}, inside ${FT_MIN_LEAD}x its noise band: no big stock move to test.`; }
-  else if (!others.length) { verdict = 'none'; line = 'No FX or rates data to compare with.'; }
-  else if (moved.length >= 2) { verdict = 'followed'; line = `${lead.label} moved ${lead.text} and ${moved.length} of ${others.length} FX and rates markets moved past their noise band with it: the market is treating it as macro.`; }
-  else if (moved.length === 1) { verdict = 'partial'; line = `${lead.label} moved ${lead.text}; only ${moved[0].label} followed past its noise band. Half a macro story.`; }
-  else { verdict = 'contained'; line = `${lead.label} moved ${lead.text} and no FX or rates market moved past its noise band: by the hosts' rule this is a positioning liquidation, not a macro story.`; }
+  else if (!others.length) { verdict = 'none'; line = `No FX or rates market printed on the same day as the stock move${leadDay ? ` (${leadDay})` : ''}, so there is nothing to compare with.`; }
+  else if (moved.length >= 2) { verdict = 'followed'; line = `${lead.label} moved ${lead.text} and ${moved.length} of ${others.length} FX and rates markets moved past their noise band with it: the market is treating it as macro.${offTxt}`; }
+  else if (moved.length === 1) { verdict = 'partial'; line = `${lead.label} moved ${lead.text}; only ${moved[0].label} followed past its noise band. Half a macro story.${offTxt}`; }
+  else { verdict = 'contained'; line = `${lead.label} moved ${lead.text} and no FX or rates market moved past its noise band with it. On the rule of thumb this check comes from (untested here) that reads as positioning rather than a macro story.${offTxt}`; }
   return { win, rows, lead, moved: moved.length, of: others.length, verdict, line };
 }
 
@@ -145,7 +151,8 @@ export function checklist({ idea = null, links = [], ft = null, clocks = null, c
     st(4, !crowd || !crowd.rows?.length ? 'none' : crowd.pressed ? 'watch' : 'ok', !crowd?.rows?.length ? 'no report' : crowd.crowded ? `${crowd.crowded} crowded` : 'nothing crowded'),
     st(5, news?.fought ? 'watch' : ft?.verdict === 'contained' ? 'watch' : 'ok', news?.fought ? `${news.fought} fought the news` : ft?.verdict === 'contained' ? 'no follow-through' : 'price reacting'),
     st(6, ahead.length ? 'watch' : 'ok', ahead.length ? `${ahead.length} in 48h` : 'clear 48h'),
-    st(7, clocks?.opposed ? 'watch' : 'ok', clocks?.opposed ? `${clocks.opposed} pulling apart` : 'clocks agree'),
+    // its own answer (the horizon), not the two-clocks check's count, which has its own card
+    st(7, 'info', idea.horizon ?? 'the horizon'),
     st(8, 'info', 'the line to watch'),
   ];
 }

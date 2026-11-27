@@ -8,8 +8,13 @@
  */
 export const FLAGS = [
   { key: 'vix_level', label: 'VIX level' }, { key: 'vix_term', label: 'VIX term structure' }, { key: 'hy_speed', label: 'High-yield spread speed' },
-  { key: 'jpy_bid', label: 'Yen bid' }, { key: 'evz_stress', label: 'Euro vol stress' }, { key: 'stock_bond_corr', label: 'Stock-bond correlation' },
+  { key: 'jpy_bid', label: 'Yen bid' },
+  // the light's source ended: said as such, not as an "n/a" that reads like a passing gap (review 2026-11-27: unreadable at all 315 captures)
+  { key: 'evz_stress', label: 'Euro vol stress', ended: "Its source, Cboe's euro volatility index (EVZ), stopped publishing in March 2025, and the CME settlement vol now read in its place has no history to rank against yet" },
+  { key: 'stock_bond_corr', label: 'Stock-bond correlation' },
 ];
+/** Why a light can never come on (its source ended), or null. */
+export const flagEnded = k => FLAGS.find(f => f.key === k)?.ended ?? null;
 export const flagLabel = k => FLAGS.find(f => f.key === k)?.label ?? k;
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 
@@ -50,6 +55,7 @@ const ago = ms => { const m = Math.round(ms / 60e3); return m < 90 ? `${m} minut
 /** One plain sentence per light. `now` is the time of the latest point. */
 export function sentence(key, sum, now) {
   const L = flagLabel(key);
+  if (!sum.read && flagEnded(key)) return `${L}: source ended. ${flagEnded(key)}, so it could not be read at any of the ${sum.n} captures and cannot come on until a new source is wired.`;
   if (!sum.read) return `${L}: it could not be read at any of the ${sum.n} captures.`;
   const state = sum.now === 1 ? 'on now' : sum.now === 0 ? 'off now' : 'not readable now';
   if (!sum.on) return `${L}: off at every one of ${sum.read} readings (${state}).`;
@@ -74,7 +80,7 @@ export function dayTicks(points) {
 export function model(points, { flagEvidence = {}, evidence = [] } = {}) {
   const sr = seriesOf(points), p = (points ?? []).filter(x => fin(x?.ts)).sort((a, b) => a.ts - b.ts), now = p.at(-1)?.ts ?? null;
   if (p.length < 2 || !Object.values(sr).some(s => s.length)) return { ok: false, why: p.length ? 'Only one saved capture so far, so there is no history yet.' : 'No saved snapshots were found, so there is no history to show yet.', depth: depthText(points) };
-  const rows = FLAGS.map(f => { const sum = summarise(sr[f.key]); return { key: f.key, label: f.label, series: sr[f.key], sum, evidence: evidenceKind(f.key, flagEvidence, evidence), text: sentence(f.key, sum, now) }; });
+  const rows = FLAGS.map(f => { const sum = summarise(sr[f.key]); return { key: f.key, label: f.label, series: sr[f.key], sum, ended: !sum.read && f.ended ? f.ended : null, evidence: evidenceKind(f.key, flagEvidence, evidence), text: sentence(f.key, sum, now) }; });
   const anyOn = rows.filter(r => r.sum.now === 1).length;
   return { ok: true, rows, t0: p[0].ts, t1: now, ticks: dayTicks(points), depth: depthText(points), nowOn: anyOn, headline: `${anyOn} of ${rows.filter(r => r.sum.now !== null).length} readable flags are on now; ${rows.filter(r => r.sum.on > 0).length} of the six have been on at some point since ${niceDay(p[0].ts)}.` };
 }

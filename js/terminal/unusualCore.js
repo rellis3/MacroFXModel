@@ -51,6 +51,7 @@ const yearsOf = (d0, d1) => Math.max(0, (Date.parse(d1) - Date.parse(d0)) / (365
 /** A move said in the series' own words: basis points for a yield or spread, percent for a price or a volatility index. */
 export function fmtMove(c, meta) {
   if (!fin(c)) return 'n/a';
+  if (meta.kind === 'rate' && meta.moveUnit === 'pts') { const a = Math.abs(c); return `${c > 0 ? '+' : c < 0 ? '-' : ''}${a >= 10 ? a.toFixed(1) : a.toFixed(2)} pts`; }
   if (meta.kind === 'rate') { const bp = c * 100, a = Math.abs(bp); return `${bp > 0 ? '+' : bp < 0 ? '-' : ''}${a >= 100 ? a.toFixed(0) : a.toFixed(1)}bp`; }
   const p = (Math.exp(c) - 1) * 100, a = Math.abs(p);
   return `${p > 0 ? '+' : p < 0 ? '-' : ''}${a >= 10 ? a.toFixed(1) : a.toFixed(2)}%`;
@@ -60,7 +61,7 @@ export function fmtLevel(x, meta) {
   if (!fin(x)) return 'n/a';
   const a = Math.abs(x);
   const s = a >= 10000 ? x.toFixed(0) : a >= 100 ? x.toFixed(1) : a >= 10 ? x.toFixed(2) : x.toFixed(meta.group === 'fx' ? 4 : 3);
-  return meta.unit === '%' || meta.unit === 'pp' ? `${s}${meta.unit === '%' ? '%' : ' pts'}` : s;
+  return meta.unit === '%' || meta.unit === 'pp' ? `${s}%` : meta.moveUnit === 'pts' ? `${s} pts` : s;
 }
 const WORD = { 1: '1-day', 5: '5-day', 20: '20-day' };
 const pct0 = p => Math.round(p * 100);

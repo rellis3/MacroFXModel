@@ -72,7 +72,7 @@ test('the Overview card: a quiet record is one line and six dots, with no ribbon
   assert.equal((cq.match(/class="rfs-dotitem"/g) ?? []).length, 6, 'the six lights are dots');
   assert.match(cq, /0 of 6 stress lights have been on since 14 Nov, 30 hourly captures/);
   assert.equal((cq.match(/rfs-dot-off/g) ?? []).length, 5); assert.equal((cq.match(/rfs-dot-na/g) ?? []).length, 1, 'the unreadable flag is a hatched dot, not an off one');
-  assert.match(cq, /could not be read now/); assert.match(cq, /range finding/, 'the validated range finding keeps its chip');
+  assert.match(cq, /Euro vol stress <span class="rfs-dst">source ended/, "a light whose source ended says so, not n/a"); assert.match(cq, /rfs-dot-na/, "and keeps the hatched dot"); assert.match(cq, /range finding/, 'the validated range finding keeps its chip');
   assert.doesNotMatch(cq, /<svg/); assert.doesNotMatch(cq, /undefined|NaN/); assert.match(cq, /data-surface="panel.risk.strip"/);
   // one flag on at the end: that flag gets a ribbon, the other five are dots under a "never on" line
   const one = quiet.map((p, i) => i >= 25 ? { ...p, d: { risk: { flags: { ...p.d.risk.flags, hy_speed: [1, -20] } } } } : p);

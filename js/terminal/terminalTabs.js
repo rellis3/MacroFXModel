@@ -346,7 +346,8 @@ const FAM = { 'macro-state': 'Macro', 'price-state': 'Trend', events: 'Events', 
 function drawDay(g) {
   const box = el('tt-day'); if (!box) return;
   if (!g?.cards) { box.innerHTML = '<div class="muted">No Global Read, so no Day Read.</div>'; return; }
-  const ch = g.meta?.chain, doms = (ch?.stories ?? []).filter(x => x.status === 'dominant').map(x => x.name);
+  // the chain read's hook and stories lead the Day Read only while the read is fresh: an 18-day-old "growth scare" is not today's thesis
+  const ch0 = g.meta?.chain, chStale = ch0?.ageMin != null && ch0.ageMin > CHAIN_READ_STALE_MIN(20), ch = chStale ? null : ch0, doms = (ch?.stories ?? []).filter(x => x.status === 'dominant').map(x => x.name);
   const rows = (g.ranked ?? []).map(rk => { const k = g.cards[rk.sym]; if (!k) return '';
     const st = k.direction?.story, pUp = st?.nLive ? st.pUp : 0.5, edge = Math.abs(pUp - 0.5);
     const lean = edge < 0.02 ? '<span class="fl mono">Two-way</span>' : `<span class="mono ${pUp > 0.5 ? 'up' : 'dn'}" title="${h(st?.label ?? '')}"><b>${pUp > 0.5 ? '▲ Up' : '▼ Down'}</b> ${Math.round(Math.max(pUp, 1 - pUp) * 100)}%</span>`;
@@ -359,7 +360,7 @@ function drawDay(g) {
     const tot = Object.values(fam).reduce((a, f) => a + Math.abs(f.s), 0) || 1;
     const why = Object.entries(fam).filter(([, f]) => Math.abs(f.s) / tot >= 0.12).sort((a, b) => Math.abs(b[1].s) - Math.abs(a[1].s)).slice(0, 3).map(([k2, f]) => `<span class="${f.s > 0 ? 'up' : 'dn'}" title="${h(f.notes.join(' · '))}">${f.s > 0 ? '▲' : '▼'} ${h(FAM[k2] ?? k2)}</span>`).join('');
     return `<div class="tt-day tt-click" data-pair="${h(rk.sym)}" tabindex="0"><b>${h(nice(rk.sym))}</b>${lean}${day || '<span></span>'}<span class="why">${why}</span></div>`; }).join('');
-  box.innerHTML = `${ch?.hook ? `<div class="thesis" style="margin-top:0">“${h(ch.hook)}”</div>` : `<div class="thesis" style="margin-top:0">${h(g.headline ?? '')}</div>`}${doms.length ? `<div class="muted">The live stories: ${doms.map(h).join(' · ')}</div>` : ''}
+  box.innerHTML = `${ch?.hook ? `<div class="thesis" style="margin-top:0">“${h(ch.hook)}”</div>` : `<div class="thesis" style="margin-top:0">${h(g.headline ?? '')}</div>`}${doms.length ? `<div class="muted">The live stories: ${doms.map(h).join(' · ')}</div>` : chStale ? `<div class="muted">The last chain read was written ${Math.round(ch0.ageMin / 1440)} days ago, so its stories are not shown as today's.</div>` : ''}
 <div class="tt-day" style="font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tx3)"><span>Market</span><span>Story lean</span><span>Day size</span><span>Because</span></div>${rows}
 <p class="tt-note"><b>Day size</b> (wide / normal / capped, from P(range beyond p75)) is tested. <b>Up / down</b> is the story lean: every read that points a way, family-weighted, scored forward as a shadow; it is not validated.</p>`;
 }

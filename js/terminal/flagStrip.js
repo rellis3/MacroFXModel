@@ -48,8 +48,8 @@ export function boardHtml(m) {
 /** One light as a dot: red = on now, quiet = off, hatched = could not be read now. The title carries the Evidence Book words. */
 export function dotHtml(r) {
   const state = r.sum.now === 1 ? 'on' : r.sum.now === 0 ? 'off' : 'na';
-  const word = state === 'on' ? 'on now' : state === 'off' ? 'off now' : 'could not be read now';
-  return `<span class="rfs-dotitem" title="${esc(`${r.label}: ${word}. ${r.evidence.words}`)}"><i class="rfs-dot rfs-dot-${state}" aria-hidden="true"></i><span class="rfs-dl">${esc(r.label)} <span class="rfs-dst">${state === 'on' ? 'ON' : state === 'off' ? 'off' : 'n/a'}</span></span>${r.evidence.kind === 'range' ? '<span class="chip up rfs-chip" title="validated range finding: runs wider, never which way">range finding</span>' : ''}</span>`;
+  const word = state === 'on' ? 'on now' : state === 'off' ? 'off now' : r.ended ? `source ended. ${r.ended}` : 'could not be read now';
+  return `<span class="rfs-dotitem" title="${esc(`${r.label}: ${word}. ${r.evidence.words}`)}"><i class="rfs-dot rfs-dot-${state}" aria-hidden="true"></i><span class="rfs-dl">${esc(r.label)} <span class="rfs-dst">${state === 'on' ? 'ON' : state === 'off' ? 'off' : r.ended ? 'source ended' : 'n/a'}</span></span>${r.evidence.kind === 'range' ? '<span class="chip up rfs-chip" title="validated range finding: runs wider, never which way">range finding</span>' : ''}</span>`;
 }
 
 /** The slim card for the Today section of the Overview. Six empty ribbons say nothing, so: a flag that has been on at least once gets a ribbon; the quiet ones are dots in a
