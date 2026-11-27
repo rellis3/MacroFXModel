@@ -113,6 +113,8 @@ the first touch. The lockbox.
     $ / σ; gross (before costs) alongside net; **K** = Ken's variant (any poke arms, no cancel, no chase, fill only from
     the bar after the poke, several orders may rest, the first fill cancels the rest); the equity curve and trade
     examples from every year, for the page.
+- **A3, 2026-11-27, PRE-RESULTS for NQ and EURUSD.** W and T run on NQ and EURUSD with the script unchanged (§7),
+  costs 1 tick in, 1 tick out, 1 tick commission; same gates. Reported side by side with gold for Jordan's comparison.
 
 ## RESULTS
 

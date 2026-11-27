@@ -78,6 +78,17 @@ arming rule: a separate layer after this base is measured. Trailing stops. The l
 
 - **A1, 2026-11-27, POST-HOC (results seen), describes only.** The concentration checks in RESULTS (stop-size quintiles,
   top-1% trades, a $1 floor, double slippage, OOS halves) were run after the verdict; they change no verdict.
+- **A2, 2026-11-27, PRE-RESULTS for NQ and EURUSD (nothing scored on either).** Replication of the frozen gold
+  system, Jordan's three-way comparison. Same script and rules unchanged: 18 shadow lines (`calc-upgrades-wide` N7_ALL
+  build, widths in `analysis/output/gold-rolling-mae-window/widths/F_<SYM>.parquet`), Jordan's gold entry, VWAP ± 0.5σ_v
+  target, S2 stop = rolling MAE 3 months per line (the gold choice, not re-chosen), BE off. Costs 1 tick in, 1 tick out
+  on non-target exits, 1 tick commission (tick from the data); 5-tick floor. IS 2021–22, OOS 2023 → 2026-08-21.
+  - **Per instrument:** the same gates as S2 on gold (OOS CI > 0, IS > 0, above its own 100-run shuffled-lines p95,
+    total > 0), BH q = 0.10 over {NQ, EURUSD}.
+  - **The mirror:** the gold result is a property of the system, not of gold, only if both pass. One pass = that
+    instrument only. Neither = gold-only, flagged as possibly specific to gold.
+  - S1 and all other arms are descriptive. Each instrument's own best rolling-MAE window (from `gold-rolling-mae-window`
+    W run on it, also unchanged) is reported alongside, not tested.
 
 ## RESULTS
 
