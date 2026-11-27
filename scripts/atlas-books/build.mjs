@@ -28,7 +28,7 @@
 // them to R2 under atlas-books/ ONLY (never a production prefix) so Railway serves them.
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { atlasWalk } from '../../js/levelAtlasEngine.js';
 import { asiaFibAtlasWalk } from '../../js/asiaFibAtlasEngine.js';
 import { mondayFibAtlasWalk } from '../../js/mondayFibAtlasEngine.js';
@@ -202,6 +202,7 @@ async function main() {
   console.log(`\nwrote ${OUT}${upload ? ' and R2 atlas-books/' : ' (local only; add --upload so Railway serves it)'}`);
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file://${path.resolve(process.argv[1])}`).href) {
+// pathToFileURL, not a hand-built file:// string: on Windows that never matched, so main() silently did nothing.
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main().catch(e => { console.error(e); process.exit(1); });
 }
