@@ -62,3 +62,16 @@ test('point in time: a replay as of a past date sizes its unit from releases pri
   const v = await buildPrecedent(rows, 'CPI', 'nq', async () => null, asOf);
   assert.equal(v.n, 6); assert.equal(v.stats.typical30mMove, 0.2);
 });
+
+test('up-share with its 95% interval and the market\'s up-share over every release held (Helix review wave 1.11)', async () => {
+  const { wilson, baseShareUp } = await import('./precedentCore.js');
+  const w = wilson(20, 30); assert.ok(Math.abs(w.lo - 0.488) < 0.005 && Math.abs(w.hi - 0.808) < 0.005, JSON.stringify(w)); assert.equal(wilson(0, 0), null);
+  const rows = Array.from({ length: 40 }, (_, i) => mk(i, i % 4 === 0 ? -0.3 : 0.3));          // 30 of 40 up
+  const other = Array.from({ length: 40 }, (_, i) => ({ ...mk(100 + i, i % 2 ? 0.3 : -0.3), family: 'NFP' }));
+  const v = await buildPrecedent([...rows, ...other], 'CPI', 'nq', async () => null, Date.parse('2030-01-01'));
+  assert.equal(v.stats.shareUp, 0.75); assert.ok(v.stats.shareUpLo > 0.58 && v.stats.shareUpLo < 0.62 && v.stats.shareUpHi > 0.85 && v.stats.shareUpHi < 0.88, JSON.stringify(v.stats));
+  assert.deepEqual(v.base, { share: 0.63, n: 80 });
+  assert.match(statLine(v), /up 75% of 40 \(95% 6\d–8\d%\) · all 80 releases held: up 63%/);
+  assert.match(askText(v), /up in 75% \(95% interval 6\d-8\d%\), against 63% up over all 80 releases held/);
+  assert.equal(baseShareUp(rows.slice(0, 5), 'nq'), null, 'under 30 releases there is no yardstick');
+});

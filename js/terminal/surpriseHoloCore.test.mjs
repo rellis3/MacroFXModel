@@ -83,7 +83,7 @@ test('monthGrid: real history shape, family + ccy mapping, claimant flip, contra
 });
 test('script: plain words, numbers rounded, description phrase, no forecast words; figure = biggest |z|', () => {
   const B = shapeBoard(BOARD), s = surpriseScript(B);
-  assert.match(s, /the UK has mostly missed/); assert.match(s, /Canadian inflation, hotter than expected, more than 3 times/); assert.match(s, /UK retail sales, about 2\.1 times/); assert.match(s, /not a forecast/);
+  assert.match(s, /no economy has had 4 or more prints leaning one way/, 'two UK prints are not a tilt any more'); assert.doesNotMatch(s, /mostly/); assert.match(s, /Canadian inflation, hotter than expected, more than 3 times/); assert.match(s, /UK retail sales, about 2\.1 times/); assert.match(s, /not a forecast/);
   assert.doesNotMatch(s, /\bwill\b|\bexpect(s|ed)? to\b|target/i); assert.ok(s.split(/[.;]\s/).length <= 7);
   assert.deepEqual(surpriseFigure(B), { value: '+>3×', label: 'CAD inflation vs usual surprise' });
   assert.equal(surpriseScript(shapeBoard(null)), null); assert.equal(surpriseFigure(shapeBoard(null)), null);
@@ -97,4 +97,17 @@ test('labels never overlap and stay in bounds', () => {
 test('zText and FAMS', () => {
   assert.equal(zText(1.234), '+1.2'); assert.equal(zText(-0.66), '−0.7'); assert.equal(zText(4, true), '+>3'); assert.equal(zText(null), '—');
   assert.equal(FAMS.length, 8); assert.ok(FAMS.every(f => f.short.length <= 6));
+});
+
+test('leadersKN: "k of n beat" with n of 4 or more and a winsorised median, in place of "mostly" (Helix review wave 1.8)', async () => {
+  const { leadersKN } = await import('./surpriseHoloCore.js');
+  const cell = (ccy, zs) => ({ key: `${ccy}|cpi`, ccy, fam: 'cpi', slices: zs.map((z, i) => ({ z, ms: NOW - (i + 1) * D })) });
+  const B = { ok: true, asOf: NOW, ccys: ['EUR', 'GBP', 'USD', 'JPY'], cells: { a: cell('EUR', [0.5, 0.8, 1.1, -0.2, 0.6]), b: cell('GBP', [-9, 0.1, 0.2, 0.15]), c: cell('USD', [-1, -0.8, -0.5, -0.9]), d: cell('JPY', [2, 2, 2]) } };
+  const L = leadersKN(B, { now: NOW });
+  assert.deepEqual(L.up.map(x => [x.ccy, x.k, x.n]), [['EUR', 4, 5]]);
+  assert.deepEqual(L.dn.map(x => [x.ccy, x.k, x.n]), [['USD', 4, 4]]);
+  assert.ok(!L.up.concat(L.dn).some(x => x.ccy === 'GBP'), 'one huge miss among small beats: the winsorised median is a beat, not a miss, and 3 of 4 beat with a median under the bar');
+  assert.ok(!L.up.some(x => x.ccy === 'JPY'), 'three prints is under n = 4');
+  const s = surpriseScript({ ...B, cells: { ...B.cells, e: cell('CAD', [3.5]) } }, { now: NOW });
+  assert.match(s, /the euro area beat expectations in 4 of 5 prints, while the US missed in 4 of 4 prints\./); assert.doesNotMatch(s, /mostly/);
 });

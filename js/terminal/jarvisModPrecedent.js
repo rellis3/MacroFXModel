@@ -29,13 +29,13 @@ export function sparkSvg(path, w = 90, h = 30) {
 export const statLine = d => {
   const s = d?.stats; if (!d || !d.n || !s) return 'No stored reactions for this pair.';
   const f = v => (fin(v) ? v.toFixed(2) : 'n/a');
-  return `N ${d.n} · median size ${f(s.medianAbs)} · middle half ${f(s.p25)} to ${f(s.p75)} · p90 ${f(s.p90)} (in ${d.unit})${s.shareUp != null ? ` · up ${Math.round(s.shareUp * 100)}% of ${d.n}` : ''}`;
+  return `N ${d.n} · median size ${f(s.medianAbs)} · middle half ${f(s.p25)} to ${f(s.p75)} · p90 ${f(s.p90)} (in ${d.unit})${s.shareUp != null ? ` · up ${Math.round(s.shareUp * 100)}% of ${d.n}${s.shareUpLo != null ? ` (95% ${Math.round(s.shareUpLo * 100)}–${Math.round(s.shareUpHi * 100)}%)` : ''}${d.base ? ` · all ${d.base.n} releases held: up ${Math.round(d.base.share * 100)}%` : ''}` : ''}`;
 };
 export const headerText = d => `What markets did the last ${d?.n ?? 'N'} times this was released (history, not a forecast)`;
 export const askQuestion = d => {
   if (!d || !d.n || !d.stats) return '';
   const s = d.stats;
-  return `Describe how ${d.market} reacted to ${d.family} releases (${d.n} of them): median size ${s.medianAbs}, p25 ${s.p25}, p75 ${s.p75}, p90 ${s.p90} typical 30-minute reactions${s.shareUp != null ? `, up in ${Math.round(s.shareUp * 100)}%` : ''}. What does history show and what does it not show? History only, no forecast.`;
+  return `Describe how ${d.market} reacted to ${d.family} releases (${d.n} of them): median size ${s.medianAbs}, p25 ${s.p25}, p75 ${s.p75}, p90 ${s.p90} typical 30-minute reactions${s.shareUp != null ? `, up in ${Math.round(s.shareUp * 100)}%${s.shareUpLo != null ? ` (95% interval ${Math.round(s.shareUpLo * 100)}-${Math.round(s.shareUpHi * 100)}%)` : ''}${d.base ? `, against ${Math.round(d.base.share * 100)}% up over all ${d.base.n} releases held` : ''}` : ''}. What does history show and what does it not show? History only, no forecast.`;
 };
 const load = () => { try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && FAMILIES.some(f => f[0] === j.family) && MARKETS.some(m => m[0] === j.market)) return j; } catch { /* none */ } return { family: 'CPI', market: 'nq' }; };
 const save = p => { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch { /* private mode */ } };
