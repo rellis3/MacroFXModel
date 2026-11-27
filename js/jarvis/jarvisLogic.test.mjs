@@ -14,7 +14,7 @@ test('londonParts handles GMT and BST and weekday', () => {
 });
 
 test('alert text carries the prefix and the suffix', () => {
-  assert.equal(alertText(ev('a')), 'Jarvis: The link a just broke. (description, not a trade)');
+  assert.equal(alertText(ev('a')), 'Helix: The link a just broke. (description, not a trade)');
 });
 
 test('the same event is sent once per 6 hours, again after', () => {
@@ -93,4 +93,23 @@ test('buildDigest degrades: no chain, no calendar, no alerts', () => {
   const d = buildDigest({ date: '2026-11-18' });
   assert.equal(d.summary, null); assert.match(d.text, /not available/); assert.match(d.text, /No alerts overnight/); assert.deepEqual(d.events, []);
   assert.doesNotMatch(d.text, /releases/);
+});
+
+test('Helix brand, links back, quiet hours and the tab watcher gate', async () => {
+  const L = await import('./jarvisLogic.js');
+  assert.equal(L.BRAND, 'Helix');
+  assert.equal(L.helixLink('mfx.up.railway.app', 'reactor'), 'https://mfx.up.railway.app/desk-terminal.html#helix/reactor');
+  assert.equal(L.helixLink('https://x.example.com/', 'alerts'), 'https://x.example.com/desk-terminal.html#helix/alerts');
+  assert.equal(L.helixLink('', 'x'), ''); assert.equal(L.helixLink('javascript:alert(1)'), ''); assert.equal(L.helixLink('evil.com/path?x'), '');
+  assert.equal(L.alertView({ kind: 'broke' }), 'reactor'); assert.equal(L.alertView({ kind: 'big' }), 'radar'); assert.equal(L.alertView({ kind: 'memory' }), 'system'); assert.equal(L.alertView({}), 'alerts');
+  const at = (iso) => Date.parse(iso);
+  assert.equal(L.inQuiet(at('2026-11-27T23:30:00Z')), true); assert.equal(L.inQuiet(at('2026-11-27T06:59:00Z')), true); assert.equal(L.inQuiet(at('2026-11-27T07:00:00Z')), false);
+  assert.equal(L.inQuiet(at('2026-07-01T06:30:00Z')), false, 'BST: 06:30 UTC is 07:30 London');
+  assert.equal(L.inQuiet(at('2026-11-27T12:00:00Z'), { from: 600, to: 900 }), true); assert.equal(L.inQuiet(at('2026-11-27T12:00:00Z'), null), false);
+  const ev = id => ({ kind: 'broke', id, text: `link ${id}` }), noon = at('2026-11-27T12:00:00Z');
+  let g = L.gateTabAlerts(null, [ev('a'), ev('b')], noon); assert.equal(g.loud.length, 2); assert.equal(g.state.dayCount, 2);
+  g = L.gateTabAlerts(g.state, [ev('a'), ev('c')], noon + 60_000); assert.deepEqual(g.loud.map(e => e.id), ['c'], 'a repeat inside 6 h is dropped');
+  g = L.gateTabAlerts(g.state, [ev('d')], noon, { cap: 3 }); assert.equal(g.loud.length, 0); assert.equal(g.quiet.length, 1, 'over the cap: listed, not spoken');
+  const night = L.gateTabAlerts(null, [ev('z')], at('2026-11-27T23:00:00Z')); assert.equal(night.loud.length, 0); assert.equal(night.quiet.length, 1);
+  assert.match(L.buildDigest({ date: '2026-11-27', link: 'https://x/desk-terminal.html#helix/today' }).text, /^Helix: while you slept[\s\S]*Open in Helix: https:\/\/x\//);
 });

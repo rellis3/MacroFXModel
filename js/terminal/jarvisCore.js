@@ -128,10 +128,18 @@ export function pickVoice(voices) {
   return [...v].sort((a, b) => score(b) - score(a))[0];
 }
 
-/** "hey jarvis what is oil doing" -> { woke: true, query: 'what is oil doing' }. A bare "jarvis" wakes him with no query. Matches the word anywhere so a clipped "hey" does not matter. */
+/** "hey jarvis what is oil doing" -> { woke: true, query: 'what is oil doing' }; "Helix, show yields" also carries nav: 'yields' (go there, no ASK). A bare "jarvis" wakes him with no query. Matches the word anywhere so a clipped "hey" does not matter. */
 export function wakeParse(text) {
   const t = String(text ?? '').trim(), m = t.match(/\b(?:helix|helics|felix|mach|jarvis)\b[\s,.:;!?-]*(.*)$/i);
-  return m ? { woke: true, query: m[1].trim() } : { woke: false, query: '' };
+  if (!m) return { woke: false, query: '' };
+  const query = m[1].trim(), nav = navWords(query);
+  return nav ? { woke: true, query, nav } : { woke: true, query };
+}
+/** VOICE NAVIGATION: "show yields", "go to the board", "open alerts", "home" -> the words naming where to go (resolved by helixNav.resolveTarget); null for a question, which goes to ASK (a paid call). */
+export function navWords(query) {
+  const q = String(query ?? '').trim(), m = q.match(/^(?:please\s+)?(?:show(?:\s+me)?|go\s+to|goto|open(?:\s+up)?|switch\s+to|take\s+me\s+to|bring\s+up|display)\s+(.+?)[.!?]*$/i);
+  if (!m) return /^(?:go\s+)?(?:home|today|back\s+home)[.!]*$/i.test(q) ? 'today' : null;
+  return m[1].replace(/\s+(?:please|now)$/i, '').trim() || null;
 }
 
 // ───────────────────────── Watching ─────────────────────────

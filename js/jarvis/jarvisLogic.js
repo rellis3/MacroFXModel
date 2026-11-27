@@ -37,7 +37,44 @@ export function normaliseState(raw) {
 export const eventKey = ev => `${ev.kind}:${ev.id}`;
 
 /** The wording of a phone alert: the watchDiff sentence, prefixed and suffixed. */
-export const alertText = ev => `Jarvis: ${String(ev.text).trim()} ${SUFFIX}`;
+export const BRAND = 'Helix';                 // the on-air name (H.E.L.I.X.); files, commands, KV keys and sender ids keep the old jarvis names
+export const alertText = ev => `${BRAND}: ${String(ev.text).trim()} ${SUFFIX}`;
+
+/** The link back into Helix for a phone alert or digest: <base>/desk-terminal.html#helix/<view>. base is the site origin (RAILWAY_PUBLIC_DOMAIN on Railway, or a full https URL); none -> ''. */
+export function helixLink(base, view = 'alerts') {
+  const b = String(base ?? '').trim().replace(/\/+$/, ''); if (!b) return '';
+  const origin = /^https?:\/\//i.test(b) ? b : `https://${b}`;
+  if (!/^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(origin)) return '';
+  return `${origin}/desk-terminal.html#helix/${encodeURIComponent(view)}`;
+}
+/** The view an alert opens: a broken or healed link -> the chain, a big move -> the unusual-moves list, memory -> the server panel. */
+export const alertView = ev => (ev?.kind === 'broke' || ev?.kind === 'healed' ? 'reactor' : ev?.kind === 'big' ? 'radar' : ev?.kind === 'memory' || ev?.kind === 'mem' ? 'system' : 'alerts');
+
+/** QUIET HOURS (London wall clock, minutes from midnight; from > to wraps past midnight). Default 22:00-07:00. In quiet hours an alert is still logged but not spoken or pushed. */
+export const QUIET = { from: 22 * 60, to: 7 * 60 };
+export function inQuiet(now, q = QUIET) {
+  if (!q || !Number.isFinite(q.from) || !Number.isFinite(q.to) || q.from === q.to) return false;
+  const m = londonParts(now).mins; return q.from < q.to ? m >= q.from && m < q.to : m >= q.from || m < q.to;
+}
+/**
+ * The TAB watcher's gate (the HUD open in a browser), with the server's rules: the same event once per DEDUPE_MS, at most DAILY_CAP spoken/notified per London day, nothing aloud in quiet hours.
+ * Pure. -> { loud: events to speak and notify, quiet: events only listed, state }. state = { sent: { key: ms }, day, dayCount } (kept by the caller, e.g. in localStorage).
+ */
+export function gateTabAlerts(state, events, now, { cap = DAILY_CAP, dedupeMs = DEDUPE_MS, quiet = QUIET } = {}) {
+  const s = { sent: { ...(state?.sent ?? {}) }, day: state?.day ?? '', dayCount: +state?.dayCount || 0 }, today = londonParts(now).date, loud = [], hush = [];
+  if (s.day !== today) { s.day = today; s.dayCount = 0; }
+  for (const [k, t] of Object.entries(s.sent)) if (!(now - t < dedupeMs * 4)) delete s.sent[k];
+  const q = inQuiet(now, quiet);
+  for (const ev of events ?? []) {
+    if (!ev?.text) continue;
+    const key = eventKey(ev);
+    if (s.sent[key] != null && now - s.sent[key] < dedupeMs) continue;      // a repeat: not even listed again
+    s.sent[key] = now;
+    if (q || s.dayCount >= cap) { hush.push(ev); continue; }
+    s.dayCount++; loud.push(ev);
+  }
+  return { loud, quiet: hush, state: s };
+}
 
 /**
  * Decide which events may be sent now. Pure: returns { send, state } and never mutates the input.
@@ -91,12 +128,12 @@ export function todaysEvents(rows, date) {
  * The "While you slept" digest. summary = summariseChain(links, 1); radar = radarRank(graph, names); alerts = overnight log records; events = todaysEvents().
  * Template text, no model call.
  */
-export function buildDigest({ date, summary, radar, alerts, events } = {}) {
+export function buildDigest({ date, summary, radar, alerts, events, link = '' } = {}) {
   const movers = (radar?.items ?? []).slice(0, 5).map(i => ({ key: i.key, label: i.label, text: i.text, ratio: +i.ratio.toFixed(1), why: i.why }));
   const sum = summary ? { headline: String(summary.headline ?? ''), holding: summary.holding ?? 0, broken: summary.broken ?? 0 } : null;
   const al = (alerts ?? []).map(a => ({ at: a.at, text: a.text }));
   const ev = events ?? null;
-  const lines = [`Jarvis: while you slept (${date ?? ''}).`];
+  const lines = [`${BRAND}: while you slept (${date ?? ''}).`];
   if (sum) lines.push(`Chain, 1 day: ${sum.holding} holding, ${sum.broken} broken. ${sum.headline}`.trim());
   else lines.push('Chain, 1 day: not available this morning.');
   if (radar?.broken?.length) lines.push(`Broken links: ${radar.broken.map(b => b.short).join(', ')}.`);
@@ -104,6 +141,7 @@ export function buildDigest({ date, summary, radar, alerts, events } = {}) {
   else lines.push('No market is beyond its normal noise.');
   lines.push(al.length ? `Alerts overnight: ${al.length}.` : 'No alerts overnight.');
   if (ev) lines.push(ev.length ? `High-impact releases today (London): ${ev.slice(0, 8).map(e => `${e.time} ${e.ccy} ${e.event}`).join('; ')}.` : 'No high-impact releases listed today.');
+  if (link) lines.push(`Open in Helix: ${link}`);
   lines.push(SUFFIX);
   return { date, summary: sum, movers, overnightAlerts: al, events: ev ?? [], text: lines.join('\n') };
 }
