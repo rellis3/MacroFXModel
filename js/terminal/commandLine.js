@@ -8,6 +8,7 @@
 import { buildCommands, search, plainAction, grouped } from './commandCore.js';
 import { hashFor } from './macroSubtabs.js';
 import { whyNot } from './featureStatus.js';
+import { parseHelixHash } from './helixNav.js';
 
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const RECENT_KEY = 'deskCmdRecent';
@@ -63,7 +64,7 @@ export function perform(a, doc = document, win = window) {
     case 'alerts': return win.deskAlerts?.open ? (win.deskAlerts.open(), true) : false;
     case 'alert-add': return win.deskAlerts?.add ? (win.deskAlerts.add(a.body), true) : false;
     case 'workspace-save': return win.deskWorkspace?.saveAs ? (win.deskWorkspace.saveAs(a.name), true) : false;
-    case 'jarvis': import('./jarvisView.js').then(m => m.openJarvis(win)).catch(e => console.warn('jarvis', e)); return true;
+    case 'jarvis': import('./jarvisView.js').then(m => m.openJarvis(win, { args: a.args, hash: a.hash, popout: !!a.popout })).catch(e => console.warn('jarvis', e)); return true;
     case 'theme': import('./themePicker.js').then(m => m.applyTheme(a.id)).catch(() => {}); return true;
     case 'tf': return win.deskSelection ? (win.deskSelection.set({ tf: a.tf }, 'command'), true) : false;
     case 'link': return win.deskSelection ? (win.deskSelection.setLinked(a.on, 'command'), true) : false;
@@ -158,6 +159,10 @@ export function mountCommandLine({ doc = document, win = window, isOn = id => wi
     if ((k === '/' || k === '`') && !e.ctrlKey && !e.metaKey && !e.altKey && !typing(doc.activeElement) && !typing(e.target)) { e.preventDefault(); open(); }
   };
   doc.addEventListener('keydown', onKey);
+  // HELIX DEEP LINKS: #helix/<picture>[/1d|5d|20d][/region][/popout] opens Helix there (the phone alerts and the morning digest link back this way). Only for a session that may see Helix.
+  const followHelix = () => { const h = win.location?.hash ?? '', p = parseHelixHash(h); if (p && isOn('widget.jarvis')) perform({ kind: 'jarvis', hash: h, popout: p.popout }, doc, win); };
+  win.addEventListener?.('hashchange', followHelix);
+  if (parseHelixHash(win.location?.hash ?? '')) win.setTimeout?.(followHelix, 0);
   // The top-bar box (an input, or a button on an older page): click or Enter opens the palette; a typed character opens it
   // with that character already in the search, so you can type straight into the bar. The palette does the matching.
   const btn = doc.getElementById('cmdbtn');
@@ -168,5 +173,5 @@ export function mountCommandLine({ doc = document, win = window, isOn = id => wi
     if (e.key.length === 1) { e.preventDefault(); open(e.key === '`' ? '' : e.key); }
   };
   if (btn) { btn.hidden = false; btn.addEventListener('click', onBtn); btn.addEventListener('keydown', onBarKey); }
-  return { open, close, destroy() { doc.removeEventListener('keydown', onKey); btn?.removeEventListener('click', onBtn); btn?.removeEventListener('keydown', onBarKey); if (btn) btn.hidden = true; back.remove(); doc.getElementById('cmdk-toast')?.remove(); } };
+  return { open, close, destroy() { doc.removeEventListener('keydown', onKey); win.removeEventListener?.('hashchange', followHelix); btn?.removeEventListener('click', onBtn); btn?.removeEventListener('keydown', onBarKey); if (btn) btn.hidden = true; back.remove(); doc.getElementById('cmdk-toast')?.remove(); } };
 }

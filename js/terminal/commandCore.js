@@ -17,6 +17,8 @@ import { SURFACES, surfaceById } from './tabRegistry.js';
 import { DEEP_SECTIONS, sectionOf } from './deepDive.js';
 import { MACRO_SUBS, ALL_BLOCKS, BLOCK_SUB, subById } from './macroSubtabs.js';
 import { THEMES } from './themes.js';
+import { parseHelixArgs } from './helixNav.js';
+import { labelOf as helixLabel } from './jarvisNav.js';
 import { TF_KEYS } from '../deskBarsCore.js';
 import { ASSET_WORDS } from './pairView.js';
 import { PAIRS as SPREAD_PAIRS, AKA as SPREAD_AKA } from './spreadsLibrary.js';
@@ -271,7 +273,7 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
       surface: 'panel.macro.engines', needs: ['tab.macro'], run: args => indicatorRun(word, args) });
   }
   // look and feel, links
-  add({ id: 'jarvis', group: 'Look and feel', name: 'HELIX', aliases: ['MACH', 'JARVIS'], secret: true, help: 'H.E.L.I.X. (Holistic Economic Links & Intermarket Xplorer): the macro chain as a rotating 3D HUD, the morning broadcast and the hologram views. Description only, never a trade. MACH and JARVIS still open it.', example: 'helix', opens: 'A full-screen 3D view of the chain', surface: 'widget.jarvis', action: { kind: 'jarvis' } });
+  add({ id: 'jarvis', group: 'Look and feel', name: 'HELIX', aliases: ['MACH', 'JARVIS'], secret: true, args: '[picture or panel] [1d|5d|20d] [region] [popout]', help: 'H.E.L.I.X. (Holistic Economic Links & Intermarket Xplorer): the macro chain as a rotating 3D HUD, the morning broadcast and the hologram views. Description only, never a trade. MACH and JARVIS still open it. Add a picture to land on it (HELIX YIELDS, HELIX BOARD 1D, HELIX MAP EUROPE); the link #helix/yields does the same.', example: 'helix yields', opens: 'A full-screen 3D view of the chain', surface: 'widget.jarvis', action: { kind: 'jarvis' }, run: args => helixRun(args) });
   add({ id: 'theme', group: 'Look and feel', name: 'THEME', args: '<name>', help: `Change the colour theme (${THEMES.map(t => t.id).join(', ')}). It is remembered in this browser.`, example: 'theme amber', opens: 'The whole terminal, in that theme', surface: 'widget.themepicker', run: themeRun });
   add({ id: 'tf', group: 'Look and feel', name: 'TF', aliases: ['TIMEFRAME'], args: `<${TF_KEYS.join('|')}>`, help: 'Set the candle size on every chart that offers one (Pair page and asset cards).', example: 'tf 15m', opens: 'The candle-size pills on the charts', surface: 'widget.linked', run: tfRun });
   add({ id: 'link', group: 'Look and feel', name: 'LINK', args: '<on|off>', help: "Switch linked selection on or off. On: picking a market in one place (an asset card, a vol-clock tile or row, the Pair page or the Replay) moves the Pair page, Replay, strength board, candle-size buttons and vol clock with it, and that market's cards glow. Off: every panel keeps its own market again. The chip in the top bar shows which, and the ? beside it explains it. Kept in this browser only.", example: 'link off', opens: 'The linked chip in the top bar', surface: 'widget.linked', run: linkRun });
@@ -528,6 +530,11 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     if (!a) return { error: `Name a theme: ${THEMES.map(t => t.id).join(', ')}.` };
     const t = THEMES.find(x => x.id === a) ?? THEMES.find(x => x.id.startsWith(a) || x.label.toLowerCase().startsWith(a));
     return t ? { action: { kind: 'theme', id: t.id }, summary: `Switches the colours to ${t.label}.` } : { error: `No theme called "${a}". Try ${THEMES.map(x => x.id).join(', ')}.` };
+  }
+  function helixRun(args) {
+    const a = String(args ?? '').trim(), p = parseHelixArgs(a);
+    if (p.unknown) return { error: `Helix has no picture called "${p.unknown}". Try: board, yields, gamma pillar, flip map, alerts, today.` };
+    return { action: { kind: 'jarvis', args: a }, summary: p.target ? `Opens Helix on ${helixLabel(p.target.kind, p.target.id) ?? p.target.id}${p.win ? ` (${p.win}D)` : ''}.` : 'Opens Helix on TODAY, its front page.' };
   }
   function tfRun(args) {
     const a = String(args ?? '').trim().toLowerCase();

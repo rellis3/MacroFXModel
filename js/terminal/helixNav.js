@@ -183,3 +183,31 @@ export const KEYS = [
 /** Section id for a digit key '1'..'6', else null. */
 export const sectionForKey = k => (/^[1-6]$/.test(String(k)) ? SECTIONS[+k - 1]?.id ?? null : null);
 export { labelOf, sectionOf };
+
+// ── OPEN IN TERMINAL: a Helix key (a chain node, a market, a gamma market) -> the desk instrument the terminal's chart / pair page take, or null ──
+const CHAIN_INST = { oil: 'WTI', gold: 'GOLD', copper: 'COPPER', audusd: 'AUDUSD', usdcad: 'USDCAD', usdjpy: 'USDJPY', nq: 'NQ', spx: 'SPX500', gbpusd: 'GBPUSD', eurusd: 'EURUSD', btc: 'BTCUSD' };
+export const DESK_INST = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'GBPJPY', 'EURGBP', 'EURJPY', 'EURCHF', 'GBPCHF', 'AUDJPY', 'CADJPY', 'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY', 'GBPNZD', 'AUDNZD', 'AUDCHF', 'NZDCHF', 'CADCHF', 'CHFJPY', 'EURNOK', 'EURSEK', 'USDNOK', 'USDSEK', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100', 'GOLD', 'SILVER', 'COPPER', 'PLATINUM', 'PALLADIUM', 'WTI', 'BRENT', 'NATGAS', 'SOYBEAN', 'WHEAT', 'CORN', 'SUGAR', 'BTCUSD'];
+export function instFor(key) {
+  const k = String(key ?? '').trim(); if (!k) return null;
+  if (CHAIN_INST[k]) return CHAIN_INST[k];
+  const u = k.toUpperCase().replace('/', ''); return DESK_INST.includes(u) ? u : null;
+}
+
+// ── colour tokens ──
+/** The token Helix uses for LONG GAMMA / "together" (--cy): teal, except under the colour-blind theme, where up is already a light cyan, so it takes the violet (pur2) and calls (up) vs long gamma stay apart. */
+export const cyTokenFor = themeId => (themeId === 'colourblind' ? 'pur2' : 'teal');
+/** Squared RGB distance of two #rrggbb colours (for the guard that keeps two meanings apart). */
+export function colourGap(a, b) {
+  const p = s => { const m = String(s ?? '').trim().match(/^#([0-9a-f]{6})$/i); if (!m) return null; const n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const x = p(a), y = p(b); if (!x || !y) return null; return Math.sqrt((x[0] - y[0]) ** 2 + (x[1] - y[1]) ** 2 + (x[2] - y[2]) ** 2);
+}
+/** The canvas font family: the theme's --mono stack (ui-monospace is not supported by Chrome on Windows, so it is never first), else a Windows-first stack. */
+export function monoFont(cssMono) {
+  const s = String(cssMono ?? '').trim().replace(/^ui-monospace\s*,\s*/i, '');
+  return s && !/^var\(/.test(s) ? s : 'Consolas,"Cascadia Mono",Menlo,"DejaVu Sans Mono",monospace';
+}
+/** A ctx.font string with the views' 'ui-monospace,monospace' swapped for the HUD's family, and any px size raised to the floor (0 = none). */
+export function mapFont(v, family, floor = 0) {
+  let s = String(v ?? ''); if (family) s = s.replace('ui-monospace,monospace', family);
+  return floor ? s.replace(/(\d+(?:\.\d+)?)px/, (x, n) => `${Math.max(+n, floor)}px`) : s;
+}

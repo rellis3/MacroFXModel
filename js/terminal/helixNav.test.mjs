@@ -99,3 +99,37 @@ test('keys: 1-6 map to the six sections in order; the help lists every key', () 
   assert.equal(sectionForKey('1'), 'watch'); assert.equal(sectionForKey('6'), 'sys'); assert.equal(sectionForKey('7'), null); assert.equal(sectionForKey('a'), null);
   const all = KEYS.map(k => k[0]).join(' '); for (const k of ['1 – 6', '/', '?', 'Esc', 'S', 'O', 'P', 'Tab']) assert.ok(all.includes(k), k);
 });
+
+test('colour tokens: under every theme calls (up) and long gamma (--cy) are clearly different colours; down stays apart from both', async () => {
+  const { THEMES } = await import('./themes.js'); const { cyTokenFor, colourGap } = await import('./helixNav.js');
+  for (const t of THEMES) {
+    const tok = t.id === 'daylight' ? THEMES.find(x => x.id === 'default').tokens : t.tokens;     // Helix forces the dark set under daylight
+    const cy = tok[cyTokenFor(t.id)], up = tok.up, dn = tok.dn;
+    assert.ok(cy && up && dn, t.id);
+    assert.ok(colourGap(cy, up) > 60, `${t.id}: calls ${up} vs long gamma ${cy} too close (${colourGap(cy, up)?.toFixed(0)})`);
+    assert.ok(colourGap(cy, dn) > 60, `${t.id}: long gamma vs down`);
+  }
+  assert.equal(cyTokenFor('colourblind'), 'pur2'); assert.equal(cyTokenFor('default'), 'teal'); assert.equal(colourGap('#000000', 'nope'), null);
+});
+test('canvas font: ui-monospace is never first (Chrome on Windows lacks it); the font floor still applies', async () => {
+  const { monoFont, mapFont } = await import('./helixNav.js');
+  assert.equal(monoFont('ui-monospace, Menlo, monospace'), 'Menlo, monospace'); assert.match(monoFont(''), /^Consolas/); assert.match(monoFont('var(--x)'), /^Consolas/);
+  assert.equal(mapFont('11px ui-monospace,monospace', 'Consolas,monospace'), '11px Consolas,monospace');
+  assert.equal(mapFont('600 11px ui-monospace,monospace', 'X', 15), '600 15px X'); assert.equal(mapFont('20px ui-monospace,monospace', 'X', 15), '20px X'); assert.equal(mapFont('12px serif', 'X'), '12px serif');
+});
+test('open in terminal: chain keys and market keys map to desk instruments; prefixed hit keys do not', async () => {
+  const { instFor } = await import('./helixNav.js');
+  assert.equal(instFor('gold'), 'GOLD'); assert.equal(instFor('spx'), 'SPX500'); assert.equal(instFor('EURUSD'), 'EURUSD'); assert.equal(instFor('eur/usd'), 'EURUSD');
+  assert.equal(instFor('us10y'), null); assert.equal(instFor('gm:prev'), null); assert.equal(instFor(null), null);
+});
+test('the hologram keeps the last two pipelines alive', async () => {
+  const { keepPipelines, glBudget } = await import('./jarvisGL.js');
+  assert.deepEqual([...keepPipelines('a', 'b')], ['a', 'b']); assert.deepEqual([...keepPipelines('a', null)], ['a']); assert.equal(glBudget.dpr, 2);
+});
+test('the HELIX command takes a picture and a window; nonsense is an error, not a guess', async () => {
+  const { buildCommands, search, plainAction } = await import('./commandCore.js');
+  const cmds = buildCommands({ isOn: () => true }), h = cmds.find(c => c.id === 'jarvis');
+  assert.deepEqual(plainAction(h).action, { kind: 'jarvis' });
+  const r = search(cmds, 'helix board 1d')[0]; assert.equal(r.cmd.id, 'jarvis'); assert.deepEqual(r.action, { kind: 'jarvis', args: 'board 1d' }); assert.match(r.summary, /MARKET BOARD \(1D\)/);
+  assert.ok(search(cmds, 'helix flibbertigibbet')[0].error); assert.equal(search(cmds, 'jarvis yields')[0].action.args, 'yields');
+});

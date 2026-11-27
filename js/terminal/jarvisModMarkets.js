@@ -58,6 +58,7 @@ function render(pane, api) {
       const b = e.target.closest('button[data-k]'); if (!b) return;
       const geo = MARKET_GEO[b.dataset.k]; if (!geo) return;
       S.sel = b.dataset.k; const gl = api.st.gl; gl.tlat = geo[0]; gl.tlon = geo[1]; gl.tzoom = Math.max(gl.tzoom, 2.4); api.st.spin = false; api.blip(700, 0.05); draw();
+      api.openCard?.(b.dataset.k);      // a row used to only turn the globe: it now opens the market's card too (chart, pair page, release replay in the terminal)
     };
   } catch (e) { try { pane.innerHTML = '<p>The markets panel could not load.</p>'; } catch (e2) { /* nothing */ } }
 }
