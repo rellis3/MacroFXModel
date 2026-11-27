@@ -873,10 +873,19 @@ const NEWS_EVERY_MS = 120_000;
 function newsFeed(force = false) {
   if (!force && NS.items && Date.now() - NS.at < NEWS_EVERY_MS - 5_000) return Promise.resolve(NS.items);
   return (NS.loading ??= getJson('/api/desk-news?hours=72&tier=3').then(r => {
-    if (r?.ok) { NS.items = r.items ?? []; NS.at = Date.now(); NS.updatedAt = r.updatedAt ?? null; NS.err = null; } else NS.err = r?.error ?? 'not available';
+    // the read cut to the currencies each title names, the markets capped at the book + 3, near-identical stories folded (newsView.tidyHeadline / dedupeNews)
+    if (r?.ok) { NS.items = newsTidyAll(r.items ?? []); NS.at = Date.now(); NS.updatedAt = r.updatedAt ?? null; NS.err = null; } else NS.err = r?.error ?? 'not available';
+    newsPrinted();
     return NS.items ?? [];
   }).finally(() => { NS.loading = null; }));
 }
+// the calendar's printed rows, so a headline about a print shows actual against consensus beside it (newsView.printFor); every 10 min at most
+function newsPrinted() {
+  if (Date.now() - (NS.printedAt ?? 0) < 10 * 60e3) return;
+  NS.printedAt = Date.now();
+  getJson('/api/calendar-feed').then(c => { NS.printed = c?.printed?.rows ?? null; if (T.tab === 'news') drawNews(); globalThis.repaintWireCard?.(); }).catch(() => {});
+}
+const newsTidyAll = items => { const bk = liveBook(); return NV.dedupeNews((items ?? []).map(x => NV.tidyHeadline(x, Object.keys(bk).length ? bk : null))); };
 const liveBook = () => Object.fromEntries(Object.entries(D?.cards ?? {}).filter(([, x]) => (DIR[x.rating] ?? 0) !== 0 && x.size > 0).map(([k, x]) => [k, x.rating]));
 function drawPairNews(box, n, c) {
   const live = c && (DIR[c.rating] ?? 0) !== 0 && c.size > 0 ? c.rating : null;
@@ -930,7 +939,7 @@ function drawNews(filters = false) {
   if (!NS.items) { if (NS.err) el('nt-list').innerHTML = `<p class="muted">The news wire is not available right now (${h(NS.err)}).</p>`; return; }
   const xs = NV.filterNews(NS.items, { tier: NS.tier, keys: NS.keys, onlyBook: NS.onlyBook, book: liveBook(), q: NS.q });
   el('nt-top').innerHTML = NV.topStripHtml(NS.items, now);
-  el('nt-list').innerHTML = NV.listHtml(xs, { now });
+  el('nt-list').innerHTML = NV.listHtml(xs, { now, printed: NS.printed });
   el('nt-n').textContent = `${xs.length} headline${xs.length === 1 ? '' : 's'}`;
   el('nt-upd').textContent = NS.updatedAt ? `wire ${new Date(NS.updatedAt).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' })} London · refreshes every 2 min` : '';
 }
@@ -956,6 +965,12 @@ globalThis.mountAnalyse = box => AAV.mount(box).catch(e => console.warn('analyse
 globalThis.openNewsTab = openNews;
 // the Assets cards' one-line latest headline (desk-terminal.html assetCard reads it; D.news is tier 1-2, 24 h)
 globalThis.newsLatestLine = (items, inst, rating) => NV.latestLine(items, inst, rating);
+// the Overview wire card (desk-terminal.html wireCard): the same tidied read, and the book line worked out from the arrows and the cards
+globalThis.newsTidyAll = newsTidyAll;
+globalThis.newsBookNote = NV.bookNoteHtml;
+globalThis.newsPrintChip = x => NV.printChip(NV.printFor(x, NS.printed));
+globalThis.newsMixedRead = NV.mixedRead;
+newsPrinted();
 function fromHash() {
   const go = backTarget({ hash: location.hash, tab: T.tab, from: T.tab === 'deep' ? T.deepFrom : T.pairFrom });
   if (go?.pair) { if (go.pair !== T.pair || T.tab !== 'pair') openPair(go.pair, { fromHistory: true }); }

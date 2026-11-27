@@ -347,10 +347,72 @@ test('newsView.filterNews: tier, keys, book, search; newest first, de-duplicated
   assert.deepEqual(NV.filterNews([], {}), []); assert.deepEqual(NV.filterNews(null), []);
 });
 
-test('newsView.topStories: tier 1 in the last 6 hours only', () => {
-  assert.deepEqual(NV.topStories(NEWS, NOW).map(h => h.id), ['a']);
-  assert.deepEqual(NV.topStories(NEWS, NOW, { hours: 9 }).map(h => h.id), ['a', 'c']);
-  assert.match(NV.topStripHtml([], NOW), /No tier-1 headlines/);
+test('newsView.topStories: tier 1 in the last 24 hours (a quiet wire ran 6 h with none, review 2026-11-27)', () => {
+  assert.deepEqual(NV.topStories(NEWS, NOW).map(h => h.id), ['a', 'c']);
+  assert.deepEqual(NV.topStories(NEWS, NOW, { hours: 6 }).map(h => h.id), ['a']);
+  assert.match(NV.topStripHtml([], NOW), /No tier-1 headlines in the last 24 hours/);
+  assert.match(NV.topStripHtml(NEWS, NOW), /tier 1, last 24 h/);
+});
+
+// review 2026-11-27: the wire fanned an INR story to the dollar, scored previews, and the book note contradicted its arrows
+test('newsView.tidyHeadline: the read cut to the currencies the title names, the book + 3 markets, no verdict on a preview', () => {
+  const inr = NV.tidyHeadline({ id: 'i', title: 'India swaps price in outsized RBI rate hike - Reuters', ms: NOW, tier: 2, read: { tier: 2, impact: { USD: -1 } }, pairs: [{ inst: 'EURUSD', dir: 1, card: 'SHORT', stance: 'against' }, { inst: 'USDJPY', dir: -1, card: 'LONG', stance: 'against' }] });
+  assert.deepEqual(inr.read.impact, {}); assert.deepEqual(inr.pairs, [], 'a rupee story is not a dollar move'); assert.deepEqual(inr.read.dropped, ['USD']);
+  assert.match(NV.rowHtml(inr, { now: NOW }), /USD read dropped: not in the headline/);
+  const cad = NV.tidyHeadline({ id: 'k', title: 'Canadian Dollar draws support from BoC rate hike bets', ms: NOW, tier: 2, read: { tier: 2, impact: { CAD: 1, USD: -1 } }, pairs: [{ inst: 'USDCAD', dir: -2, card: 'LONG', stance: 'against' }, { inst: 'EURUSD', dir: 1, card: 'SHORT', stance: 'against' }] });
+  assert.deepEqual(cad.read.impact, { CAD: 1 });
+  assert.deepEqual(cad.pairs.map(p => [p.inst, p.dir, p.stance]).slice(0, 1), [['USDCAD', -1, 'against']]);
+  assert.ok(!cad.pairs.some(p => p.inst === 'EURUSD'), 'the USD fan-out is gone');
+  assert.equal(cad.pairs.filter(p => !p.card).length, 3, 'markets without a card: at most 3');
+  const risk = NV.tidyHeadline({ title: 'Stocks slide as risk-off grips markets', ms: NOW, read: { impact: { JPY: 1, EQUITIES: -1 } } });
+  assert.deepEqual(risk.read.impact, { JPY: 1, EQUITIES: -1 }, 'a title naming no currency keeps its read');
+  const pre = NV.tidyHeadline({ title: 'EUR/USD Weekly Forecast: Eurozone inflation and US jobs to set tone', ms: NOW, read: { impact: { EUR: 1 } }, react: { m5: { label: 'with', units: 1 } } });
+  assert.equal(pre.preview, true); assert.equal(pre.react, null);
+  assert.match(NV.reactionHtml(pre), /preview: no reaction scored/);
+  assert.equal(NV.tidyHeadline({ title: 'Euro: Scope for short-term rebound as ECB stays cautious – MUFG', ms: NOW }).preview, true, 'a bank-research note');
+  assert.equal(NV.tidyHeadline({ title: 'ECB holds rates at 2.5%', ms: NOW }).preview, false);
+  const many = { pairs: Array.from({ length: 9 }, (_, i) => ({ inst: `P${i}`, dir: 1 })) };
+  assert.match(NV.marketChips(many), /\+3 more markets/);
+});
+
+test('newsView.dedupeNews: near-identical stories from one source within 4 h fold into the newest', () => {
+  const xs = NV.dedupeNews([
+    { id: 1, title: 'Japanese Yen softens after soft Tokyo core CPI inflation data', ms: NOW, source: 'FXStreet' },
+    { id: 2, title: 'Japanese Yen softens after soft Tokyo core CPI inflation figures', ms: NOW - 3600e3, source: 'FXStreet' },
+    { id: 3, title: 'Japanese Yen softens after soft Tokyo core CPI inflation figures', ms: NOW - 3600e3, source: 'Reuters' },
+    { id: 4, title: 'Japanese Yen softens after soft Tokyo core CPI inflation data', ms: NOW - 6 * 3600e3, source: 'FXStreet' },
+  ]);
+  assert.deepEqual(xs.map(h => h.id), [1, 3, 4]); assert.equal(xs[0].similar.length, 1);
+  assert.match(NV.rowHtml(xs[0], { now: NOW }), /1 near-identical story folded in/);
+});
+
+test('newsView.printFor: the calendar print a headline is about, with actual against consensus', () => {
+  const P = [
+    { ms: NOW - 9 * 3600e3, country: 'Japan', event: 'Tokyo Core CPI', actual: 2.9, consensus: 3, raw: { actual: '2.9%', consensus: '3.0%' }, released: true },
+    { ms: NOW - 9 * 3600e3, country: 'Japan', event: 'CPI Tokyo Ex Food & Energy', actual: 2.3, consensus: null, raw: { actual: '2.3%', consensus: ' ' }, released: true },
+    { ms: NOW - 9 * 3600e3, country: 'Spain', event: 'Spanish CPI', actual: 4.1, consensus: 4.7, raw: { actual: '4.1%', consensus: '4.7%' }, released: true },
+  ];
+  const hot = { title: 'Japanese Yen nears weekly lows despite hot Tokyo inflation figures', ms: NOW };
+  assert.equal(NV.printFor(hot, P).event, 'Tokyo Core CPI', 'the row with a consensus');
+  assert.match(NV.printChip(NV.printFor(hot, P)), /print: Tokyo Core CPI 2\.9% vs 3\.0% expected · below expected/);
+  assert.equal(NV.printFor({ title: 'Euro slips after German CPI', ms: NOW }, P), null, 'a place word must match: Spanish is not German');
+  assert.equal(NV.printFor({ title: 'Yen slides on BoJ talk', ms: NOW }, P), null, 'no release kind named');
+  assert.equal(NV.printFor({ ...hot, ms: NOW - 20 * 3600e3 }, P), null, 'a headline before the print');
+  assert.equal(NV.printFor({ title: 'USD/JPY Weekly Forecast: Tokyo CPI in focus', ms: NOW }, P), null, 'a preview is about a print to come');
+  assert.match(NV.rowHtml({ ...hot, read: { why: 'Hot Tokyo inflation fails to lift yen; soft CPI read.' } }, { now: NOW, printed: P }), /read contradicts itself/);
+});
+
+test('newsView.bookNoteHtml: the book line comes from the arrows and the cards; the model note only when it agrees', () => {
+  const pairs = [{ inst: 'USDJPY', dir: 1, card: 'LONG', stance: 'supports' }, { inst: 'GBPJPY', dir: 1, card: 'SHORT', stance: 'against' }, { inst: 'EURJPY', dir: 1, card: null, stance: null }];
+  const b = note => NV.bookNoteHtml({ pairs, read: { book: note } });
+  assert.match(b(''), /The book: supports USDJPY long; against GBPJPY short/);
+  assert.doesNotMatch(b('Against the USDJPY long'), /Against the USDJPY/, 'contradicts the arrows: dropped');
+  assert.match(b('Supports the USDJPY long'), /Supports the USDJPY long/);
+  assert.match(b('Supports USDJPY long; against the GBP/JPY short'), /· Supports USDJPY/);
+  assert.doesNotMatch(b('Supports USDJPY long and JPY-cross shorts'), /JPY-cross/, 'a group claim cannot be checked');
+  assert.doesNotMatch(b('supports the USD short side'), /USD short side/, 'names no market with a card');
+  assert.doesNotMatch(b('Hot Tokyo inflation supports USDJPY long on a soft CPI read'), /Hot Tokyo/);
+  assert.equal(NV.bookNoteHtml({ pairs: [{ inst: 'EURJPY', dir: 1 }], read: { book: 'x' } }), '');
 });
 
 test('newsView.marketNews: pairs[] first, else base/quote from the read; indices, gold and oil by asset key', () => {

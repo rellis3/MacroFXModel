@@ -280,7 +280,7 @@ import { DAY_MARKETS as _DF_MARKETS, realisedShape as _dfRealised, validateDayFo
 import { policyRates as _prRates } from './js/policyRates.js';   // each central bank's policy rate, from its own series
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
-import { pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
+import { isPreview as _nwIsPreview, pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
 import { CHANNEL_KV_KEY as _NC_KEY, MAX_PER_TICK as _NC_MAX_PER_TICK, channelMessage as _ncMessage, channelCandidates as _ncCandidates, allowChannel as _ncAllow, validateConfig as _ncValidate, publicView as _ncPublic, parseConfig as _ncParse, explainTelegramError as _ncExplain, persistConfig as _ncPersist, removeConfig as _ncRemove } from './js/newsChannel.js';   // the shared news channel: its own bot, tier 1-2, no book lines
 import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBackoff, dueSources as _nwDue, allowAlert as _nwAllowAlert, breakingCandidates as _nwBreaking, breakingMessage as _nwBreakingMsg } from './js/newsOps.js';
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
@@ -8067,7 +8067,7 @@ async function _nwFetchSource(src, url, incoming, health) {
 async function _nwReactPass(wire, now) {
   const final = []; let fetches = 0;
   for (const h of wire) {
-    if (!h.pairs?.length || (h.read?.tier ?? h.tier) > 2 || h.react?.done) continue;
+    if (!h.pairs?.length || (h.read?.tier ?? h.tier) > 2 || h.react?.done || _nwIsPreview(h.title)) continue;   // a preview / forecast / bank note has no event to react to
     const st = _nwReactStart(h); if (!st) continue;
     const age = now - st.t0;
     if (age > 6 * 3600e3) { h.react = { ...(h.react ?? { markets: [], m5: null, m30: null }), t0: st.t0, basis: st.basis, done: true }; if (h.react.m5 || h.react.m30) final.push(h); continue; }
@@ -8125,7 +8125,7 @@ async function _nwTick() {
       } catch (e) { console.warn('[news] read:', e.message); }
     }
     // the desk's markets each read touches, against today's book (pure JS, no model)
-    for (const h of wire) if (h.read && !h.pairs && Object.keys(h.read.impact ?? {}).length) h.pairs = _nwPairs(h.read.impact, { book });
+    for (const h of wire) if (h.read && !h.pairs && Object.keys(h.read.impact ?? {}).length) h.pairs = _nwPairs(h.read.impact, { book, title: h.title, extra: 3 });   // only the currencies the title names; the book's markets + 3
     // did the market react? (+5 / +30 min) and the record
     let react = { final: [], fetches: 0 };
     if (process.env.OANDA_KEY) { try { react = await _nwReactPass(wire, now); } catch (e) { console.warn('[news] react:', e.message); } }
@@ -8223,7 +8223,7 @@ app.get('/api/desk-news', async (req, res) => {
     const ccy = req.query.ccy ? String(req.query.ccy).toUpperCase() : null;
     const { book } = await _nwBook().catch(() => ({ book: {} }));
     const items = _nwPick(store.wire, { sinceMs: Date.now() - hours * 3600e3, tier, ccy, limit: 200 })
-      .map(h => (Object.keys(h.read?.impact ?? {}).length ? { ...h, pairs: _nwPairs(h.read.impact, { book }) } : h));
+      .map(h => (Object.keys(h.read?.impact ?? {}).length ? { ...h, pairs: _nwPairs(h.read.impact, { book, title: h.title, extra: 3 }) } : h));
     res.json({ ok: true, updatedAt: store.updatedAt ?? null, health: store.health ?? _nwState.health, backoff: store.backoff ?? {}, label: 'headlines and their read: context, never a signal', items });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

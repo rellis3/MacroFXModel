@@ -10,7 +10,7 @@
  *
  * Pure HTML-string builders, no fetch, no clock (pass `now`). Tested in js/terminal/terminal.test.mjs.
  */
-import { marketKeys, stance as cardStance } from '../newsImpact.js';
+import { marketKeys, stance as cardStance, TITLE_RX, titledImpact, pairImpacts, capPairs, isPreview } from '../newsImpact.js';
 
 export const NEWS_CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
 export const NEWS_ASSETS = ['EQUITIES', 'GOLD', 'OIL'];
@@ -71,27 +71,15 @@ export function filterNews(items, { tier = 3, keys = [], onlyBook = false, book 
   });
 }
 
-/** Tier-1 headlines from the last `hours` (6), newest first. */
-export const topStories = (items, now, { hours = 6, max = 6 } = {}) => newest(items).filter(h => tierOf(h) === 1 && +h.ms >= now - hours * 3600e3).slice(0, max);
+/** Tier-1 headlines from the last `hours` (24: a quiet wire runs 6 h with no tier-1 story), newest first. */
+export const topStories = (items, now, { hours = 24, max = 6 } = {}) => newest(items).filter(h => tierOf(h) === 1 && +h.ms >= now - hours * 3600e3).slice(0, max);
 
 /**
  * Does the headline itself name one of the market's keys? The wire's read fans a story out to every pair of a currency it nudges
  * (review 2026-11-27: "Canadian Dollar draws support from BoC rate hike bets" read as USD down, then shown on 15 cards from USDCHF
- * to AUDUSD). A market's own news line keeps only headlines whose title names one of its keys; the wire itself still shows the fan-out.
+ * to AUDUSD). A market's own news line keeps only headlines whose title names one of its keys; the wire's own fan-out is cut the same
+ * way by tidyHeadline below (newsImpact.titledImpact).
  */
-const TITLE_RX = {
-  USD: /\b(USD|US dollar|U\.S\. dollar|greenback|dollar index|DXY|Fed|FOMC|Powell|Treasur(y|ies)|US (yields?|data|CPI|PCE|jobs|payrolls|economy|inflation|GDP|retail))\b/i,
-  EUR: /\b(EUR|euro|ECB|Lagarde|eurozone|euro area|German|Bunds?)\b/i,
-  GBP: /\b(GBP|pound|sterling|cable|BoE|Bank of England|UK|Britain|British|gilts?)\b/i,
-  JPY: /\b(JPY|yen|BoJ|Bank of Japan|Japan|Japanese|JGBs?|Ueda|Tokyo)\b/i,
-  AUD: /\b(AUD|Aussie|Australian?|RBA)\b/i,
-  NZD: /\b(NZD|kiwi|New Zealand|RBNZ)\b/i,
-  CAD: /\b(CAD|loonie|Canadian|Canada|BoC|Bank of Canada)\b/i,
-  CHF: /\b(CHF|franc|SNB|Swiss|Switzerland)\b/i,
-  EQUITIES: /\b(stocks?|equit(y|ies)|S&P|Nasdaq|Dow|Wall Street|shares|Russell|DAX|FTSE)\b/i,
-  GOLD: /\b(gold|XAU|bullion|precious)\b/i,
-  OIL: /\b(oil|crude|WTI|Brent|OPEC)\b/i,
-};
 export function namesMarket(h, inst) {
   const keys = newsKeysFor(inst);
   // an index, gold or oil card answers to one asset key: a macro story the read scores on it directly ("US payrolls beat" → equities) stays
@@ -99,6 +87,118 @@ export function namesMarket(h, inst) {
   const rx = keys.map(k => TITLE_RX[k]).filter(Boolean);
   return !rx.length || rx.some(r => r.test(String(h?.title ?? '')));
 }
+// ── the wire made honest (review 2026-11-27) ──
+/**
+ * One headline as the terminal shows it: the read restricted to the currencies its title names (newsImpact.titledImpact:
+ * a rupee story loses its USD read), the markets recomputed from that read against the book (the server's cards, or
+ * `book` = { INST: rating }) and capped at the book's markets plus 3, and no 5m / 30m verdict on a preview, forecast or
+ * bank-research piece (newsImpact.isPreview). `read.dropped` lists the keys the read gave that the title does not name.
+ */
+export function tidyHeadline(h, book = null) {
+  if (!h || h.tidy) return h;
+  const out = { ...h, tidy: true, preview: isPreview(h.title) };
+  const im = h.read?.impact;
+  if (im && Object.keys(im).length) {
+    const kept = titledImpact(im, h.title);
+    out.read = { ...h.read, impact: kept, dropped: Object.keys(im).filter(k => !(k in kept) && +im[k]) };
+    const bk = book ?? Object.fromEntries((h.pairs ?? []).filter(p => p.card).map(p => [p.inst, p.card]));
+    out.pairs = pairImpacts(kept, { book: bk, extra: 3 });
+  } else if (h.pairs) out.pairs = capPairs(h.pairs, 3);
+  if (out.preview) out.react = null;
+  return out;
+}
+const WORDS = t => new Set(String(t ?? '').toLowerCase().replace(/[^a-z0-9.]+/g, ' ').split(' ').filter(w => w.length > 3));
+const jaccard = (a, b) => { let n = 0; for (const w of a) if (b.has(w)) n++; return n / ((a.size + b.size - n) || 1); };
+/**
+ * Near-identical stories folded into one row: the same lead source within `hours` (4) and titles sharing at least `min`
+ * (0.6) of their words. The newest is kept and carries `similar` (the older titles). Newest first.
+ */
+export function dedupeNews(items, { hours = 4, min = 0.6 } = {}) {
+  const kept = [];
+  for (const h of newest(items)) {
+    const w = WORDS(h.title), src = h.sources?.[0] ?? h.source;
+    const twin = kept.find(k => (k.h.sources?.[0] ?? k.h.source) === src && Math.abs(k.h.ms - h.ms) <= hours * 3600e3 && jaccard(k.w, w) >= min);
+    if (twin) { twin.h.similar = [...(twin.h.similar ?? []), { title: h.title, ms: h.ms }]; continue; }
+    kept.push({ h: { ...h }, w });
+  }
+  return kept.map(k => k.h);
+}
+
+/**
+ * The calendar print a headline is about (review 2026-11-27: the same Tokyo CPI, 2.9% against 3.0% expected, was read
+ * "soft" at 00:27 and "hot" at 05:46, 08:29 and 10:38). `printed` = /api/calendar-feed printed.rows. A row matches when
+ * it printed in the 30 h before the headline (or up to 5 min after its stamp), its country's currency is one the title
+ * names, the title names the same kind of release (CPI / inflation, GDP, PMI, jobs, ...), and every place word in the
+ * release's name ("Tokyo", "Spanish") is in the title, and the row has both an actual and a consensus (the check needs
+ * both). Core prints are preferred when the title says core. A preview never matches. Returns the row or null.
+ */
+const COUNTRY_CCY = { 'United States': 'USD', US: 'USD', 'Euro Zone': 'EUR', Germany: 'EUR', France: 'EUR', Italy: 'EUR', Spain: 'EUR', 'United Kingdom': 'GBP', UK: 'GBP', Japan: 'JPY', Australia: 'AUD', 'New Zealand': 'NZD', Canada: 'CAD', Switzerland: 'CHF' };
+const KINDS = [/\b(cpi|hicp|inflation|consumer prices?)\b/i, /\b(gdp|growth)\b/i, /\bpmi\b/i, /\b(payrolls|nfp|jobs|employment|unemployment|jobless)\b/i, /\bretail sales\b/i, /\bppi\b/i, /\b(wages?|earnings)\b/i];
+const PLAIN = new Set(['core', 'cpi', 'hicp', 'gdp', 'pmi', 'ppi', 'inflation', 'consumer', 'price', 'prices', 'index', 'rate', 'change', 'final', 'prelim', 'preliminary', 'flash', 'advance', 'food', 'energy', 'fresh', 'and', 'ex', 'excl', 'excluding', 'the', 'of', 'non', 'farm', 'nonfarm', 'payrolls', 'employment', 'unemployment', 'retail', 'sales', 'trimmed', 'mean', 'annualized', 'growth', 'manufacturing', 'services', 'composite', 'national', 'harmonised', 'harmonized']);
+const kindsOf = t => KINDS.map((rx, i) => (rx.test(t) ? i : -1)).filter(i => i >= 0);
+export function printFor(h, printed) {
+  const title = String(h?.title ?? ''), ms = +h?.ms; if (!title || !Number.isFinite(ms) || !printed?.length || isPreview(title)) return null;   // a preview is about a print still to come
+  const tk = kindsOf(title); if (!tk.length) return null;
+  const named = new Set(Object.keys(TITLE_RX).filter(k => TITLE_RX[k].test(title))), core = /\bcore\b/i.test(title), low = title.toLowerCase();
+  const hits = printed.filter(r => {
+    if (!(r?.released ?? true) || !Number.isFinite(+r.ms) || r.ms > ms + 5 * 60e3 || r.ms < ms - 30 * 3600e3) return false;
+    if (r.consensus == null || !String(r.raw?.consensus ?? r.consensus).trim() || r.actual == null) return false;   // the check needs actual and consensus
+    if (!named.has(COUNTRY_CCY[r.country])) return false;
+    const ev = String(r.event ?? ''); if (!kindsOf(ev).some(k => tk.includes(k))) return false;
+    const place = ev.toLowerCase().split(/[\s&()]+/).filter(w => w && !PLAIN.has(w) && /^[a-z]{4,}$/.test(w));
+    return place.every(w => low.includes(w));
+  });
+  if (!hits.length) return null;
+  const score = r => (/\bcore\b/i.test(r.event) === core ? 1 : 0);
+  return hits.sort((a, b) => score(b) - score(a) || b.ms - a.ms)[0];
+}
+/** The print beside the headline: "print: Tokyo Core CPI 2.9% vs 3.0% expected · below expected". */
+export function printChip(r) {
+  if (!r) return '';
+  const raw = r.raw ?? {}, a = String(raw.actual ?? r.actual ?? '').trim(), c = String(raw.consensus ?? r.consensus ?? '').trim(), pv = String(raw.previous ?? r.previous ?? '').trim();
+  if (!a) return '';
+  const cmp = Number.isFinite(+r.actual) && r.consensus != null && Number.isFinite(+r.consensus) && c ? (+r.actual > +r.consensus ? 'above expected' : +r.actual < +r.consensus ? 'below expected' : 'in line') : null;
+  return `<span class="chip pur" title="The print this headline is about, from the economic calendar feed: check the headline's read against it">print: ${esc(r.event)} ${esc(a)}${c ? ` vs ${esc(c)} expected` : pv ? ` (previous ${esc(pv)})` : ''}${cmp ? ` · ${cmp}` : ''}</span>`;
+}
+
+/**
+ * The wire's "The book:" note (Overview > News & events). The model writes it, and it can contradict its own arrows
+ * (review 2026-11-27: USDJPY up "for card" beside "Against the USDJPY long"; "Against the AUDUSD short: AUD weakness
+ * supports the position"; "supports the USD short side" with no USD short in the book). The line shown is computed
+ * from the arrows and the cards (newsImpact.stance). The model's note is kept only when every clause in it that says
+ * "supports" or "against" (or "benefits", "at risk", ...) names a market whose computed stance agrees and makes no group claim
+ * ("JPY-cross shorts"), and it does not call the same print hot and soft.
+ */
+const SUP_RX = /\b(support|supports|supportive|helps?|backs?|favou?rs?|bolsters?|tailwind|benefits?|positive for|good for)\b/i, AG_RX = /\b(against|hurts?|undermines?|weighs on|headwind|threatens?|at risk|negative for|bad for|pressures?)\b/i;
+// a claim about a group ("JPY-cross shorts", "the long USD cards", "the USD short side") cannot be checked market by market
+const GROUP_RX = /\b(cross(es)?|cards|side|legs|longs|shorts|positions)\b/i;
+/** The analyst calls the same print both hot and soft. */
+export const mixedRead = t => /\bhot\b/i.test(String(t ?? '')) && /\bsoft\b/i.test(String(t ?? ''));
+export function noteAgrees(note, pairs) {
+  const t = String(note ?? ''); if (!t.trim()) return false;
+  if (mixedRead(t)) return false;
+  const by = Object.fromEntries((pairs ?? []).filter(p => p.stance).map(p => [p.inst, p.stance]));
+  for (const cl of t.split(/[.;:]|,\s(?:but|while)\s/)) {
+    const sup = SUP_RX.test(cl), ag = AG_RX.test(cl); if (!sup && !ag) continue;
+    if (GROUP_RX.test(cl)) return false;
+    const up = cl.toUpperCase().replace(/\//g, ''), insts = Object.keys(by).filter(n => up.includes(n));
+    if (!insts.length) return false;
+    const want = ag && !sup ? 'against' : sup && !ag ? 'supports' : null;
+    if (!want || insts.some(n => by[n] !== want)) return false;
+  }
+  return true;
+}
+const side = r => (/LONG/.test(String(r ?? '')) ? 'long' : /SHORT/.test(String(r ?? '')) ? 'short' : '');
+/** The computed "The book:" line, and the model's note only when it agrees (noteAgrees). '' when no card is touched. */
+export function bookNoteHtml(h) {
+  const ps = (h?.pairs ?? []).filter(p => p.stance && p.card);
+  const grp = st => ps.filter(p => p.stance === st).map(p => `${esc(p.inst)} ${side(p.card)}`).join(', ');
+  const sup = grp('supports'), ag = grp('against');
+  if (!sup && !ag) return '';
+  const note = h.read?.book && noteAgrees(h.read.book, h.pairs) ? ` <span class="muted">· ${esc(h.read.book)}</span>` : '';
+  return `<div style="color:var(--gold);font-size:12.5px" title="Worked out from the arrows and today's cards; the analyst's own note is shown only when it agrees">The book: ${sup ? `supports ${sup}` : ''}${sup && ag ? '; ' : ''}${ag ? `against ${ag}` : ''}${note}</div>`;
+}
+
 /** The latest headlines that bear on a market (tier 1-2 by default), newest first, with what each implies for it. */
 export function marketNews(items, inst, { n = 3, tier = 2, rating = null } = {}) {
   return newest(items).filter(h => tierOf(h) <= tier && touchesMarket(h, inst) && namesMarket(h, inst)).slice(0, n).map(h => ({ h, ...marketDir(h, inst, rating) }));
@@ -125,32 +225,35 @@ const STANCE = { supports: ['sup', 'supports your card'], against: ['ag', 'again
 export function marketChips(h, max = 6) {
   const ps = (h?.pairs ?? []).filter(p => +p.dir).slice().sort((a, b) => (b.stance ? 1 : 0) - (a.stance ? 1 : 0)).slice(0, max);
   if (!ps.length) return '';
-  const more = (h.pairs.length > max) ? `<span class="muted">+${h.pairs.length - max}</span>` : '';
+  const more = (h.pairs.length > max) ? `<span class="muted" title="${esc(h.pairs.slice(max).map(p => p.inst).join(', '))}">+${h.pairs.length - max} more market${h.pairs.length - max === 1 ? '' : 's'}</span>` : '';
   return `<div class="nwp">${ps.map(p => `<span class="${STANCE[p.stance]?.[0] ?? ''}">${esc(p.inst)} ${arrow(p.dir)}${STANCE[p.stance] ? ` <b>${STANCE[p.stance][1]}</b>` : ''}</span>`).join('')}${more}</div>`;
 }
 const RX = { with: ['up', 'moved with the read'], against: ['dn', 'moved against the read'], none: ['', 'no clear move'] };
 /** The 5m / 30m reaction, only once it is known. */
 export function reactionHtml(h) {
+  if (h?.preview ?? isPreview(h?.title)) return '<div class="nwr"><span class="chip" title="A preview, forecast or bank-research piece has no event to react to, so no 5m / 30m verdict is scored">preview: no reaction scored</span></div>';
   const r = h?.react; if (!r) return '';
   const one = (k, lab) => (r[k]?.label ? `<span class="chip ${RX[r[k].label]?.[0] ?? ''}" title="mean move ${r[k].units > 0 ? '+' : ''}${esc(r[k].units)} typical ${lab} moves, the way of the read">${lab}: ${RX[r[k].label]?.[1] ?? esc(r[k].label)}</span>` : '');
   const t = one('m5', '5m') + one('m30', '30m');
   return t ? `<div class="nwr">${t}</div>` : '';
 }
 
-/** One headline row. */
-export function rowHtml(h, { now } = {}) {
-  const t = tierOf(h);
-  return `<div class="nt-row${t === 1 ? ' t1' : ''}"><div class="nt-meta"><span class="mono">${esc(whenTxt(h.ms, now))}</span>${tierChip(t)}<span class="nt-src">${esc(sources(h))}</span></div>
-${link(h)}${impactChips(h) ? `<div class="nt-chips">${impactChips(h)}</div>` : ''}${h.read?.why ? `<div class="muted nt-why">${esc(h.read.why)}</div>` : ''}${marketChips(h)}${reactionHtml(h)}</div>`;
+const droppedTxt = h => (h?.read?.dropped?.length ? `<span class="chip" title="The analyst also read ${esc(h.read.dropped.map(keyLabel).join(', '))}, which the headline does not name; that part of the read is left out">${esc(h.read.dropped.map(keyLabel).join(', '))} read dropped: not in the headline</span>` : '');
+const similarTxt = h => (h?.similar?.length ? `<span class="muted" title="${esc(h.similar.map(x => x.title).join(' | '))}" style="font-size:12px"> · ${h.similar.length} near-identical stor${h.similar.length === 1 ? 'y' : 'ies'} folded in</span>` : '');
+/** One headline row. `printed` = the calendar feed's printed rows (a headline about a print we hold shows it). */
+export function rowHtml(h, { now, printed = null } = {}) {
+  const t = tierOf(h), ch = impactChips(h) + droppedTxt(h) + printChip(printFor(h, printed));
+  return `<div class="nt-row${t === 1 ? ' t1' : ''}"><div class="nt-meta"><span class="mono">${esc(whenTxt(h.ms, now))}</span>${tierChip(t)}<span class="nt-src">${esc(sources(h))}</span>${similarTxt(h)}</div>
+${link(h)}${ch ? `<div class="nt-chips">${ch}</div>` : ''}${h.read?.why ? `<div class="muted nt-why">${esc(h.read.why)}${mixedRead(h.read.why) ? ' <span class="chip dn" title="The analyst calls the same print hot and soft; check the print">read contradicts itself</span>' : ''}</div>` : ''}${marketChips(h)}${reactionHtml(h)}</div>`;
 }
-export function listHtml(items, { now, limit = 120 } = {}) {
+export function listHtml(items, { now, limit = 120, printed = null } = {}) {
   if (!items?.length) return '<p class="muted" style="margin:8px 0">No headlines match. Try a wider tier or clear the filters.</p>';
-  return items.slice(0, limit).map(h => rowHtml(h, { now })).join('') + (items.length > limit ? `<p class="muted">${items.length - limit} older headlines not shown; narrow the filters.</p>` : '');
+  return items.slice(0, limit).map(h => rowHtml(h, { now, printed })).join('') + (items.length > limit ? `<p class="muted">${items.length - limit} older headlines not shown; narrow the filters.</p>` : '');
 }
 export function topStripHtml(items, now) {
   const xs = topStories(items, now);
-  if (!xs.length) return '<div class="nt-top muted">No tier-1 headlines in the last 6 hours.</div>';
-  return `<div class="nt-top"><span class="lbl">Top stories · last 6 h</span>${xs.map(h => `<div class="nt-topi"><span class="mono muted">${esc(whenTxt(h.ms, now))}</span> ${link(h, 'nt-toph')} ${impactChips(h)}</div>`).join('')}</div>`;
+  if (!xs.length) return '<div class="nt-top muted">No tier-1 headlines in the last 24 hours.</div>';
+  return `<div class="nt-top"><span class="lbl">Top stories · tier 1, last 24 h</span>${xs.map(h => `<div class="nt-topi"><span class="mono muted">${esc(whenTxt(h.ms, now))}</span> ${link(h, 'nt-toph')} ${impactChips(h)}</div>`).join('')}</div>`;
 }
 /** The filter bar. state = { tier, keys, market, onlyBook, q } */
 export function filtersHtml(st = {}) {
