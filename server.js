@@ -2075,7 +2075,8 @@ const TG_SENDERS = {
   cogShadow:         'COG shadow gates',
   levelsV2:          'Telegram-v2 zone alerts',
   jarvis:            'Jarvis (owner only): a chain link broke or healed, a market went well past its noise, server memory high, the morning digest (awareness, never a trade)',
-  volLevels:         'Vol-forecast level proximity (superseded, off by default)',
+  helixBroadcast:    'H.E.L.I.X. broadcasts (owner only): a briefing, recap, special, Short or podcast episode is up on YouTube (unlisted) with its link, or a recording run failed',
+  volLevels:        'Vol-forecast level proximity (superseded, off by default)',
   surprise:          'Forecast-path surprise pings',
   ratesRegime:       'Rates vs Nasdaq regime change / rate shock (context, not a signal)',
   spreadEpisodes:    'Spread-turn episodes: confirmed turn (Case 1 full sequence / Case 2 every turn), context only',
@@ -37525,10 +37526,12 @@ _mountGhostWalk(app, {
   const deps = {
     kv, PORT, express, ownerOnly: _ownerOnly, aiAnyKey: _aiAnyKey, callModel, parseModelJson: _parseModelJson,
     tgOn, tgSend: async text => { if (!tgOn('jarvis') || !state.tg?.token || !state.tg?.chatId) return false; return sendTelegram(state.tg.token, state.tg.chatId, text); },
+    tgSendAs: async (sender, text) => { if (!tgOn(sender) || !state.tg?.token || !state.tg?.chatId) return false; return sendTelegram(state.tg.token, state.tg.chatId, text); },
+    r2: { configured: _r2Ok, putBuffer: _r2PutBuffer, getBuffer: _r2GetBuffer, putJSON: _r2PutJSON, getJSON: _r2GetJSON },
     svcInterval, svcTimeout, svcEnabled, londonDate: _dpLondonDate,
     selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
   };
-  for (const name of ['jarvisWatch', 'jarvisExplain', 'jarvisPrecedent', 'jarvisPapers', 'jarvisMorning', 'jarvisVoice']) {
+  for (const name of ['jarvisWatch', 'jarvisExplain', 'jarvisPrecedent', 'jarvisPapers', 'jarvisMorning', 'jarvisVoice', 'helixBroadcast']) {
     try { const m = await import(`./js/jarvis/${name}.js`); await m.mount?.(app, deps); }
     catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') console.warn(`[jarvis] ${name} not mounted:`, e.message); }
   }

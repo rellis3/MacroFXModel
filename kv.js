@@ -61,6 +61,7 @@ const _CF_EXACT = new Set([
   'cog_legs_live_v1',      // chart page legs: the laptop's latest IBKR 5-minute bars per futures contract, pushed by scripts/rates_line/refresh_leg_bars.py
   'cog_line_live_v1',       // C.OG rate-spread line: the laptop's latest IBKR bars, pushed by scripts/rates_line/refresh_cog_line.py (IBKR cannot be reached
                              // from Railway). Merged over analysis/output/cog_line/cog_line_15m.json by /api/cog-line. Must also be in _worker.js isAllowedKVKey + PERMANENT_KEYS.
+  'helix_published_v1',     // H.E.L.I.X. broadcasts: the videos/episodes the laptop published (dedupe by video id, so a retried notify never re-sends) + the day's note counts (js/jarvis/helixBroadcast.js). Also in _worker.js (both lists).
   'jarvis_watch_v1',        // Jarvis server watcher: last chain snapshot + the alert log, so a redeploy never re-alerts old events (js/jarvis/jarvisWatch.js). Also in _worker.js (both lists).
   'bank_credit_v1',         // BIS bank-credit snapshot + the date each quarter was FIRST seen (point-in-time release record;
                              // not re-derivable). Must also be in _worker.js PERMANENT_KEYS.

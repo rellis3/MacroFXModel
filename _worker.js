@@ -123,6 +123,7 @@ function isAllowedKVKey(key) {
     'funding_read_v1',
     'bank_credit_v1',
     'jarvis_watch_v1',
+    'helix_published_v1',
     'mpt_store_v1',
     'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_status',
     'volatility_bot_v2_plan', 'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log', 'volatility_bot_v2_drift_history',
@@ -1208,6 +1209,8 @@ export default {
             // bank_credit_v1: BIS bank-credit snapshot + the date each quarter was first seen (point-in-time; written by Railway).
             'bank_credit_v1',
             'jarvis_watch_v1',
+            // helix_published_v1: the H.E.L.I.X. videos the laptop published (js/jarvis/helixBroadcast.js); its dedupe must survive a redeploy.
+            'helix_published_v1',
             // macro_scorecard_history_v1 is the only time series of the scorecard's
             // composite — one row per day, accumulated, not re-derivable. Missing it
             // here means a silent 48h TTL and the record resets every two days.
