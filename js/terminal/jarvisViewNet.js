@@ -40,6 +40,8 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const hash = n => { let h = (n + 1) * 2654435761 >>> 0; h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; return (h >>> 0) / 4294967296; };
 const fmt = r => (r >= 0 ? '+' : '-') + Math.abs(r).toFixed(2);
 const showing = () => S.showP != null && Date.now() - S.showAt < 1500;
+/** A link's correlation sign as a colour: cyan = moved together, gold = moved opposite. Never the up/down move colours (those mean a price went up or down); the shape cue is solid vs dashed. */
+const corrCol = (C, r) => (r < 0 ? C.gold : (C.cy || C.blue));
 const RW = 2, SEG = 10, NEB = 80;                                     // world radius of the cloud, segments per link curve, nebula motes per group
 const BUCKETS = [[0, 0.4, 1.1], [0.4, 0.55, 1.6], [0.55, 0.7, 2.3], [0.7, 0.85, 3.2], [0.85, 1.01, 4.4]];   // |r| from, to, line width in px
 
@@ -135,7 +137,7 @@ registerJarvisModule({
     pane.querySelector('[data-n="go"]').onclick = () => { api.setView('net'); load(api, true); };
   },
   views: [glView({
-    id: 'net', label: 'NETWORK', env: { accent: 'up', chrome: 'clean', scan: false },
+    id: 'net', label: 'NETWORK', env: { accent: 'pur', chrome: 'clean', scan: false },
     onEnter(api) {
       S.showP = null; S.cam = null; S.spin = api.st.spin; Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false });
       try { S.bg = api.win.getComputedStyle(api.doc.documentElement).getPropertyValue('--bg1').trim() || 'black'; } catch (e) { S.bg = 'black'; }
@@ -162,13 +164,13 @@ function setup(L, H, api) {
   function build(C, net) {
     if (world) { scene.remove(world); kit.forget(world); }
     world = new THREE.Group(); scene.add(world); nodes = []; links = null; linkGen = -1; litKey = '';
-    Object.assign(cols, { up: H.color(C.up), dn: H.color(C.dn), q: H.color(C.tx2), w: H.color('white') });
+    Object.assign(cols, { up: H.color(C.up), dn: H.color(C.dn), q: H.color(C.tx2), w: H.color('white'), pos: H.color(corrCol(C, 1)), neg: H.color(corrCol(C, -1)) });   // up/dn = a node's move; pos/neg = a link's correlation sign (never the move colours)
     Object.assign(ccol, { eq: tok('--pur', C.cy), usd: C.cy, cross: C.tx2, met: C.gold, en: tok('--blue2', C.tx) });
     // a faint gyroscope round the cloud: three great circles and a floor of rings, so the depth reads
     const gy = []; for (const ax of [0, 1, 2]) for (let k = 0; k < 120; k++) { const a = k / 120 * Math.PI * 2, b = (k + 1) / 120 * Math.PI * 2, R0 = RW * 1.18, p = [Math.cos(a) * R0, Math.sin(a) * R0], q = [Math.cos(b) * R0, Math.sin(b) * R0];
       gy.push(ax === 0 ? [p[0], 0, p[1], q[0], 0, q[1]] : ax === 1 ? [p[0], p[1], 0, q[0], q[1], 0] : [0, p[0], p[1], 0, q[0], q[1]]); }
     const gyro = kit.segments(gy, C.tx2, 0.045); world.add(gyro);
-    world.add(kit.table(RW * 1.1, C.up, -RW * 1.25, 4, 24));
+    world.add(kit.table(RW * 1.1, C.blue, -RW * 1.25, 4, 24));
     for (let i = 0; i < net.ids.length; i++) {
       const grp = new THREE.Group(); world.add(grp);
       const core = new THREE.Mesh(sphG, basic(C.tx2, 0.9)), shell = new THREE.Mesh(sphG, kit.holo(C.tx2, { rim: 2.2, base: 0.03, scan: 0.5 })), fl = kit.flare(C.tx2, 1, 0.55);
@@ -233,8 +235,8 @@ function setup(L, H, api) {
         const i = b.ix[q], l = S.links[i], o = q * SEG * 6;
         for (let s = 0; s < SEG; s++) { bz(i, s / SEG); P[o + s * 6] = Q[0]; P[o + s * 6 + 1] = Q[1]; P[o + s * 6 + 2] = Q[2]; bz(i, (s + 1) / SEG); P[o + s * 6 + 3] = Q[0]; P[o + s * 6 + 4] = Q[1]; P[o + s * 6 + 5] = Q[2]; }
         if (recolour) {
-          const ar = Math.abs(l.r), col = l.r >= 0 ? cols.up : cols.dn, lit = linkOn(l), k = (0.22 + 0.78 * ar) * (lit ? (S.hl.size ? 1.25 : 0.8) : 0.06) * (isPair(l) ? 1.4 : 1);
-          for (let s = 0; s < SEG; s++) for (const [e, u] of [[0, s / SEG], [3, (s + 1) / SEG]]) { const m = k * (0.55 + 0.45 * Math.sin(Math.PI * u)); Cl[o + s * 6 + e] = col.r * m; Cl[o + s * 6 + e + 1] = col.g * m; Cl[o + s * 6 + e + 2] = col.b * m; }
+          const ar = Math.abs(l.r), neg = l.r < 0, col = neg ? cols.neg : cols.pos, lit = linkOn(l), k = (0.22 + 0.78 * ar) * (lit ? (S.hl.size ? 1.25 : 0.8) : 0.06) * (isPair(l) ? 1.4 : 1);
+          for (let s = 0; s < SEG; s++) for (const [e, u] of [[0, s / SEG], [3, (s + 1) / SEG]]) { const m = (neg && (s & 1)) ? 0 : k * (0.55 + 0.45 * Math.sin(Math.PI * u)); /* the shape cue: an opposed link is DASHED (every other segment dark; additive, so dark = gone) */ Cl[o + s * 6 + e] = col.r * m; Cl[o + s * 6 + e + 1] = col.g * m; Cl[o + s * 6 + e + 2] = col.b * m; }
         }
       }
       b.pos.needsUpdate = true; if (recolour) b.col.needsUpdate = true;
@@ -312,7 +314,7 @@ function setup(L, H, api) {
     pc.fill(0); tc.fill(0);
     for (let i = 0; i < S.links.length; i++) {
       const l = S.links[i], ar = Math.abs(l.r), lit = linkOn(l); if (anyHl && !lit) continue;
-      const np = ar > 0.8 ? 2 : 1, sped = 0.12 + 0.35 * ar, col = l.r >= 0 ? cols.up : cols.dn, br = (0.5 + 0.5 * ar) * (isPair(l) ? 1.4 : 1);
+      const np = ar > 0.8 ? 2 : 1, sped = 0.12 + 0.35 * ar, col = l.r >= 0 ? cols.pos : cols.neg, br = (0.5 + 0.5 * ar) * (isPair(l) ? 1.4 : 1);
       for (let q = 0; q < np; q++) {
         const u = H.calm ? (hash(i * 2 + q) + q * 0.5) % 1 : (hash(i * 2 + q) + t * sped * (q ? 0.8 : 1)) % 1, f = l.r >= 0 ? u : 1 - u, j = i * 2 + q;
         bz(i, f); pp[j * 3] = Q[0]; pp[j * 3 + 1] = Q[1]; pp[j * 3 + 2] = Q[2];
@@ -345,7 +347,7 @@ function setup(L, H, api) {
       const [a, b] = S.pair, r = S.cur.m[a][b]; wp(a, 0); wp(b, 3);
       const mx = (TMP[0] + TMP[3]) / 2, my = (TMP[1] + TMP[4]) / 2, mz = (TMP[2] + TMP[5]) / 2, pts = [];
       for (let s = 0; s <= 20; s++) { const u = s / 20, v = 1 - u, cxp = mx * 1.25, cyp = my * 1.25 + 0.15, czp = mz * 1.25; pts.push([v * v * TMP[0] + 2 * v * u * cxp + u * u * TMP[3], v * v * TMP[1] + 2 * v * u * cyp + u * u * TMP[4], v * v * TMP[2] + 2 * v * u * czp + u * u * TMP[5]]); }
-      kit.setLine(beam, pts); beam.material.color.copy(Number.isFinite(r) && r < 0 ? cols.dn : cols.up); beam.material.opacity = 0.9 * focus * (H.calm ? 1 : 0.75 + 0.25 * Math.sin(t * 4));
+      kit.setLine(beam, pts); beam.material.color.copy(Number.isFinite(r) && r < 0 ? cols.neg : cols.pos); beam.material.opacity = 0.9 * focus * (H.calm ? 1 : 0.75 + 0.25 * Math.sin(t * 4));
       S.beamMid = pts[10];
     }
   }
@@ -370,8 +372,8 @@ function setup(L, H, api) {
       const p = H.toScreen(S.beamMid, camera), r = S.cur.m[S.pair[0]][S.pair[1]];
       if (p.vis && Number.isFinite(r)) {
         const s = `${fmt(r)} ${r >= 0.2 ? '▲ together' : r <= -0.2 ? '▼ opposite' : '· near zero'}`; ctx.font = '600 13px ui-monospace,monospace'; const w = ctx.measureText(s).width + 16;
-        const bx = clamp(p.x - w / 2, 8, W - w - 8), by = clamp(p.y - 30, top, panelTop - 30); box(ctx, bx, by, w, 22, r >= 0 ? C.up : C.dn, 0.8);
-        ctx.globalAlpha = fade; ctx.fillStyle = r >= 0 ? C.up : C.dn; ctx.textAlign = 'center'; ctx.fillText(s, bx + w / 2, by + 15.5); obst.push({ x: bx, y: by, w, h: 22 });
+        const bx = clamp(p.x - w / 2, 8, W - w - 8), by = clamp(p.y - 30, top, panelTop - 30); box(ctx, bx, by, w, 22, corrCol(C, r), 0.8);
+        ctx.globalAlpha = fade; ctx.fillStyle = corrCol(C, r); ctx.textAlign = 'center'; ctx.fillText(s, bx + w / 2, by + 15.5); obst.push({ x: bx, y: by, w, h: 22 });
       }
     }
     // node names and cluster names, placed without collisions; the lit ones first, then the big movers and the nearest
@@ -413,13 +415,13 @@ function setup(L, H, api) {
     const rows = [
       [C.tx2, `${cur.w}-day correlation of daily returns, window ending ${cur.date}.`],
       [C.tx2, `Links shown where |r| >= ${S.thr.toFixed(2)}: ${nl} of ${S.pairs} pairs.`],
-      [C.tx2, 'green = moved together   red = moved opposite   thicker, brighter = stronger'],
+      [C.tx2, 'cyan solid = moved together   gold dashed = moved opposite   thicker, brighter = stronger'],
       [C.tx2, live ? 'node area = today\'s move against its usual (ring = capped at 3x)' : 'node area = that day\'s move against its prior 60-day spread (ring = 3x cap)'],
       [null, ''],
       [C.tx2, `layout keeps the distances${cur.fit != null ? ` (fit ${cur.fit.toFixed(2)})` : ''}; position is only a picture of the matrix.`]];
     ctx.font = '11px ui-monospace,monospace'; const w = Math.max(...rows.map(r => ctx.measureText(r[1]).width)) + 86, h = 30 + rows.length * 15;
     box(ctx, lx - 10, y0 - 16, w, h, null, 0.5);
-    ctx.textAlign = 'left'; ctx.globalAlpha = fade; ctx.fillStyle = C.up; ctx.font = '600 13px ui-monospace,monospace'; ctx.fillText('NETWORK  ·  how markets have moved together', lx, y0);
+    ctx.textAlign = 'left'; ctx.globalAlpha = fade; ctx.fillStyle = C.blue; ctx.font = '600 13px ui-monospace,monospace'; ctx.fillText('NETWORK  ·  how markets have moved together', lx, y0);
     ctx.font = '11px ui-monospace,monospace';
     rows.forEach(([c, s], i) => { if (!c) return; ctx.globalAlpha = fade * 0.88; ctx.fillStyle = c; ctx.fillText(s, lx, y0 + 18 + i * 15); });
     // the direction cue row
@@ -427,7 +429,7 @@ function setup(L, H, api) {
     for (const [c, s] of [[C.up, '● ▲ up'], [C.dn, '● ▼ down'], [C.tx2, '● quiet (inside half its usual)']]) { ctx.fillStyle = c; ctx.fillText(s, x, yy); x += ctx.measureText(s).width + 16; }
     // threshold buttons, clear of the text on their row
     const by = y0 + 18 + 15 - 12, bx = lx + Math.ceil(ctx.measureText(rows[1][1]).width) + 14;
-    ctx.fillStyle = C.up; ctx.globalAlpha = fade * 0.9; ctx.strokeStyle = C.up; ctx.lineWidth = 1;
+    ctx.fillStyle = C.blue; ctx.globalAlpha = fade * 0.9; ctx.strokeStyle = C.blue; ctx.lineWidth = 1;
     for (const [k, xx] of [['-', bx], ['+', bx + 28]]) { ctx.strokeRect(xx + 0.5, by + 0.5, 22, 16); ctx.textAlign = 'center'; ctx.fillText(k, xx + 11, by + 12); g.hit('net:' + k, xx + 11, by + 8); ctx.textAlign = 'left'; }
     return { x: lx - 10, y: y0 - 16, w, h };
   }
@@ -435,11 +437,11 @@ function setup(L, H, api) {
   function readoutCompact(ctx, g, net, y0) {
     const { W, C, fade } = g, lx = 12;
     box(ctx, 4, y0 - 15, W - 8, 52, null, 0.5);
-    ctx.textAlign = 'left'; ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.up; ctx.font = '600 12px ui-monospace,monospace'; ctx.fillText('NETWORK · how markets moved together', lx, y0);
+    ctx.textAlign = 'left'; ctx.globalAlpha = fade * 0.95; ctx.fillStyle = C.blue; ctx.font = '600 12px ui-monospace,monospace'; ctx.fillText('NETWORK · how markets moved together', lx, y0);
     ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = C.tx2; ctx.globalAlpha = fade * 0.85;
-    ctx.fillText(`green together · red opposite · |r| >= ${S.thr.toFixed(2)}: ${S.links.length}`, lx, y0 + 16);
+    ctx.fillText(`cyan solid together · gold dashed opposite · |r| >= ${S.thr.toFixed(2)}: ${S.links.length}`, lx, y0 + 16);
     ctx.fillText('area = move vs usual · ▲ up ▼ down · ring = 3x cap', lx, y0 + 30);
-    ctx.fillStyle = C.up; ctx.globalAlpha = fade * 0.9; ctx.strokeStyle = C.up; ctx.lineWidth = 1; ctx.font = '14px ui-monospace,monospace';
+    ctx.fillStyle = C.blue; ctx.globalAlpha = fade * 0.9; ctx.strokeStyle = C.blue; ctx.lineWidth = 1; ctx.font = '14px ui-monospace,monospace';
     for (const [k, x] of [['-', W - 78], ['+', W - 42]]) { ctx.strokeRect(x + 0.5, y0 - 12.5, 30, 28); ctx.textAlign = 'center'; ctx.fillText(k, x + 15, y0 + 6); g.hit('net:' + k, x + 15, y0 + 1); }
     ctx.textAlign = 'left'; ctx.font = '11px ui-monospace,monospace';
     return { x: 4, y: y0 - 15, w: W - 8, h: 52 };
@@ -455,11 +457,11 @@ function setup(L, H, api) {
     let yy = y + 20; ctx.fillStyle = C.tx2;
     ctx.fillText(sz ? (sz === S.live[id] ? `today ${sz.move >= 0 ? '+' : ''}${sz.move.toFixed(2)}%, ${sz.ratio.toFixed(1)}x its usual move` : `${S.cur.date} ${sz.move >= 0 ? '+' : ''}${sz.move.toFixed(2)}%, ${sz.ratio.toFixed(1)}x its 60-day spread`) + (sz.ratio >= FULL_AT ? ' (capped)' : '') : `no move reading on ${S.cur.date}`, x0, yy, w - 24); yy += 20;
     const col2 = cp ? w - 70 : 200;
-    ctx.fillStyle = C.up; ctx.fillText('MOVED TOGETHER WITH', x0, yy); yy += 15;
-    for (const p of pt.pos) { ctx.fillStyle = C.tx; ctx.fillText(nameOf(net, p.k), x0 + 6, yy); ctx.fillStyle = C.up; ctx.fillText(fmt(p.r), x0 + col2, yy); yy += 15; }
+    ctx.fillStyle = corrCol(C, 1); ctx.fillText('MOVED TOGETHER WITH', x0, yy); yy += 15;
+    for (const p of pt.pos) { ctx.fillStyle = C.tx; ctx.fillText(nameOf(net, p.k), x0 + 6, yy); ctx.fillStyle = corrCol(C, 1); ctx.fillText(fmt(p.r), x0 + col2, yy); yy += 15; }
     if (!pt.pos.length) { ctx.fillStyle = C.tx2; ctx.fillText('none positive', x0 + 6, yy); yy += 15; }
-    yy += 4; ctx.fillStyle = C.dn; ctx.fillText('MOVED OPPOSITE TO', x0, yy); yy += 15;
-    for (const p of pt.neg) { ctx.fillStyle = C.tx; ctx.fillText(nameOf(net, p.k), x0 + 6, yy); ctx.fillStyle = C.dn; ctx.fillText(fmt(p.r), x0 + col2, yy); yy += 15; }
+    yy += 4; ctx.fillStyle = corrCol(C, -1); ctx.fillText('MOVED OPPOSITE TO', x0, yy); yy += 15;
+    for (const p of pt.neg) { ctx.fillStyle = C.tx; ctx.fillText(nameOf(net, p.k), x0 + 6, yy); ctx.fillStyle = corrCol(C, -1); ctx.fillText(fmt(p.r), x0 + col2, yy); yy += 15; }
     if (!pt.neg.length) { ctx.fillStyle = C.tx2; ctx.fillText('none negative', x0 + 6, yy); }
     return { x, y: y - 16, w, h };
   }
@@ -478,9 +480,9 @@ function setup(L, H, api) {
 /** A canvas button in the HUD style; `on` lights it. */
 function btn(ctx, g, key, label, x, y, w, h, on = false) {
   const { C, fade } = g;
-  ctx.globalAlpha = fade * (on ? 0.24 : 0.08); ctx.fillStyle = C.up; ctx.fillRect(x, y, w, h);
-  ctx.globalAlpha = fade * (on ? 0.95 : 0.6); ctx.strokeStyle = C.up; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-  ctx.globalAlpha = fade; ctx.fillStyle = on ? C.tx : C.up; ctx.textAlign = 'center'; ctx.fillText(label, x + w / 2, y + h / 2 + 4); ctx.textAlign = 'left';
+  ctx.globalAlpha = fade * (on ? 0.24 : 0.08); ctx.fillStyle = C.blue; ctx.fillRect(x, y, w, h);
+  ctx.globalAlpha = fade * (on ? 0.95 : 0.6); ctx.strokeStyle = C.blue; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.globalAlpha = fade; ctx.fillStyle = on ? C.tx : C.blue; ctx.textAlign = 'center'; ctx.fillText(label, x + w / 2, y + h / 2 + 4); ctx.textAlign = 'left';
   g.hit(key, x + w / 2, y + h / 2);
 }
 /** Wrap text to a width (for the phone). */
@@ -508,7 +510,7 @@ function scrubPanel(ctx, g, net) {
   if (!sc || !sc.steps.length) return H;
   ctx.save();
   ctx.globalAlpha = fade * 0.62; ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x0 - 6, top - 8, x1 - x0 + 12, bot - top + 8);
-  ctx.globalAlpha = fade * 0.3; ctx.strokeStyle = C.up; ctx.lineWidth = 1; ctx.strokeRect(x0 - 5.5, top - 7.5, x1 - x0 + 11, bot - top + 7);
+  ctx.globalAlpha = fade * 0.3; ctx.strokeStyle = C.blue; ctx.lineWidth = 1; ctx.strokeRect(x0 - 5.5, top - 7.5, x1 - x0 + 11, bot - top + 7);
   ctx.font = (cp ? '12px' : '11px') + ' ui-monospace,monospace';
   // buttons
   let x = x0;
@@ -516,7 +518,7 @@ function scrubPanel(ctx, g, net) {
   b('play', S.play ? '❚❚ PAUSE' : '▶ PLAY', cp ? 76 : 74, S.play); b('prev', '‹', cp ? 32 : 24); b('next', '›', cp ? 32 : 24); b('now', 'NOW', cp ? 44 : 40, isLive());
   x += cp ? 2 : 10; for (const w of WINDOWS) b('w' + w, cp ? `${w}` : `${w}d`, cp ? 36 : 38, S.w === w);
   // the date
-  ctx.globalAlpha = fade; ctx.textAlign = cp ? 'left' : 'right'; ctx.fillStyle = isLive() ? C.up : C.tx; ctx.font = (cp ? '13px' : '15px') + ' ui-monospace,monospace';
+  ctx.globalAlpha = fade; ctx.textAlign = cp ? 'left' : 'right'; ctx.fillStyle = isLive() ? C.blue : C.tx; ctx.font = (cp ? '13px' : '15px') + ' ui-monospace,monospace';
   const dl = `${S.cur.date}${isLive() ? '  LATEST' : ''}`;
   if (cp) ctx.fillText(dl, x0, top + bh + 18); else ctx.fillText(dl, x1, top + 15);
   ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = C.tx2; ctx.globalAlpha = fade * 0.85;
@@ -540,15 +542,15 @@ function scrubPanel(ctx, g, net) {
     ctx.globalCompositeOperation = 'lighter'; ctx.lineWidth = 2;
     for (let s = 1; s < N; s++) {
       const a = v[s - 1], c = v[s]; if (!Number.isFinite(a) || !Number.isFinite(c)) continue;
-      ctx.strokeStyle = (a + c) / 2 >= 0 ? C.up : C.dn; ctx.globalAlpha = fade * 0.9; ctx.beginPath(); ctx.moveTo(X(s - 1), Y(a)); ctx.lineTo(X(s), Y(c)); ctx.stroke();
-      ctx.globalAlpha = fade * 0.12; ctx.fillStyle = (a + c) / 2 >= 0 ? C.up : C.dn; ctx.fillRect(X(s - 1), Math.min(mid, Y(c)), X(s) - X(s - 1) + 0.5, Math.abs(Y(c) - mid));
+      ctx.strokeStyle = corrCol(C, (a + c) / 2); ctx.globalAlpha = fade * 0.9; ctx.beginPath(); ctx.moveTo(X(s - 1), Y(a)); ctx.lineTo(X(s), Y(c)); ctx.stroke();
+      ctx.globalAlpha = fade * 0.12; ctx.fillStyle = corrCol(C, (a + c) / 2); ctx.fillRect(X(s - 1), Math.min(mid, Y(c)), X(s) - X(s - 1) + 0.5, Math.abs(Y(c) - mid));
     }
     ctx.globalCompositeOperation = 'source-over';
     const now = v[S.si];
     ctx.globalAlpha = fade; ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = C.tx;
     const name = `${nameOf(net, net.ids[sp.i])} vs ${nameOf(net, net.ids[sp.j])}`;
     ctx.fillText(name, sx0, sy0 - 4); const nw = ctx.measureText(name).width;
-    ctx.fillStyle = Number.isFinite(now) ? (now >= 0 ? C.up : C.dn) : C.tx2; ctx.fillText(Number.isFinite(now) ? `${fmt(now)} ${now >= 0.2 ? '▲ together' : now <= -0.2 ? '▼ opposite' : '· near zero'}` : 'n/a', sx0 + nw + 10, sy0 - 4);
+    ctx.fillStyle = Number.isFinite(now) ? corrCol(C, now) : C.tx2; ctx.fillText(Number.isFinite(now) ? `${fmt(now)} ${now >= 0.2 ? '▲ together' : now <= -0.2 ? '▼ opposite' : '· near zero'}` : 'n/a', sx0 + nw + 10, sy0 - 4);
     if (!cp) { ctx.fillStyle = C.tx2; ctx.globalAlpha = fade * 0.7; ctx.textAlign = 'right'; ctx.fillText(`${S.w}-day correlation at each week · ${sp.why}`, sx1, sy0 - 4); ctx.textAlign = 'left'; }
   } else { ctx.globalAlpha = fade * 0.7; ctx.fillStyle = C.tx2; ctx.fillText('reading the history for the strip...', sx0, sy0 - 4); }
   ctx.fillStyle = C.tx2; ctx.globalAlpha = fade * 0.5; ctx.fillText('+0.5', sx0 + 2, Y(0.5) - 2); ctx.fillText('-0.5', sx0 + 2, Y(-0.5) + 11);

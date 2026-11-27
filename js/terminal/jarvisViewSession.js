@@ -22,6 +22,9 @@ import { glView, hudOrbit, orbitPos } from './jarvisGL.js';
 import { MARKET_KEYS } from './jarvisMarkets.js';
 import { intradayAsset, dailySymbol, pickMarket, dailyBars, usualBand, sessionStats, sessionScript, dayMoveScript, DAY_MOVE_KEYS, loopState, rise, fmtPrice } from './jarvisSessionCore.js';
 import { isEvening } from './eveningCore.js';
+import { fontPx, lineHeight, rowLayout } from './helixLayout.js';
+// a row step that follows the REAL font size (the broadcast's font floor lifts 10-11px labels to 15px): max(the old fixed step, the measured line height)
+const rowH = (ctx, base) => Math.max(base, lineHeight(fontPx(ctx.font)) + 1);
 import { TFS, TF_COUNT, ema, groupPlanes, chartScale, priceTicks, priceDecimals, timeTicks, nearestIndex, priceAtY, barChange, planeAlpha, autoDolly, stepKey, fullTime, clamp, dayOf, showFlight, spreadLabels } from './jarvisChartCore.js';
 
 const TTL = 60_000, WC = 6, HY = 3, TOP = HY * 1.03, PZ = 1.15, BAND_DZ = -0.45, FOV = 38, YAW0 = -0.22, FALLBACK = 'NQ';
@@ -350,10 +353,10 @@ function overlay(ctx, g, api, H, camera) {
         const tt = fullTime(b.t, tf), tw = ctx.measureText(tt).width + 14; ctx.fillStyle = C.blue; ctx.fillRect(q.x - tw / 2, q.y + 36, tw, 18); ctx.fillStyle = 'black'; ctx.textAlign = 'center'; ctx.fillText(tt, q.x, q.y + 46);
         const lines = [[fullTime(b.t, tf), C.tx], [`O ${b.o.toFixed(dp)}   H ${b.h.toFixed(dp)}`, C.tx2], [`L ${b.l.toFixed(dp)}   C ${b.c.toFixed(dp)}`, C.tx2], [`${chg >= 0 ? '▲ +' : '▼ '}${chg.toFixed(2)}%  (close vs open)`, col]];
         const e20 = cp ? null : e.e20[b.gi], e50 = cp ? null : e.e50[b.gi]; if (e20 != null) lines.push([`EMA 20 ${e20.toFixed(dp)}`, C.cy]); if (e50 != null) lines.push([`EMA 50 ${e50.toFixed(dp)}`, C.gold]);
-        ctx.font = '11px ui-monospace,monospace'; let bw = 0; for (const [t] of lines) bw = Math.max(bw, ctx.measureText(t).width); bw += 22; const bh = lines.length * 16 + 12;
+        ctx.font = '11px ui-monospace,monospace'; const lt = rowH(ctx, 16); let bw = 0; for (const [t] of lines) bw = Math.max(bw, ctx.measureText(t).width); bw += 22; const bh = lines.length * lt + 12;
         let bx2 = S.mx + 18, by2 = S.my + 16; if (bx2 + bw > g.W - 10) bx2 = S.mx - bw - 18; if (by2 + bh > g.H - 10) by2 = g.H - bh - 10;
         ctx.globalAlpha = 0.9 * g.fade; ctx.fillStyle = C.blue; ctx.fillRect(bx2, by2, 2, bh); rr(ctx, bx2 + 2, by2, bw, bh); ctx.fillStyle = 'black'; ctx.globalAlpha = 0.72 * g.fade; ctx.fill(); ctx.globalAlpha = 0.5 * g.fade; ctx.strokeStyle = C.blue; ctx.stroke();
-        ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; lines.forEach(([t, c], i) => { ctx.globalAlpha = g.fade; ctx.fillStyle = c; ctx.fillText(t, bx2 + 12, by2 + 14 + i * 16); });
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; lines.forEach(([t, c], i) => { ctx.globalAlpha = g.fade; ctx.fillStyle = c; ctx.fillText(t, bx2 + 12, by2 + 14 + i * lt); });
       }
     }
   }
@@ -366,25 +369,32 @@ function readout(ctx, g, e, key, tf, ka, np, today) {
   const C = g.C, s = e.st, cp = g.compact, nf = e.planes[0].bars.length; ctx.save(); ctx.globalAlpha = g.fade; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
   const mv = `${s.movePct >= 0 ? '▲ +' : '▼ '}${s.movePct.toFixed(2)}%`;
   if (cp) {
-    const y0 = S.top + 84; ctx.globalAlpha = 0.55 * g.fade; ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(6, y0 - 18, g.W - 12, e.note ? 58 : 42); ctx.globalAlpha = g.fade; ctx.fillStyle = C.tx; ctx.font = '600 14px ui-monospace,monospace'; ctx.fillText(`${marketName(key, { short: true })} · ${TF_WORD[tf]} candles`, 14, y0);
-    ctx.font = '10px ui-monospace,monospace'; ctx.fillStyle = C.tx2; ctx.fillText(`last ${fmtPrice(s.last)} · plane ${ka + 1}/${np}`, 14, y0 + 16); ctx.fillStyle = s.movePct >= 0 ? C.up : C.dn; ctx.fillText(`${mv}${s.times != null && tf !== '1d' ? `, ${s.times.toFixed(1)}x usual` : ''}`, 14 + ctx.measureText(`last ${fmtPrice(s.last)} · plane ${ka + 1}/${np}  `).width, y0 + 16);
-    if (e.note) { ctx.fillStyle = C.gold; ctx.fillText('Daily bars shown: no intraday data.', 14, y0 + 32); }
-    const y = g.H - 98; [[C.up, '▲ up filled', 14], [C.dn, '▼ down hollow', 104], [C.cy, 'EMA20', 214], [C.gold, 'EMA50', 270]].forEach(([c, t, x]) => { ctx.globalAlpha = 0.95 * g.fade; ctx.fillStyle = c; ctx.fillText(t, x, y); });
-    ctx.globalAlpha = 0.75 * g.fade; ctx.fillStyle = C.tx2; ctx.fillText('Past closes, not a forecast. Drag to orbit.', 14, y + 16); ctx.restore(); return;
+    const y0 = S.top + 84; ctx.font = '10px ui-monospace,monospace'; const lc = rowH(ctx, 16), ex = lc - 16;
+    ctx.globalAlpha = 0.55 * g.fade; ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(6, y0 - 18, g.W - 12, (e.note ? 58 : 42) + (e.note ? 2 : 1) * ex); ctx.globalAlpha = g.fade; ctx.fillStyle = C.tx; ctx.font = '600 14px ui-monospace,monospace'; ctx.fillText(`${marketName(key, { short: true })} · ${TF_WORD[tf]} candles`, 14, y0);
+    ctx.font = '10px ui-monospace,monospace'; ctx.fillStyle = C.tx2; ctx.fillText(`last ${fmtPrice(s.last)} · plane ${ka + 1}/${np}`, 14, y0 + lc); ctx.fillStyle = s.movePct >= 0 ? C.up : C.dn; ctx.fillText(`${mv}${s.times != null && tf !== '1d' ? `, ${s.times.toFixed(1)}x usual` : ''}`, 14 + ctx.measureText(`last ${fmtPrice(s.last)} · plane ${ka + 1}/${np}  `).width, y0 + lc);
+    if (e.note) { ctx.fillStyle = C.gold; ctx.fillText('Daily bars shown: no intraday data.', 14, y0 + 2 * lc); }
+    // the key: placed by measured width (it used to sit at x = 14, 104, 214, 270) and wrapped onto a second row when the floor makes it too wide for the phone
+    const KC = [C.up, C.dn, C.cy, C.gold], kr = rowLayout(['▲ up filled', '▼ down hollow', 'EMA20', 'EMA50'], t => ctx.measureText(t).width, { x0: 14, gap: 14, maxW: g.W - 28, lh: lc });
+    const y = g.H - 98 - (kr.rows - 1) * lc - ex; kr.items.forEach((it, i) => { ctx.globalAlpha = 0.95 * g.fade; ctx.fillStyle = KC[i]; ctx.fillText(it.text, it.x, y + it.y); });
+    ctx.globalAlpha = 0.75 * g.fade; ctx.fillStyle = C.tx2; ctx.fillText('Past closes, not a forecast. Drag to orbit.', 14, y + kr.h); ctx.restore(); return;
   }
-  const y0 = S.top + 62; ctx.globalAlpha = 0.55 * g.fade; ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(14, y0 - 20, 640, e.note ? 76 : 60); ctx.globalAlpha = g.fade; ctx.fillStyle = C.tx; ctx.font = '600 16px ui-monospace,monospace'; ctx.fillText(`${marketName(key)} · ${TF_WORD[tf]} candles`, 24, y0);
-  ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = C.tx2;
+  // the readout box is as wide as its widest line and as tall as its lines at the real font size (it was a fixed 640 x 60)
+  const y0 = S.top + 62; ctx.font = '11px ui-monospace,monospace'; const lr = rowH(ctx, 16), l1 = Math.max(18, lr + 2);
   const span = tf === '1d' ? `the last ${nf} daily bars` : today ? "today's session so far" : 'the latest session';
-  const head = `${span} · open ${fmtPrice(s.open)} · high ${fmtPrice(s.hi)} · low ${fmtPrice(s.lo)} · last ${fmtPrice(s.last)} `; ctx.fillText(head, 24, y0 + 18);
-  ctx.fillStyle = s.movePct >= 0 ? C.up : C.dn; ctx.fillText(`${mv}${s.times != null && tf !== '1d' ? `, ${s.times.toFixed(1)}x its usual move` : ''}`, 24 + ctx.measureText(head).width, y0 + 18);
-  ctx.fillStyle = C.tx2; ctx.fillText(`${np} ${tf === '1d' ? 'blocks of 22 days' : 'UTC days'} stacked in depth · plane ${ka + 1} of ${np} in focus${S.replay && S.printed < nf ? ` · printing ${Math.floor(S.printed)} / ${nf}` : ''}`, 24, y0 + 34);
-  if (e.note) { ctx.fillStyle = C.gold; ctx.fillText(e.note, 24, y0 + 50); }
+  const head = `${span} · open ${fmtPrice(s.open)} · high ${fmtPrice(s.hi)} · low ${fmtPrice(s.lo)} · last ${fmtPrice(s.last)} `, mvt = `${mv}${s.times != null && tf !== '1d' ? `, ${s.times.toFixed(1)}x its usual move` : ''}`;
+  const dep = `${np} ${tf === '1d' ? 'blocks of 22 days' : 'UTC days'} stacked in depth · plane ${ka + 1} of ${np} in focus${S.replay && S.printed < nf ? ` · printing ${Math.floor(S.printed)} / ${nf}` : ''}`;
+  const hw = ctx.measureText(head).width, bw0 = Math.max(640, Math.min(g.W - 28, Math.max(hw + ctx.measureText(mvt).width, ctx.measureText(dep).width, e.note ? ctx.measureText(e.note).width : 0) + 24));
+  ctx.globalAlpha = 0.55 * g.fade; ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(14, y0 - 20, bw0, 20 + l1 + lr * (e.note ? 2 : 1) + 10 + Math.max(0, lr - 16)); ctx.globalAlpha = g.fade; ctx.fillStyle = C.tx; ctx.font = '600 16px ui-monospace,monospace'; ctx.fillText(`${marketName(key)} · ${TF_WORD[tf]} candles`, 24, y0);
+  ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = C.tx2; ctx.fillText(head, 24, y0 + l1);
+  ctx.fillStyle = s.movePct >= 0 ? C.up : C.dn; ctx.fillText(mvt, 24 + hw, y0 + l1);
+  ctx.fillStyle = C.tx2; ctx.fillText(dep, 24, y0 + l1 + lr);
+  if (e.note) { ctx.fillStyle = C.gold; ctx.fillText(e.note, 24, y0 + l1 + 2 * lr); }
   // the key: one line of what each light means, one line of how to drive it
-  const y = g.H - 46; let x = 24; ctx.font = '11px ui-monospace,monospace';
+  ctx.font = '11px ui-monospace,monospace'; const lk = rowH(ctx, 17), y = g.H - 46 - Math.max(0, lk - 17); let x = 24;
   for (const [c, t] of [[C.up, '▲ closed up: filled body'], [C.dn, '▼ closed down: hollow body'], [C.cy, 'EMA 20 tube'], [C.gold, 'EMA 50 tube'], [C.blue, e.band ? "glass slab: the market's usual high / low reach today (median)" : null], [C.tx, 'white beam: latest bar']]) {
     if (!t) continue; ctx.globalAlpha = 0.95 * g.fade; ctx.fillStyle = c; ctx.fillText(t, x, y); x += ctx.measureText(t).width + 18;
   }
-  ctx.globalAlpha = 0.65 * g.fade; ctx.fillStyle = C.tx2; ctx.fillText('drag orbit · wheel zoom · hover for the crosshair · ◀ ▶ fly through the days · ▲▼ off scale: that day is cut at its sheet edge · EMAs average past closes · description only, not a forecast', 24, y + 17);
+  ctx.globalAlpha = 0.65 * g.fade; ctx.fillStyle = C.tx2; ctx.fillText('drag orbit · wheel zoom · hover for the crosshair · ◀ ▶ fly through the days · ▲▼ off scale: that day is cut at its sheet edge · EMAs average past closes · description only, not a forecast', 24, y + lk);
   ctx.restore();
 }
 

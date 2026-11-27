@@ -39,3 +39,9 @@ test('rule 3: scroll is put back after a redraw, but never if the user scrolled 
   r.scrolls.length = 0; a.innerHTML = big('b'); r.win.scrollY = 40; r.handlers.wheel(); r.rafs.shift()(); assert.deepEqual(r.scrolls, [], 'the user scrolled: leave it');
   r.tick(1000); a.innerHTML = big('c'); r.win.scrollY = 10; r.rafs.shift()(); assert.deepEqual(r.scrolls, [40]);
 });
+
+test('an element inside [data-sr-off] (the Helix HUD) is never skipped and never height-held', () => {
+  const r = rig(), a = new r.El('a'); a.closest = sel => (sel === '[data-sr-off]' ? {} : null);
+  a.innerHTML = big('a'); a.innerHTML = big('a'); assert.equal(r.sets.length, 2, 'identical HTML is still written');
+  a.innerHTML = big('b'); assert.equal(a.style.minHeight, '', 'no height hold'); assert.equal(r.laters.length, 0);
+});

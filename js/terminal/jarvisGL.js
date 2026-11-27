@@ -43,6 +43,10 @@ export function hudOrbit(st, { yaw0 = 0.35, pitch0 = -0.45, elev = 0.45, lo = 0.
   const yaw = (st?.yaw ?? yaw0) - yaw0, el = Math.max(lo, Math.min(hi, elev - ((st?.pitch ?? pitch0) - pitch0) * 0.8)), z = Math.max(0.35, Math.min(4, st?.zoom ?? 1));
   return { yaw, pitch: el, dist: dist / z };
 }
+/** The FRAME BUDGET's pixel-ratio cap for the hologram layer: the HUD lowers it to 1 when frames run slow (helixNav.frameBudget) and raises it again when they are fast. */
+export const glBudget = { dpr: 2 };
+/** The pipelines (bloom composers) kept alive when a view becomes active: it and the one before it. */
+export const keepPipelines = (active, prev) => new Set([active, prev].filter(Boolean));
 /** Smoothstep 0..1. */
 export const ease = p => { const x = Math.max(0, Math.min(1, p)); return x * x * (3 - 2 * x); };
 /** A CSS colour string reduced to something three.js parses (#rgb, #rrggbb, rgb(), hsl(), a name); anything else (color-mix, var) falls back. */
@@ -201,14 +205,14 @@ export function glView(spec) {
     if (e.busy) return loading(ctx, g);
     if (e.err) return msg(ctx, g, e.err);
     const H = host(api); if (!H) return msg(ctx, g, 'The hologram layer is not available.');
-    const dpr = Math.min(2, api.win.devicePixelRatio || 1);
+    const dpr = Math.min(glBudget.dpr, api.win.devicePixelRatio || 1);
     if (H.W !== g.W || H.H !== g.H || H.dpr !== dpr) { H.W = g.W; H.H = g.H; H.dpr = dpr; H.renderer.setPixelRatio(dpr); H.renderer.setSize(g.W, g.H, false); H.kit.resize(g.W * dpr, g.H * dpr); }
     if (!e.composer) makeComposer(e, H);
-    if (e.w !== g.W || e.h !== g.H) { e.w = g.W; e.h = g.H; e.composer.setPixelRatio(dpr); e.composer.setSize(g.W, g.H); if (e.inst.camera.isPerspectiveCamera) { e.inst.camera.aspect = g.W / Math.max(1, g.H); e.inst.camera.updateProjectionMatrix(); } }
-    if (H.active !== id) { e.enterT = performance.now(); for (const [k, o] of INST) if (k !== id && o.composer) freeComposer(o); }
+    if (e.w !== g.W || e.h !== g.H || e.dpr !== dpr) { e.w = g.W; e.h = g.H; e.dpr = dpr; e.composer.setPixelRatio(dpr); e.composer.setSize(g.W, g.H); if (e.inst.camera.isPerspectiveCamera) { e.inst.camera.aspect = g.W / Math.max(1, g.H); e.inst.camera.updateProjectionMatrix(); } }
+    if (H.active !== id) { e.enterT = performance.now(); if (H.active) H.prev = H.active; const keep = keepPipelines(id, H.prev); for (const [k, o] of INST) if (!keep.has(k) && o.composer) freeComposer(o); }   // the last TWO pipelines stay alive, so flipping back is instant
     const top = g.top ?? 0; if (H.top !== top || H.ch !== g.H) { H.top = top; H.ch = g.H; H.canvas.style.top = top + 'px'; H.canvas.style.height = g.H + 'px'; H.canvas.style.bottom = 'auto'; }   // the layer sits in the HUD's safe area, so 3D and labels line up
     H.active = id; H.lastDraw = performance.now(); if (H.canvas.style.display !== 'block') H.canvas.style.display = 'block';
-    H.canvas.style.opacity = String(g.fade);
+    const op = Math.round(g.fade * 100) / 100; if (H.op !== op) { H.op = op; H.canvas.style.opacity = String(op); }      // a style write only when it changes (not every frame)
     const k = Math.min(1, (performance.now() - e.enterT) / (H.calm ? 350 : 900)), b0 = e.inst.bloom?.strength ?? 1.15;
     e.bloom.strength = k < 1 && !H.calm ? b0 * (1 + 1.6 * (1 - k) * (1 - k)) : b0;          // the hologram 'prints' in with an over-bright flash that settles
     try { H.kit.tick(g.t); e.inst.update?.(g.t, Math.min(0.05, g.dt || 0.016), api, g); e.composer.render(); } catch (err) { INST.set(id, { err: `The hologram stopped: ${err?.message ?? err}` }); return; }

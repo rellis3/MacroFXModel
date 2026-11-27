@@ -7,7 +7,10 @@
 import { chainLinks, CHAIN_OHLC, CHAIN_FRED_KEYS, ohlcAscending, summariseChain, CHAIN_NODES } from '../terminal/chainBoard.js';
 import { buildGraph, watchSnapshot, watchDiff, memoryState, radarRank } from '../terminal/jarvisCore.js';
 import { setLiveFrozen } from '../macroChain.js';
-import { normaliseState, planAlerts, memoryEvent, liveUsable } from './jarvisLogic.js';
+import { normaliseState, planAlerts, memoryEvent, liveUsable, helixLink, alertView } from './jarvisLogic.js';
+
+/** The site origin for the link back into Helix in a phone alert (Railway sets RAILWAY_PUBLIC_DOMAIN; none -> no link). */
+export const siteBase = () => process.env.RAILWAY_PUBLIC_DOMAIN || '';
 
 export const KV_KEY = 'jarvis_watch_v1';
 const DAILY_MS = 30 * 60_000, LIVE_MS = 2 * 60_000, STALE_SNAPSHOT_MS = 20 * 60_000, PERSIST_MS = 15 * 60_000;
@@ -91,7 +94,7 @@ export async function tick(deps, now = Date.now()) {
       Object.assign(state, plan.state);
       for (const rec of plan.send) {
         let ok = false;
-        try { ok = !!(await deps.tgSend(rec.text)); } catch (e) { console.warn('[jarvisWatch] telegram failed:', e.message); }
+        const link = helixLink(siteBase(), alertView(rec)); try { ok = !!(await deps.tgSend(link ? `${rec.text}\n${link}` : rec.text)); } catch (e) { console.warn('[jarvisWatch] telegram failed:', e.message); }
         rec.sent = ok;
       }
       sent = plan.send;

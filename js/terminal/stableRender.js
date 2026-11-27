@@ -5,6 +5,7 @@
 //   1. the same HTML as last time, into the same element, with its content still there: skip it (nothing changed, so nothing is redrawn);
 //   2. a real change: hold the element's height for a moment, so the page below does not collapse and spring back while the new content is built;
 //   3. put the scroll position back if it moved by itself, unless you scrolled in the last 0.4 s (so it never fights you).
+// EXEMPT: an element inside [data-sr-off] (the Helix HUD sets it on #jarvis) is left alone: its panels are rebuilt on purpose and a held height there left a stale card.
 // deskRenderStats() lists the elements redrawn most, to find any that still churn. Classic script, loaded first in desk-terminal.html.
 export const MIN_LEN = 400, HOLD_MS = 1500, USER_MS = 400;
 
@@ -15,11 +16,13 @@ export function installStableRender(proto, env) {
   const { win, now = () => Date.now(), raf = f => setTimeout(f, 16), later = setTimeout } = env, stats = new Map();
   let lastUser = 0; const touch = () => { lastUser = now(); };
   for (const ev of ['wheel', 'touchmove', 'keydown', 'mousedown', 'pointerdown']) win.addEventListener?.(ev, touch, { passive: true, capture: true });
+  const exempt = el => { try { return !!el.closest?.('[data-sr-off]'); } catch (e) { return false; } };
   const label = el => `${(el.tagName ?? '?').toLowerCase()}${el.id ? `#${el.id}` : ''}${typeof el.className === 'string' && el.className ? `.${el.className.split(/\s+/)[0]}` : ''}`;
   Object.defineProperty(proto, 'innerHTML', {
     configurable: true, enumerable: d.enumerable, get: d.get,
     set(v) {
       const s = typeof v === 'string' ? v : String(v ?? '');
+      if (s.length >= MIN_LEN && exempt(this)) { d.set.call(this, v); this.__sr = null; return; }
       const big = s.length >= MIN_LEN, connected = this.isConnected !== false;
       if (big) { const k = label(this), st = stats.get(k) ?? { n: 0, skipped: 0 }; st.n++; stats.set(k, st);
         if (this.__sr === s && connected && this.firstChild) { st.skipped++; return; } }                 // rule 1: identical, nothing to redraw

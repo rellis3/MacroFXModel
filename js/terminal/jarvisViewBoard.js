@@ -18,6 +18,10 @@
 // DESCRIPTION ONLY: the candle is what has happened so far today; the lean is a rule-based reading with no proven skill. Nothing here is a forecast or a trade.
 import { registerJarvisModule } from './jarvisModules.js';
 import { glView } from './jarvisGL.js';
+import { fontPx, lineHeight, slotCache } from './helixLayout.js';
+// rows and columns follow the REAL font size (the broadcast's font floor lifts 11px labels to 15px): each gap is max(the old fixed gap, the measured one), so the board looks the same
+// at normal sizes and never draws text over text under the floor. LC caches the measured column widths per font and contents, so a steady frame measures nothing.
+const LC = slotCache(), rowH = (ctx, base) => Math.max(base, lineHeight(fontPx(ctx.font)) + 1);
 import { candleBox, topMovers, ROWS, CAP } from './jarvisCandles.js';
 import { marketName } from './jarvisNames.js';
 import { placeLabels } from './ratePathsCore.js';
@@ -183,17 +187,19 @@ function overlay(ctx, g, api, H, camera, recs, rowsW, post) {
   const showing = !!st.cinemaStop, sel = S.selKey ? recs.find(r => r.r.key === S.selKey) : null, bd = cd.board ?? {};
   // title and the tally
   const ty = cp ? 92 : 104; ctx.textAlign = 'left'; ctx.globalAlpha = fade; ctx.fillStyle = C.blue; ctx.font = `600 ${cp ? 13 : 15}px ui-monospace,monospace`; ctx.fillText('MARKET BOARD', 16, ty);
-  ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = C.tx2;
-  if (cd.label) ctx.fillText(`${cd.label} · each candle sized against its market's usual open-to-close move`, 16, ty + 16); else ctx.fillText(cp ? `today so far vs each market's usual move${cd.at ? ` · ${londonTime(cd.at)}` : ''}` : `today's session so far, each candle sized against its market's usual open-to-close move${cd.at ? ` · read ${londonTime(cd.at)} London` : ''}`, 16, ty + 16);
-  let x = 16; const y2 = ty + 33; ctx.font = '600 11px ui-monospace,monospace';
+  ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = C.tx2; const lh1 = rowH(ctx, 16), y1 = ty + lh1;
+  if (cd.label) ctx.fillText(`${cd.label} · each candle sized against its market's usual open-to-close move`, 16, y1); else ctx.fillText(cp ? `today so far vs each market's usual move${cd.at ? ` · ${londonTime(cd.at)}` : ''}` : `today's session so far, each candle sized against its market's usual open-to-close move${cd.at ? ` · read ${londonTime(cd.at)} London` : ''}`, 16, y1);
+  let x = 16; const y2 = y1 + Math.max(17, lh1); ctx.font = '600 11px ui-monospace,monospace';
   for (const [t2, c] of [[`▲ ${bd.up ?? 0} up`, C.up], [`▼ ${bd.dn ?? 0} down`, C.dn], [`• ${bd.quiet ?? 0} barely moving`, C.tx2]]) { ctx.fillStyle = c; ctx.fillText(t2, x, y2); x += ctx.measureText(t2).width + 14; }
-  if (bd.haveLean) { ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = C.blue; ctx.fillText(cp ? `lean: ▲${bd.bull} ▼${bd.bear} •${bd.flat} (no proven skill)` : `engine leans ▲ bullish ${bd.bull} · ▼ bearish ${bd.bear} · • neutral ${bd.flat}  (back-test: no proven skill)`, 16, y2 + 16); }
+  if (bd.haveLean) { ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = C.blue; ctx.fillText(cp ? `lean: ▲${bd.bull} ▼${bd.bear} •${bd.flat} (no proven skill)` : `engine leans ▲ bullish ${bd.bull} · ▼ bearish ${bd.bear} · • neutral ${bd.flat}  (back-test: no proven skill)`, 16, y2 + lh1); }
+  const hdrBot = (bd.haveLean ? y2 + lh1 : y2) + 10;
 
   // labels: reserved areas first (never drawn), then the loudest candles' names, the street names and the scale marks
   let nb = 0; const res = (x0, y0, w, h) => { const b = BOX[nb++]; Object.assign(b, { x: x0, y: y0, w, h, pri: 100, text: '', sub: '', col: '', ax: 0, ay: 0, kind: 'x', tries: null, below: false }); };
-  res(0, 0, W, ty + (bd.haveLean ? 26 : 10));
+  res(0, 0, W, Math.max(ty + (bd.haveLean ? 26 : 10), hdrBot));
   const listW = 250, movers = topMovers(cd.rows, 6);
-  if (!cp && !sel) res(W - listW - 24, ty - 18, listW + 24, 26 + movers.length * 17);
+  ctx.font = '11px ui-monospace,monospace'; const lr = rowH(ctx, 17);
+  if (!cp && !sel) res(W - listW - 24, ty - 18, listW + 24, 26 + movers.length * lr);
   if (sel) res(cp ? 0 : W - 330, cp ? ty + 30 : ty - 18, cp ? W : 330, cp ? 56 : 112);
   const P = Array(3).fill(0), scr = (x0, y0, z0) => { P[0] = x0; P[1] = y0; P[2] = z0; return H.toScreen(P, camera); };
   const loudN = cp ? 4 : 9, loud = new Set(topMovers(cd.rows, loudN).filter(r => Math.abs(r.ratio) > 1).map(r => r.key));
@@ -203,28 +209,28 @@ function overlay(ctx, g, api, H, camera, recs, rowsW, post) {
     if (tip.vis) g.hit(r.key, tip.x, tip.y);
     if (!named || !a.vis || nb >= BOX.length) continue;
     ctx.font = `600 ${cp ? 11 : 12}px ui-monospace,monospace`; const t1 = marketName(r.key, { short: true }), w1 = ctx.measureText(t1).width;
-    ctx.font = '11px ui-monospace,monospace'; const t2 = `${arrow(r)} ${xTxt(r.ratio)}${cp ? '' : ` · ${pctTxt(r.oc)}`}`, w = Math.max(w1, ctx.measureText(t2).width) + 10, h = 30;
+    const p1 = fontPx(ctx.font); ctx.font = '11px ui-monospace,monospace'; const t2 = `${arrow(r)} ${xTxt(r.ratio)}${cp ? '' : ` · ${pctTxt(r.oc)}`}`, w = Math.max(w1, ctx.measureText(t2).width) + 10, h = Math.max(30, p1 + fontPx(ctx.font) + 8);
     const b = BOX[nb++]; Object.assign(b, { x: clamp(a.x - w / 2, 4, W - w - 4), y: up ? a.y - h : a.y, w, h, pri: isSel ? 60 : 40 + Math.abs(r.ratio), text: t1, sub: t2, col: toneCol(C, r), ax: a.x, ay: a.y, kind: 'n', tries: up ? TRY_UP : TRY_DN, below: !up });
   }
   if (!showing) for (const rw of rowsW) {
     if (!rw.title || nb >= BOX.length) continue; const p = scr(rw.x0 - 0.25, 0, rw.z); if (!p.vis) continue;
-    ctx.font = '10px ui-monospace,monospace'; const w = ctx.measureText(rw.title).width + 6, b = BOX[nb++];
-    Object.assign(b, { x: p.x - w, y: p.y - 6, w, h: 12, pri: 20, text: rw.title, sub: '', col: C.tx2, ax: p.x, ay: p.y, kind: 'r', tries: [0, -1, 1], below: false });
+    ctx.font = '10px ui-monospace,monospace'; const w = ctx.measureText(rw.title).width + 6, hh = Math.max(12, fontPx(ctx.font) + 2), b = BOX[nb++];
+    Object.assign(b, { x: p.x - w, y: p.y - hh / 2, w, h: hh, pri: 20, text: rw.title, sub: '', col: C.tx2, ax: p.x, ay: p.y, kind: 'r', tries: [0, -1, 1], below: false });
   }
   if (post && !cp && !showing) for (let k = -CAP; k <= CAP; k++) {
     const p = scr(post.x - 0.2, k * YU, post.z); if (!p.vis || nb >= BOX.length) continue;
-    const tx = k === 0 ? 'open' : `${k > 0 ? '+' : '−'}${Math.abs(k)}×${Math.abs(k) === CAP ? ' cap' : ''}`; ctx.font = '10px ui-monospace,monospace'; const w = ctx.measureText(tx).width + 4, b = BOX[nb++];
-    Object.assign(b, { x: p.x - w - 4, y: p.y - 6, w, h: 12, pri: 10, text: tx, sub: '', col: C.tx2, ax: p.x, ay: p.y, kind: 's', tries: [0], below: false });
+    const tx = k === 0 ? 'open' : `${k > 0 ? '+' : '−'}${Math.abs(k)}×${Math.abs(k) === CAP ? ' cap' : ''}`; ctx.font = '10px ui-monospace,monospace'; const w = ctx.measureText(tx).width + 4, hh = Math.max(12, fontPx(ctx.font) + 2), b = BOX[nb++];
+    Object.assign(b, { x: p.x - w - 4, y: p.y - hh / 2, w, h: hh, pri: 10, text: tx, sub: '', col: C.tx2, ax: p.x, ay: p.y, kind: 's', tries: [0], below: false });
   }
   placeLabels(BOX, { W, H: HH - (cp ? 140 : 116), n: nb, order: ORD, kept: KEPT });
   for (let i = 0; i < nb; i++) {
     const b = BOX[i]; if (b.kind === 'x' || !b.ok) continue;
-    if (b.kind === 'r' || b.kind === 's') { ctx.textAlign = 'right'; ctx.font = '10px ui-monospace,monospace'; ctx.globalAlpha = fade * (b.kind === 'r' ? 0.8 : 0.65); ctx.fillStyle = b.col; ctx.fillText(b.text, b.x + b.w - 2, b.y + 10); continue; }
+    if (b.kind === 'r' || b.kind === 's') { ctx.textAlign = 'right'; ctx.font = '10px ui-monospace,monospace'; ctx.globalAlpha = fade * (b.kind === 'r' ? 0.8 : 0.65); ctx.fillStyle = b.col; ctx.fillText(b.text, b.x + b.w - 2, b.y + b.h - 2); continue; }
     const ey = b.below ? b.y : b.y + b.h; if (Math.abs(ey - b.ay) > 2) { ctx.globalAlpha = fade * 0.45; ctx.strokeStyle = b.col; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(b.ax, b.ay); ctx.lineTo(clamp(b.ax, b.x, b.x + b.w), ey); ctx.stroke(); }
     ctx.globalAlpha = fade * 0.6; ctx.fillStyle = 'rgba(0,0,0,0.78)'; ctx.fillRect(b.x, b.y, b.w, b.h);
     ctx.globalAlpha = fade * 0.55; ctx.strokeStyle = b.col; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1);
-    ctx.textAlign = 'center'; ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.font = `600 ${cp ? 11 : 12}px ui-monospace,monospace`; ctx.fillText(b.text, b.x + b.w / 2, b.y + 12);
-    ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = b.col; ctx.fillText(b.sub, b.x + b.w / 2, b.y + 25);
+    ctx.textAlign = 'center'; ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.font = `600 ${cp ? 11 : 12}px ui-monospace,monospace`; const q1 = fontPx(ctx.font), l1 = b.y + Math.max(12, q1 + 1); ctx.fillText(b.text, b.x + b.w / 2, l1);
+    ctx.font = '11px ui-monospace,monospace'; ctx.fillStyle = b.col; ctx.fillText(b.sub, b.x + b.w / 2, Math.max(b.y + 25, l1 + fontPx(ctx.font) + 2));
   }
   if (sel) card(ctx, g, sel.r, ty); else if (!cp) loudest(ctx, g, movers, ty, listW);
   key(ctx, g);
@@ -233,15 +239,19 @@ function overlay(ctx, g, api, H, camera, recs, rowsW, post) {
 
 /** Desktop: the loudest movers, top right, each row clickable (flies to the candle). */
 function loudest(ctx, g, movers, ty, w) {
-  const { W, C, fade } = g, x = W - w - 16, y0 = ty; if (!movers.length) return;
-  ctx.globalAlpha = fade * 0.7; ctx.fillStyle = 'rgba(0,0,0,0.78)'; ctx.fillRect(x - 8, y0 - 14, w + 16, 22 + movers.length * 17);
+  const { W, C, fade } = g, y0 = ty; if (!movers.length) return;
+  // the three columns (name, bar, value) by measured width: the name column is as wide as the widest name, never a fixed 118px
+  ctx.font = '11px ui-monospace,monospace'; const f = ctx.font, lr = rowH(ctx, 17);
+  const L = LC.get('loud', f, `${S.cd?.at ?? ''}|${movers.length}|${movers[0]?.key ?? ''}`, () => { let nw = 0; for (const r of movers) nw = Math.max(nw, ctx.measureText(clip(marketName(r.key, { short: true }), 15)).width); const vw = ctx.measureText('▼ 3.0×').width; const bx = Math.max(118, Math.ceil(nw) + 10), vx = bx + 66; return { bx, vx, w: Math.max(w, vx + Math.ceil(vw) + 4) }; });
+  const ww = L.w, x = W - ww - 16;
+  ctx.globalAlpha = fade * 0.7; ctx.fillStyle = 'rgba(0,0,0,0.78)'; ctx.fillRect(x - 8, y0 - 14, ww + 16, 22 + movers.length * lr);
   ctx.textAlign = 'left'; ctx.globalAlpha = fade; ctx.fillStyle = C.blue; ctx.font = '600 11px ui-monospace,monospace'; ctx.fillText(S.cd?.label ? 'LOUDEST, LAST SESSION · click' : 'LOUDEST TODAY  ·  click to fly there', x, y0);
   ctx.font = '11px ui-monospace,monospace';
   movers.forEach((r, i) => {
-    const yy = y0 + 18 + i * 17, len = Math.min(1, Math.abs(r.ratio) / CAP) * 60, c = toneCol(C, r);
+    const yy = y0 + Math.max(18, lr + 1) + i * lr, len = Math.min(1, Math.abs(r.ratio) / CAP) * 60, c = toneCol(C, r);
     ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.fillText(clip(marketName(r.key, { short: true }), 15), x, yy);
-    ctx.globalAlpha = fade * 0.85; ctx.fillStyle = c; ctx.fillRect(x + 118, yy - 8, Math.max(2, len), 7);
-    ctx.globalAlpha = fade; ctx.fillText(`${arrow(r)}${xTxt(r.ratio)}`, x + 184, yy);
+    ctx.globalAlpha = fade * 0.85; ctx.fillStyle = c; ctx.fillRect(x + L.bx, yy - 8, Math.max(2, len), 7);
+    ctx.globalAlpha = fade; ctx.fillText(`${arrow(r)}${xTxt(r.ratio)}`, x + L.vx, yy);
     g.hit(r.key, x + 60, yy - 4);
   });
 }
@@ -253,10 +263,11 @@ function card(ctx, g, r, ty) {
     ? [[`${arrow(r)} ${pctTxt(r.oc)} = ${xTxt(r.ratio)} usual · lean ${leanWord(r)}`, c]]
     : [[`${arrow(r)} ${pctTxt(r.oc)} open to now`, c], [`= ${xTxt(r.ratio)} its usual open-to-close move (${Math.abs(r.noise).toFixed(2)}%)`, C.tx2],
       [`session high ${xTxt(r.hi)} · low ${xTxt(r.lo)} (usual moves)`, C.tx2], [`bias engine: ${leanWord(r)}${r.haveLean && r.lean ? `, strength ${r.strength}` : ''} · no proven skill`, C.blue]];
-  ctx.globalAlpha = fade * 0.78; ctx.fillStyle = 'rgba(0,0,0,0.82)'; ctx.fillRect(x - 8, y0 - 14, w + 16, 30 + lines.length * 16);
-  ctx.globalAlpha = fade * 0.6; ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.strokeRect(x - 7.5, y0 - 13.5, w + 15, 29 + lines.length * 16);
+  ctx.font = '11px ui-monospace,monospace'; const lc = rowH(ctx, 16), top0 = Math.max(18, lc + 2);
+  ctx.globalAlpha = fade * 0.78; ctx.fillStyle = 'rgba(0,0,0,0.82)'; ctx.fillRect(x - 8, y0 - 14, w + 16, 12 + top0 + lines.length * lc);
+  ctx.globalAlpha = fade * 0.6; ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.strokeRect(x - 7.5, y0 - 13.5, w + 15, 11 + top0 + lines.length * lc);
   ctx.textAlign = 'left'; ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.font = '600 12px ui-monospace,monospace'; ctx.fillText(clip(marketName(r.key), cp ? 26 : 30), x, y0 + 2);
-  ctx.font = '11px ui-monospace,monospace'; lines.forEach(([t, cc], i) => { ctx.fillStyle = cc; ctx.fillText(t, x, y0 + 20 + i * 16); });
+  ctx.font = '11px ui-monospace,monospace'; lines.forEach(([t, cc], i) => { ctx.fillStyle = cc; ctx.fillText(t, x, y0 + top0 + i * lc); });
   // ALL MARKETS: back to the whole board
   const bw = 92, bx = x + w - bw, by = y0 - 7; ctx.globalAlpha = fade * 0.9; ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(bx, by - 8, bw, 18); ctx.strokeStyle = C.blue; ctx.strokeRect(bx + 0.5, by - 7.5, bw - 1, 17);
   ctx.globalAlpha = fade; ctx.fillStyle = C.tx; ctx.textAlign = 'center'; ctx.font = '10px ui-monospace,monospace'; ctx.fillText('ALL MARKETS', bx + bw / 2, by + 5); g.hit('bd:all', bx + bw / 2, by + 1);
@@ -264,19 +275,21 @@ function card(ctx, g, r, ty) {
 
 function key(ctx, g) {
   const { H, C, fade } = g, cp = g.compact; ctx.textAlign = 'left'; ctx.font = '11px ui-monospace,monospace'; ctx.globalAlpha = fade * 0.9;
-  const y = H - (cp ? 128 : 104), bw = cp ? Math.min(g.W - 16, 340) : Math.min(g.W - 16, ctx.measureText('CANDLES · today session so far against each market usual open-to-close move · height = the move ÷ that usual move · faint lines = ±1 usual move · capped at 3×').width + 20);
-  ctx.globalAlpha = fade * 0.62; ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(8, y - 14, bw, cp ? 80 : 68); ctx.globalAlpha = fade * 0.9;
+  // rows step by the measured line height (min the old 15/16px) and the key sits higher by however much taller it got, so it never runs off the bottom; the second row's three items sit by measured width
+  const lk = rowH(ctx, cp ? 15 : 16), n = cp ? 5 : 4, y = H - (cp ? 128 : 104) - Math.max(0, (n - 1) * (lk - (cp ? 15 : 16))), bw = cp ? Math.min(g.W - 16, 340) : Math.min(g.W - 16, ctx.measureText('CANDLES · today session so far against each market usual open-to-close move · height = the move ÷ that usual move · faint lines = ±1 usual move · capped at 3×').width + 20);
+  ctx.globalAlpha = fade * 0.62; ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(8, y - 14, bw, (cp ? 80 : 68) + (n - 1) * (lk - (cp ? 15 : 16))); ctx.globalAlpha = fade * 0.9;
   if (cp) {
-    ctx.fillStyle = C.up; ctx.fillText('▲ green above the floor = up', 16, y); ctx.fillStyle = C.dn; ctx.fillText('▼ red below = down', 16, y + 15);
-    ctx.fillStyle = C.tx2; ctx.fillText('height = move ÷ usual move · grey < ½ · cap 3×', 16, y + 30);
-    ctx.fillStyle = C.blue; ctx.fillText('chevron = engine lean, no proven skill', 16, y + 45);
-    ctx.fillStyle = C.gold; ctx.fillText('What has happened today; not a forecast.', 16, y + 60);
+    ctx.fillStyle = C.up; ctx.fillText('▲ green above the floor = up', 16, y); ctx.fillStyle = C.dn; ctx.fillText('▼ red below = down', 16, y + lk);
+    ctx.fillStyle = C.tx2; ctx.fillText('height = move ÷ usual move · grey < ½ · cap 3×', 16, y + 2 * lk);
+    ctx.fillStyle = C.blue; ctx.fillText('chevron = engine lean, no proven skill', 16, y + 3 * lk);
+    ctx.fillStyle = C.gold; ctx.fillText('What has happened today; not a forecast.', 16, y + 4 * lk);
     return;
   }
   ctx.fillStyle = C.tx2; ctx.fillText('CANDLES · today\'s session so far against each market\'s usual open-to-close move · height = the move ÷ that usual move · faint lines = ±1 usual move · capped at 3×', 16, y);
-  let x = 16; ctx.fillStyle = C.up; ctx.fillText('▲ green above the floor = up', x, y + 16); x += 214; ctx.fillStyle = C.dn; ctx.fillText('▼ red below = down', x, y + 16); x += 146; ctx.fillStyle = C.tx2; ctx.fillText('• grey = under half a usual move · click a candle to fly there · drag to turn, scroll to zoom', x, y + 16);
-  ctx.fillStyle = C.blue; ctx.fillText('CHEVRONS · the bias engine\'s lean (▲ bullish, ▼ bearish, dot neutral; size = strength) · back-test: no proven direction skill', 16, y + 32);
-  ctx.fillStyle = C.gold; ctx.fillText('What has happened so far today, description only, not a forecast or a trade.', 16, y + 48);
+  const k1 = '▲ green above the floor = up', k2 = '▼ red below = down';
+  let x = 16; ctx.fillStyle = C.up; ctx.fillText(k1, x, y + lk); x += Math.max(214, ctx.measureText(k1).width + 18); ctx.fillStyle = C.dn; ctx.fillText(k2, x, y + lk); x += Math.max(146, ctx.measureText(k2).width + 18); ctx.fillStyle = C.tx2; ctx.fillText('• grey = under half a usual move · click a candle to fly there · drag to turn, scroll to zoom', x, y + lk);
+  ctx.fillStyle = C.blue; ctx.fillText('CHEVRONS · the bias engine\'s lean (▲ bullish, ▼ bearish, dot neutral; size = strength) · back-test: no proven direction skill', 16, y + 2 * lk);
+  ctx.fillStyle = C.gold; ctx.fillText('What has happened so far today, description only, not a forecast or a trade.', 16, y + 3 * lk);
 }
 
 registerJarvisModule({
