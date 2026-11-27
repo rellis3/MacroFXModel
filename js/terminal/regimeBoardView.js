@@ -5,6 +5,7 @@
  * Words kept on the board on purpose (Evidence Book): the quiet state is quiet, not directionless; the active state says moves have been big, not
  * which way; the theory's expected asset reactions are NOT shown (tested only as a descriptor), and the correlation regime is a sizing fact.
  */
+import { ordinal } from './ordinal.js';
 import { describeRegime } from '../regimeBoardCore.js';
 import { arcGauge, stateStrip, esc, fin, uid } from './boardViz.js';
 import { chipFor } from './corrEvidence.js';
@@ -45,7 +46,7 @@ function topTiles(rb) {
 <div class="card"><div class="ch"><span class="lbl">Correlation regime</span><span class="r">${c ? `<span class="chip ${c.state === 'HIGH' ? 'dn' : c.state === 'LOW' ? 'gold' : ''}">${esc(c.state.toLowerCase())}</span>` : ''}</span></div>${corrG || '<p class="muted">The pair correlations are not built yet.</p>'}
 <p class="muted bv-note">Mean absolute correlation across ${c?.n ?? '–'} tracked pair combinations against each one's own five-year normal. High means several setups are really one bet and hedges hedge less; it is a sizing fact, not a direction.</p></div>
 <div class="card"><div class="ch"><span class="lbl">Risk state</span><span class="r">${r ? `<span class="chip ${LVL[r.level] ?? ''}">${esc(String(r.level).replace('_', ' ').toLowerCase())}</span>` : ''}</span></div>${lights(r)}
-${r?.move ? `<div class="bv-stats" style="margin-top:8px"><div><span class="lbl">Bond vol (MOVE)</span><div class="mono bv-kv">${r.move.level}</div></div><div><span class="lbl">1y percentile</span><div class="mono bv-kv">${r.move.pct1y ?? '–'}th</div></div><div><span class="lbl">20 days</span><div class="mono bv-kv">${sg(r.move.chg20, 1)}</div></div></div>` : ''}
+${r?.move ? `<div class="bv-stats" style="margin-top:8px"><div><span class="lbl">Bond vol (MOVE)</span><div class="mono bv-kv">${r.move.level}</div></div><div><span class="lbl">1y percentile</span><div class="mono bv-kv">${ordinal(r.move.pct1y ?? '–')}</div></div><div><span class="lbl">20 days</span><div class="mono bv-kv">${sg(r.move.chg20, 1)}</div></div></div>` : ''}
 <p class="muted bv-note">${esc(r?.note ?? '')} Lit flags are the conditions that are on today.</p></div></div>`;
 }
 

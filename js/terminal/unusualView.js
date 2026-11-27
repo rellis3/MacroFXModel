@@ -2,6 +2,7 @@
 // more extreme against its own history), then a ranked list with the plain-words reason, a bar on the percentile scale, a glowing sparkline and the
 // last close. Click a row for the working (every measure, the window, how far to trust it) and a link to the source board.
 // Presentation only. Theme tokens only (insight.css), motion is the shared .bv-sweep / .in-fill CSS and is off under prefers-reduced-motion.
+import { ordinal } from './ordinal.js';
 import { rankBundle, expectedByChance, groupCounts, trustNote } from './unusualCore.js';
 import { GROUPS } from './insightSeries.js';
 import { esc } from './boardViz.js';
@@ -48,7 +49,7 @@ export function unusualHtml(rank, { group = 'all', all = false, open = null, thr
   const quiet = chance.hits <= Math.ceil(chance.expected * 1.25);
   const pills = [`<button type="button" class="in-pill" data-group="all" aria-pressed="${group === 'all'}">All <b>${rows.length}</b></button>`,
     ...gc.map(g => `<button type="button" class="in-pill" data-group="${esc(g.group)}" aria-pressed="${group === g.group}">${esc(g.label)} <b>${g.n}</b>${g.hot ? ` <span class="in-hot">${g.hot} hot</span>` : ''}</button>`)].join('');
-  return `<div class="in-head"><div class="in-asof">As at the close of <b>${esc(niceDate(rank.refDate))}</b>. ${rows.length} series, each against its own history since ${esc(niceDate(rank.windowFrom))}. A reading is "hot" at the ${Math.round(threshold * 100)}th percentile or beyond.</div>
+  return `<div class="in-head"><div class="in-asof">As at the close of <b>${esc(niceDate(rank.refDate))}</b>. ${rows.length} series, each against its own history since ${esc(niceDate(rank.windowFrom))}. A reading is "hot" at the ${ordinal(Math.round(threshold * 100))} percentile or beyond.</div>
 <div class="in-chance ${quiet ? 'quiet' : 'busy'}"><b>${chance.hits}</b> of ${chance.measures} readings are hot; about <b>${Math.round(chance.expected)}</b> would be on any day by chance alone. ${quiet ? 'So this is an ordinary-looking day: the top of the list is mostly what chance throws up.' : 'More than chance would give, so the top of the list is worth a look.'}</div></div>
 <div class="in-sky" role="group" aria-label="Every series, brightest = most unusual">${sky}</div>
 <div class="in-pills" role="group" aria-label="Filter by group">${pills}</div>

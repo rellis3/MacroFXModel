@@ -6,6 +6,7 @@
  * price goes. The one registered finding (price drifted a little against a crowded book on release days, 2018-2025) is stated with its size and
  * its status (a hypothesis awaiting held-out years), next to the null that a crowded book does not make the day wider.
  */
+import { ordinal } from './ordinal.js';
 import { describeReleases, londonTime, ord, CROWD_HI, CROWD_LO } from '../releasesBoardCore.js';
 import { pctRails, esc, fin } from './boardViz.js';
 import { chipFor } from './corrEvidence.js';
@@ -20,7 +21,7 @@ function positionCard(rb) {
   const rows = rb.positions.map(p => ({ label: p.ccy, value: p.side ? `crowded ${p.side}` : 'mid-range', pct: p.pct }));
   return `<div class="card"><div class="ch"><span class="lbl">Who is positioned · leveraged funds, long the currency</span><span class="r muted">COT ${esc(String(rb.cotDate ?? '').slice(0, 10))}</span></div>
 ${pctRails(rows, { w: 560, marks: [CROWD_LO, 50, CROWD_HI], rightW: 150 })}
-<p class="muted bv-note">Each marker is the currency's net position as a share of open interest, ranked against its own history (100 = the most long it has been). A currency counts as crowded past the ${CROWD_LO}th or ${CROWD_HI}th percentile with the position on that side; the tick marks are those two lines and the middle. "Long" always means long the currency (the yen, Canadian dollar and Swiss franc futures are quoted the other way round).</p></div>`;
+<p class="muted bv-note">Each marker is the currency's net position as a share of open interest, ranked against its own history (100 = the most long it has been). A currency counts as crowded past the ${ordinal(CROWD_LO)} or ${ordinal(CROWD_HI)} percentile with the position on that side; the tick marks are those two lines and the middle. "Long" always means long the currency (the yen, Canadian dollar and Swiss franc futures are quoted the other way round).</p></div>`;
 }
 
 function relRow(r) {

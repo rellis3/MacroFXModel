@@ -5,6 +5,7 @@
  * Reading rules kept visible on the board: stress up = red/gold, easier = green; a z-score of 0 is a normal year, not a forecast. The gate's
  * verdicts (long / short / blocked) are NOT shown, only the three z-scores it reads, and the pulse's next-day correlation is shown as measured (~0).
  */
+import { ordinal } from './ordinal.js';
 import { describe, csiTone } from '../creditLiquidityCore.js';
 import { arcGauge, pctRails, glowLine, esc as vEsc, fin } from './boardViz.js';
 import { chipFor } from './corrEvidence.js';
@@ -55,7 +56,7 @@ function globalCard(cl) {
   const line = g ? glowLine((g.history ?? []).map(p => p.v), { w: 300, h: 74, zeroLine: true, tone: 'var(--blue)', label: 'Global central-bank liquidity, three years' }) : '';
   const per = g?.perCcy ? CCYS.filter(c => fin(g.perCcy[c])).map(c => zBar(c, g.perCcy[c], { max: 2, hot: 'up', cool: 'dn', title: `${c}'s central-bank liquidity, standardised` })).join('') : '';
   return `<div class="card"><div class="ch"><span class="lbl">Global liquidity</span><span class="r">${g?.phase ? `<span class="chip ${/fall/i.test(g.phase) ? 'dn' : /ris/i.test(g.phase) ? 'up' : ''}">${esc2(String(g.phase).toLowerCase())}</span>` : ''} <span class="muted">${esc2(g?.asOf ?? '')}</span></span></div>
-${g ? `<div class="bv-stats"><div><span class="lbl">Level</span><div class="mono bv-kv">${sg(g.level)}</div></div><div><span class="lbl">Impulse</span><div class="mono bv-kv">${sg(g.impulse)}</div></div><div><span class="lbl">Cycle</span><div class="mono bv-kv">${sg(g.cycle)}</div></div><div><span class="lbl">Net liquidity pct</span><div class="mono bv-kv">${n?.pct != null ? `${n.pct}th` : '–'}</div></div></div>${line}
+${g ? `<div class="bv-stats"><div><span class="lbl">Level</span><div class="mono bv-kv">${sg(g.level)}</div></div><div><span class="lbl">Impulse</span><div class="mono bv-kv">${sg(g.impulse)}</div></div><div><span class="lbl">Cycle</span><div class="mono bv-kv">${sg(g.cycle)}</div></div><div><span class="lbl">Net liquidity pct</span><div class="mono bv-kv">${n?.pct != null ? `${ordinal(n.pct)}` : '–'}</div></div></div>${line}
 <div class="bv-cap">By central bank (standardised)</div>${per}` : '<p class="muted">Global liquidity is not loaded yet.</p>'}
 <p class="muted bv-note">Fed, ECB, BoJ and a PBoC proxy, converted to dollars and standardised (js/globalLiquidityEngine.js). Level = how much liquidity there is; impulse = how fast it is changing. Net liquidity (the Fed's balance sheet less the Treasury's cash and reverse repo) sits on the Fed liquidity card above${n?.chg13w != null ? `: ${sg(n.chg13w, 0)}bn in 13 weeks` : ''}.</p></div>`;
 }

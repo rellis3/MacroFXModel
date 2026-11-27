@@ -14,12 +14,14 @@
  *
  * Pure HTML/SVG-string builders, no fetch. Tested in js/terminal/terminal.test.mjs.
  */
+import { ordinal } from './ordinal.js';
 import { zoneWalk } from '../swingPaths.js';
 import { bsVega } from '../greekLayers.js';
 import { PATH_HORIZON_DAYS, sourceChoices, sourceAsOf, normaliseSource } from '../pathSourceMeta.js';
 import * as PZ from './pathZoom.js';
 import { ownerLink } from './links.js';
-import { dailyChip } from './timeframePills.js';
+import { dailyChip } from './timeframePills.js';
+
 import { tileChip } from './dataAge.js';
 export { zoneWalk };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -87,7 +89,7 @@ export function gaugeSvg(pc, { w = 150, pct = null } = {}) {
   const share = fin(pc) && pc >= 0 ? pc / (1 + pc) : null, a = share == null ? null : Math.PI * share;
   const nx = a == null ? cx : cx - (r - 14) * Math.cos(a), ny = a == null ? cy : cy - (r - 14) * Math.sin(a);
   // where the ratio sits in its own history, as a tick on the arc
-  const tick = fin(pct) ? (() => { const q = Math.PI * (pct / 100), x0 = cx - (r + 7) * Math.cos(q), y0 = cy - (r + 7) * Math.sin(q), x1 = cx - (r - 7) * Math.cos(q), y1 = cy - (r - 7) * Math.sin(q); return `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="var(--tx3)" stroke-width="2"><title>today's ratio sits at the ${pct}th percentile of its own history</title></line>`; })() : '';
+  const tick = fin(pct) ? (() => { const q = Math.PI * (pct / 100), x0 = cx - (r + 7) * Math.cos(q), y0 = cy - (r + 7) * Math.sin(q), x1 = cx - (r - 7) * Math.cos(q), y1 = cy - (r - 7) * Math.sin(q); return `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="var(--tx3)" stroke-width="2"><title>today's ratio sits at the ${ordinal(pct)} percentile of its own history</title></line>`; })() : '';
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="max-width:100%;height:auto" role="img" aria-label="calls against puts gauge">${arc(0.02, Math.PI / 2 - 0.03, 'var(--up)')}${arc(Math.PI / 2 + 0.03, Math.PI - 0.02, 'var(--dn)')}${tick}${a == null ? '' : `<line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="var(--tx)" stroke-width="3" stroke-linecap="round"/>`}<circle cx="${cx}" cy="${cy}" r="5" fill="var(--tx)"/><text x="8" y="${h - 1}" font-size="9" fill="var(--up)">calls</text><text x="${w - 8}" y="${h - 1}" font-size="9" text-anchor="end" fill="var(--dn)">puts</text></svg>`;
 }
 export function spark(vals, w = 120, h = 26, col = 'var(--pur2)') {
@@ -102,7 +104,7 @@ export function gaugeCard(row, hist, { click = true } = {}) {
   const dC = fin(last?.calls) && fin(prev?.calls) ? last.calls - prev.calls : null, dP = fin(last?.puts) && fin(prev?.puts) ? last.puts - prev.puts : null;
   return `<div class="card opt-g${click ? ' tt-click' : ''}" ${click ? `data-pair="${esc(id)}"` : ''} style="text-align:center"><div class="lbl">${esc(NAME[id] ?? row.pair)}</div>${gaugeSvg(row.pcRatio, { pct: st?.pct })}
 <div class="mono" style="font-size:18px">${fin(row.pcRatio) ? (+row.pcRatio).toFixed(2) : '–'} <span class="muted" style="font-size:11px">puts per call</span></div>
-<div class="${rd.cls}" style="font-size:12px;margin:2px 0">${esc(rd.word)}${st?.pct != null ? ` <span class="muted">(${st.pct}th pct)</span>` : ''}</div>
+<div class="${rd.cls}" style="font-size:12px;margin:2px 0">${esc(rd.word)}${st?.pct != null ? ` <span class="muted">(${ordinal(st.pct)} pct)</span>` : ''}</div>
 <div>${spark(st?.spark)}</div>
 <div class="muted mono" style="font-size:11px">${dC != null ? `calls ${sg(dC, 0)} · puts ${sg(dP, 0)} on the day` : ''}${row.regime ? ` · <span class="${row.regime === 'PIN' ? 'up' : 'gold'}">${row.regime === 'PIN' ? 'dealers calm' : 'dealers speed up'}</span>` : ''}${fin(row.dte) ? ` · front ${row.dte}d` : ''}</div></div>`;
 }
@@ -117,14 +119,24 @@ export function positioningHtml(oi, hist) {
 <p class="tt-note">CME futures options, open interest by settlement (the book is a day old when it is read). The needle is the puts' share of open interest; the grey tick is where today's ratio sits in that market's own last ${pcs[0]?.n ?? '~100'} sessions, which is the read that matters: FX futures have no natural 50/50. Zero-day options are not split out of this book.</p>`;
 }
 
+/** '27/11/2026, 06:45:24' (London wall time, as /api/oi-today stamps a book) -> epoch ms, or null. The age chip read savedAtMs, which those rows never carry. */
+export function ukStampMs(s) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4}),?\s+(\d{2}):(\d{2})(?::(\d{2}))?/.exec(String(s ?? '')); if (!m) return null;
+  const guess = Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +(m[6] ?? 0));
+  const w = new Date(guess).toLocaleString('en-GB', { timeZone: 'Europe/London', hourCycle: 'h23' }), n = /^(\d{2})\/(\d{2})\/(\d{4}),?\s+(\d{2}):(\d{2}):(\d{2})/.exec(w);
+  if (!n) return null;
+  const wall = Date.UTC(+n[3], +n[2] - 1, +n[1], +n[4], +n[5], +n[6]);
+  return guess - (wall - guess);
+}
 /** The levels ladder for one market: lines above and below the price, nearest first. */
 export function ladderHtml(row) {
   if (!row) return '';
   const id = idOf(row.pair), L = (row.levels ?? []).filter(l => fin(l.price) && fin(l.distPips));
   const above = L.filter(l => l.distPips > 0).sort((a, b) => a.distPips - b.distPips).slice(0, 5).reverse(), below = L.filter(l => l.distPips <= 0).sort((a, b) => b.distPips - a.distPips).slice(0, 5);
-  const px = v => (Math.abs(v) >= 100 ? (+v).toFixed(1) : (+v).toFixed(4));
-  const tr = l => `<tr><td><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${LCOL[l.type] ?? 'var(--flat)'};margin-right:5px"></i>${esc(LTYPE[l.type] ?? l.type)}${l.tier ? ` <span class="muted" style="font-size:10px">${esc(l.tier)}</span>` : ''}</td><td class="n mono">${px(l.price)}</td><td class="n mono ${l.distPips > 0 ? 'up' : 'dn'}">${sg(l.distPips, 0)}</td><td class="n mono">${fin(l.touchPct) ? `${l.touchPct}%` : '–'}</td><td>${evChip(l.type)}</td></tr>`;
-  return `<div class="card"><div class="ch"><span class="lbl">${esc(NAME[id] ?? row.pair)} · option lines</span><span class="r muted">${row.savedAt ? `book ${esc(row.savedAt)} ${tileChip('oi-store', { asOf: row.savedAtMs ?? null })}` : ''}</span></div><div class="scroll"><table><thead><tr><th>Line</th><th class="n">Price</th><th class="n">Pips/pts</th><th class="n" title="chance of a touch within 4 hours (calibrated Monte Carlo)">Touch 4h</th><th>Evidence</th></tr></thead><tbody>${above.map(tr).join('')}<tr style="background:var(--bg3)"><td><b>Price now</b></td><td class="n mono"><b>${fin(row.spot) ? px(row.spot) : '–'}</b></td><td colspan="3" class="muted" style="font-size:11px">${row.regime === 'PIN' ? 'dealers long gamma: hedging calms moves' : row.regime === 'BREAKOUT' ? 'dealers short gamma: hedging speeds moves' : ''}</td></tr>${below.map(tr).join('')}</tbody></table></div>
+  // 2 decimals between 100 and 1000 (USD/JPY 159.56, not 159.6, so the pips column agrees with the prices beside it)
+  const px = v => (Math.abs(v) >= 1000 ? (+v).toFixed(1) : Math.abs(v) >= 100 ? (+v).toFixed(2) : (+v).toFixed(4));
+  const tr = l => `<tr><td><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${LCOL[l.type] ?? 'var(--flat)'};margin-right:5px"></i>${esc(LTYPE[l.type] ?? l.type)}${l.tier ? ` <span class="muted" style="font-size:10px">${esc(l.tier)}</span>` : ''}</td><td class="n mono muted">${fin(l.dte) ? (l.dte === 0 ? 'today' : `${l.dte}d`) : '–'}</td><td class="n mono">${px(l.price)}</td><td class="n mono ${l.distPips > 0 ? 'up' : 'dn'}">${sg(l.distPips, 0)}</td><td class="n mono">${fin(l.touchPct) ? `${l.touchPct}%` : '–'}</td><td>${evChip(l.type)}</td></tr>`;
+  return `<div class="card"><div class="ch"><span class="lbl">${esc(NAME[id] ?? row.pair)} · option lines</span><span class="r muted">${row.savedAt ? `book ${esc(row.savedAt)} ${tileChip('oi-store', { asOf: row.savedAtMs ?? ukStampMs(row.savedAt) })}` : ''}</span></div><div class="scroll"><table><thead><tr><th>Line</th><th class="n" title="days to the expiry the line comes from: two lines of one kind are two expiries; a 'today' line ends at today's expiry">Expiry</th><th class="n">Price</th><th class="n">Pips/pts</th><th class="n" title="chance of a touch within 4 hours (calibrated Monte Carlo)">Touch 4h</th><th>Evidence</th></tr></thead><tbody>${above.map(tr).join('')}<tr style="background:var(--bg3)"><td><b>Price now</b></td><td></td><td class="n mono"><b>${fin(row.spot) ? px(row.spot) : '–'}</b></td><td colspan="3" class="muted" style="font-size:11px">${row.regime === 'PIN' ? 'dealers long gamma: hedging calms moves' : row.regime === 'BREAKOUT' ? 'dealers short gamma: hedging speeds moves' : ''}</td></tr>${below.map(tr).join('')}</tbody></table></div>
 <p class="tt-note">The five nearest lines each side. Every kind carries the Evidence Book's word: walls and max pain tested NULL (they behave like ordinary levels), so read them as where open interest sits, not where price must go.${row.basisStale ? ' The futures-to-spot basis is over 4 hours old, so lines can be a few pips off.' : ''}</p></div>`;
 }
 
@@ -148,7 +160,7 @@ export function vixHtml(h) {
   const state = ratio == null ? '' : ratio > 1 ? 'backwardation: fear is NOW (near-term protection dearer than 3-month)' : ratio > 0.9 ? 'flat: some near-term worry' : 'contango: calm now, uncertainty priced further out (the normal state)';
   const ratioSeries = v.map(p => (m3.has(p.date) ? p.value / m3.get(p.date) : null)).filter(fin);
   return `<div class="card"><div class="ch"><span class="lbl">VIX · the S&amp;P's implied volatility</span><span class="r muted">${dailyChip('daily closes')} to ${esc(last.date)}</span></div>
-<div class="grid g4" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px"><div><span class="lbl">VIX</span><div class="mono" style="font-size:22px">${(+last.value).toFixed(1)}</div><span class="muted mono">${pctl}th pct, 1 year</span></div><div><span class="lbl">VIX 3-month</span><div class="mono" style="font-size:22px">${fin(l3) ? (+l3).toFixed(1) : '–'}</div></div><div><span class="lbl">VIX ÷ 3-month</span><div class="mono ${ratio > 1 ? 'dn' : ratio > 0.9 ? 'gold' : 'up'}" style="font-size:22px">${ratio == null ? '–' : ratio.toFixed(2)}</div></div><div>${spark(v.map(p => p.value), 140, 40, 'var(--gold)')}<div class="muted" style="font-size:10px">VIX, 1 year</div></div></div>
+<div class="grid g4" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px"><div><span class="lbl">VIX</span><div class="mono" style="font-size:22px">${(+last.value).toFixed(1)}</div><span class="muted mono">${ordinal(pctl)} pct, 1 year</span></div><div><span class="lbl">VIX 3-month</span><div class="mono" style="font-size:22px">${fin(l3) ? (+l3).toFixed(1) : '–'}</div></div><div><span class="lbl">VIX ÷ 3-month</span><div class="mono ${ratio > 1 ? 'dn' : ratio > 0.9 ? 'gold' : 'up'}" style="font-size:22px">${ratio == null ? '–' : ratio.toFixed(2)}</div></div><div>${spark(v.map(p => p.value), 140, 40, 'var(--gold)')}<div class="muted" style="font-size:10px">VIX, 1 year</div></div></div>
 <p style="margin:8px 0 0">${esc(state)}.</p><div>${spark(ratioSeries, 300, 30)}<div class="muted" style="font-size:10px">VIX ÷ 3-month, 1 year (above 1 = backwardation)</div></div>
 <p class="tt-note">The VIX is built from S&amp;P 500 options: the market's price for the next 30 days' swings. Comparing it with the 3-month VIX shows whether the worry is immediate or further out.</p></div>`;
 }
@@ -400,7 +412,7 @@ export function pairCard(inst, { oi, hist, hs } = {}) {
   const hd = '<div class="ch"><span class="lbl">Options · positioning and lines</span></div>';
   if (!row && !dm) return `${hd}<div class="muted">No listed options book for this market in the CME open-interest feed.</div>`;
   const st = row ? pcStats(hist?.markets?.[row.pair]) : null, rd = pcRead(st);
-  return `${hd}${row ? `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${gaugeSvg(row.pcRatio, { w: 130, pct: st?.pct })}<div><div class="mono" style="font-size:18px">${fin(row.pcRatio) ? (+row.pcRatio).toFixed(2) : '–'} <span class="muted" style="font-size:11px">puts per call</span></div><div class="${rd.cls}">${esc(rd.word)}${st?.pct != null ? ` (${st.pct}th pct)` : ''}</div>${evChip('pc')}</div></div>` : ''}
+  return `${hd}${row ? `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${gaugeSvg(row.pcRatio, { w: 130, pct: st?.pct })}<div><div class="mono" style="font-size:18px">${fin(row.pcRatio) ? (+row.pcRatio).toFixed(2) : '–'} <span class="muted" style="font-size:11px">puts per call</span></div><div class="${rd.cls}">${esc(rd.word)}${st?.pct != null ? ` (${ordinal(st.pct)} pct)` : ''}</div>${evChip('pc')}</div></div>` : ''}
 ${dm ? `<p style="margin:8px 0 0"><span class="chip ${dm.state === 'calms' ? 'up' : 'gold'}">${dm.state === 'calms' ? 'hedging calms moves' : 'hedging speeds moves'}</span> switch point ${pxf(dm.switchPoint)} (${sg(dm.switchDistPct, 2)}%). ${esc(dm.lines?.[4] ?? '')}</p>` : ''}
 ${row ? `<div class="mono" style="font-size:12px;margin-top:6px">call wall ${fin(row.callWall) ? (+row.callWall).toPrecision(6) : '–'} · put wall ${fin(row.putWall) ? (+row.putWall).toPrecision(6) : '–'} · max pain ${fin(row.maxPain) ? (+row.maxPain).toPrecision(6) : '–'} ${evChip('call_wall')}</div>` : ''}
 <p class="tt-note">More on the <a href="#" data-goto-options="1">Options tab</a>.</p>`;
