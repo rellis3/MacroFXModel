@@ -821,3 +821,4 @@ analysis/output/jordan-vwap-band-tp/touches/
 analysis/output/level-*/**/*.parquet
 analysis/output/**/*.npy
 analysis/output/**/forward_cache/
+analysis/output/*calc-upgrades*/**/*.parquet
