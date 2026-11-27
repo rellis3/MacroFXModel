@@ -3700,6 +3700,13 @@ export const DESK_EVIDENCE = [
     instruments: ['GOLD'],
   },
   {
+    id: 'gold-rolling-mae-entry', domain: 'volatility', verdict: 'underpowered', date: '2026-11-27', doc: 'forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md', also: ['analysis/output/gold-rolling-mae-window/RESULTS.md'],
+    claim: 'Prereg amendment A2 (after T): Jordan gold entry (ForecastBandFade arm-then-retest: 10 pct-of-stop overshoot, stop order at the line, cancel 1.2x, chase) on the 18 shadow lines with the rolling-MAE stops (IS-chosen 3m per level, BE on, target the line inside) makes money net OOS 2023-26',
+    result: 'Positive control reproduces parent A2 exactly (936 trades, +0.05479R). OOS +0.059R [-0.007, +0.128] n 2,136, total +125R, before costs +0.153, PF 1.12; IS -0.026; shuffled lines same entry median +0.040 (p95 +0.084, real at 85th pct) -> UNDERPOWERED. All 80 E arms positive OOS (+0.013 to +0.127, 24 CI>0) vs first-touch fill and Ken poke-only reading all negative (K 3m -0.123). 2023 = +108R of +125R; OOS ex-2023 ~ +0.01',
+    use: 'Arm-then-retest entry = reusable candidate component (beats first-touch and poke-only everywhere, positive even on fake lines); line placement adds ~+0.02R, not significant. Next: NQ/EUR, target study, entry-only random-price control.',
+    instruments: ['GOLD'],
+  },
+  {
     id: 'gold-line-target-stop', domain: 'volatility', verdict: 'underpowered', date: '2026-11-27', doc: 'forge/GOLD_LINE_TARGET_STOP_PREREG.md', also: ['analysis/output/gold-line-target-stop/RESULTS.md'],
     claim: 'Arm-then-retest fade (gold-band-fade-stop mechanism) on the shadow N7 OH/OL P75/P90 lines: some target (VWAP+1/0.5 sigma_v, VWAP, P50 line, open, none) x stop (0.15/0.25/0.35 x P90 distance) x break-even cell makes money on GC 2020-2026.08',
     result: 'Pre-registered, 36 cells, pessimistic fills, costs on, 63-session blocks, BH q 0.10, shuffled-lines placebo; positive control reproduced parent A2 exactly. Only the 0.15 stop is positive (12/12 cells, +0.02 to +0.11R); 0.25 and 0.35 all negative. Best f0.15 VWAP+0.5 sigma_v BE off +0.112R [+0.018, +0.185] n 957, halves +0.034/+0.166, above placebo p95 +0.066, every year >= 0 -> BH fails over 36: UNDERPOWERED. Targets and BE matter little; stop size is the whole effect',
@@ -5150,6 +5157,7 @@ const POWER = {
   'futures-oc-tp-fade-p90': { n: '1,364 trades', note: 'NULL bar +0.05R; CI upper -0.064R' },
   'gold-rolling-mae-window': { n: 'GC 7,199 first touches, 1,659 sessions, scored 2021-2026.08', note: 'calibration (miss %), no test' },
   'gold-rolling-mae-trade': { n: 'GC 4,078 OOS trades 2023-2026.08, 63-session blocks B 2000, 100 placebo runs', note: 'OOS -0.089R [-0.152, -0.041]' },
+  'gold-rolling-mae-entry': { n: 'GC 2,136 OOS trades 2023-2026.08, 63-session blocks B 2000, 100 placebo runs, BH over {T, E}', note: 'OOS +0.059R [-0.007, +0.128]; placebo median +0.040' },
   'gold-line-target-stop': { n: 'GC 1,659 sessions 2020-2026.08, 905-957 trades per cell, 36 cells, 63-session blocks B 2000', note: 'best +0.112R [+0.018, +0.185]; MDE ~0.10R per cell' },
   'gold-line-target-stop-wide': { n: '16 NT8 futures, 15,712 trades (selected cell), 63-session blocks on union dates B 2000', note: 'pooled -0.063R [-0.081, -0.043]' },
   'gold-band-fade-stop': { n: 'GC 1,659 sessions 2020-2026.08, 903-1,021 trades per arm, OANDA 1,699 sessions, 63-session blocks B 2000', note: 'A1 -0.025R [-0.097, +0.040]; A2 +0.055R [-0.029, +0.112]; A3 -0.030 [-0.077, +0.019]; A4 -0.069 [-0.113, -0.008]' },

@@ -78,8 +78,11 @@ svg text{font:11.5px var(--mono);fill:var(--text2)}
   </div>
 
   <div class="box">
-    <h2>3 · Does fading the lines with that stop make money? <span class="tag null">NULL</span></h2>
-    <p class="note">Fade every first touch. Stop = the window's MAE stop, target = the line inside, break-even at +1R, flat 22:00. Pessimistic fills, costs on. Mean net R per trade, out of sample, with the 90% range. The shaded band is the shuffled-lines placebo (fake lines, same pipeline).</p>
+    <h2>3 · Does trading the lines with that stop make money? <span class="tag null" id="tradeTag">NULL</span></h2>
+    <p class="note" id="entryNote"></p>
+    <div class="ctl">
+      Entry <button class="seg on" data-e="E">Jordan's entry (arm → retest)</button><button class="seg" data-e="T">Fill at first touch</button><button class="seg" data-e="K">Ken's reading (any poke)</button>
+    </div>
     <div class="ctl">
       Stop <button class="seg on" data-s="per-level">Per line</button><button class="seg" data-s="pooled">Pooled</button>
       &nbsp;Break-even <button class="seg on" data-b="on">On</button><button class="seg" data-b="off">Off</button>
@@ -89,8 +92,21 @@ svg text{font:11.5px var(--mono);fill:var(--text2)}
     <div class="scroll"><table id="tradeTable"></table></div>
   </div>
 
+  <div class="box" id="eqBox">
+    <h2>4 · Equity curve (3-month per-line stop, BE on)</h2>
+    <p class="note">Cumulative net R, one unit of risk a trade, 2021 → 21 Aug 2026. The dashed line is where out of sample starts.</p>
+    <div class="legend"><span><i style="background:var(--amber)"></i>Jordan's entry</span><span><i style="background:var(--text3)"></i>Ken's reading</span></div>
+    <svg id="eqChart" viewBox="0 0 760 280"></svg>
+  </div>
+
+  <div class="box" id="exBox">
+    <h2>5 · Trade examples, two from every year (Jordan's entry)</h2>
+    <p class="note">Picked at random (fixed seed), not chosen. M1 bars from an hour before the arm to 30 minutes after the exit (longer trades are squeezed into wider bars). Dashed: the line; solid red: stop; solid green: target; ○ arm, ● fill, ◆ exit.</p>
+    <div id="exGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px"></div>
+  </div>
+
   <div class="box">
-    <h2>4 · The last trades in the sample</h2>
+    <h2>6 · The last trades in the sample (fill at first touch)</h2>
     <p class="note">Exit: target, stop, break-even or time. R is net of costs.</p>
     <div class="scroll"><table id="exTable"></table></div>
   </div>
@@ -104,7 +120,11 @@ const WNAME = {'1d':'1 day','2d':'2 days','1w':'1 week','2w':'2 weeks','3w':'3 w
 const UNIT = { GOLD: v => '$' + v.toFixed(2), NQ: v => v.toFixed(1) + ' pts', EURUSD: v => (v * 1e4).toFixed(1) + ' pips' };
 const LVL = { oh:'OH', ol:'OL', cup:'Close+', cdn:'Close−', hlH:'HL proj. up (low + HL)', hlL:'HL proj. down (high − HL)', hl:'HL' };
 const HOW = ['target', 'stop', 'break-even', 'time'];
-const st = { p: 'OOS', s: 'per-level', b: 'on', m: 'usd' };
+const st = { p: 'OOS', s: 'per-level', b: 'on', m: 'usd', e: 'E' };
+const ENOTE = {
+  E: "Jordan's gold entry (ForecastBandFade.cs): price goes through a line by 10% of that line's stop, a stop order arms at the line, and fills when price comes back through it. Cancel if price runs 1.2× the stop past the line; chase to a further line on the same side. Stop = the window's MAE stop, target = the line inside, break-even at +1R, flat 22:00. Pessimistic fills, costs on.",
+  T: "Fill at the line on the first touch (the first, pre-registered trade test). Stop = the window's MAE stop, target = the line inside, break-even at +1R, flat 22:00. Pessimistic fills, costs on.",
+  K: "Ken's reading of Jordan, for comparison only: any poke through a line arms a stop order back at the line, no minimum, no cancel, no chase; it can fill from the next bar. Same stop, target and costs as Jordan's entry." };
 let D = null;
 
 function csv(t) {
@@ -164,15 +184,21 @@ function drawLevels() {
 }
 
 function drawTrade() {
-  const rows = WIN.map(w => D.arms.find(r => r.mode === st.m && r.window === w && r.stops === st.s && r.be === st.b));
+  const src = st.e === 'T' ? D.arms : (D.earms || []).filter(r => r.entry === st.e);
+  $('entryNote').textContent = ENOTE[st.e];
+  if (!src.length) { $('tradeChart').innerHTML = ''; $('tradeTable').innerHTML = '<tr><td>Not run yet for this instrument.</td></tr>'; $('tradeTag').textContent = '—'; return; }
+  const rows = WIN.map(w => src.find(r => r.mode === st.m && r.window === w && r.stops === st.s && r.be === st.b));
+  const RES = st.e === 'T' ? D.res : (st.e === 'E' ? D.eres : null);
+  $('tradeTag').textContent = RES ? RES.primary.verdict : 'comparison';
+  $('tradeTag').className = 'tag ' + (RES && RES.primary.verdict === 'VALIDATED' ? 'ctx' : 'null');
   const lo = Math.min(-0.3, ...rows.map(r => r.OOS_lo)), hi = Math.max(0.1, ...rows.map(r => r.OOS_hi));
   const ymin = Math.floor(lo * 20) / 20, ymax = Math.ceil(hi * 20) / 20;
   const ticks = []; for (let v = ymin; v <= ymax + 1e-9; v += 0.05) ticks.push(+v.toFixed(2));
   const A = axes(760, 300, 52, 16, 14, 30, ymin, ymax, ticks, v => sgn(v, 2));
   let s = A.s;
-  const pr = D.res.primary;
-  if (st.m === 'usd' && st.s === 'per-level' && st.b === 'on') {
-    const pm = D.res.placebo_means.slice().sort((a, b) => a - b), p5 = pm[Math.floor(pm.length * 0.05)], p95 = pr.pl1_p95;
+  const pr = (RES || D.res).primary;
+  if (RES && st.m === 'usd' && st.s === 'per-level' && st.b === 'on') {
+    const pm = RES.placebo_means.slice().sort((a, b) => a - b), p5 = pm[Math.floor(pm.length * 0.05)], p95 = pr.pl1_p95;
     s = `<rect x="52" width="692" y="${A.y(p95)}" height="${A.y(p5) - A.y(p95)}" fill="rgba(157,167,179,.10)"/><text x="740" y="${A.y(p95) - 4}" text-anchor="end">placebo 5–95%</text>` + s;
   }
   rows.forEach((r, i) => {
@@ -182,11 +208,13 @@ function drawTrade() {
   });
   $('tradeChart').innerHTML = s; tip($('tradeChart'));
 
-  let h = `<tr><th>Window</th><th>IS R/trade</th><th>OOS R/trade [90%]</th><th>OOS trades</th><th>OOS total R</th><th>Win %</th><th>Target / stop / BE / time %</th></tr>`;
+  const G = st.e !== 'T';
+  let h = `<tr><th>Window</th><th>IS R/trade</th><th>OOS R/trade [90%]</th>${G ? '<th>OOS before costs</th><th>PF</th>' : ''}<th>OOS trades</th><th>OOS total R</th><th>Win %</th><th>Target / stop / BE / time %</th></tr>`;
   rows.forEach(r => {
-    const primary = r.window === pr.window && st.m === pr.mode && st.s === pr.stops && st.b === pr.be;
+    const primary = RES && r.window === pr.window && st.m === pr.mode && st.s === pr.stops && st.b === pr.be;
     h += `<tr class="${primary ? 'hl' : ''}"><td>${WNAME[r.window]}${primary ? ' <span class="note">(the pre-registered test)</span>' : ''}</td>` +
       `<td class="${r.IS_R < 0 ? 'neg' : 'pos'}">${sgn(r.IS_R)}</td><td class="${r.OOS_R < 0 ? 'neg' : 'pos'}">${sgn(r.OOS_R)} [${sgn(r.OOS_lo)}, ${sgn(r.OOS_hi)}]</td>` +
+      (G ? `<td class="${r.OOS_gross < 0 ? 'neg' : 'pos'}">${sgn(r.OOS_gross)}</td><td>${r.OOS_pf.toFixed(2)}</td>` : '') +
       `<td>${r.OOS_n}</td><td class="${r.OOS_totR < 0 ? 'neg' : 'pos'}">${r.OOS_totR.toFixed(0)}</td><td>${r.OOS_win.toFixed(0)}</td>` +
       `<td>${[r.OOS_tgt, r.OOS_stop, r.OOS_be, r.OOS_time].map(v => v.toFixed(0)).join(' / ')}</td></tr>`;
   });
@@ -198,6 +226,55 @@ function drawEx() {
   let h = `<tr><th>Date</th><th>Line</th><th>Side</th><th>Stop size</th><th>Exit</th><th>Net R</th></tr>`;
   for (const r of D.ex) h += `<tr><td>${r.date}</td><td>${lvlName(r.level)}</td><td>${r.short === 'True' ? 'short' : 'long'}</td><td>${U(r.stop)}</td><td>${HOW[r.how] ?? r.how}</td><td class="${r.R < 0 ? 'neg' : 'pos'}">${sgn(r.R, 2)}</td></tr>`;
   $('exTable').innerHTML = h;
+}
+
+function drawEq() {
+  if (!D.eq) { $('eqBox').style.display = 'none'; return; }
+  $('eqBox').style.display = '';
+  const E = D.eq, W = 760, H = 280, L = 52, Rr = 16, T = 14, B = 30;
+  const all = E.flatMap(r => [r.E, r.K]), lo = Math.min(0, ...all), hi = Math.max(0, ...all);
+  const pad = (hi - lo) * 0.05 || 1, y0 = lo - pad, y1 = hi + pad;
+  const x = i => L + i / (E.length - 1) * (W - L - Rr), y = v => T + (y1 - v) / (y1 - y0) * (H - T - B);
+  const step = Math.pow(10, Math.floor(Math.log10((y1 - y0) / 4))), tk = [];
+  for (let v = Math.ceil(y0 / step) * step; v <= y1; v += step) tk.push(v);
+  let s = tk.map(v => `<line x1="${L}" x2="${W - Rr}" y1="${y(v)}" y2="${y(v)}" stroke="${Math.abs(v) < 1e-9 ? '#6e7681' : '#232a34'}"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v.toFixed(0)}R</text>`).join('');
+  let lastY = '';
+  E.forEach((r, i) => { const yy = String(r.date).slice(0, 4); if (yy !== lastY) { s += `<text x="${x(i)}" y="${H - B + 18}">${yy}</text>`; lastY = yy; } });
+  const oi = E.findIndex(r => String(r.date) >= '2023-01-01');
+  if (oi > 0) s += `<line x1="${x(oi)}" x2="${x(oi)}" y1="${T}" y2="${H - B}" stroke="#6e7681" stroke-dasharray="4 4"/><text x="${x(oi) + 4}" y="${T + 10}">OOS →</text>`;
+  for (const [k, col] of [['K', '#6e7681'], ['E', '#d29922']]) s += `<polyline fill="none" stroke="${col}" stroke-width="${k === 'E' ? 2.2 : 1.6}" points="${E.map((r, i) => x(i).toFixed(1) + ',' + y(r[k]).toFixed(1)).join(' ')}"/>`;
+  const end = E[E.length - 1];
+  s += `<text x="${W - Rr}" y="${y(end.E) - 6}" text-anchor="end" style="fill:#d29922">${end.E.toFixed(0)}R</text>`;
+  $('eqChart').innerHTML = s;
+}
+
+function drawExamples() {
+  if (!D.ex2) { $('exBox').style.display = 'none'; return; }
+  $('exBox').style.display = '';
+  const U = UNIT[D.sym] || (v => v.toFixed(4));
+  $('exGrid').innerHTML = D.ex2.map(t => {
+    const W = 320, H = 190, L = 6, Rr = 6, T = 8, B = 18, bars = t.bars, n = bars.length;
+    const ps = bars.flatMap(b => [b[2], b[3]]).concat([t.stop, t.tp, t.line]);
+    const lo = Math.min(...ps), hi = Math.max(...ps), pad = (hi - lo) * 0.04;
+    const y = v => T + (hi + pad - v) / (hi - lo + 2 * pad) * (H - T - B), bw = (W - L - Rr) / n, x = i => L + (i + 0.5) * bw;
+    const xi = j => x(Math.max(0, Math.min(n - 1, Math.round((j - bars[0][0]) / t.step))));
+    let s = '';
+    s += `<line x1="${L}" x2="${W - Rr}" y1="${y(t.line)}" y2="${y(t.line)}" stroke="#9da7b3" stroke-dasharray="4 3"/>`;
+    s += `<line x1="${xi(t.fillbar)}" x2="${W - Rr}" y1="${y(t.stop)}" y2="${y(t.stop)}" stroke="#f85149"/>`;
+    s += `<line x1="${xi(t.fillbar)}" x2="${W - Rr}" y1="${y(t.tp)}" y2="${y(t.tp)}" stroke="#10b981"/>`;
+    bars.forEach((b, i) => { const up = b[4] >= b[1], c = up ? '#3fb950' : '#8b949e';
+      s += `<line x1="${x(i)}" x2="${x(i)}" y1="${y(b[2])}" y2="${y(b[3])}" stroke="${c}"/>`;
+      s += `<rect x="${x(i) - Math.max(bw * 0.35, 0.5)}" width="${Math.max(bw * 0.7, 1)}" y="${y(Math.max(b[1], b[4]))}" height="${Math.max(Math.abs(y(b[1]) - y(b[4])), 0.8)}" fill="${c}"/>`; });
+    s += `<circle cx="${xi(t.armbar)}" cy="${y(t.line)}" r="4.5" fill="none" stroke="#e6edf3" stroke-width="1.5"/>`;
+    s += `<circle cx="${xi(t.fillbar)}" cy="${y(t.entry)}" r="4.5" fill="#d29922" stroke="#161b22"/>`;
+    const ex = xi(t.exitbar), ey = y(t.exit);
+    s += `<path d="M${ex} ${ey - 5} L${ex + 5} ${ey} L${ex} ${ey + 5} L${ex - 5} ${ey} Z" fill="${t.R >= 0 ? '#10b981' : '#f85149'}"/>`;
+    s += `<text x="${L}" y="${H - 4}">${t.t0} London · ${t.step > 1 ? t.step + '-min bars' : '1-min bars'}</text>`;
+    return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px">
+      <div style="display:flex;justify-content:space-between;gap:6px;font-size:12px"><b>${t.date}</b><span>${lvlName(t.level)} · ${t.short ? 'short' : 'long'}</span><span class="${t.R < 0 ? 'neg' : 'pos'}">${sgn(t.R, 2)}R ${t.oc}</span></div>
+      <div class="note">stop ${U(Math.abs(t.stop - t.entry))} · target ${U(Math.abs(t.tp - t.entry))} away</div>
+      <svg viewBox="0 0 ${W} ${H}">${s}</svg></div>`;
+  }).join('');
 }
 
 function drawVerdict() {
@@ -212,12 +289,15 @@ function drawVerdict() {
       <div class="kpi"><div class="l">Best price window (pooled, OOS)</div><div class="v">${WNAME[pBest.window]}</div><div class="s">${pBest.miss_OOS.toFixed(1)}% miss · 1 day is ${pooled[0].miss_OOS.toFixed(0)}%</div></div>
       <div class="kpi"><div class="l">Best overall (σ-scaled, OOS)</div><div class="v">${WNAME[sigBest.window]}</div><div class="s">${sigBest.miss_OOS.toFixed(1)}% miss</div></div>
       <div class="kpi"><div class="l">Pooled stop today (${WNAME[D.res.chosen_window]})</div><div class="v">${U(today.stop_today)}</div><div class="s">last session in sample</div></div>
-      <div class="kpi"><div class="l">The trade, OOS</div><div class="v neg">${sgn(pr.OOS_R)}R</div><div class="s">[${sgn(pr.OOS_lo)}, ${sgn(pr.OOS_hi)}] · placebo ${sgn(pr.pl1_mean)} · ${neg}/${D.arms.length} variants negative</div></div>
+      ${D.eres ? (() => { const e = D.eres.primary, ea = (D.earms || []).filter(r => r.entry === 'E'), pos = ea.filter(r => r.OOS_R > 0).length;
+        return `<div class="kpi"><div class="l">Jordan's entry, OOS (${e.verdict})</div><div class="v ${e.OOS_R < 0 ? 'neg' : 'pos'}">${sgn(e.OOS_R)}R</div><div class="s">[${sgn(e.OOS_lo)}, ${sgn(e.OOS_hi)}] · fake lines ${sgn(e.pl1_mean)} · ${pos}/${ea.length} variants positive</div></div>`; })() : ''}
+      <div class="kpi"><div class="l">Fill at first touch, OOS (${pr.verdict})</div><div class="v neg">${sgn(pr.OOS_R)}R</div><div class="s">[${sgn(pr.OOS_lo)}, ${sgn(pr.OOS_hi)}] · placebo ${sgn(pr.pl1_mean)} · ${neg}/${D.arms.length} variants negative</div></div>
     </div>
     <ul>
       <li><b>Window (CONTEXT):</b> 1 day to 1 week of history is noise. Anything from about 1 to 6 months sizes the stop about equally well. Scaling by the day's σ helps the long windows most.</li>
       <li><b>One pooled stop beats a stop per line</b> by about 2×: each line gets too few touches a month for its own median to settle.</li>
-      <li><b>The trade (${pr.verdict}):</b> fading every first touch with the MAE stop loses ${sgn(pr.OOS_R)}R a trade out of sample (${pr.OOS_n} trades, total ${pr.OOS_totR.toFixed(0)}R), the same as fake lines. With the stop at the median MAE about half the trades stop out by construction.</li>
+      ${D.eres ? `<li><b>Jordan's entry (arm → retest), ${D.eres.primary.verdict}:</b> ${sgn(D.eres.primary.OOS_R)}R a trade out of sample [${sgn(D.eres.primary.OOS_lo)}, ${sgn(D.eres.primary.OOS_hi)}], ${D.eres.primary.OOS_n} trades, total ${D.eres.primary.OOS_totR.toFixed(0)}R; before costs ${sgn(D.eres.primary.OOS_gross)}R; fake lines ${sgn(D.eres.primary.pl1_mean)}R.</li>` : ''}
+      <li><b>Fill at first touch (${pr.verdict}):</b> fading every first touch with the MAE stop loses ${sgn(pr.OOS_R)}R a trade out of sample (${pr.OOS_n} trades, total ${pr.OOS_totR.toFixed(0)}R), the same as fake lines. With the stop at the median MAE about half the trades stop out by construction.</li>
     </ul>`;
 }
 
@@ -228,13 +308,20 @@ async function load(sym) {
     const f = n => fetch(base + n, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(n); return r; });
     const [m, l, a, e, j] = await Promise.all([f('miss_table.csv'), f('by_level.csv'), f('trade_arms.csv'), f('trade_examples.csv'), f('results.json')]);
     D = { sym, miss: csv(await m.text()), lvl: csv(await l.text()), arms: csv(await a.text()), ex: csv(await e.text()), res: await j.json() };
+    const opt = n => fetch(base + n, { cache: 'no-store' }).then(r => r.ok ? r : null).catch(() => null);
+    const [ea, er, eq, ex2] = await Promise.all(['entry_arms.csv', 'entry_results.json', 'entry_equity.csv', 'entry_examples.json'].map(opt));
+    if (ea) D.earms = csv(await ea.text());
+    if (er) D.eres = await er.json();
+    if (eq) D.eq = csv(await eq.text());
+    if (ex2) D.ex2 = await ex2.json();
   } catch (err) {
     D = null;
     $('verdict').innerHTML = `<h2>${sym}: not run yet</h2><p>Only GOLD has been run so far. NQ and EURUSD use the same script (<code>scripts/gold-rolling-mae-window/run.py ${sym}</code>) and will appear here once run.</p>`;
-    ['missChart', 'missTable', 'levelTable', 'tradeChart', 'tradeTable', 'exTable'].forEach(id => $(id).innerHTML = '');
+    ['missChart', 'missTable', 'levelTable', 'tradeChart', 'tradeTable', 'exTable', 'eqChart', 'exGrid'].forEach(id => $(id).innerHTML = '');
     return;
   }
-  drawVerdict(); drawMiss(); drawLevels(); drawTrade(); drawEx();
+  if (!D.earms && st.e !== 'T') { st.e = 'T'; document.querySelectorAll('button.seg[data-e]').forEach(x => x.classList.toggle('on', x.dataset.e === 'T')); }
+  drawVerdict(); drawMiss(); drawLevels(); drawTrade(); drawEx(); drawEq(); drawExamples();
 }
 
 document.querySelectorAll('button.seg').forEach(b => b.addEventListener('click', () => {

@@ -66,3 +66,55 @@ Miss = |stop − the next 21 sessions' median MAE| / that median, mean over sess
 - **On Ken's result:** his stops (≈ $23–28) are about twice our median MAE, so his MAE is measured differently
   (perhaps uncapped, or not first touch only). Jordan's "total R is positive" comment refers to Ken's run, not this
   one. On our lines and costs, total R is negative under every window.
+
+## E: Jordan's entry (prereg amendment A2, run after T was seen)
+
+T used a fill at the first touch. The system's real entry is Jordan's arm-then-retest (ForecastBandFade.cs): overshoot by
+10% of the stop, a stop order back at the line, cancel at 1.2× the stop, chase to a further line. Arm E reruns the trade
+with that entry and the same rolling-MAE stops. Script `scripts/gold-rolling-mae-window/run_entry.py`.
+
+- **Positive control:** restricted to OH/OL P75/P90 with a $7.50 stop and the open as target, the engine reproduces the
+  parent's A2 exactly (936 trades, +0.05479R, the same arm/chase/cancel counts). E then keeps the registered stricter
+  rule (no target on the fill bar).
+
+| | Mean net R [90% CI] | Trades | Total R | Before costs | PF | Win % | Target / stop / BE / time % |
+|---|---|---|---|---|---|---|---|
+| IS 2021–22 | −0.026 | | | +0.097 | | | |
+| **OOS 2023–26 (3 months, per line, BE on)** | **+0.059 [−0.007, +0.128]** | 2,136 | **+125R** | +0.153 | 1.12 | 32 | 28 / 41 / 24 / 7 |
+| Same entry on shuffled lines (100 runs) | median +0.040, p95 +0.084 | | | | | | |
+| Ken's reading (any poke, no cancel, no chase), same stop | −0.123 [−0.175, −0.083] | 2,154 | −265R | −0.024 | 0.78 | | |
+
+**UNDERPOWERED.** It fails three gates: the CI touches 0, IS is negative, and it sits below the placebo's p95 (the real
+lines rank at the 85th percentile).
+
+- **The entry flips the sign:**
+  - **Every one of the 80 E arms is positive OOS** (+0.013 to +0.127R); 24 have a CI above 0. Best: 1-week per-line
+    stops, +0.127 [+0.044, +0.213].
+  - Fill at first touch: all 80 arms negative.
+  - Ken's reading: all 80 arms negative (−0.07 to −0.25R).
+  - So the 10% overshoot, the cancel and the chase are what matter.
+- **But most of it is the entry, not the lines:**
+  - With shuffled (fake) lines, the same entry makes about +0.04R a trade. The real lines add about +0.02R, which isn't
+    significant.
+  - The arm-then-retest acts as a reversal-confirmation filter wherever it is placed.
+- **The gain is concentrated, and IS doesn't agree:**
+  - 2023 alone is +108R of the +125R OOS. By year: 2021 −0.07, 2022 +0.02, 2023 +0.20, 2024 +0.03, 2025 +0.03, 2026
+    −0.04. OOS without 2023 is about +0.01R.
+  - IS 2021–22 is −0.026 (21 of 80 arms IS > 0).
+- **Small effects:** per-line stops do slightly better than pooled (+0.075 vs +0.045 mean OOS over arms); BE adds
+  +0.01; $ vs σ is about equal.
+- **Costs** take ≈ 0.09R a trade; before costs, OOS is +0.15R and IS +0.10R.
+
+**Reading (graded weight):**
+- The arm-then-retest entry is a **reusable candidate component**: it beats the first-touch fill and Ken's poke on every
+  arm, and is positive even on fake lines. It is not yet a validated system.
+- Where the lines sit adds little on top. The rolling-MAE stop is fine as stop sizing.
+- Next, in this order:
+  1. NQ / EURUSD with the same script (Jordan's three-way comparison).
+  2. The target study, because Jordan says the target is the open question.
+  3. An entry-only control (the same arm-then-retest at random prices, not the shuffled forecast lines) to measure how
+     much the entry alone is worth.
+
+Files: `GOLD/entry_arms.csv` (160 arms: E and K), `entry_results.json`, `entry_equity.csv`, `entry_examples.json` (two per
+year, with the M1 path), `entry_report.txt`. The page `gold-rolling-mae.html` shows the equity curve and the examples on
+the chart.
