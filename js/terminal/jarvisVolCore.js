@@ -61,7 +61,19 @@ export function buildTerrain(barsByKey, { sessions = SESSIONS, lookback = LOOKBA
 export function vixCurve(h) {
   const last = s => { const a = Array.isArray(s) ? s : []; for (let i = a.length - 1; i >= 0; i--) { const v = num(a[i]?.value); if (v != null) return { v, date: a[i].date }; } return null; };
   const v = last(h?.vix); if (!v) return null; const m = last(h?.vix3m), ratio = m && m.v > 0 ? v.v / m.v : null;
-  return { vix: v.v, vix3m: m?.v ?? null, ratio, inverted: ratio != null && ratio > 1, date: v.date };
+  // side by side (Helix review 0.2): how many sessions the inversion has run, so the validated first-day fact (Evidence Book vix-inversion) is said only on day one
+  const m3 = new Map((Array.isArray(h?.vix3m) ? h.vix3m : []).map(p => [p?.date, num(p?.value)])), rs = [];
+  for (const p of (Array.isArray(h?.vix) ? h.vix : []).slice().reverse()) { const a = num(p?.value), b = m3.get(p?.date); if (a != null && b > 0) rs.push(a / b); if (rs.length >= 30) break; }
+  let runDays = 0; while (runDays < rs.length && rs[runDays] > 1) runDays++;
+  const firstDay = ratio != null && ratio > 1 && runDays === 1 && rs.length >= 2;
+  return { vix: v.v, vix3m: m?.v ?? null, ratio, inverted: ratio != null && ratio > 1, date: v.date, runDays, firstDay };
+}
+/** The VIX-curve sentence for the BRIEF: description, plus the Evidence Book's vix-inversion result (range, not direction) on the first day of an inversion only. */
+export function vixLine(V) {
+  if (!V || V.ratio == null) return null;
+  if (!V.inverted) return 'The VIX curve slopes upward, the calm shape.';
+  if (V.firstDay) return 'The VIX curve inverted today: spot is above the three-month. In the desk\'s tests, the first day of an inversion has been followed by a wider week than usual, in range, not direction.';
+  return `The VIX curve is inverted: spot is above the three-month${V.runDays > 1 ? `, for ${V.runDays} sessions now` : ''}. The desk's tested result, a wider week, is for the first day of an inversion only.`;
 }
 const say = spokenName;
 const dayWord = iso => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(iso + 'T00:00:00Z'));
@@ -84,16 +96,16 @@ export function recentRange(T, n = 5) {
   return VOL_CORE.map(key => { const i = T.markets.findIndex(m => m.key === key); if (i < 0) return null; let s = 0, c = 0; for (let j = Math.max(0, T.ns - n); j < T.ns; j++) { s += T.Z[j * T.nm + i]; c++; } return c ? { key, v: s / c, last: T.Z[(T.ns - 1) * T.nm + i] } : null; })
     .filter(Boolean).sort((a, b) => b.v - a.v);
 }
-/** The spoken read: which of our markets are running hot or quiet this week and what that means for today's stops and size; the VIX curve. null without a terrain. */
+/** The spoken read: which of our markets are running hot or quiet this week, and the VIX curve. Description only (no stop or size advice). null without a terrain. */
 export function volBrief(T, V) {
   const r = recentRange(T); if (!r.length) return null;
   const hot = r.filter(x => x.v >= 1.3), quiet = r.filter(x => x.v <= 0.8).reverse(), t = [];
   const one = x => `${say(x.key)} at ${x.v.toFixed(1)} times`;
-  if (hot.length) t.push(`Over the last five sessions, ${listW(hot.slice(0, 3).map(one))} ${hot.length === 1 ? 'has' : 'have'} run above ${hot.length === 1 ? 'its' : 'their'} normal range. Big ranges tend to follow big ranges, so allow for a wider day there: wider stops, smaller size.`);
+  if (hot.length) t.push(`Over the last five sessions, ${listW(hot.slice(0, 3).map(one))} ${hot.length === 1 ? 'has' : 'have'} run above ${hot.length === 1 ? 'its' : 'their'} normal range.`);
   else t.push(`Over the last five sessions none of the markets we trade has run hot; the busiest is ${one(r[0])} its normal range.`);
-  if (quiet.length) t.push(`Quiet: ${listW(quiet.slice(0, 2).map(one))}. Tight ranges there, so a breakout needs more proof.`);
-  if (V && V.ratio != null) t.push(V.inverted ? 'The VIX curve is inverted: options price more stress now than in three months, a market on edge.' : 'The VIX curve slopes upward, the calm shape.');
-  return t.join(' ') + ' Context for sizing, not a forecast of direction.';
+  if (quiet.length) t.push(`Quiet: ${listW(quiet.slice(0, 2).map(one))}, where ranges have run tight.`);
+  const vl = vixLine(V); if (vl) t.push(vl);
+  return t.join(' ') + ' A description of ranges, not a forecast.';
 }
 const listW = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
 

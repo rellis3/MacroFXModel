@@ -252,13 +252,13 @@ export function netBriefParts(net, moves, when = 'today') {
   const g = moveGroup(net, moves);
   s.push({ act: 'intro', ids: g?.ids ?? [], text: g ? `What moved together ${day}. The move was in ${g.name.toLowerCase()}${g.dir ? `, ${g.dir === 'up' ? 'higher' : 'lower'} as a group` : ''}, at ${xWord(g.mean)} their usual size on average.` : `What moved together ${day}. Nothing moved much: no group ran at its usual size.` });
   const sp = splits(net, moves)[0];
-  if (sp) s.push({ act: 'split', ids: [sp.a, sp.b], text: `The break: ${spokenName(sp.a)} and ${spokenName(sp.b)} normally move ${sp.r > 0 ? 'together' : 'opposite'}, at ${f2(sp.r)}, but ${day} ${dirWord(sp.a, sp.ma)} while ${dirWord(sp.b, sp.mb)}. One of them is out of line, so watch which gives way.` });
+  if (sp) s.push({ act: 'split', ids: [sp.a, sp.b], text: `The break: ${spokenName(sp.a)} and ${spokenName(sp.b)} normally move ${sp.r > 0 ? 'together' : 'opposite'}, at ${f2(sp.r)}, but ${day} ${dirWord(sp.a, sp.ma)} while ${dirWord(sp.b, sp.mb)}. For the day, the pair has moved against its usual relationship.` });
   else s.push({ act: 'split', ids: [], text: `${Day}'s moves kept to their usual pattern: no tight pair split.` });
   const ot = oneTrade(net);
   if (ot) {
     const w = ot.mem.filter(x => x.r > 0).map(x => spokenName(x.k)), ag = ot.mem.filter(x => x.r < 0).map(x => spokenName(x.k));
     const usd = [ot.a, ...ot.mem.map(x => x.k)].every(k => k === 'GOLD' || /USD/.test(k));
-    s.push({ act: 'block', ids: [ot.a, ...ot.mem.map(x => x.k)], text: `For positions: ${spokenName(ot.a)}${w.length ? ` moves with ${list(w)}` : ''}${ag.length ? `${w.length ? ', and' : ''} against ${list(ag)}` : ''}. That is one ${usd ? 'dollar ' : ''}trade, not ${numW(ot.mem.length + 1)}: size it as one.` });
+    s.push({ act: 'block', ids: [ot.a, ...ot.mem.map(x => x.k)], text: `Moving as one: ${spokenName(ot.a)}${w.length ? ` moves with ${list(w)}` : ''}${ag.length ? `${w.length ? ', and' : ''} against ${list(ag)}` : ''}. Over this window that has been one ${usd ? 'dollar ' : ''}move, not ${numW(ot.mem.length + 1)} separate ones.` });
   }
   s.push({ act: 'outro', ids: [], text: 'Past relationships, not a forecast.' });
   return s;
@@ -273,7 +273,7 @@ export function netBriefFigure(net, moves, when = 'today', name = k => k) {
   const sp = splits(net, moves)[0];
   if (sp) return { value: `${name(sp.a)} ${arw(sp.ma)} · ${name(sp.b)} ${arw(sp.mb)}`, label: `split ${day}; usually ${f2(sp.r)} ${sp.r > 0 ? 'together' : 'opposite'}` };
   const ot = oneTrade(net);
-  if (ot) return { value: `1 trade, not ${ot.mem.length + 1}`, label: `${[ot.a, ...ot.mem.map(x => x.k)].map(name).join(', ')}` };
+  if (ot) return { value: `1 move, not ${ot.mem.length + 1}`, label: `${[ot.a, ...ot.mem.map(x => x.k)].map(name).join(', ')}` };
   const g = moveGroup(net, moves);
   if (g) return { value: `${g.mean.toFixed(1)}× usual`, label: `${g.name}${g.dir ? `, ${g.dir === 'up' ? 'higher' : 'lower'}` : ''} ${day}` };
   return null;

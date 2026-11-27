@@ -45,13 +45,24 @@ test('volShowAct runs sweep -> rise -> over, and groupColumns puts a ravine betw
   const g = groupColumns([{ group: 'a' }, { group: 'a' }, { group: 'b' }]); assert.deepEqual(g.cols, [0, 1, -1, 2]); assert.deepEqual(g.at, [0, 1, 3]); assert.deepEqual(groupColumns(null).cols, []);
 });
 
-test('the BRIEF read: our markets running hot or quiet over five sessions, with what it means for stops and size', async () => {
+test('the BRIEF read: our markets running hot or quiet over five sessions, described, with no stop or size advice', async () => {
   const { volBrief, recentRange } = await import('./jarvisVolCore.js');
   const markets = [{ key: 'GOLD' }, { key: 'NQ' }, { key: 'USDJPY' }, { key: 'WTI' }], nm = 4, ns = 6, Z = new Float32Array(nm * ns).fill(1);
   for (let j = 1; j < ns; j++) { Z[j * nm] = 2; Z[j * nm + 2] = 0.6; }
   const T = { markets, nm, ns, Z };
   assert.deepEqual(recentRange(T).map(x => x.key), ['GOLD', 'NQ', 'USDJPY']);
   const t = volBrief(T, { ratio: 1.05, inverted: true });
-  assert.match(t, /gold at 2\.0 times has run above its normal range/); assert.match(t, /wider stops, smaller size/); assert.match(t, /Quiet: Dollar Yen at 0\.6 times/); assert.match(t, /VIX curve is inverted/);
+  assert.match(t, /gold at 2\.0 times has run above its normal range/); assert.match(t, /Quiet: Dollar Yen at 0\.6 times/); assert.match(t, /VIX curve is inverted/);
+  assert.doesNotMatch(t, /stops?\b|size\b|breakout|on edge|allow for/i, 'Helix review 0.2: description, never advice');
   assert.equal(volBrief(null), null);
+});
+test('the VIX inversion: the validated wider-week fact is said on the first day only', async () => {
+  const { vixLine } = await import('./jarvisVolCore.js');
+  const s = (vs, ms) => ({ vix: vs.map((v, i) => ({ date: day(i), value: v })), vix3m: ms.map((v, i) => ({ date: day(i), value: v })) });
+  const d1 = vixCurve(s([18, 19, 25], [20, 20, 24])); assert.equal(d1.runDays, 1); assert.equal(d1.firstDay, true);
+  assert.match(vixLine(d1), /inverted today.*first day of an inversion has been followed by a wider week.*range, not direction/);
+  const d3 = vixCurve(s([25, 26, 27], [24, 24, 24])); assert.equal(d3.runDays, 3); assert.equal(d3.firstDay, false);
+  assert.match(vixLine(d3), /for 3 sessions now.*first day of an inversion only/); assert.doesNotMatch(vixLine(d3), /has been followed/);
+  assert.equal(vixLine(vixCurve(s([15], [18]))), 'The VIX curve slopes upward, the calm shape.');
+  assert.equal(vixLine(null), null);
 });
