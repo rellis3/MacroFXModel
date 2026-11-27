@@ -48,3 +48,9 @@ test('members: every group and currency carries its members low to high, so a sp
   const c = Object.fromEntries(ccyWeather(r).map(x => [x.id, x])); assert.equal(c.JPY.members.length, c.JPY.n); assert.ok(c.JPY.members.every(m => m.v < 0), 'yen pairs counted from the yen side');
   const split = groupWeather(candleRows({ WTI: mk('WTI', 3), BRENT: mk('BRENT', -3) }, {}))[0]; assert.notEqual(split.cond, 'clear'); assert.equal(split.spread, 6);
 });
+
+test('wxScript: no strongest / weakest currency under FLAT (Helix review 0.9)', () => {
+  const r = candleRows(Object.fromEntries([['EURUSD', 0.01], ['GBPUSD', -0.01], ['USDJPY', 0.02], ['AUDUSD', 0], ['USDCAD', 0.01], ['USDCHF', -0.02], ['EURGBP', 0.01], ['EURJPY', 0]].map(([k, v]) => [k, mk(k, v)])), {});
+  const t = wxScript(groupWeather(r), ccyWeather(r));
+  assert.match(t, /No clear leader among the currencies/); assert.doesNotMatch(t, /Strongest currency|weakest/);
+});

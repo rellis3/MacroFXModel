@@ -60,7 +60,7 @@ export function caveatsFor({ n, family, market, unitFallback = false, pathsMissi
 
 /** Everything for one pair, from the Release Reaction rows and a function that returns a release's stored paths (or null). */
 export async function buildPrecedent(rows, family, market, getPaths, now = Date.now()) {
-  const rr = reactionRows(rows, family, market, now), unit = unitFor(rows, family, market), u = unit > 0 ? unit : null;
+  const rr = reactionRows(rows, family, market, now), unit = unitFor(rows, family, market, now), u = unit > 0 ? unit : null;      // point in time: the unit from releases printed by `now` only
   const sizes = rr.map(r => (u ? r.m30 / u : r.m30)), last = [];
   let pathsMissing = 0;
   for (const r of rr.slice(0, 5)) {

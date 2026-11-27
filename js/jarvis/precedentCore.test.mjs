@@ -52,3 +52,13 @@ test('SVG builders escape and render', () => {
   assert.ok(statLine({ n: 3, unit: 'u', stats: { medianAbs: 1, p25: 0.5, p75: 1.5, p90: 2, shareUp: null } }).includes('N 3'));
   assert.equal(askQuestion({ n: 0 }), '');
 });
+
+test('point in time: a replay as of a past date sizes its unit from releases printed by then only (Helix review 0.8)', async () => {
+  const { unitFor } = await import('../eventReplayCore.js');
+  const rows = Array.from({ length: 12 }, (_, i) => mk(i, i < 6 ? 0.2 : 2));          // the six later releases moved ten times as much
+  const asOf = Date.parse(rows[5].t) + 60e3;
+  assert.equal(unitFor(rows, 'CPI', 'nq', asOf), 0.2, 'only the first six are known then');
+  assert.ok(unitFor(rows, 'CPI', 'nq') > 1, 'with no date, every printed release counts (the live terminal)');
+  const v = await buildPrecedent(rows, 'CPI', 'nq', async () => null, asOf);
+  assert.equal(v.n, 6); assert.equal(v.stats.typical30mMove, 0.2);
+});

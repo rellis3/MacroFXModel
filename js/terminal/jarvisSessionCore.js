@@ -60,7 +60,8 @@ export function sessionStats(bars, v = null) {
 /** Price formatting that suits the size of the price. */
 export const fmtPrice = p => (p >= 1000 ? p.toFixed(0) : p >= 100 ? p.toFixed(1) : p >= 10 ? p.toFixed(2) : p.toFixed(4));
 const pctWord = v => `${Math.abs(v) < 10 ? Math.abs(v).toFixed(1) : Math.round(Math.abs(v))} percent`;
-const timesWord = t => (t < 0.3 ? 'a small fraction of' : t < 0.75 ? 'about half of' : t < 1.25 ? 'about the same as' : t < 9.5 ? `about ${Math.round(t)} times` : 'more than nine times');
+// one decimal below 2, so 1.25-1.5 is never "about 1 times" (Helix review 0.4)
+export const timesWord = t => (t < 0.3 ? 'a small fraction of' : t < 0.75 ? 'about half of' : t < 1.25 ? 'about the same as' : t < 1.95 ? `about ${t.toFixed(1)} times` : t < 9.5 ? `about ${Math.max(2, Math.round(t))} times` : 'more than nine times');
 const said = p => String(Number(fmtPrice(p)));
 
 /** The title line: "NQ · today's session, 15 minute candles". */

@@ -143,7 +143,10 @@ export const BUILTIN = {
     const t = [`The vol model's typical range for today, high to low: ${list(pick.map(r => `${spokenName(r.key)} about ${pctWords(r.range)}`))}.`];
     const used = pick.filter(r => fin(r.hl) && r.hl > 0).map(r => ({ r, u: r.hl / r.range })).sort((a, b) => b.u - a.u)[0];
     if (used && used.u >= 0.25) t.push(`${cap1(spokenName(used.r.key))} has already used ${used.u >= 1 ? 'all' : `${Math.round(used.u * 100)} percent`} of its${used.u >= 1 ? ' typical range, and more' : ''}.`.replace(/of its\.$/, 'of it.'));
-    if (pick.some(r => fin(r.range75))) t.push('One day in four runs bigger. Those are sizes, not direction.');
+    // the typical range is the MEDIAN day, so half of all days run bigger (Helix review 0.3); "one day in four" belongs to the p75 figure, said with it
+    const p75 = pick.find(r => fin(r.range75) && r.range75 > r.range);
+    if (p75) t.push(`Half of all days run bigger than the typical range; one day in four runs past ${pctWords(p75.range75)} on ${spokenName(p75.key)}. Those are sizes, not direction.`);
+    else t.push('Half of all days run bigger than the typical range. Those are sizes, not direction.');
     return { title: "Today's ranges", view: 'vol', cam: null, text: t.join(' '), figure: { value: `${pick[0].range >= 1 ? pick[0].range.toFixed(1) : String(+pick[0].range.toFixed(2))}%`, label: `${marketName(pick[0].key, { short: true })} typical range` } };
   },
   // EVENING: how much of its typical high-to-low range each headline market actually used today (the morning's ranges scene, told looking back). Sizes, never direction.

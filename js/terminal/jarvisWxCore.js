@@ -67,6 +67,7 @@ export function ccyWeather(rows) {
   return out;
 }
 
+export const WX_FLAT = 0.12;      // the CURRENCIES view's flat line (jarvisCcyCore FLAT), in usual moves
 /** The spoken line for the SHOW (kept short: the morning view must not drag). */
 export function wxScript(groups, ccys) {
   const g = [...(groups ?? [])].sort((a, b) => a.avg - b.avg), say = x => (Math.abs(x) < 10 ? Math.abs(x).toFixed(1) : String(Math.round(Math.abs(x))));
@@ -76,7 +77,8 @@ export function wxScript(groups, ccys) {
   if (best.avg >= 0.5 && best.id !== worst.id) parts.push(`${best.label} is the warmest, up ${say(best.avg)} times.`);
   if (calm) parts.push(`${calm} ${calm === 1 ? 'group is' : 'groups are'} quiet.`);
   const c = [...(ccys ?? [])].sort((a, b) => b.avg - a.avg);
-  if (c.length >= 2) parts.push(`Strongest currency ${c[0].label}, weakest ${c[c.length - 1].label}.`);
+  // under FLAT (a tenth of a usual move) a currency is not "strongest" or "weakest" (Helix review 0.9)
+  if (c.length >= 2) { const s = c[0].avg >= WX_FLAT, w = c[c.length - 1].avg <= -WX_FLAT; parts.push(s && w ? `Strongest currency ${c[0].label}, weakest ${c[c.length - 1].label}.` : s ? `Strongest currency ${c[0].label}; none clearly weak.` : w ? `Weakest currency ${c[c.length - 1].label}; none clearly strong.` : 'No clear leader among the currencies: all are close to flat.'); }
   parts.push('A description, not a forecast.');
   return parts.join(' ');
 }

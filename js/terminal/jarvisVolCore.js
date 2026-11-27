@@ -44,18 +44,20 @@ export function buildTerrain(barsByKey, { sessions = SESSIONS, lookback = LOOKBA
   const count = new Map(); for (const m of mk) for (const b of barsByKey[m.key]) count.set(b.date, (count.get(b.date) ?? 0) + 1);
   const dates = [...count.entries()].filter(([, c]) => c >= mk.length / 2).map(([d]) => d).sort().slice(-sessions);
   if (dates.length < 10) return null;
-  const nm = mk.length, ns = dates.length, Z = new Float32Array(nm * ns).fill(1); let missing = 0;
+  // Z keeps 1 in a missing cell so the drawn terrain stays level there; `has` marks the cells that were measured, and every READ (latest, peaks, stretched, recentRange)
+  // uses only those, so a market with no bar is never said to be "1.0 times normal" nor averaged in as normal (Helix review 0.7)
+  const nm = mk.length, ns = dates.length, Z = new Float32Array(nm * ns).fill(1), has = new Uint8Array(nm * ns); let missing = 0;
   mk.forEach((m, i) => {
     const bars = barsByKey[m.key], at = new Map(bars.map((b, k) => [b.date, k]));
     for (let j = 0; j < ns; j++) {
       const k = at.get(dates[j]); if (k == null) { missing++; continue; }
       const prior = bars.slice(Math.max(0, k - lookback), k).map(b => b.r); if (prior.length < minPrior) { missing++; continue; }
-      Z[j * nm + i] = clamp(bars[k].r / median(prior), 0, CLIP);
+      Z[j * nm + i] = clamp(bars[k].r / median(prior), 0, CLIP); has[j * nm + i] = 1;
     }
   });
-  const latest = mk.map((m, i) => ({ key: m.key, v: Z[(ns - 1) * nm + i] })).sort((a, b) => b.v - a.v);
-  const peaks = mk.map((m, i) => { let bj = 0; for (let j = 1; j < ns; j++) if (Z[j * nm + i] > Z[bj * nm + i]) bj = j; return { key: m.key, date: dates[bj], v: Z[bj * nm + i], j: bj, i }; }).sort((a, b) => b.v - a.v);
-  return { markets: mk.map(m => ({ key: m.key, group: m.group })), dates, Z, nm, ns, missing, latest, stretched: latest.filter(x => x.v >= 1.5).length, peaks };
+  const latest = mk.map((m, i) => (has[(ns - 1) * nm + i] ? { key: m.key, v: Z[(ns - 1) * nm + i] } : null)).filter(Boolean).sort((a, b) => b.v - a.v);
+  const peaks = mk.map((m, i) => { let bj = -1; for (let j = 0; j < ns; j++) if (has[j * nm + i] && (bj < 0 || Z[j * nm + i] > Z[bj * nm + i])) bj = j; return bj < 0 ? null : { key: m.key, date: dates[bj], v: Z[bj * nm + i], j: bj, i }; }).filter(Boolean).sort((a, b) => b.v - a.v);
+  return { markets: mk.map(m => ({ key: m.key, group: m.group })), dates, Z, has, nm, ns, missing, latest, latestN: latest.length, stretched: latest.filter(x => x.v >= 1.5).length, peaks };
 }
 /** The VIX curve read: spot against three-month. Above 1 = inverted (the front costs more than the three-month). null when VIX is missing. */
 export function vixCurve(h) {
@@ -80,7 +82,7 @@ const dayWord = iso => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekd
 /** The spoken script: from the real numbers only. null when there is no terrain. */
 export function volScript(T, V) {
   if (!T) return null;
-  const hi = T.latest[0], pk = T.peaks[0], n = T.nm;
+  const hi = T.latest[0], pk = T.peaks[0], n = T.latestN ?? T.nm; if (!hi || !pk) return null;
   let s = `Now the volatility landscape. Each ridge is how stretched a day's range was against that market's own normal, over the last ${T.ns} sessions. `;
   s += T.stretched ? `On the latest session, ${T.stretched} of ${n} markets ran at least one and a half times their normal range, led by ${say(hi.key)} at ${hi.v.toFixed(1)} times. ` : `On the latest session, none of the ${n} markets ran at one and a half times its normal range; the highest was ${say(hi.key)} at ${hi.v.toFixed(1)} times. `;
   s += `The tallest ridge in the window is ${say(pk.key)} on ${dayWord(pk.date)}, at ${pk.v >= 2.995 ? 'three times or more' : pk.v.toFixed(1) + ' times'} its normal. `;
@@ -93,7 +95,8 @@ export const VOL_CORE = ['NQ', 'GOLD', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', '
 /** Each core market's average range used over the last `n` sessions (1 = normal), busiest first: [{ key, v, last }]. */
 export function recentRange(T, n = 5) {
   if (!T) return [];
-  return VOL_CORE.map(key => { const i = T.markets.findIndex(m => m.key === key); if (i < 0) return null; let s = 0, c = 0; for (let j = Math.max(0, T.ns - n); j < T.ns; j++) { s += T.Z[j * T.nm + i]; c++; } return c ? { key, v: s / c, last: T.Z[(T.ns - 1) * T.nm + i] } : null; })
+  const ok = (j, i) => !T.has || T.has[j * T.nm + i] === 1;      // a missing cell is not a normal day
+  return VOL_CORE.map(key => { const i = T.markets.findIndex(m => m.key === key); if (i < 0) return null; let s = 0, c = 0; for (let j = Math.max(0, T.ns - n); j < T.ns; j++) { if (!ok(j, i)) continue; s += T.Z[j * T.nm + i]; c++; } return c ? { key, v: s / c, last: ok(T.ns - 1, i) ? T.Z[(T.ns - 1) * T.nm + i] : null } : null; })
     .filter(Boolean).sort((a, b) => b.v - a.v);
 }
 /** The spoken read: which of our markets are running hot or quiet this week, and the VIX curve. Description only (no stop or size advice). null without a terrain. */

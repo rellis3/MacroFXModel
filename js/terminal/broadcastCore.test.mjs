@@ -278,7 +278,9 @@ test('THE OUTLOOK: today\'s typical ranges (sizes, not direction) join the calen
   const v = { NQ: { oc: -0.3, oh: 0.2, ol: 0.5, hl: 0.7, forecast: { oc_median: 0.6, hl_median: 1.4, hl_75: 1.9 } }, GOLD: { oc: 0.4, oh: 0.6, ol: 0.1, hl: 0.7, forecast: { oc_median: 0.5, hl_median: 1.2, hl_75: 1.6 } },
     EURUSD: { oc: 0.05, oh: 0.1, ol: 0.1, hl: 0.2, forecast: { oc_median: 0.28, hl_median: 0.59, hl_75: 0.73 } } };
   const rows = candleRows(v, {}), r = BUILTIN.ranges({ rows });
-  assert.equal(r.text, "The vol model's typical range for today, high to low: Nasdaq about 1.4 percent, gold about 1.2 percent and Euro Dollar about 0.59 percent. Gold has already used 58 percent of it. One day in four runs bigger. Those are sizes, not direction.");
+  assert.equal(r.text, "The vol model's typical range for today, high to low: Nasdaq about 1.4 percent, gold about 1.2 percent and Euro Dollar about 0.59 percent. Gold has already used 58 percent of it. Half of all days run bigger than the typical range; one day in four runs past 1.9 percent on Nasdaq. Those are sizes, not direction.");
+  // Helix review 0.3: the median is not the one-in-four line; without a p75 only the half-the-days fact is said
+  assert.match(BUILTIN.ranges({ rows: rows.map(x => ({ ...x, range75: null })) }).text, /Half of all days run bigger than the typical range\. Those are sizes/);
   assert.deepEqual(r.figure, { value: '1.4%', label: `${r.figure.label}` }); assert.equal(r.view, 'vol');
   assert.equal(BUILTIN.ranges({ rows: rows.slice(0, 1) }), null, 'one market is not an outlook');
   const P = planBroadcast({ ...inp, rows, movers: topMovers(rows, 6), board: boardSummary(rows) }, { hooks: HOOKS, have: new Set(['ahead', 'vol']), mode: 'quick' });

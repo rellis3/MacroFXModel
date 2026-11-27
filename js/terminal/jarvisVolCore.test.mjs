@@ -66,3 +66,14 @@ test('the VIX inversion: the validated wider-week fact is said on the first day 
   assert.equal(vixLine(vixCurve(s([15], [18]))), 'The VIX curve slopes upward, the calm shape.');
   assert.equal(vixLine(null), null);
 });
+
+test('a missing cell is missing, not "1.0 times normal": left out of latest, peaks, stretched and the five-session average (Helix review 0.7)', async () => {
+  const { recentRange } = await import('./jarvisVolCore.js');
+  const bars = data(5, 40, i => (i >= 35 ? 0.5 : 1));                     // every market quiet for its last five sessions
+  bars.NQ = bars.NQ.filter(b => b.date < day(37));                         // ...and NQ has no bar for the last three
+  const T = buildTerrain(bars, { sessions: 30 });
+  assert.equal(T.has.length, T.Z.length); assert.equal(T.Z[(T.ns - 1) * T.nm], 1, 'the drawn terrain keeps its level fill');
+  assert.ok(!T.latest.some(x => x.key === 'NQ'), 'NQ has no newest bar'); assert.equal(T.latestN, 4);
+  const nq = recentRange(T).find(x => x.key === 'NQ'); assert.ok(Math.abs(nq.v - 0.5) < 1e-6, `NQ's two measured quiet days, not diluted by fills: ${nq.v}`); assert.equal(nq.last, null);
+  assert.match(volScript(T, null), /none of the 4 markets/);
+});
