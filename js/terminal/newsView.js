@@ -74,9 +74,34 @@ export function filterNews(items, { tier = 3, keys = [], onlyBook = false, book 
 /** Tier-1 headlines from the last `hours` (6), newest first. */
 export const topStories = (items, now, { hours = 6, max = 6 } = {}) => newest(items).filter(h => tierOf(h) === 1 && +h.ms >= now - hours * 3600e3).slice(0, max);
 
+/**
+ * Does the headline itself name one of the market's keys? The wire's read fans a story out to every pair of a currency it nudges
+ * (review 2026-11-27: "Canadian Dollar draws support from BoC rate hike bets" read as USD down, then shown on 15 cards from USDCHF
+ * to AUDUSD). A market's own news line keeps only headlines whose title names one of its keys; the wire itself still shows the fan-out.
+ */
+const TITLE_RX = {
+  USD: /\b(USD|US dollar|U\.S\. dollar|greenback|dollar index|DXY|Fed|FOMC|Powell|Treasur(y|ies)|US (yields?|data|CPI|PCE|jobs|payrolls|economy|inflation|GDP|retail))\b/i,
+  EUR: /\b(EUR|euro|ECB|Lagarde|eurozone|euro area|German|Bunds?)\b/i,
+  GBP: /\b(GBP|pound|sterling|cable|BoE|Bank of England|UK|Britain|British|gilts?)\b/i,
+  JPY: /\b(JPY|yen|BoJ|Bank of Japan|Japan|Japanese|JGBs?|Ueda|Tokyo)\b/i,
+  AUD: /\b(AUD|Aussie|Australian?|RBA)\b/i,
+  NZD: /\b(NZD|kiwi|New Zealand|RBNZ)\b/i,
+  CAD: /\b(CAD|loonie|Canadian|Canada|BoC|Bank of Canada)\b/i,
+  CHF: /\b(CHF|franc|SNB|Swiss|Switzerland)\b/i,
+  EQUITIES: /\b(stocks?|equit(y|ies)|S&P|Nasdaq|Dow|Wall Street|shares|Russell|DAX|FTSE)\b/i,
+  GOLD: /\b(gold|XAU|bullion|precious)\b/i,
+  OIL: /\b(oil|crude|WTI|Brent|OPEC)\b/i,
+};
+export function namesMarket(h, inst) {
+  const keys = newsKeysFor(inst);
+  // an index, gold or oil card answers to one asset key: a macro story the read scores on it directly ("US payrolls beat" → equities) stays
+  if (keys.length === 1 && +(h?.read?.impact?.[keys[0]] ?? 0)) return true;
+  const rx = keys.map(k => TITLE_RX[k]).filter(Boolean);
+  return !rx.length || rx.some(r => r.test(String(h?.title ?? '')));
+}
 /** The latest headlines that bear on a market (tier 1-2 by default), newest first, with what each implies for it. */
 export function marketNews(items, inst, { n = 3, tier = 2, rating = null } = {}) {
-  return newest(items).filter(h => tierOf(h) <= tier && touchesMarket(h, inst)).slice(0, n).map(h => ({ h, ...marketDir(h, inst, rating) }));
+  return newest(items).filter(h => tierOf(h) <= tier && touchesMarket(h, inst) && namesMarket(h, inst)).slice(0, n).map(h => ({ h, ...marketDir(h, inst, rating) }));
 }
 
 // ── formatting ──

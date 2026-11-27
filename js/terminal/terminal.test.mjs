@@ -363,6 +363,10 @@ test('newsView.marketNews: pairs[] first, else base/quote from the read; indices
   assert.deepEqual(NV.marketNews(NEWS, 'GOLD').map(x => x.h.id), [], 'tier-3 gold chatter is left out of the card');
   assert.deepEqual(NV.marketNews(NEWS, 'GOLD', { tier: 3 }).map(x => [x.h.id, x.dir]), [['b', 0]]);
   assert.equal(NV.marketNews(NEWS, 'GBPJPY', { n: 5 }).length, 1);
+  // a pair's card keeps only headlines that name one of its own keys: the read's fan-out of a CAD story to every USD pair stays off (review 2026-11-27)
+  const cad = [{ id: 'k', title: 'Canadian Dollar draws support from BoC rate hike bets', ms: NOW, tier: 2, touches: ['CAD', 'USD'], read: { tier: 2, impact: { CAD: 1, USD: -1 } } }];
+  assert.deepEqual(NV.marketNews(cad, 'USDCAD').map(x => x.h.id), ['k']);
+  assert.deepEqual(NV.marketNews(cad, 'USDCHF').map(x => x.h.id), [], 'a CAD story is not USDCHF news');
   assert.deepEqual(NV.newsKeysFor('EURUSD'), ['EUR', 'USD']); assert.deepEqual(NV.newsKeysFor('SPX500'), ['EQUITIES']); assert.deepEqual(NV.newsKeysFor('COPPER'), []);
 });
 

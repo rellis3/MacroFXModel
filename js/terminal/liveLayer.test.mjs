@@ -87,7 +87,7 @@ test('eventHtml: the next event and the latest print with its reaction', () => {
 test('retailHtml, tapeChip, againstHtml, favsHtml', () => {
   assert.match(retailHtml({ longPct: 79.4, d: -7.2, at: Date.parse('2026-11-23T14:00:00Z') }), /retail long <b>79%<\/b> \(−7\.2pp since 07:00\)/);
   const c = tapeChip({ label: 'risk-on', score: 0.47, since: '2026-11-23T10:40:00Z', legs: { equities: 0.7, havens: -0.4, commodityFx: 0.3, gold: -0.3 } }, { flags: [{ label: 'VIX elevated', on: true }] });
-  assert.equal(c.text, 'risk-on since 10:40');
+  assert.equal(c.text, 'live tape: risk-on since 10:40');
   assert.equal(c.cls, 'up');
   assert.match(c.title, /VIX elevated/);
   assert.equal(tapeChip(null).text, 'tape –');
