@@ -17,6 +17,7 @@
 // close. The vote then picks one; the shuffled-decision placebo picks others.
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { atlasWalk } from '../../js/levelAtlasEngine.js';
 import { asiaFibAtlasWalk } from '../../js/asiaFibAtlasEngine.js';
 import { mondayFibAtlasWalk } from '../../js/mondayFibAtlasEngine.js';
@@ -36,12 +37,12 @@ const SEED = 20261101, B = 2000, BLOCK = 21, PASS_BAR = 0.05, REARM = 0.3, PERMS
 
 // Production universes and margins (server.js VOLATILITY_V2_DEFAULT_PAIRS, minMargin 3;
 // FIB_ATLAS_DEFAULT_PAIRS, minMargin 2). Bid/ask file key differs only for de30 (dax).
-const SYSTEMS = {
+export const SYSTEMS = {
   vote: { margin: 3, pairs: ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'usdchf', 'euraud', 'eurchf', 'audjpy', 'cadjpy', 'chfjpy', 'gold', 'nq', 'spx', 'dow', 'us2000', 'de30', 'uk100'] },
   asia: { margin: 2, pairs: ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf', 'eurgbp', 'euraud', 'gbpaud', 'audjpy', 'audnzd', 'audcad', 'cadjpy', 'nzdjpy', 'gold'] },
   monday: { margin: 2, pairs: ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf', 'eurgbp', 'euraud', 'gbpaud', 'audjpy', 'audnzd', 'audcad', 'cadjpy', 'nzdjpy', 'gold'] },
 };
-const FILE_KEY = { de30: 'dax' };
+export const FILE_KEY = { de30: 'dax' };
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, x, i, all) => (x.startsWith('--') ? [...a, [x.slice(2), all[i + 1]]] : a), []));
 const MODE = args.mode ?? 'count';
@@ -53,7 +54,7 @@ function mulberry32(seed) {
 
 // ── data ─────────────────────────────────────────────────────────────────────
 const COLS = ['open', 'high', 'low', 'close', 'volume', 'bid_o', 'bid_h', 'bid_l', 'bid_c', 'ask_o', 'ask_h', 'ask_l', 'ask_c'];
-function loadBin(key) {
+export function loadBin(key) {
   const file = path.join(ROOT, 'data', 'm1_bidask_bin_v', `${key}.bin`);
   if (!fs.existsSync(file)) return null;
   const buf = fs.readFileSync(file);
@@ -80,7 +81,7 @@ function synthetic(seed, halfSpread) {
 // key `${date}|Asia` is 22:00 UTC on date -> 07:00 next day, London 07-13, NY 13-22.
 const SESSION_END_H = { Asia: 24 + 7, London: 13, NY: 22 };
 const endOf = (date, sess) => Date.parse(date + 'T00:00:00Z') / 1000 + SESSION_END_H[sess] * 3600;
-function causalVolFields(t) {
+export function causalVolFields(t) {
   const out = { ...t };
   if (t.asiaVol != null && !(t.time >= endOf(t.date, 'Asia'))) out.asiaVol = null;
   if (t.londonVol != null && !(t.time >= endOf(t.date, 'London'))) out.londonVol = null;
@@ -312,7 +313,11 @@ function positiveControl() {
   console.log(JSON.stringify({ candidates: rows.length, bothFilled: both.length, control: report }, null, 2));
 }
 
-if (MODE === 'positive-control') positiveControl();
+// Imported by scripts/atlas-books/build.mjs (2026-11-27) for loadBin / causalVolFields /
+// SYSTEMS, so its go/no-go book reads the same data the same way. Run directly = unchanged.
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (!isMain) { /* imported: no mode runs */ }
+else if (MODE === 'positive-control') positiveControl();
 else if (MODE === 'count') { const out = path.join(OUT, 'count.json'); fs.mkdirSync(OUT, { recursive: true }); const orig = console.log; let buf = ''; console.log = s => { buf += s; orig(s); }; countMode(); fs.writeFileSync(out, buf); }
 else if (MODE === 'score') scoreMode();
 else throw new Error(`unknown --mode ${MODE}`);

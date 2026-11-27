@@ -69,3 +69,55 @@ export function priceBracketBidAsk(d, { startIdx, endIdx, dir, entryType, level,
   }
   return done(last, dir === 1 ? d.bid_c[last] : d.ask_c[last], 'close');
 }
+
+/**
+ * Retest fade — the entry from the owner's "ForecastBandFade" sheet (2026-11-27):
+ * never fade the touch itself. Arm a stop order at the line once price has
+ * overshot it, and fill only when price comes back through the line.
+ *
+ *   1. Arm: price (mid high for a short, mid low for a long) goes at least
+ *      `armFrac` x stopDist past the line, from `startIdx` on. Nothing is traded.
+ *   2. Fill: from the bar AFTER the arm bar, a sell stop at the line triggers when
+ *      bid low <= level (fills at min(level, bid open)); a buy stop when
+ *      ask high >= level (at max(level, ask open)). The arm bar itself never
+ *      fills, because the order of its prices is unknown.
+ *   3. Cancel: before the fill, price (mid) reaching `cancelDist` past the line
+ *      withdraws the order — no trade. The caller passes the nearer of the
+ *      sheet's 1.2 x stopDist and the next line out (the sheet's "chase": the
+ *      next line's own touch is a separate candidate). A bar that reaches both
+ *      the cancel and the line is booked conservatively: filled at the line and
+ *      stopped at the stop price.
+ *   4. After the fill the bracket is managed exactly as `priceBracketBidAsk`
+ *      (stop/target fixed from the line, target not credited on the fill bar,
+ *      flattened at `endIdx`).
+ *
+ * `dir` is the TRADE direction: -1 shorts a line touched from below (an upper
+ * band), +1 buys a line touched from above. Mid = (bid + ask) / 2.
+ *
+ *   priceRetestFadeBidAsk(d, { startIdx, endIdx, dir, level, stopDist, targetDist,
+ *                              armFrac = 0.1, cancelDist = 1.2 * stopDist, commission })
+ *     -> { filled:false, armed, armIdx?, cancelled? } | priceBracketBidAsk's filled result + { armIdx }
+ */
+export function priceRetestFadeBidAsk(d, { startIdx, endIdx, dir, level, stopDist, targetDist, armFrac = 0.1, cancelDist = null, commission = 0 }) {
+  if (!(stopDist > 0) || !(targetDist > 0) || !(dir === 1 || dir === -1)) return { filled: false, invalid: true };
+  const cancel = cancelDist > 0 ? cancelDist : 1.2 * stopDist;
+  const last = Math.min(endIdx, d.times.length - 1);
+  const away = -dir;   // the overshoot runs against the trade
+  const beyond = k => (away === 1 ? (d.bid_h[k] + d.ask_h[k]) / 2 - level : level - (d.bid_l[k] + d.ask_l[k]) / 2);
+  let armIdx = -1;
+  for (let k = startIdx; k <= last; k++) if (beyond(k) >= armFrac * stopDist) { armIdx = k; break; }
+  if (armIdx < 0) return { filled: false, armed: false };
+  if (beyond(armIdx) >= cancel) return { filled: false, armed: true, armIdx, cancelled: true };
+  for (let k = armIdx + 1; k <= last; k++) {
+    const hit = dir === 1 ? d.ask_h[k] >= level : d.bid_l[k] <= level;
+    const cancelled = beyond(k) >= cancel;
+    if (hit && cancelled) {
+      const entryPx = dir === 1 ? Math.max(level, d.ask_o[k]) : Math.min(level, d.bid_o[k]);
+      const exitPx = level - dir * stopDist;
+      return { filled: true, armIdx, fillIdx: k, entryPx, exitIdx: k, exitPx, why: 'stop', r: ((exitPx - entryPx) * dir - commission) / stopDist, spreadAtFill: d.ask_c[k] - d.bid_c[k], sameBarCancel: true };
+    }
+    if (cancelled) return { filled: false, armed: true, armIdx, cancelled: true };
+    if (hit) return { ...priceBracketBidAsk(d, { startIdx: k, endIdx: last, dir, entryType: 'stop', level, stopDist, targetDist, commission }), armIdx };
+  }
+  return { filled: false, armed: true, armIdx, cancelled: false };
+}

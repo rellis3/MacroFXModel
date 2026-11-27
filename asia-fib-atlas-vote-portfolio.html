@@ -88,6 +88,12 @@
   </div>
   <div class="controls" id="pairChecks"></div>
   <div class="controls">
+    <label title="Which trade book to read. The three bid/ask books (2026-11-27, scripts/atlas-books/build.mjs) are built from an in-sample-only vote book and priced on real OANDA bid/ask with the spread in R. v2 honest: fade = resting limit at the line, follow = stop entry. Go/no-go: the pre-registered atlas-honest-gonogo configuration (production pairs). Retest: same book and lines, but a fade arms a stop at the line after a 10% overshoot and fills only on the retest, cancelling at the next line out. Original files = the older mid-priced files this page used before. Exploratory: none of these is a verdict.">Book <select id="bookSel">
+      <option value="honest" selected>v2 honest (bid/ask)</option>
+      <option value="gonogo">Go/no-go (bid/ask)</option>
+      <option value="retest">Retest entry (bid/ask)</option>
+      <option value="">Original files (mid)</option>
+    </select></label>
     <label>Min margin <select id="marginSel">
       <option value="1">≥1</option><option value="2" selected>≥2</option>
     </select></label>
@@ -542,6 +548,7 @@ document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
 const pageTitle = document.getElementById('pageTitle');
 const ladderSegEl = document.getElementById('ladderSeg');
 const marginSel = document.getElementById('marginSel');
+const bookSel = document.getElementById('bookSel');
 const capSel = document.getElementById('capSel');
 const perDirChk = document.getElementById('perDirChk');
 const sizingSel = document.getElementById('sizingSel');
@@ -1173,16 +1180,21 @@ async function loadData() {
   // js/asiaFibAtlasRoutes.js's /vote-portfolio-combined) instead of the
   // single-ladder /vote-portfolio this page otherwise uses.
   const combined = ladder === 'combined';
-  const url = combined ? `/api/asia-fib-atlas/vote-portfolio-combined?ladders=asia,monday&${params}` : `/api/${apiPrefix()}/vote-portfolio?${params}`;
+  // A bid/ask book (bookSel) is served only by the combined route, one ladder or both.
+  const book = bookSel.value;
+  if (book) params.set('book', book);
+  const url = book
+    ? `/api/asia-fib-atlas/vote-portfolio-combined?ladders=${combined ? 'asia,monday' : ladder}&${params}`
+    : combined ? `/api/asia-fib-atlas/vote-portfolio-combined?ladders=asia,monday&${params}` : `/api/${apiPrefix()}/vote-portfolio?${params}`;
   try {
     const res = await fetch(url);
     const j = await res.json();
     if (mySeq !== loadSeq) return; // a newer request has since started — drop this stale response
-    if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
+    if (!j.ok) { headerSub.textContent = book && /no .*data|missing/i.test(j.error ?? '') ? `the ${bookSel.selectedOptions[0].text} book is not built yet: run node scripts/atlas-books/build.mjs --upload on the laptop (${j.error})` : `error: ${j.error}`; return; }
     const sizingDesc = (j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`)
       + (j.throttle ? `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)` : '');
     const ladderDesc = combined ? 'Asia+Monday combined (same pair can have both open at once)' : (ladder === 'monday' ? 'Monday' : 'Asia') + ' ladder';
-    headerSub.textContent = `${ladderDesc} · ${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc}${j.letRide ? ' · let-ride (extended resolution)' : ''} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
+    headerSub.textContent = `${j.book ? `book: ${bookSel.selectedOptions[0].text} · ` : ''}${ladderDesc} · ${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc}${j.letRide ? ' · let-ride (extended resolution)' : ''} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
     if (j.sizing === 'fixed-risk') document.getElementById('riskPct').value = j.riskPct;
     lastResponse = j;
     render(j);
@@ -1667,6 +1679,7 @@ ladderSegEl.addEventListener('click', (e) => {
 
 pairChecksEl.addEventListener('change', loadData);
 marginSel.addEventListener('change', loadData);
+bookSel.addEventListener('change', loadData);
 capSel.addEventListener('change', loadData);
 perDirChk.addEventListener('change', loadData);
 sizingSel.addEventListener('change', loadData);
