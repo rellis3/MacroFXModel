@@ -43,6 +43,21 @@ export function toCcyRow(row) {
     dlNet: neg(row.dlNet), dlShare: neg(row.dlShare), splitChg4w: neg(row.splitChg4w), ccyTerms: true };
 }
 
+const ordN = n => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+const CCY_NAME = { JPY: 'yen', CAD: 'Canadian dollar', CHF: 'Swiss franc' };
+/**
+ * The same state read in "long the currency" terms, beside the instrument-terms fields, for the readers that talk about the currency. The
+ * Desk Pack's analysts read the USDCHF row's "side: long, pct 91, share +15.6" as "specs crowded long CHF" (2026-11-27); long USDCHF is SHORT the
+ * franc (9th percentile, -15.6% in franc terms). {} for the rows already in currency terms (EUR, GBP, AUD, NZD and the assets).
+ */
+export function ccyView(sym, st) {
+  if (!FLIPPED.has(sym) || !st) return {};
+  const pct = pctToCcyTerms(sym, st.pct), share = toCcyTerms(sym, st.share), side = st.side === 'long' ? 'short' : st.side === 'short' ? 'long' : st.side ?? null;
+  const pair = `USD${sym}`, name = CCY_NAME[sym] ?? sym;
+  return { ccy: sym, ccySide: side, ccyPct: pct, ccyShare: share,
+    ccyReads: `Speculators are net ${st.side ?? '?'} ${pair}, which is net ${String(side ?? '?').toUpperCase()} the ${name}${Number.isFinite(pct) ? ` (${ordN(Math.round(pct))} percentile in ${name} terms` : ''}${Number.isFinite(share) ? `${Number.isFinite(pct) ? ', ' : ' ('}${share > 0 ? '+' : ''}${Math.round(share * 10) / 10}% of open interest)` : Number.isFinite(pct) ? ')' : ''}.` };
+}
+
 /** Instrument the desk quotes -> its COT feed row. Rows are already in these instruments' terms. */
 export const COT_ROW_FOR = {
   EURUSD: 'EUR', GBPUSD: 'GBP', AUDUSD: 'AUD', NZDUSD: 'NZD', USDJPY: 'JPY', USDCAD: 'CAD', USDCHF: 'CHF',

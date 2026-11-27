@@ -1,6 +1,6 @@
 // Tests for js/policyRates.js.   node js/policyRates.test.mjs
 import assert from 'node:assert/strict';
-import { latest, parseBoc, parseRbaF1, parseSnb, parseBoj, policyRates, bojUrl } from './policyRates.js';
+import { latest, parseBoc, parseRbaF1, parseSnb, parseBoj, policyRates, bojUrl, spreadsToUsd } from './policyRates.js';
 
 let n = 0; const t = async (name, fn) => { try { await fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 await t('parsers: FRED map, BoC Valet, RBA F1, SNB, BoJ', () => {
@@ -22,5 +22,10 @@ await t('every bank with source and date; a failure is reported, never filled in
   });
   assert.equal(r.rates.USD.rate, 4); assert.equal(r.rates.CAD.rate, 2.5); assert.equal(r.rates.AUD.rate, 4.6); assert.equal(r.rates.CHF.rate, 0); assert.equal(r.rates.NZD.rate, 2.75);
   assert.match(r.rates.GBP.source, /Bank Rate · BoE IUDBEDR/); assert.ok(!r.rates.JPY); assert.match(r.errors.JPY, /BoJ data API: HTTP 503/);
+});
+await t('spreads to the Fed are given in bp, worked out once (the analysts subtracted wrongly: "275bp to EUR" for 4.00 - 2.50)', () => {
+  const r = { USD: { rate: 4 }, EUR: { rate: 2.5 }, JPY: { rate: 1.227 }, CAD: { rate: 2.5 }, AUD: { rate: 4.85 }, CHF: { rate: 0 } };
+  assert.deepEqual(spreadsToUsd(r), { EUR: -150, JPY: -277, CAD: -150, AUD: 85, CHF: -400 });
+  assert.deepEqual(spreadsToUsd({ EUR: { rate: 2.5 } }), {}, 'no Fed rate, no spreads');
 });
 console.log(`policyRates: ${n} tests passed`);

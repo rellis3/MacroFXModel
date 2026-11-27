@@ -161,7 +161,7 @@ import { LADDER_PARAMS as _LA_LADDER_PARAMS } from './js/forecastLadderParams.js
 import { costForPair as _laCostForPair } from './js/perLineStrategy.js';
 import { assetClass as _assetClassOf } from './js/instrumentRegistry.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
-import { cotStateFor as _cotStateFor, COT_ROW_FOR as _COT_ROW_FOR, OANDA_FOR as _COT_OANDA_FOR, FLIPPED as _COT_FLIPPED, toCcyTerms as _cotToCcy, pctToCcyTerms as _cotPctToCcy } from './js/cotState.js';
+import { cotStateFor as _cotStateFor, COT_ROW_FOR as _COT_ROW_FOR, OANDA_FOR as _COT_OANDA_FOR, FLIPPED as _COT_FLIPPED, toCcyTerms as _cotToCcy, pctToCcyTerms as _cotPctToCcy, ccyView as _cotCcyView } from './js/cotState.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical, validateInstrumentWithRegimeSplit as _mveValidateFull } from './js/mve/validateInstrument.js';
@@ -279,7 +279,7 @@ import { attribution as _atAttribution, attributionRecord as _atRecord } from '.
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
 import { isoWeek as _wkIso, weekBooks as _wkBooks, weekCalendar as _wkCalendar, validateWeekly as _wkValidate, weeklyNote as _wkNote } from './js/weeklyDesk.js';   // agent 19
 import { DAY_MARKETS as _DF_MARKETS, realisedShape as _dfRealised, validateDayForecast as _dfValidate, scoreDayForecast as _dfScore, dayForecastRecord as _dfRecord } from './js/dayForecast.js';   // Phase 3's day-forecast writer
-import { policyRates as _prRates } from './js/policyRates.js';   // each central bank's policy rate, from its own series
+import { policyRates as _prRates, spreadsToUsd as _prSpreads } from './js/policyRates.js';   // each central bank's policy rate, from its own series
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
 import { pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
@@ -4429,7 +4429,7 @@ async function _dailySnapshotTick() {
   const day = new Date().toISOString().slice(0, 10);
   const row = { day, at: new Date().toISOString() };
   try { const raw = await kv.get(_MORNING_BRIEF_KV); const b = raw ? JSON.parse(raw) : null; const a = b?.analysis; if (a) row.brief = { generatedAt: b.generatedAt, regime: a.regime ?? null, whatChanged: a.whatChanged ?? null, watch: Array.isArray(a.watch) ? a.watch.slice(0, 3) : a.watch ?? null, headline: a.headline ?? null, theme: typeof a.theme === 'string' ? a.theme.slice(0, 400) : null, boardTrade: a.boardTradeOfDay ? { pair: a.boardTradeOfDay.pair ?? null, direction: a.boardTradeOfDay.direction ?? null } : null }; } catch { /* no brief yet */ }
-  try { const mc = await _loadMacroChanges(); row.moved = (mc?.rows ?? []).map(r => ({ key: r.key, last: r.last, d1: r.deltas?.[1] ?? null, d5: r.deltas?.[5] ?? null, d20: r.deltas?.[20] ?? null })); } catch { /* skipped */ }
+  try { const mc = await _loadMacroChanges(); row.moved = (mc?.rows ?? []).map(r => ({ key: r.key, label: r.label ?? null, last: r.last, d1: r.deltas?.[1] ?? null, d5: r.deltas?.[5] ?? null, d20: r.deltas?.[20] ?? null })); } catch { /* skipped */ }
   try { const ws = await _loadWatchStore(); row.watch = (ws?.states ?? []).filter(t => t.firing).map(t => ({ id: t.id, kind: t.kind, since: t.since ?? null })); row.chain = (ws?.states ?? []).filter(t => t.id.startsWith('chain-')).map(t => ({ id: t.id.slice(6), broken: !!t.firing })); } catch { /* skipped */ }
   try { const cr = await _loadChainReadStore(); if (cr?.latest?.read?.hook) row.chainRead = { at: cr.latest.generatedAt, hook: cr.latest.read.hook, stories: (cr.latest.read.stories ?? []).map(x => ({ name: x.name, status: x.status })) }; } catch { /* skipped */ }
   // The day's high-impact releases, kept so a look-back beyond the calendar feed's
@@ -8563,7 +8563,9 @@ async function _policyRatesNow() {
   // result with any failure is cached for 30 minutes, not 6 hours, so the source is asked again soon.
   for (const [ccy, why] of Object.entries(r.errors ?? {})) if (!r.rates[ccy] && _prLastGood[ccy]) r.rates[ccy] = { ..._prLastGood[ccy], carried: true, error: why };
   for (const [ccy, v] of Object.entries(r.rates)) if (!v.carried) _prLastGood[ccy] = v;
-  const data = { ok: Object.keys(r.rates).length > 0, fetchedAt: new Date().toISOString(), ...r };
+  const data = { ok: Object.keys(r.rates).length > 0, fetchedAt: new Date().toISOString(), ...r,
+    // the spreads are given, not left to the reader: the analysts subtracted wrongly ("275bp to EUR" for 4.00 - 2.50), js/policyRates.js spreadsToUsd
+    spreadToUsdBp: _prSpreads(r.rates), spreadNote: 'spreadToUsdBp = each bank\'s policy rate minus the Fed\'s policy rate as listed under rates.USD, in basis points (negative = below the Fed)' };
   if (data.ok) _prCache = { at: Object.keys(r.errors ?? {}).length ? Date.now() - (6 * 3600e3 - 30 * 60e3) : Date.now(), data };
   return data;
 }
@@ -11232,7 +11234,7 @@ async function _buildMorningBrief(mode = 'column', context = '', { timeoutMs } =
   const macro = [
     `VIX ${g('vix')} (prev ${gp('vix')})${g('vix3m') != null ? ` · VIX3M ${g('vix3m')} (${g('vix') > g('vix3m') ? 'BACKWARDATED — near-term fear' : 'contango — normal'})` : ''}`,
     `HY credit spread ${g('hy')}% (prev ${gp('hy')}%)`,
-    `DXY ${g('dxy')} (prev ${gp('dxy')})`,
+    `Broad dollar index (Fed, not the ICE DXY) ${g('dxy')} (prev ${gp('dxy')})`,
     // US tenors are DAILY series (DGS*) now, not GS* monthly averages — "prev" here
     // is the prior business day, which is what a morning brief has always implied.
     `US 2Y ${g('us2y')} · US 10Y ${g('us10y')} · 2s10s ${s2s10}${fred?.us10y?.asOf ? ` (as of ${fred.us10y.asOf})` : ''}`,
@@ -11937,7 +11939,7 @@ async function _buildCotAnalysis() {
     const fred = fredRaw ? (() => { const p = JSON.parse(fredRaw); return p?.d ?? p; })() : {};
     const g = k => fred?.[k]?.value, gp = k => fred?.[k]?.prev;
     if (g('dxy') != null) {
-      macroLine = `VIX ${g('vix')} (prev ${gp('vix')}) · DXY ${g('dxy')} (prev ${gp('dxy')}) · US 2Y ${g('us2y')} · US10Y ${g('us10y')} · HY spread ${g('hy')}% (prev ${gp('hy')}%)`;
+      macroLine = `VIX ${g('vix')} (prev ${gp('vix')}) · broad $ index (Fed) ${g('dxy')} (prev ${gp('dxy')}) · US 2Y ${g('us2y')} · US10Y ${g('us10y')} · HY spread ${g('hy')}% (prev ${gp('hy')}%)`;
     }
   } catch {}
 
@@ -12017,10 +12019,10 @@ async function _buildCotState() {
     let bars = [];
     try { bars = await _btFetchD1(_COT_OANDA_FOR[inst], 140); } catch (e) { errors.push(`${inst}: ${e.message}`); }
     const st = _cotStateFor({ row, series: series[sym], bars });
-    if (st) out[inst] = { sym, ...st, priced: bars.length > 0 };
+    if (st) out[inst] = { sym, ...st, priced: bars.length > 0, ..._cotCcyView(sym, st) };   // JPY / CAD / CHF also in currency terms (js/cotState.js ccyView)
   }));
   const data = { ok: true, reportDate, generated: new Date().toISOString(), study: 'cot-crowding-programme',
-    note: 'Where speculators sit relative to the trend, and what the desk\'s registered study found for that state. Context, never a direction.',
+    note: 'Where speculators sit relative to the trend, and what the desk\'s registered study found for that state. Context, never a direction. Fields are in the terms of the instrument quoted (USDJPY, USDCAD, USDCHF: long = long USD, SHORT the currency); ccySide / ccyPct / ccyShare / ccyReads give those three in currency terms.',
     instruments: out, errors: errors.length ? errors : undefined };
   _cotStateCache = { ts: Date.now(), reportDate, data };
   return data;
