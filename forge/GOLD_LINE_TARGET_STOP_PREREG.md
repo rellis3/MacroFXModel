@@ -116,3 +116,17 @@ earns its place. Trailing stops (excluded, handoff §7). CFDs other than gold. S
   open as graded evidence.
 
 ## Amendments
+
+- **A1, 2026-11-27, POST-HOC (results seen), describes only.** §1 said the parent A2 reached its target on 9.5% of
+  trades: that was A1's figure (the handoff's wording). A2's own rate is 9.8%, and its 80% stop-out in 2026 likewise.
+  No effect on any test.
+- **A2, 2026-11-27, POST-HOC (results seen), describes only.** DE30 has no shadow widths in the M1 sample (closed
+  22:00–24:00 London, as in `calc-upgrades-wide`), so Part W scores 16 instruments, not 17. The pooling code was fixed
+  to skip an instrument with zero trades (it had crashed on DE30); no number changed.
+- **A3, 2026-11-27, PRE-RESULTS (implementation detail).** Break-even is triggered from the bar after the fill (the
+  fill bar's extreme may precede the fill), as "from the next bar" in §3.
+
+## RESULTS
+
+`analysis/output/gold-line-target-stop/RESULTS.md`: gold UNDERPOWERED (best cell +0.112R [+0.018, +0.185], BH fails over
+36; only the 0.15 stop is positive); Part W NULL (pooled −0.063R [−0.081, −0.043], 3/16 positive, below placebo).

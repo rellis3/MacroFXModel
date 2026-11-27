@@ -148,3 +148,22 @@ Each study has a prereg (`forge/`), a results file (`analysis/output/<id>/RESULT
 - Never write to production R2 from a sandbox.
 - OANDA `--price M` only.
 - Run the `research-protocol` and `data-rules` skills before the study.
+
+## 10. Audit and update, 2026-11-27 (second session)
+
+**Audit of this file against the source results:** every number in §3–§4 matches its results file, and the A2 arm
+was rebuilt from raw data to the identical figure (+0.05479R, 936 trades). Omissions that flatter the system:
+- **A2's profit is concentrated in 2026:** 97 trades at +0.303R each are over half its total R. Without 2026, A2 is
+  ≈ +0.026R.
+- **A4 (σ-scaled stop, shadow lines) is not just NULL:** its CI [−0.113, −0.008] is entirely below 0.
+- **The 9.5% target rate and the 41–80% stop-out rates in §4 are A1's,** not A2's (A2: 9.8%, similar stop-outs).
+- **F5's "2025–26 median adverse move hits the 75-tick cap"** is not in `jordan-vwap-band-tp/RESULTS.md`: unverified.
+- **F3's reach odds** come from `line-touch-reach` (2026-10-05, older Live Range lines), not the shadow lines.
+
+**§6 is done: `gold-line-target-stop` (banked).**
+- **Gold:** only the tightest stop (0.15 × P90 distance) is positive (12/12 cells). The best cell, VWAP + 0.5σ_v target
+  with BE off, is +0.112R [+0.018, +0.185], but BH fails over 36: UNDERPOWERED. Target choice and BE matter little.
+- **Other 16 futures, the same cell unchanged:** pooled −0.063R [−0.081, −0.043], 3/16 positive, the real lines below
+  the shuffled lines: **NULL**. All 36 cells are negative pooled.
+- **Reading:** the gold lean is gold-specific or best-of-36. The next step is only a forward / post-lockbox record of
+  gold, tight stop, VWAP-band target. No more in-sample search on this entry.
