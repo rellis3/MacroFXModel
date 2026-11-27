@@ -239,6 +239,7 @@ registerJarvisModule({
     pane.innerHTML = `<h3>THE ${part} BRIEFING</h3>
 <div class="jv-row"><button type="button" data-b="go" style="font-size:14px;letter-spacing:.2em;padding:10px 24px">▶ PLAY THIS ${part}</button><span class="jv-sub" data-b="status">Reading today's rundown...</span></div>
 <div data-b="rundown"></div>
+<div data-b="published"></div>
 <div class="jv-row"><button type="button" data-b="voice" title="The one voice setting for every programme (also under VOICE ▾ in the top bar)">${voiceWord(api)}</button><label class="jv-sub">length <select data-b="len"><option value="quick">QUICK (about 2-3 min)</option><option value="short">SHORT (under 3 min, a YouTube Short)</option><option value="full">FULL (every view)</option><option value="guide">VISUAL GUIDE (what each picture shows)</option></select></label><label class="jv-sub">speed <select data-b="rate"><option value="0.9">calm</option><option value="1">normal</option><option value="1.1">steady</option><option value="1.15">brisk</option><option value="1.3">fast</option></select></label><button type="button" data-b="rec" title="Records this browser tab, picture and sound, and gives you a video file to share">⏺ RECORD AS VIDEO</button></div>
 <details class="jv-sub"><summary>How recording works</summary><p class="jv-sub">The browser asks what to share. Choose <b>This tab</b>; Helix records its own voice and sound straight from the page, so there is no audio box to tick. The briefing plays and a video file downloads at the end (MP4 where the browser can, else WebM). On a phone it gets the briefing ready for the phone's own screen recorder. Keep the voice on so it is in the video.</p></details>
 <p class="jv-sub">A title sequence, the lead, then each segment over its hologram view, with a ticker, lower-thirds and subtitles. The voice leads; the picture follows. Esc ends it. Description only: what has moved and where things sit, never a forecast or a trade.</p>`;
@@ -278,6 +279,14 @@ registerJarvisModule({
       } catch (e) { box.innerHTML = ''; status('Ready.'); }
     }
     rundown();
+    // what the laptop has published (GET /api/helix/broadcasts, owner only; the same list the Telegram notes come from): the last few videos and podcast episodes, with links
+    (async () => {
+      try {
+        const j = await api.jf('/api/helix/broadcasts?n=8'), box = q('published'); if (!box || !j?.ok || !j.items?.length) return;
+        const when = iso => { try { return new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+        box.innerHTML = `<p class="jv-sub" style="margin-top:10px;letter-spacing:.12em">ON YOUTUBE (UNLISTED)${j.podcastFeed ? ` · <a href="${api.esc(j.podcastFeed)}" target="_blank" rel="noopener">PODCAST FEED</a>` : ''}</p><table>${j.items.map(x => `<tr><td>${api.esc(when(x.at))}</td><td><a href="${api.esc(x.url)}" target="_blank" rel="noopener">${api.esc(x.title)}</a></td></tr>`).join('')}</table>`;
+      } catch (e) { /* the list is optional */ }
+    })();
 
     function stop() {
       token++; stopMotion(); api.sfx.ambient(false); api.st.speakStop?.(); api.caption(null); api.cinema(false); api.st.spin = true;

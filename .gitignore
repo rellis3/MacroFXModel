@@ -798,6 +798,8 @@ jarvis_broadcast/.profile/
 jarvis_broadcast/out/
 jarvis_broadcast/client_secret.json
 jarvis_broadcast/token.json
+jarvis_broadcast/token_captions.json
+jarvis_broadcast/push_secret.txt
 
 # 2026-11-22: ladder-v2 / exhaustion-v2 rollout and line-study intermediates (790 parquet, 1.3 GB, some >50 MB); rebuildable
 # from their scripts. Results (json/csv/md/log) stay tracked; parquet already in git stays tracked.
