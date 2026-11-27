@@ -170,3 +170,16 @@ test('the BRIEF reads the day: the group that moved, a usual pair that split, th
   assert.match(t, /That is one dollar trade, not three: size it as one\./); assert.doesNotMatch(t, /\bwill\b/);
   const acts = showActs(net, parts), sp = acts.find(a => a.act === 'split'); assert.deepEqual(sp.ids, ['NQ', 'US2000']); assert.equal(showAct(acts, (sp.a + sp.b) / 2).focus, 1);
 });
+
+test('the BRIEF figure shows the narration headline (split, else one trade, else the group), never the 3-month change', async () => {
+  const { netBriefFigure } = await import('./netCore.js');
+  const ids = ['EURUSD', 'GBPUSD', 'USDCHF', 'NQ', 'US2000', 'GOLD'], m = ids.map(() => ids.map(() => 0.1));
+  const set = (a, b, r) => { const i = ids.indexOf(a), j = ids.indexOf(b); m[i][j] = m[j][i] = r; };
+  set('EURUSD', 'GBPUSD', 0.85); set('EURUSD', 'USDCHF', -0.8); set('GBPUSD', 'USDCHF', -0.7); set('NQ', 'US2000', 0.8); ids.forEach((_, i) => { m[i][i] = 1; });
+  const net = { ids, m, change: { a: 'GOLD', b: 'NQ', then: -0.45, now: 0.16, delta: 0.61 } };
+  const f = netBriefFigure(net, { NQ: { move: -0.6, ratio: 1.2 }, US2000: { move: 0.5, ratio: 0.9 } }, 'yesterday');
+  assert.equal(f.value, 'NQ ▼ · US2000 ▲'); assert.equal(f.label, 'split yesterday; usually 0.80 together');
+  const g = netBriefFigure(net, {}, 'today'); assert.equal(g.value, '1 trade, not 3'); assert.equal(g.label, 'EURUSD, GBPUSD, USDCHF');
+  assert.doesNotMatch(JSON.stringify([f, g]), /0\.45|0\.16/);
+  assert.equal(netBriefFigure({ ids: ['A', 'B'], m: [[1, 0.1], [0.1, 1]] }, {}), null);
+});

@@ -263,6 +263,21 @@ export function netBriefParts(net, moves, when = 'today') {
   s.push({ act: 'outro', ids: [], text: 'Past relationships, not a forecast.' });
   return s;
 }
+/**
+ * The figure under the BRIEF's caption: the same headline the narration speaks, so the number on screen is the day's analysis, not the 3-month change.
+ * Order: the split (the actionable one), then the one-trade block, then the group that moved. name = id -> short label. { value, label } or null.
+ */
+export function netBriefFigure(net, moves, when = 'today', name = k => k) {
+  if (!net?.m) return null;
+  const day = when === 'yesterday' ? 'yesterday' : 'today', arw = m => (m > 0 ? '▲' : '▼');
+  const sp = splits(net, moves)[0];
+  if (sp) return { value: `${name(sp.a)} ${arw(sp.ma)} · ${name(sp.b)} ${arw(sp.mb)}`, label: `split ${day}; usually ${f2(sp.r)} ${sp.r > 0 ? 'together' : 'opposite'}` };
+  const ot = oneTrade(net);
+  if (ot) return { value: `1 trade, not ${ot.mem.length + 1}`, label: `${[ot.a, ...ot.mem.map(x => x.k)].map(name).join(', ')}` };
+  const g = moveGroup(net, moves);
+  if (g) return { value: `${g.mean.toFixed(1)}× usual`, label: `${g.name}${g.dir ? `, ${g.dir === 'up' ? 'higher' : 'lower'}` : ''} ${day}` };
+  return null;
+}
 const numW = n => ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'][n] ?? String(n);
 const list = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
 
