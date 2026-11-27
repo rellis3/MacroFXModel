@@ -277,7 +277,7 @@ import { attribution as _atAttribution, attributionRecord as _atRecord } from '.
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
 import { isoWeek as _wkIso, weekBooks as _wkBooks, weekCalendar as _wkCalendar, validateWeekly as _wkValidate, weeklyNote as _wkNote } from './js/weeklyDesk.js';   // agent 19
 import { DAY_MARKETS as _DF_MARKETS, realisedShape as _dfRealised, validateDayForecast as _dfValidate, scoreDayForecast as _dfScore, dayForecastRecord as _dfRecord } from './js/dayForecast.js';   // Phase 3's day-forecast writer
-import { policyRates as _prRates } from './js/policyRates.js';   // each central bank's policy rate, from its own series
+import { policyRates as _prRates, gapsToUsd as _prGaps } from './js/policyRates.js';   // each central bank's policy rate, from its own series
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
 import { pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
@@ -8597,7 +8597,8 @@ async function _policyRatesNow() {
   // result with any failure is cached for 30 minutes, not 6 hours, so the source is asked again soon.
   for (const [ccy, why] of Object.entries(r.errors ?? {})) if (!r.rates[ccy] && _prLastGood[ccy]) r.rates[ccy] = { ..._prLastGood[ccy], carried: true, error: why };
   for (const [ccy, v] of Object.entries(r.rates)) if (!v.carried) _prLastGood[ccy] = v;
-  const data = { ok: Object.keys(r.rates).length > 0, fetchedAt: new Date().toISOString(), ...r };
+  // the gap to the Fed in bp, computed, so the desk's analysts quote it instead of doing the sum (review 2026-11-27: "275bp to the euro" for 150)
+  const data = { ok: Object.keys(r.rates).length > 0, fetchedAt: new Date().toISOString(), ...r, vsUsdBp: _prGaps(r.rates), vsUsdNote: 'the Fed\'s policy rate minus each bank\'s, in basis points' };
   if (data.ok) _prCache = { at: Object.keys(r.errors ?? {}).length ? Date.now() - (6 * 3600e3 - 30 * 60e3) : Date.now(), data };
   return data;
 }

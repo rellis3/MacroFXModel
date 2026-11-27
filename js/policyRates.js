@@ -76,3 +76,13 @@ export async function policyRates({ fred, getText, getJson, rbnz, now = new Date
   ]);
   return { rates, errors };
 }
+
+/**
+ * Each bank's policy rate against the Fed's, in basis points (USD minus the currency), worked out here so no reader has to do the sum
+ * (review 2026-11-27: the desk's analysts wrote "US 4.00% vs EUR 2.50% ... a 275bp spread to the euro", which is 150bp; 275 was the
+ * Fed against the BIS's 1.25% for Japan). rates: { CCY: { rate } }. { CCY: bp } for every currency with a rate; {} without a USD rate.
+ */
+export function gapsToUsd(rates) {
+  const us = Number(rates?.USD?.rate); if (!Number.isFinite(us)) return {};
+  return Object.fromEntries(Object.entries(rates ?? {}).filter(([k, v]) => k !== 'USD' && Number.isFinite(Number(v?.rate))).map(([k, v]) => [k, Math.round((us - Number(v.rate)) * 100)]));
+}
