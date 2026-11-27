@@ -74,3 +74,36 @@ stop.
 3. The one-time lockbox run (after 2026-08-21) at the end.
 
 No live change.
+
+
+## Replication on NQ and EURUSD (amendment A2, frozen gold rules)
+
+The same system, not re-tuned: 18 shadow lines, Jordan's gold entry, VWAP ± 0.5σ_v, rolling-MAE stop of 3 months per
+line, BE off. Costs 1 tick in, 1 out, 1 commission.
+
+| | IS R | OOS R [90% CI] | OOS trades | OOS total | Before costs | PF | Fake lines (mean / p95) | Real lines' percentile | Verdict |
+|---|---|---|---|---|---|---|---|---|---|
+| **GOLD** (from above) | +0.044 | +0.106 [+0.032, +0.160] | 2,119 | +224R | +0.202 | 1.16 | +0.037 / +0.090 | 96th | **VALIDATED** |
+| **NQ** | −0.011 | +0.153 [+0.065, +0.236] | 2,464 | +376R | +0.193 | 1.21 | **+0.115** / +0.181 | 87th | UNDERPOWERED |
+| **EURUSD** | −0.065 | −0.089 [−0.153, −0.014] | 1,812 | −162R | +0.087 | 0.87 | −0.053 / −0.004 | 14th | NULL |
+
+**The mirror (pre-registered): neither passes, so the line effect is gold-only, flagged as possibly specific to gold.**
+
+- **NQ makes money, but not because of the lines:**
+  - +0.153R a trade OOS, +376R; every year from 2022 on is positive (+0.04, +0.09, +0.12, +0.20, +0.25).
+  - The same system on fake lines also makes +0.115R. The edge on NQ is the mechanism (gold entry + VWAP target +
+    rolling-MAE stop), not where the lines sit. IS (2021–22) is −0.011.
+  - Longs +0.259 vs shorts +0.034 in a strongly rising NQ (2023–26): part of it is fading dips in an uptrend. The fake
+    lines get the same drift, which is why they score well too.
+  - Every S2 variant on NQ is positive with a CI above 0 (+0.09 to +0.19).
+- **EURUSD makes money before costs and loses after:**
+  - +0.087R before costs, −0.089R after. The median stop is about 9 pips, so 3 ticks (1.5 pips) of costs are about
+    0.17R a trade.
+  - The 1-tick commission is conservative for 6E (about 0.4 tick in practice). Jordan scores without spread, but the
+    pre-registered costs stand, and the real lines are below fake lines (14th percentile).
+- **Reading:**
+  - The mechanism (Jordan's entry + VWAP band + rolling-MAE stop) is positive before costs on all three, and on gold and
+    NQ after costs.
+  - Only on gold do the shadow lines add something over fake lines.
+  - Graded weight: for the mechanism as a cross-market candidate component; gold's line effect stays a single-market
+    result until it has a forward record.

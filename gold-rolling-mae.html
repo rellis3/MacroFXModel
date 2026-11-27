@@ -73,7 +73,7 @@ svg text{font:11.5px var(--mono);fill:var(--text2)}
 
   <div class="box">
     <h2>2 · The stop per line today</h2>
-    <p class="note">Median MAE of the last 3 months (the in-sample choice) at each line, as of the last session in the sample. Lines with few touches get noisy stops, which is why one pooled stop misses less.</p>
+    <p class="note">Median MAE over the in-sample-chosen window at each line, as of the last session in the sample. Lines with few touches get noisy stops, which is why one pooled stop misses less.</p>
     <div class="scroll"><table id="levelTable"></table></div>
   </div>
 
@@ -178,8 +178,9 @@ function drawMiss() {
 
 function drawLevels() {
   const U = UNIT[D.sym] || (v => v.toFixed(4));
-  let h = `<tr><th>Line</th><th>First touches</th><th>Median MAE (all years)</th><th>Mean MAE</th><th>Stop today (3 months)</th></tr>`;
-  for (const r of D.lvl) h += `<tr><td>${lvlName(r.level)}</td><td>${r.count}</td><td>${U(r.median)}</td><td>${U(r.mean)}</td><td><b>${U(r.stop_today_3m)}</b></td></tr>`;
+  let h = `<tr><th>Line</th><th>First touches</th><th>Median MAE (all years)</th><th>Mean MAE</th><th>Stop today (${WNAME[D.res.chosen_window]})</th></tr>`;
+  const sk = Object.keys(D.lvl[0] || {}).find(k => k.startsWith('stop_today_'));
+  for (const r of D.lvl) h += `<tr><td>${lvlName(r.level)}</td><td>${r.count}</td><td>${U(r.median)}</td><td>${U(r.mean)}</td><td><b>${U(r[sk])}</b></td></tr>`;
   $('levelTable').innerHTML = h;
 }
 

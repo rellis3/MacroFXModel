@@ -118,3 +118,25 @@ lines rank at the 85th percentile).
 Files: `GOLD/entry_arms.csv` (160 arms: E and K), `entry_results.json`, `entry_equity.csv`, `entry_examples.json` (two per
 year, with the M1 path), `entry_report.txt`. The page `gold-rolling-mae.html` shows the equity curve and the examples on
 the chart.
+
+
+## NQ and EURUSD (amendment A3): Jordan's three-way window comparison
+
+The same script, unchanged. Costs 1 tick in, 1 out, 1 commission.
+
+| Pooled $ miss, OOS | 1d | 1w | 2w | 3w | 1m | 2m | 3m | 6m | 12m | Best σ-scaled | IS-chosen (per line), OOS rank |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| GOLD | 61.7 | 40.4 | 33.3 | 29.8 | 27.8 | **27.7** | 28.7 | 28.4 | 31.8 | 12m 25.0 | 3m, 2/10 |
+| NQ | 79.9 | 40.2 | 29.3 | 24.4 | 22.1 | **21.4** | 22.7 | 28.1 | 37.3 | 1m 22.9 | 3m, 1/10 |
+| EURUSD | 52.7 | 32.8 | 24.6 | 22.6 | **22.2** | 22.6 | 22.8 | 24.6 | 28.6 | 12m 17.6 | 6m, 1/10 |
+
+- **All three agree:**
+  - 1 day to 1 week is noise;
+  - about **1 to 3 months** is best (NQ and gold best at 2 months, EURUSD at 1 month);
+  - 12 months lags.
+- This matches Ken's table (gold 7 weeks, NAS 7 weeks, EUR 5 weeks), which is the same range.
+- Our stops are smaller than Ken's because our MAE is line to line, capped at the next line out. NQ pooled 3-month stop
+  today is 50 points, against Ken's 164.
+- **T (fill at the first touch) is NULL on both,** as on gold:
+  - NQ OOS −0.033 [−0.069, +0.010], fake lines −0.076;
+  - EURUSD −0.201 [−0.258, −0.140].
