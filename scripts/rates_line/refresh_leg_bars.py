@@ -31,30 +31,16 @@ sys.path.insert(0, str(ROOT / 'scripts' / 'rates_line'))
 import build_leg_bars as B
 BASE = 'https://macrofxmodel-production.up.railway.app'
 KV_KEY = 'cog_legs_live_v1'
-IB_SPEC = {   # name: (IBKR symbol, exchange, currency, contract-month parameter). CORE = the legs the C.OG work uses; --all adds every other live US / euro rates contract.
-    'SR3U6': ('SOFR3', 'CME', 'USD', '202609'), 'SR3Z6': ('SOFR3', 'CME', 'USD', '202612'), 'SR3H7': ('SOFR3', 'CME', 'USD', '202703'),
-    'IH7': ('I', 'ICEEU', 'EUR', '202703'), 'IZ6': ('I', 'ICEEU', 'EUR', '202612'), 'ER3Z6': ('ER3', 'ICEEU', 'EUR', '202612'), 'ER3H7': ('ER3', 'ICEEU', 'EUR', '202703'),
-    'SR3M7': ('SOFR3', 'CME', 'USD', '202706'), 'SR3U7': ('SOFR3', 'CME', 'USD', '202709'), 'IM7': ('I', 'ICEEU', 'EUR', '202706'), 'IU7': ('I', 'ICEEU', 'EUR', '202709'),
-    'ER3U6': ('ER3', 'ICEEU', 'EUR', '202609'), 'ER3M7': ('ER3', 'ICEEU', 'EUR', '202706'), 'ER3U7': ('ER3', 'ICEEU', 'EUR', '202709'),
-    'ZQV6': ('ZQ', 'CBOT', 'USD', '202610'), 'ZQX6': ('ZQ', 'CBOT', 'USD', '202611'), 'ZQZ6': ('ZQ', 'CBOT', 'USD', '202612'), 'ZQF7': ('ZQ', 'CBOT', 'USD', '202701'), 'ZQH7': ('ZQ', 'CBOT', 'USD', '202703'),
-    # government bond futures (PRICES; the chart's yield legs come from js/yieldLegs.js). IBKR's Eurex symbols are GBS/GBM/GBL/GBX:
-    # 'FGBS' does not resolve ("contract not found"), which is why the Schatz leg stopped on 2026-10-09. Dec contracts: roll to Mar27
-    # (ZTH7 ... / *2703) in late November for the US notes and early December for the Eurex bonds.
-    'ZTZ6': ('ZT', 'CBOT', 'USD', '202612'), 'ZFZ6': ('ZF', 'CBOT', 'USD', '202612'), 'ZNZ6': ('ZN', 'CBOT', 'USD', '202612'),
-    'ZBZ6': ('ZB', 'CBOT', 'USD', '202612'), 'UBZ6': ('UB', 'CBOT', 'USD', '202612'),
-    'FGBS2612': ('GBS', 'EUREX', 'EUR', '202612'), 'FGBM2612': ('GBM', 'EUREX', 'EUR', '202612'), 'FGBL2612': ('GBL', 'EUREX', 'EUR', '202612'), 'FGBX2612': ('GBX', 'EUREX', 'EUR', '202612'),
-    # 2026-10-23: euro spread legs (BTP/OAT minus Bund), the dollar index, VIX futures, and three vol indices ('IND' = an index: no expiry, TRADES bars, RTH)
-    'FBTP2612': ('BTP', 'EUREX', 'EUR', '202612'), 'FOAT2612': ('OAT', 'EUREX', 'EUR', '202612'), 'DXZ6': ('DX', 'NYBOT', 'USD', '202612'),
-    'VXX6': ('VIX', 'CFE', 'USD', '202611'), 'VXZ6': ('VIX', 'CFE', 'USD', '202612'),
-    'VVIX': ('VVIX', 'CBOE', 'USD', 'IND'), 'VIX': ('VIX', 'CBOE', 'USD', 'IND'), 'VXN': ('VXN', 'CBOE', 'USD', 'IND'),
-    'NQZ6': ('NQ', 'CME', 'USD', '202612'),      # 2026-10-25: Nasdaq-100 future for the Release Reaction page (scripts/release_layer1); no chart leg file, so the push skips it
-    # 2026-10-26: Layer 1 asset groups for the Release Reaction page: euro, sterling, yen, gold, S&P futures (the 1-minute CFD history in data/m1_bidask ends 2026-10-19, these carry it on)
-    '6EZ6': ('EUR', 'CME', 'USD', '202612'), '6BZ6': ('GBP', 'CME', 'USD', '202612'), '6JZ6': ('JPY', 'CME', 'USD', '202612'), 'GCZ6': ('GC', 'COMEX', 'USD', '202612'), 'ESZ6': ('ES', 'CME', 'USD', '202612'),
-}
-CORE = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IZ6', 'ER3Z6', 'ER3H7', 'IM7']      # IM7: becomes I2! when IZ6 expires (14 Dec 2026), so the stitched I2 line stays live
-BONDS = ['ZTZ6', 'ZFZ6', 'ZNZ6', 'ZBZ6', 'UBZ6', 'FGBS2612', 'FGBM2612', 'FGBL2612', 'FGBX2612']      # US 2/5/10/30/ultra and German 2/5/10/30: pulled on every run too (2026-10-23)
-FEDFUNDS = ['ZQX6', 'ZQZ6', 'ZQF7', 'ZQH7']      # fed funds months on the chart: pulled on every run (2026-11-03; they had stopped at 10-19). Expired months are skipped by the pull
-MACRO = ['FBTP2612', 'FOAT2612', 'DXZ6', 'VXX6', 'VXZ6', 'VVIX', 'VIX', 'VXN', 'NQZ6', '6EZ6', '6BZ6', '6JZ6', 'GCZ6', 'ESZ6']      # euro spreads, dollar, vol: pulled on every run too (2026-10-23)
+# 2026-11-27: the contracts come from the registry (scripts/ibkr/contracts.py, plans/DATA_CAPTURE_G10.md section 3). IB_SPEC keeps every name it
+# carried before (name: (IBKR symbol, exchange, currency, contract month)), built from the registry, so --names ZNZ6 and pull_deep_history keep
+# working; the default run no longer reads it: it asks IBKR for every listed expiry of each ROOT and pulls the live ones (front, plus the next
+# inside the roll window), so a contract month never has to be edited in again. The Schatz stop of 2026-10-09 ('FGBS' does not resolve, IBKR's
+# Eurex symbols are GBS/GBM/GBL/GBX) is why the registry keys the IBKR symbol per root.
+sys.path.insert(0, str(ROOT / 'scripts' / 'ibkr'))
+import contracts as K
+IB_SPEC = K.ib_spec()
+CORE, BONDS, FEDFUNDS, MACRO = K.CORE, K.BONDS, K.FEDFUNDS, K.MACRO      # the pre-registry default groups (CORE: IM7 becomes I2! when IZ6 expires 14 Dec 2026)
+CACHE = SRC / 'contracts_registry.json'      # every contract IBKR listed per root (stem -> details): continuous.py reads the real last trading days from it
 last = [0.0]
 
 
@@ -96,64 +82,115 @@ if __name__ == '__main__':
     ap.add_argument('--push-days', type=int, default=3)
     ap.add_argument('--commit', action='store_true')
     ap.add_argument('--no-pull', action='store_true')
-    ap.add_argument('--names', default='', help='comma-separated leg names to pull instead of the default set (e.g. a one-off backfill of newly added legs)')
-    ap.add_argument('--all', action='store_true', help='pull every contract in IB_SPEC, not only the seven core legs (about 4 minutes per week of history)')
+    ap.add_argument('--names', default='', help='comma-separated contract names to pull instead of the registry roots (old names like ZNZ6, or registry names like ZNH7, FGBL2703, SO3Z6)')
+    ap.add_argument('--all', action='store_true', help='pull every live contract of each root to its full depth (8 quarterlies for strips, front + next always for rolled roots)')
+    ap.add_argument('--tier', default='auto', choices=['auto', 'all', 'core', 'g10'], help='roots to pull: core = the ones pulled before 2026-11-27, g10 = the phase-2 G10 legs, all = both, auto (default) = core every run + G10 on the run in the first half of each hour')
+    ap.add_argument('--new-days', type=int, default=5, help='days to pull for a contract with no file yet (default 5; the backfill is pull_deep_history.py)')
+    ap.add_argument('--dry-run', action='store_true', help='resolve the live contracts and print what would be pulled; no history requests, nothing written')
+    ap.add_argument('--client-id', type=int, default=21, help='IBKR API client id (default 21, the 30-minute job)')
     a = ap.parse_args()
     now = datetime.now(timezone.utc)
-    names = [n.strip() for n in a.names.split(',') if n.strip()] if a.names else (list(IB_SPEC) if a.all else CORE + BONDS + FEDFUNDS + MACRO)
+    legacy = [n.strip() for n in a.names.split(',') if n.strip()] if a.names else None
     found = B.discover()
-    stem = lambda n: found[n]['stem'] if n in found else f'{IB_SPEC[n][1]}_{n}'
+    stem_of = lambda name, default: found[name]['stem'] if name in found else default      # an existing file always wins: no stem is ever orphaned
+    pulled = []
     if not a.no_pull:
-        from ib_insync import IB, Future, Index, util
-        newest = None
-        for n in names:
-            p = SRC / f'{stem(n)}.parquet'
-            if p.exists():
-                x = pd.to_datetime(pd.read_parquet(p, columns=['time']).time, utc=True).max()
-                newest = x if newest is None or x < newest else newest
-        days = 3 if (a.days == 'auto' and newest is None) else (min(25, max(3, math.ceil((pd.Timestamp(now) - newest).total_seconds() / 86400) + 1)) if a.days == 'auto' else int(a.days))
+        from ib_insync import IB, util
+        today = now.date()
         ib = IB()
         try:
-            ib.connect('127.0.0.1', IB_PORT, clientId=21, timeout=20, readonly=True)
+            ib.connect('127.0.0.1', IB_PORT, clientId=a.client_id, timeout=20, readonly=True)
         except Exception as e:
             print(f'Could not connect to IB Gateway on port {IB_PORT} ({type(e).__name__}). Open and log in (accept the paper-trading disclaimer), then run again. Nothing was changed.')
             sys.exit(2)
-        sat = (now + timedelta(days=(5 - now.weekday()) % 7)).replace(hour=0, minute=0, second=0, microsecond=0)
-        print(f'pulling the last {days} day(s) for {names}')
-        for name in names:
-            sym, exch, ccy, month = IB_SPEC[name]
-            is_index = month == 'IND'
-            det = ib.reqContractDetails(Index(symbol=sym, exchange=exch, currency=ccy) if is_index else Future(symbol=sym, exchange=exch, currency=ccy, lastTradeDateOrContractMonth=month))
-            if not det:
-                print(f'{name}: contract not found (expired or not listed)')
-                continue
-            c = det[0].contract
-            if not is_index:
-                c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]
-                if datetime.strptime(c.lastTradeDateOrContractMonth, '%Y%m%d').replace(tzinfo=timezone.utc) < now - timedelta(days=1):
-                    print(f'{name}: expired {c.lastTradeDateOrContractMonth}, skipping')
+        cache = {}
+        try:
+            cache = json.loads(CACHE.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            pass
+        jobs = []      # (name, stem, contract, what, rth)
+        if legacy:      # --names: exactly these contracts (old names and any registry name, e.g. ZNH7 or FGBL2703)
+            for n in legacy:
+                al = K.alias(n)
+                if not al:
+                    print(f'{n}: not a registry name, skipped')
                     continue
+                r = K.ROOTS[al['root']]
+                det = ib.reqContractDetails(K.ib_contract(r, None if r.kind == 'index' else f'{al["year"]}{al["month"]:02d}'))
+                if not det:
+                    print(f'{n}: contract not found (expired or not listed)')
+                    continue
+                c = det[0].contract
+                if r.kind != 'index':
+                    c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]
+                    if datetime.strptime(c.lastTradeDateOrContractMonth, '%Y%m%d').date() < today - timedelta(days=1):
+                        print(f'{n}: expired {c.lastTradeDateOrContractMonth}, skipping')
+                        continue
+                default = f'{r.tag}_{r.key}' if r.kind == 'index' else K.stem_for(r, al['year'], al['month'], K._ltd_date(c.lastTradeDateOrContractMonth))
+                jobs.append((n, stem_of(n, default), c, r.what, r.rth))
+        else:
+            for key in K.job_roots(a.tier, now.minute):
+                r = K.ROOTS[key]
+                det = ib.reqContractDetails(K.ib_contract(r))
+                if not det:
+                    print(f'{key}: IBKR lists no contracts (symbol {r.symbol} on {r.exchange}); skipped')
+                    continue
+                if r.kind == 'index':
+                    jobs.append((key, stem_of(key, f'{r.tag}_{key}'), det[0].contract, r.what, r.rth))
+                    continue
+                by_local = {d.contract.localSymbol: d.contract for d in det}
+                live = K.select_live(r, [K.detail_row(d) for d in det], today)
+                for z in live:
+                    cache[z['stem']] = dict(root=key, y=z['y'], m=z['m'], name=z['name'], local=z['local'], ltd=z['ltd'], conId=z['conId'], roll=str(z['roll']), seen=now.isoformat()[:10])
+                pick = K.pull_set(r, live, today, full=a.all)
+                print(f'{key}: live {" ".join(z["name"] for z in live)} -> pulling {" ".join(z["name"] for z in pick)}')
+                for z in pick:
+                    c = by_local[z['local']]
+                    c.lastTradeDateOrContractMonth = c.lastTradeDateOrContractMonth.split(' ')[0]      # ICE lists 'yyyymmdd hh:mm:ss GB', which a data request refuses (error 10372)
+                    jobs.append((z['name'], stem_of(z['name'], z['stem']), c, r.what, r.rth))
+            if not a.dry_run:
+                tmp = Path(str(CACHE) + '.tmp')
+                tmp.write_text(json.dumps(cache, indent=1), encoding='utf-8')
+                os.replace(tmp, CACHE)
+        sat = (now + timedelta(days=(5 - now.weekday()) % 7)).replace(hour=0, minute=0, second=0, microsecond=0)
+        print(f'{len(jobs)} contract(s): {" ".join(j[0] for j in jobs)}')
+        if a.dry_run:
+            for name, stem, c, *_ in jobs:
+                print(f'  {name:<10} {stem:<26} {c.localSymbol} {c.lastTradeDateOrContractMonth}')
+            ib.disconnect()
+            print('dry run: nothing pulled or written')
+            sys.exit(0)
+        for name, stem, c, what, rth in jobs:
+            p = SRC / f'{stem}.parquet'
+            if a.days != 'auto':
+                days = int(a.days)
+            elif p.exists():
+                newest = pd.to_datetime(pd.read_parquet(p, columns=['time']).time, utc=True).max()
+                days = min(25, max(3, math.ceil((pd.Timestamp(now) - newest).total_seconds() / 86400) + 1))
+            else:
+                days = a.new_days      # a contract new to the disk: its older history comes from pull_deep_history.py (the backfill), not the 30-minute job
             got = 0
             for w in range(max(1, days // 7 + 1)):
                 end = min(sat - timedelta(weeks=w), now)
                 pace()
                 ib.RequestTimeout = 0
                 try:
-                    bars = ib.reqHistoricalData(c, endDateTime=end, durationStr='1 W', barSizeSetting='1 min', whatToShow='TRADES' if is_index else 'MIDPOINT', useRTH=is_index, formatDate=2, timeout=600)
+                    bars = ib.reqHistoricalData(c, endDateTime=end, durationStr='1 W', barSizeSetting='1 min', whatToShow=what, useRTH=rth, formatDate=2, timeout=600)
                 except Exception as e:
                     print(f'  {name} {end:%Y-%m-%d}: failed {e}')
                     continue
                 if bars:
                     df = util.df(bars)
                     df.insert(0, 'time', pd.to_datetime(df.pop('date'), utc=True).dt.strftime('%Y-%m-%dT%H:%M:%SZ'))
-                    merge(SRC / f'{stem(name)}.parquet', df)
+                    merge(p, df)
                     got += len(df)
-            print(f'{name}: +{got:,} bars merged')
+            pulled.append(name)
+            print(f'{name}: +{got:,} bars merged ({stem})')
         ib.disconnect()
     subprocess.run([sys.executable, str(ROOT / 'scripts' / 'rates_line' / 'build_leg_bars.py')], check=True)
     if a.push:
         payload = {'asOf': now.isoformat(), 'legs': {}}
-        for name in names:
+        for name in (pulled or legacy or CORE + BONDS + FEDFUNDS + MACRO):
             if not (OUT / f'leg_{name}.json').exists(): continue      # contracts with no chart leg (NQZ6) are only pulled to disk
             j = json.loads((OUT / f'leg_{name}.json').read_text(encoding='utf-8'))
             m = j['m5']
