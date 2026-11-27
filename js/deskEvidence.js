@@ -2767,6 +2767,13 @@ export const DESK_EVIDENCE = [
     use: "The morning's move says nothing about the afternoon's direction. Show it as where the day stands, not as a lean. Weight 0 in the Global Read direction arm.",
   },
   {
+    id: 'ema-regime-line-filter', domain: 'price', verdict: 'null', date: '2026-11-27', doc: 'forge/EMA_REGIME_LINE_FILTER_PREREG.md', also: ['analysis/output/ema-regime-line-filter/RESULTS.md'],
+    instruments: ['NQ', 'GOLD', 'EURUSD'],
+    claim: "An intraday EMA regime picks the trade-at-lines trades that pay: take a trade only when the 9/20/50 EMAs are stacked on its side on both 15m and 5m, or take a fade only when price is stretched far from the 15m EMA20 (ATR14 units) in the direction of the run into the line",
+    result: "NULL, 5 of 5 cells (Holm). 31,234 trades 2018 to 2026-08-20, parity with the banked trades exact; features from bars closed before the entry minute. Stacked-with: FADE-L -0.306 R (n 101, 1% of fades), FADE-Z -0.329 R (n 73), FOLLOW -0.084 R [-0.108, -0.060] (84% of breakouts, kept minus all -0.003). Stretched fades (top third): FADE-L -0.123 R, FADE-Z -0.132 R, kept minus all -0.022 / +0.007, random-filter pct 6 / 75. Every kept interval below 0. At a fade the stack points against the trade 85% of the time and at a breakout with it 84%: it restates the run into the line.",
+    use: "Do not add an EMA regime score to the bias or as an entry gate at the lines; EMAs on the chart describe the trend so far. Descriptive only: NQ FOLLOW with the stack +0.036 R.",
+  },
+  {
     id: 'bias-day-trade-fx', domain: 'price', verdict: 'null', date: '2026-11-24', doc: 'forge/BIAS_DAY_TRADE_PREREG.md', also: ['analysis/output/bias-day-trade/RESULTS.md'],
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'EURJPY', 'GBPJPY', 'AUDJPY', 'NZDJPY', 'CADJPY', 'CHFJPY', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURNZD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPNZD', 'AUDCAD', 'AUDCHF', 'AUDNZD', 'CADCHF', 'NZDCAD'],
     claim: "A trade opened at 00:00 London on the V1 bias engine's side (point-in-time replay, issued 00:00) and closed at 21:00 London makes money after the real spread on the 27 FX pairs, beyond a random-side placebo that keeps each pair's long/short mix",
@@ -5143,6 +5150,7 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'ema-regime-line-filter': { n: '31,234 line trades, 3 markets, 21-session date blocks', note: 'every kept net CI upper edge below 0: a +0.05R trade ruled out' },
   'bias-day-trade-fx': { n: '11,788 calls, 27 pairs, 21-session date blocks', note: 'MDE 0.026 (2.8 x random-side placebo sd) vs bar 0.04: powered' },
   'bias-day-trade-gold': { n: '979 calls, one market', note: 'MDE 0.104 vs bar 0.04: underpowered by design' },
   'bias-day-trade-idx': { n: '5,286 calls, 4 US indices', note: 'MDE 0.036 vs bar 0.04: powered' },

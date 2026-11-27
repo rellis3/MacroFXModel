@@ -1,0 +1,27 @@
+NQ: re-simulated
+GOLD: re-simulated
+EURUSD: re-simulated
+parity: 31,234 banked pos-0 trades, 31,234 re-simulated, unmatched 0, max |netR diff| 0.00e+00
+features: max bar age at entry 15m 159 min (median 6), 5m 169 (median 2); min age 15m 0, 5m 0
+
+31,234 trades 2018 -> 2026-08-20 (pos 0). Filter share: stacked-with 31.3%, stacked-against 54.8%
+
+== registered cells (net R per trade; 95% CIs, 21-session blocks)
+  E1 FADE-L with      all -0.102 (n 11,204)  KEPT -0.306 [-0.482,-0.115] n 101 (1%)  kept-all -0.205 [-0.379,-0.013]  rand pct 1  halves -0.441/-0.164  holm 0.170 -> NULL
+       by market: EURUSD -0.378, GOLD -0.236, NQ -0.274
+  E2 FADE-Z with      all -0.140 (n 8,581)  KEPT -0.329 [-0.579,-0.041] n 73 (1%)  kept-all -0.189 [-0.442,+0.101]  rand pct 3  halves -0.497/-0.155  holm 0.579 -> NULL
+       by market: EURUSD -0.271, GOLD -0.255, NQ -0.445
+  E3 FOLLOW with      all -0.081 (n 11,449)  KEPT -0.084 [-0.108,-0.060] n 9,615 (84%)  kept-all -0.003 [-0.013,+0.007]  rand pct 39  halves -0.088/-0.080  holm 1.000 -> NULL
+       by market: EURUSD -0.165, GOLD -0.121, NQ +0.036
+  E4 FADE-L stretched all -0.102 (n 11,204)  KEPT -0.123 [-0.155,-0.092] n 3,440 (31%)  kept-all -0.022 [-0.049,+0.006]  rand pct 6  halves -0.141/-0.105  holm 0.496 -> NULL
+       by market: EURUSD -0.121, GOLD -0.136, NQ -0.113
+  E5 FADE-Z stretched all -0.140 (n 8,581)  KEPT -0.132 [-0.160,-0.106] n 3,157 (37%)  kept-all +0.007 [-0.014,+0.029]  rand pct 75  halves -0.132/-0.133  holm 1.000 -> NULL
+       by market: EURUSD -0.133, GOLD -0.157, NQ -0.108
+
+== descriptive (not judged)
+  FADE-L all -0.102 | stacked with -0.306 (n 101) against -0.101 (n 9,467) mixed -0.093 | 15m only with -0.243 against -0.100 | run-stretch terciles -0.117/-0.066/-0.123
+         with by market EURUSD -0.378, GOLD -0.236, NQ -0.274; against by market EURUSD -0.120, GOLD -0.117, NQ -0.066
+  FADE-Z all -0.140 | stacked with -0.329 (n 73) against -0.134 (n 7,550) mixed -0.174 | 15m only with -0.209 against -0.133 | run-stretch terciles -0.166/-0.124/-0.132
+         with by market EURUSD -0.271, GOLD -0.255, NQ -0.445; against by market EURUSD -0.137, GOLD -0.150, NQ -0.115
+  FOLLOW all -0.081 | stacked with -0.084 (n 9,615) against +0.114 (n 102) mixed -0.077 | 15m only with -0.083 against +0.053 | run-stretch terciles -0.076/-0.083/-0.084
+         with by market EURUSD -0.165, GOLD -0.121, NQ +0.036; against by market EURUSD +0.293, GOLD -0.023, NQ +0.009
