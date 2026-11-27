@@ -10,14 +10,14 @@ Generated 2026-11-27.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **645** |
+| claims tested (validated + null + underpowered) | **646** |
 | validated | 201 |
 | null | 257 |
-| underpowered | 187 |
+| underpowered | 188 |
 | context (base rates, descriptions: not counted as tests) | 87 |
 | pre-registrations with no banked verdict (below) | 91 |
 
-**What the count says (Lesson 02 §05).** If none of the 645 claims were real, tests at the usual 5% size would still pass
+**What the count says (Lesson 02 §05).** If none of the 646 claims were real, tests at the usual 5% size would still pass
 about **32.3** of them by luck. 201 passed, so most passes are unlikely to be luck alone, but
 **roughly 32 of the 201 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
@@ -753,6 +753,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-27 | gold-line-system-base-eur | volatility | null | forge/GOLD_LINE_SYSTEM_BASE_PREREG.md |
 | 2026-11-27 | gold-line-system-base-mae | volatility | validated | forge/GOLD_LINE_SYSTEM_BASE_PREREG.md |
 | 2026-11-27 | gold-line-system-base-nq | volatility | underpowered | forge/GOLD_LINE_SYSTEM_BASE_PREREG.md |
+| 2026-11-27 | gold-line-system-jordan | volatility | underpowered | forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md |
 | 2026-11-27 | gold-line-target-stop | volatility | underpowered | forge/GOLD_LINE_TARGET_STOP_PREREG.md |
 | 2026-11-27 | gold-line-target-stop-wide | volatility | null | forge/GOLD_LINE_TARGET_STOP_PREREG.md |
 | 2026-11-27 | gold-rolling-mae-entry | volatility | underpowered | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |

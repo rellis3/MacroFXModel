@@ -3728,6 +3728,13 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ', 'EURUSD'],
   },
   {
+    id: 'gold-line-system-jordan', domain: 'volatility', verdict: 'underpowered', date: '2026-11-27', doc: 'forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md', also: ['analysis/output/gold-line-system-jordan/RESULTS.md', 'line-system-backtest.html'],
+    claim: 'The gold line system on Jordan 8 lines only (HL projection up/down, Close+, Close-, P75/P90): Jordan gold entry, VWAP +/- 0.5 sigma_v target, rolling-MAE stop, BE off, makes money net OOS above shuffled lines and does not depend on its best 1 pct of trades',
+    result: 'Pre-registered (e40eb60e). OOS +0.302R [+0.111, +0.485] n 749, total +226R, without best 1 pct +104R, before costs +0.416, PF 1.40; placebo mean -0.004 p95 +0.114 (real above all 100); p 0.003. IS 2021-22 -0.085 (n 333; shorts -0.428, longs +0.281) -> fails IS gate -> UNDERPOWERED. Years 2021 -0.04, 2022 -0.14, then +0.39/+0.18/+0.37/+0.27. BE on worse (+0.224 OOS); 12 lines with P50 +0.111 (-30R without top 1 pct). OOS partly seen when the line set was chosen',
+    use: 'Strongest gold line-system version so far (2023-26 far above fake lines) but 2021-22 lost; confirmation = lockbox once at the end + forward record + tick-data fill check. Shown on line-system-backtest.html. No live change.',
+    instruments: ['GOLD'],
+  },
+  {
     id: 'gold-line-system-base-mae', domain: 'volatility', verdict: 'validated', date: '2026-11-27', doc: 'forge/GOLD_LINE_SYSTEM_BASE_PREREG.md', also: ['analysis/output/gold-line-system-base/RESULTS.md', 'gold-line-system.html'],
     claim: 'Full gold system: 18 shadow lines, Jordan gold entry (arm-then-retest, cancel 1.2x, chase), target VWAP +/- 0.5 sigma_v, stop = Jordan rolling MAE (3m per line), BE off, makes money net OOS 2023-2026.08 above shuffled lines',
     result: 'Pre-registered (f2b218d4), pessimistic, costs on, positive control 957 trades. OOS +0.106R [+0.032, +0.160] n 2,119, total +224R, before costs +0.202, PF 1.16; IS +0.044; placebo mean +0.037 p95 +0.090 (real 96th pct); p 0.008, BH over 2 passes -> VALIDATED. Years 2022-26 all positive (2021 -0.014); OOS halves +0.112/+0.101; double slippage +0.049; $1 floor +0.102. Concentration: top 1 pct of trades carry it (-56R without), smallest two stop quintiles ($1.3-2.9) = +177R; P50 lines -0.025, P75 +0.36, P90 +0.26',
@@ -5201,6 +5208,7 @@ const POWER = {
   'gold-rolling-mae-window': { n: 'GC 7,199 first touches, 1,659 sessions, scored 2021-2026.08', note: 'calibration (miss %), no test' },
   'gold-rolling-mae-trade': { n: 'GC 4,078 OOS trades 2023-2026.08, 63-session blocks B 2000, 100 placebo runs', note: 'OOS -0.089R [-0.152, -0.041]' },
   'gold-rolling-mae-entry': { n: 'GC 2,136 OOS trades 2023-2026.08, 63-session blocks B 2000, 100 placebo runs, BH over {T, E}', note: 'OOS +0.059R [-0.007, +0.128]; placebo median +0.040' },
+  'gold-line-system-jordan': { n: 'GC 749 OOS / 333 IS trades 2021-2026.08, 63-session blocks B 2000, 100 placebo runs', note: 'OOS +0.302R [+0.111, +0.485]; IS -0.085' },
   'gold-line-system-base-mae': { n: 'GC 2,119 OOS trades 2023-2026.08, 63-session blocks B 2000, 100 placebo runs, BH over 2', note: 'OOS +0.106R [+0.032, +0.160]' },
   'gold-line-system-base-nq': { n: 'NQ 2,464 OOS trades 2023-2026.08, 63-session blocks B 2000, 100 placebo runs', note: 'OOS +0.153R [+0.065, +0.236]; placebo +0.115' },
   'gold-line-system-base-eur': { n: '6E 1,812 OOS trades 2023-2026.08, 63-session blocks B 2000, 100 placebo runs', note: 'OOS -0.089R [-0.153, -0.014]' },
