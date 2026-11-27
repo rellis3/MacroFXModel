@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FX8 Residual Paper Layers</title>
+<title>Residual Paper Layers</title>
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
@@ -56,7 +56,7 @@
 </head>
 <body>
 <div class="hdr">
-  <h1>FX8 residual book · research-paper layers</h1>
+  <h1>G10 / FX8 residual book · research-paper layers</h1>
   <span class="chip warn">EXPLORATORY · not pre-registered</span>
   <span class="chip" id="chipRange">—</span>
   <span class="spacer"></span>
@@ -72,7 +72,7 @@
 
   <div class="box">
     <h2>Strategy</h2>
-    <div class="note"><b>Base:</b> 8 currencies (USD EUR GBP AUD NZD JPY CAD CHF) at the 17:00 New York close. Each currency's return minus the basket average;
+    <div class="note"><b>Base:</b> <span id="stratCcy">8 currencies</span>. Each currency's return minus the basket average;
       a 120-day PCA removes K = 2 common factors (dollar, risk); the cumulative residual path is z-scored. <b>Enter</b> a currency when |z| ≥ 1.5 (fade it),
       <b>exit</b> when z crosses back through 0. Inverse-vol weights, factor- and basket-neutral, scaled to gross 1, house spread costs.
       "+carry" adds the 3-month interest differential the book earns or pays.</div>
@@ -81,6 +81,7 @@
 
   <div class="box">
     <div class="ctrl">
+      <label>Universe<select id="selUni"></select></label>
       <label>Variant<select id="selVar"></select></label>
       <label>Compare with<select id="selCmp"><option value="">— none —</option></select></label>
       <label>P&amp;L<select id="selPnl">
@@ -182,9 +183,9 @@ const $ = id => document.getElementById(id);
 const PAPERS = {
   'base': ['Base', 'FX8 threshold residual book (residual-pca-stops). Reproduces net Sharpe 0.432 / 0.378.'],
   '+V global FX vol': ['Menkhoff, Sarno, Schmeling & Schrimpf (2012), "Carry trades and global FX volatility"', 'No new entries when average 20-day FX vol is at or above its 80th percentile of the prior year.'],
-  '+M momentum guard': ['Menkhoff et al. (2012) "Currency momentum"; Asness, Moskowitz & Pedersen (2013)', "Don't fade a currency in the top 2 or bottom 2 of the 8 by 63-day return when the trade is against that run."],
+  '+M momentum guard': ['Menkhoff et al. (2012) "Currency momentum"; Asness, Moskowitz & Pedersen (2013)', "Don't fade a currency in the top 2 or bottom 2 of the universe by 63-day return when the trade is against that run."],
   '+VAL value guard': ['Rogoff (1996) PPP; AMP (2013) value', 'Only fade toward value: the trade must agree with the sign of the 3-year (756-day) move vs the median (nominal proxy, no CPI).'],
-  '+C carry guard': ['Lustig, Roussanov & Verdelhan (2011)', "Don't take a fade that pays carry (direction × (3m rate − 8-currency average) < 0)."],
+  '+C carry guard': ['Lustig, Roussanov & Verdelhan (2011)', "Don't take a fade that pays carry (direction × (3m rate − universe average) < 0)."],
   '+AL Avellaneda-Lee entry/exit': ['Avellaneda & Lee (2010) statistical arbitrage', 'Enter at |z| ≥ 1.25, exit at |z| ≤ 0.5 or a sign change (their OU s-score approximated by our z).'],
   'NN factor-neutral off': ['Verdelhan (2018) dollar factor; ablation', 'Weights only basket-neutral; the 2 PCA factor loadings are NOT hedged out.'],
   'stack V+M': ['Stack', 'Vol filter + momentum guard.'],
@@ -192,7 +193,21 @@ const PAPERS = {
   'stack V+M+VAL+C': ['Stack', 'All four guards.'],
 };
 const COLORS = ['#5fb4ff', '#d29922', '#3fb950', '#f85149', '#b083f0', '#199e70', '#d95926', '#9da7b3', '#e3c27a', '#ff8a5c'];
-let S, st = {v: 'base', cmp: '', pnl: 'net_carry', per: 'all', v10: false, log: false}, trPage = 0, tvIdx = 0, tvList = [];
+const UNIS = {
+  fx8: {label: 'FX8 · OANDA 17:00 NY (main study)', short: 'FX8 OANDA', clock: 'the 17:00 New York close (OANDA)', repro: [0.432, 0.378],
+    path: 'analysis/output/residual-fx8-paper-layers/site.json', files: 'analysis/output/residual-fx8-paper-layers/',
+    prices: 'OANDA 17:00 New York daily closes for the 7 USD pairs (<code>analysis/output/residual-pca-family/panel_daily.csv</code>)',
+    note: 'The main study; the same rule as the frozen forward record. No NOK or SEK.'},
+  g10: {label: 'G10 · Fed H.10 noon NY (adds NOK, SEK)', short: 'G10 Fed noon', clock: 'the Fed H.10 noon New York rate', repro: null,
+    path: 'analysis/output/residual-g10-layers/g10/site.json', files: 'analysis/output/residual-g10-layers/g10/',
+    prices: 'Federal Reserve H.10 noon New York buying rates from FRED for all 9 USD pairs (one source, one clock; days with all 9 published)',
+    note: 'OANDA is unreachable from the research sandbox, so G10 uses Fed noon rates. Compare it with "FX8 · Fed H.10", not with the OANDA run.'},
+  fx8_h10: {label: 'FX8 · Fed H.10 noon NY (source check)', short: 'FX8 Fed noon', clock: 'the Fed H.10 noon New York rate', repro: null,
+    path: 'analysis/output/residual-g10-layers/fx8_h10/site.json', files: 'analysis/output/residual-g10-layers/fx8_h10/',
+    prices: 'Federal Reserve H.10 noon New York buying rates from FRED for the 7 USD pairs',
+    note: 'The FX8 study re-run on Fed noon prices. The gap to the OANDA run is the data source and clock alone.'},
+};
+let S, st = {u: 'fx8', v: 'base', cmp: '', pnl: 'net_carry', per: 'all', v10: false, log: false}, trPage = 0, tvIdx = 0, tvList = [];
 let eqChart, ddChart, tvChart;
 
 const fmt = (v, d = 2) => v == null || !isFinite(v) ? '—' : (+v).toFixed(d);
@@ -233,18 +248,24 @@ function buildStatic() {
   $('selCmp').value = '';
   const m = S.meta;
   $('chipRange').textContent = `${m.first_pnl_day} → ${m.last_pnl_day} · K=${m.K}`;
-  const b = R.base.net;
-  const ok = Math.abs(b.IS.sharpe - 0.432) < 0.002 && Math.abs(b.OOS.sharpe - 0.378) < 0.002;
-  $('chipRepro').className = 'chip ' + (ok ? 'ok' : 'bad');
-  $('chipRepro').textContent = `base repro ${ok ? '✓' : '✗'} ${fmt(b.IS.sharpe, 3)} / ${fmt(b.OOS.sharpe, 3)}`;
+  const b = R.base.net, U = UNIS[st.u];
+  if (U.repro) {
+    const ok = Math.abs(b.IS.sharpe - U.repro[0]) < 0.002 && Math.abs(b.OOS.sharpe - U.repro[1]) < 0.002;
+    $('chipRepro').className = 'chip ' + (ok ? 'ok' : 'bad');
+    $('chipRepro').textContent = `base repro ${ok ? '✓' : '✗'} ${fmt(b.IS.sharpe, 3)} / ${fmt(b.OOS.sharpe, 3)}`;
+  } else {
+    $('chipRepro').className = 'chip warn';
+    $('chipRepro').textContent = `base ${fmt(b.IS.sharpe, 2)} / ${fmt(b.OOS.sharpe, 2)} · ${U.short}`;
+  }
+  $('stratCcy').textContent = `${Object.keys(S.ccy).length} currencies (${Object.keys(S.ccy).join(' ')}) at ${U.clock}`;
   $('fCcy').innerHTML = '<option value="">all</option>' + Object.keys(S.ccy).map(c => `<option>${c}</option>`).join('');
-  $('dataNote').innerHTML = `<b>Prices:</b> OANDA 17:00 New York daily closes for the 7 USD pairs (<code>analysis/output/residual-pca-family/panel_daily.csv</code>),
-    ${m.first_pnl_day} → ${m.last_pnl_day}; the lockbox (after 2026-08-21) is not used. NOK and SEK are not in the panel, so this is FX8, not the full G10.<br>
+  $('dataNote').innerHTML = `<b>Universe:</b> ${U.label}. ${U.note}<br><b>Prices:</b> ${U.prices},
+    ${m.first_pnl_day} → ${m.last_pnl_day}; the lockbox (after 2026-08-21) is not used.<br>
     <b>Rates:</b> FRED OECD 3-month interbank (monthly), month M used only from the first day of M+2 (no lookahead). EUR uses the euro-area rate. Carry ignores broker financing mark-up.<br>
-    <b>Costs:</b> house round-trip spread per currency (EUR 0.8bp … NZD 1.3bp) × turnover / 2.<br>
-    <b>Leg P&amp;L:</b> a trade's P&amp;L is its currency leg's contribution to the gross-1 book (w × next-day return vs the 8-currency basket), in bp. Because the weights sum to zero this adds up to the book's gross return, and USD trades get their share. Spread and carry are booked at book level. The win rate here is in bp of the book, not in residual-sd units as in residual-pca-stops (65–70% there), so the two differ;
+    <b>Costs:</b> house round-trip spread per currency (EUR 0.8bp … NZD 1.3bp; NOK and SEK 3.5bp, fixed before results) × turnover / 2.<br>
+    <b>Leg P&amp;L:</b> a trade's P&amp;L is its currency leg's contribution to the gross-1 book (w × next-day return vs the currency basket), in bp. Because the weights sum to zero this adds up to the book's gross return, and USD trades get their share. Spread and carry are booked at book level. The win rate here is in bp of the book, not in residual-sd units as in residual-pca-stops (65–70% there), so the two differ;
     and the factor hedge spreads small weights to currencies outside trades, so the legs don't sum exactly to the book.<br>
-    <b>Halves:</b> split at ${m.oos_start}. <b>Seed</b> ${m.seed}. Files: <code>analysis/output/residual-fx8-paper-layers/</code> (RESULTS.md, results.json, site.json).`;
+    <b>Halves:</b> split at ${m.oos_start}. <b>Seed</b> ${m.seed}. Files: <code>${U.files}</code> (RESULTS.md, results.json, site.json).`;
 }
 
 function setSizeNote() {
@@ -503,10 +524,22 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') stepTv(1);
 });
 
-(async () => {
-  S = await (await fetch('analysis/output/residual-fx8-paper-layers/site.json', {cache: 'no-store'})).json();
-  buildStatic(); renderAll();
-})();
+async function loadUni(u) {
+  st.u = UNIS[u] ? u : 'fx8';
+  S = await (await fetch(UNIS[st.u].path, {cache: 'no-store'})).json();
+  if (!S.variants[st.v]) st.v = 'base';
+  if (st.cmp && !S.variants[st.cmp]) st.cmp = '';
+  trPage = 0;
+  buildStatic();
+  $('selVar').value = st.v; $('selCmp').value = st.cmp; $('selUni').value = st.u;
+  renderAll();
+}
+$('selUni').innerHTML = Object.entries(UNIS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+$('selUni').onchange = e => {
+  try { const q = new URL(location.href); q.searchParams.set('u', e.target.value); history.replaceState(null, '', q); } catch (_) {}
+  loadUni(e.target.value);
+};
+loadUni(new URLSearchParams(location.search).get('u') || 'fx8');
 </script>
 </body>
 </html>
