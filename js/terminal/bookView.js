@@ -138,7 +138,8 @@ export function concentration(cards, risk = null, { min = 3 } = {}) {
 const sideWord = (s, k) => { const w = globalThis.deskIsViewer?.() ? (s > 0 ? 'bullish' : 'bearish') : (s > 0 ? 'long' : 'short'); return k === EQUITY ? `${w} equities` : `${w} ${k}`; };   // the desk login reads a lean, not a position
 /** One plain sentence for a flag. */
 export function flagText(f, { days = null } = {}) {
-  const b = f.bets ? `, ~${f.bets.bets} independent bet${f.bets.bets === 1 ? '' : 's'}${f.bets.of < f.cards.length ? ` among the ${f.bets.of} with price history` : ''}${days ? ` on the last ${days} sessions' correlations` : ''}` : '';
+  // "within this group": the whole book's effective bets on Analytics (by correlation, by factor model, by principal components) count every card, so they are larger
+  const b = f.bets ? `, ~${f.bets.bets} independent bet${f.bets.bets === 1 ? '' : 's'} within this group${f.bets.of < f.cards.length ? ` (the ${f.bets.of} with price history)` : ''}${days ? ` on the last ${days} sessions' correlations` : ''}` : '';
   return `${f.cards.length} cards ${sideWord(f.side, f.ccy)} (${f.units} units)${b}: ${f.cards.join(', ')}.`;
 }
 

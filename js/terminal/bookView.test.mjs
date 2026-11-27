@@ -77,7 +77,7 @@ test('concentration: three or more cards on the same side of one leg, with their
   assert.deepEqual({ ccy: fl[0].ccy, side: fl[0].side, units: fl[0].units }, { ccy: 'JPY', side: -1, units: 2.1 });
   assert.deepEqual(fl[0].cards.sort(), ['AUDJPY', 'EURJPY', 'GBPJPY']);
   assert.equal(fl[0].bets.bets, 1.07); assert.equal(fl[0].cluster.lead, 'EURJPY');
-  assert.match(BV.flagText(fl[0], { days: 60 }), /^3 cards short JPY \(2\.1 units\), ~1\.07 independent bets on the last 60 sessions' correlations: /);
+  assert.match(BV.flagText(fl[0], { days: 60 }), /^3 cards short JPY \(2\.1 units\), ~1\.07 independent bets within this group on the last 60 sessions' correlations: /);
   assert.equal(BV.concentration(BOOK, null)[0].bets, null);
   assert.equal(BV.concentration(BOOK, null, { min: 4 }).length, 0);
 });
