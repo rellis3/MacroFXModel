@@ -76,3 +76,16 @@ export async function policyRates({ fred, getText, getJson, rbnz, now = new Date
   ]);
   return { rates, errors };
 }
+
+/**
+ * Each bank's policy rate minus the Fed's, in basis points, worked out here so nothing downstream has to subtract. The analysts read
+ * /api/policy-rates through the Desk Pack and did the arithmetic themselves; on 2026-11-27 the ruling said "275bp spread to EUR" (Fed 4.00 -
+ * ECB 2.50 is 150; 275 was Fed - BoJ) and "227bp" for CAD (also 150). { CCY: bp } with USD omitted; {} without a Fed rate.
+ */
+export function spreadsToUsd(rates = {}) {
+  const usd = Number(rates?.USD?.rate);
+  if (!Number.isFinite(usd)) return {};
+  const out = {};
+  for (const [c, v] of Object.entries(rates)) { const r = Number(v?.rate); if (c !== 'USD' && Number.isFinite(r)) out[c] = Math.round((r - usd) * 100); }
+  return out;
+}

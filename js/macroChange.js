@@ -28,7 +28,7 @@ export const MACRO_CHANGE_SPEC = {
   bei:   { label: '10Y breakeven',    bps: true,  kind: 'rate' },
   hy:    { label: 'HY credit spread', bps: true,  kind: 'spread', up: 'widening', down: 'tightening' },
   vix:   { label: 'VIX',              bps: false, kind: 'level', dp: 2 },
-  dxy:   { label: 'DXY (broad $)',    bps: false, kind: 'level', dp: 2 },
+  dxy:   { label: 'Broad dollar index (Fed, not the ICE DXY)', bps: false, kind: 'level', dp: 2 },
   // Money-market plumbing: SOFR = the overnight REPO rate (% → bps); RRP = the
   // Fed's reverse-repo facility usage ($bn level → change shows liquidity
   // draining/building). Both daily.

@@ -143,7 +143,7 @@ export function movedHtml(points) {
 /** A currency card's line: its strength since the open and its rank of 8. */
 export function ccyHtml(row, at) {
   if (!row) return '';
-  return `<div class="lv-row lv-sub" title="Live: the mean move since the open across this currency's pairs on the book, in u (base counts for, quote against). Updated ${E(hhmm(at))} London."><span class="lv-tag">NOW</span><b class="${cls(row.score)}">${sg(row.score)}u</b><span class="muted">today · ${row.rank === 1 ? 'strongest' : row.rank === 8 ? 'weakest' : `${row.rank} of 8`} · ${row.pairs} pair${row.pairs === 1 ? '' : 's'}</span></div>`;
+  return `<div class="lv-row lv-sub" title="Live: the mean move since the open across this currency's pairs on the book, in u (base counts for, quote against). Updated ${E(hhmm(at))} London."><span class="lv-tag">NOW</span><b class="${cls(row.score)}">${sg(row.score)}u</b><span class="muted">today, in typical moves (u) · ${row.rank === 1 ? 'strongest' : row.rank === 8 ? 'weakest' : `${row.rank} of 8`} · ${row.pairs} pair${row.pairs === 1 ? '' : 's'}</span></div>`;
 }
 
 /** The ranked strength strip: one bar per currency, strongest first. */
