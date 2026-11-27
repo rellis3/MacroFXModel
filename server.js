@@ -324,7 +324,7 @@ import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDes
 import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE, DESK_SUBSETS as _DP_SUBSETS, packFresh as _dpFresh } from './js/deskPack.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './js/claimWatch.js';   // the watch register (Crown setups + desk findings) — rides the desk-watch tick, log and Telegram
-import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
+import { evaluateGauges as _evaluateGauges, vixTermCommon as _vixTermCommon } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
 import { buildCase1 as _seBuild1, buildCase2 as _seBuild2, analyse as _seAnalyse, alertText as _seAlertText } from './js/spreadEpisodes.js';
 import { alignDaily as _nqrAlign, rollingMonitor as _nqrRolling, describe as _nqrDescribe } from './js/nqRatesResidual.js';
@@ -22272,7 +22272,7 @@ async function computeRiskFlags() {
     return pctChange ? (b - a) / a * 100 : b - a;
   };
 
-  const [hyHist, jpyHist] = await Promise.all([hist('hy'), hist('usd_jpy')]);
+  const [hyHist, jpyHist, vixHist, vix3mHist] = await Promise.all([hist('hy'), hist('usd_jpy'), hist('vix'), hist('vix3m')]);
   let cvol = null;
   try { cvol = await _getCvol(); } catch { /* flag reports unavailable */ }
   let move = null;
@@ -22281,7 +22281,9 @@ async function computeRiskFlags() {
   try { sbCorr = await _stockBondCorr(); } catch (e) { console.warn('[risk-flags] stock-bond corr failed:', e.message); }
 
   const vix    = fred.vix?.value ?? null;
-  const vix3m  = fred.vix3m?.value ?? null;
+  // the RATIO takes both legs on the last date both printed (js/deskWatch.js vixTermCommon), as the desk watch and the
+  // spreads board do: a VIX of one day over a VIX3M of the day before is not a term structure
+  const vt = _vixTermCommon(fred, { vix: vixHist, vix3m: vix3mHist });
   const hyChg  = lastChange(hyHist, 5, false);            // OAS is in % points
   const jpyChg = lastChange(jpyHist, 5, true);            // DEXJPUS: falling = JPY strengthening
   // Was `cvol?.pct?.EVZCLS` -- a percentile of a 5-year window whose last 1.6 years are
@@ -22297,10 +22299,10 @@ async function computeRiskFlags() {
       on: vix != null ? vix >= 25 : null, value: vix,
       detail: vix != null ? `VIX ${vix.toFixed(1)} (flag ≥25)` : 'VIX unavailable' },
     { key: 'vix_term', label: 'VIX curve backwardated',
-      on: (vix != null && vix3m != null) ? vix / vix3m >= 1.0 : null,
-      value: (vix != null && vix3m != null) ? +(vix / vix3m).toFixed(3) : null,
-      detail: (vix != null && vix3m != null)
-        ? `VIX/VIX3M ${(vix / vix3m).toFixed(2)} (flag ≥1.00 — near-term fear above 3-month)`
+      on: vt ? vt.ratio >= 1.0 : null,
+      value: vt ? +vt.ratio.toFixed(3) : null, asOf: vt?.date ?? null, dayN: vt?.dayN ?? null,
+      detail: vt
+        ? `VIX/VIX3M ${vt.ratio.toFixed(2)}${vt.date ? ` on ${vt.date}, the last date both printed` : ''} (flag ≥1.00 — near-term fear above 3-month)${vt.inverted && vt.dayN > 1 ? `; inverted ${vt.dayN} sessions in a row` : ''}`
         : 'VIX3M (VXVCLS) unavailable' },
     { key: 'hy_speed', label: 'Credit widening fast',
       on: hyChg != null ? hyChg >= 0.25 : null,

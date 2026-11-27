@@ -11,9 +11,11 @@
  * to the commodity currencies — and noticing where the textbook stopped working,
  * because the broken link is where the actual story is.
  *
- * Every input is a 20-day change (calendar-day window, via seriesDeltas — the
- * same rule the macro-change strip uses, so a "20d" here spans what a "20d"
- * there spans). Each node carries a noise floor below which it is "quiet": a
+ * Every input is a 20-session change (via seriesDeltas: sessions on a daily
+ * series, calendar days on a slower one — the same rule the macro-change strip
+ * uses, so a "20d" here spans what a "20d" there spans). The two ends of a link
+ * are judged over a COMMON end date (the earlier of their last prints), so a
+ * link never pairs one market's Thanksgiving session with another's Monday. Each node carries a noise floor below which it is "quiet": a
  * 2bp breakeven move is not a move, and a link cannot be judged on it.
  *
  * Pure: no fetch, no DOM. The page builds `vals` and renders; the AI prompt gets
@@ -58,9 +60,10 @@ export const scaledFloor = (node, win = CHAIN_WINDOW_DAYS) => node.floor * Math.
 let _liveFrozen = false;
 export const setLiveFrozen = on => { _liveFrozen = !!on; };
 export const isLiveFrozen = () => _liveFrozen;
-const _winWord = w => (w === 'live' ? (_liveFrozen ? 'the last session' : 'the live move') : w === 1 ? '1 day' : `${w} days`);
+// 5 and 20 are SESSIONS on a daily series (js/macroChange.js seriesDeltas): say so, so a "20" here is the same 20 Insight counts
+const _winWord = w => (w === 'live' ? (_liveFrozen ? 'the last session' : 'the live move') : w === 1 ? '1 day' : `${w} sessions`);
 const _over = w => (w === 'live' ? (_liveFrozen ? 'over the last session' : 'since the last close') : `over ${_winWord(w)}`);
-const _short = w => (w === 'live' ? (_liveFrozen ? 'last-session' : 'live') : w === 1 ? '1-day' : `${w}-day`);
+const _short = w => (w === 'live' ? (_liveFrozen ? 'last-session' : 'live') : w === 1 ? '1-day' : `${w}-session`);
 
 // unit: how the 20d change is expressed. pct = percent change of a price;
 // bp = change in a percent-quoted rate ×100; pt = change in a level.
@@ -526,7 +529,32 @@ export function nodeDelta(pts, node, window = CHAIN_WINDOW_DAYS) {
   else if (node.unit === 'bp') delta = raw * 100;
   else delta = raw;
   if (delta == null || !Number.isFinite(delta)) return null;
-  return { last: s.last, delta, asOf: s.lastDate ?? null, refDate: s.refDate[window] ?? null, refGapDays: s.refGapDays[window] ?? null };
+  const out = { last: s.last, delta, asOf: s.lastDate ?? null, refDate: s.refDate[window] ?? null, refGapDays: s.refGapDays[window] ?? null, span: s.basis };
+  // the series rides along (not enumerable, so it never lands in a JSON snapshot) so evaluateChain can re-measure
+  // this end over a link's common end date
+  Object.defineProperty(out, 'pts', { value: pts, enumerable: false });
+  return out;
+}
+
+/** The series cut at `endDate` (inclusive): the window then ends on that date. */
+const _cutAt = (pts, endDate) => (Array.isArray(pts) ? pts.filter(p => String(p?.date ?? '') <= endDate) : null);
+
+/**
+ * Re-measure both ends of a link over the same end date (the earlier of the two last prints). Each node ends on its
+ * own last print, and those differ: the broad dollar index lags about a week, FRED credit a day or two, and a US
+ * holiday closes Cboe and FRED while OANDA prints. Without this the 1-day "HY -> Nasdaq" link paired HY's 23->24 Nov
+ * with Nasdaq's Thanksgiving session. Returns { a, b, end } (aligned vals; end = the common end date), or
+ * { mismatch: true } when the dates differ and an end cannot be re-measured (no series attached).
+ */
+export function alignPair(va, vb, na, nb, window) {
+  if (!va || !vb || window === 'live' || !va.asOf || !vb.asOf) return { a: va, b: vb, end: va?.asOf ?? vb?.asOf ?? null };
+  const da = String(va.asOf).slice(0, 10), db = String(vb.asOf).slice(0, 10);
+  if (da === db) return { a: va, b: vb, end: da };
+  const end = da < db ? da : db;
+  const fix = (v, n, own) => (own === end ? v : (v.pts ? nodeDelta(_cutAt(v.pts, end), n, window) : undefined));
+  const a = fix(va, na, da), b = fix(vb, nb, db);
+  if (a == null || b == null) return { a: va, b: vb, end: null, mismatch: true };
+  return { a, b, end };
 }
 
 /**
@@ -535,8 +563,8 @@ export function nodeDelta(pts, node, window = CHAIN_WINDOW_DAYS) {
  */
 export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODES, window = CHAIN_WINDOW_DAYS) {
   const scaled = window !== CHAIN_WINDOW_DAYS;
-  const end = key => {
-    const n = nodes[key]; const v = vals[key];
+  const end = (key, v = vals[key]) => {
+    const n = nodes[key];
     if (!n) return null;
     if (!v || v.delta == null || !Number.isFinite(v.delta)) return { key, label: n.label, unit: n.unit, delta: null, moved: false, dir: null, text: '—', asOf: null, window };
     const basis = v.basis ?? null;
@@ -548,7 +576,12 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
     return { key, label: n.label, unit: n.unit, delta: v.delta, last: v.last ?? null, moved, dir: _dir(v.delta), text: _fmt(v.delta, n.unit, n.dp), asOf: v.asOf ?? null, refDate: v.refDate ?? null, basis, closed: !!v.closed, floorText: _fmt(floor, n.unit, fdp).replace('+', '±'), floor, window };
   };
   return links.map(l => {
-    const a = end(l.from), b = end(l.to);
+    // a0/b0: each node's own latest move (what its chip shows); a/b: both ends re-measured to a common end date
+    const a0 = end(l.from), b0 = end(l.to);
+    const al = alignPair(vals[l.from], vals[l.to], nodes[l.from], nodes[l.to], window);
+    const realigned = !al.mismatch && al.end != null && (al.a !== vals[l.from] || al.b !== vals[l.to]);
+    const a = realigned ? end(l.from, al.a) : a0, b = realigned ? end(l.to, al.b) : b0;
+    const assumed = window === 'live' && [a, b].find(e => typeof e?.basis === 'string' && /assumed/.test(e.basis));
     let verdict, read, punch = '';
     // What the textbook expected the TO end to do, given what the FROM end did.
     const expected = (a && a.moved) ? (l.sign > 0 ? a.dir : a.dir === 'up' ? 'down' : 'up') : null;
@@ -559,6 +592,13 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
       const stale = a.basis === 'last-print' ? a : b;
       read = `${stale.label} has no live price (its last print is ${stale.asOf ?? 'undated'}), so this link is not judged live. Switch to 1D to judge it on closes.`;
       punch = `${stale.label}: last print, not live`;
+    }
+    else if (assumed) {
+      // live, the real yield is the 10Y's implied move with breakevens held flat (no live breakeven price): nominal -> real
+      // then holds by construction and every real-yield link is really a 10Y link, so none of them is judged on it
+      verdict = 'assumed';
+      read = `${assumed.label} has no live price of its own: live it is the 10Y's move with breakevens assumed flat, so this link would be judged on an assumption (nominal → real holds by construction). Not judged live; switch to 1D to judge it on closes.`;
+      punch = `${assumed.label}: assumed, not measured`;
     }
     else if (!a.moved || !b.moved) {
       verdict = 'quiet';
@@ -586,7 +626,7 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
     // verdict, but the reader should see the gap rather than assume one date.
     const ta = Date.parse(a?.asOf ?? ''), tb = Date.parse(b?.asOf ?? '');
     const dateGapDays = (Number.isFinite(ta) && Number.isFinite(tb)) ? Math.round(Math.abs(ta - tb) / 864e5) : null;
-    return { id: l.id, short: l.short ?? l.id, textbook: l.textbook, sign: l.sign, evidence: scaled ? [] : (l.evidence ?? []), a, b, expected, verdict, read, punch, dateGapDays, window };
+    return { id: l.id, short: l.short ?? l.id, textbook: l.textbook, sign: l.sign, evidence: scaled ? [] : (l.evidence ?? []), a, b, a0, b0, alignedTo: realigned ? al.end : null, expected, verdict, read, punch, dateGapDays, window };
   });
 }
 
@@ -616,7 +656,7 @@ export const CHAIN_DATE_GAP_NOTE_DAYS = 3;
 
 /** Counts and a one-line headline over an evaluated chain. */
 export function summariseChain(links, window = CHAIN_WINDOW_DAYS) {
-  const n = { holding: 0, broken: 0, quiet: 0, unmeasured: 0, notlive: 0 };
+  const n = { holding: 0, broken: 0, quiet: 0, unmeasured: 0, notlive: 0, assumed: 0 };
   for (const l of links) n[l.verdict] = (n[l.verdict] ?? 0) + 1;
   const judged = n.holding + n.broken;
   const brokenIds = links.filter(l => l.verdict === 'broken').map(l => l.id);
@@ -626,6 +666,7 @@ export function summariseChain(links, window = CHAIN_WINDOW_DAYS) {
   else if (n.broken === 0) headline = `${n.holding} of ${judged} testable link${judged === 1 ? '' : 's'} holding. The textbook is working — first-order reads are enough today.`;
   else headline = `${n.broken} of ${judged} testable link${judged === 1 ? '' : 's'} broken: ${brokenShort.join(', ')}. That is where the story is.`;
   if (window === 'live' && n.notlive) headline += ` ${n.notlive} link${n.notlive === 1 ? '' : 's'} need${n.notlive === 1 ? 's' : ''} a series with no live price and ${n.notlive === 1 ? 'is' : 'are'} not judged.`;
+  if (window === 'live' && n.assumed) headline += ` ${n.assumed} real-yield link${n.assumed === 1 ? '' : 's'} ${n.assumed === 1 ? 'rests' : 'rest'} on an assumed real yield (the 10Y with breakevens flat) and ${n.assumed === 1 ? 'is' : 'are'} not judged.`;
   return { ...n, judged, brokenIds, brokenShort, headline };
 }
 
@@ -637,9 +678,11 @@ export function chainForPrompt(links, window = CHAIN_WINDOW_DAYS) {
     const tag = e => (window !== 'live' ? '' : e.basis === 'last-print' ? ' (last print, NOT live)' : typeof e.basis === 'string' && e.basis.startsWith('implied') ? ' (implied, approximate)' : '');
     const ends = `${l.a.label} ${l.a.text}${tag(l.a)} → ${l.b.label} ${l.b.text}${tag(l.b)}`;
     if (l.verdict === 'notlive') { lines.push(`- ${l.textbook}: NOT JUDGED (${ends}; an end has no live price)`); continue; }
+    if (l.verdict === 'assumed') { lines.push(`- ${l.textbook}: NOT JUDGED (${ends}; the live real yield is assumed from the 10Y, breakevens flat)`); continue; }
     if (l.verdict === 'quiet') { lines.push(`- ${l.textbook}: QUIET (${ends})`); continue; }
     const gap = l.dateGapDays > CHAIN_DATE_GAP_NOTE_DAYS ? ` [ends printed ${l.dateGapDays} days apart: ${l.a.asOf} vs ${l.b.asOf}]` : '';
-    lines.push(`- ${l.textbook}: ${l.verdict.toUpperCase()} (${ends})${gap}${l.verdict === 'broken' ? ` — ${l.read}` : ''}`);
+    const al = l.alignedTo ? ` [both ends measured to ${l.alignedTo}]` : '';
+    lines.push(`- ${l.textbook}: ${l.verdict.toUpperCase()} (${ends})${al}${gap}${l.verdict === 'broken' ? ` — ${l.read}` : ''}`);
   }
   return lines.join('\n');
 }
