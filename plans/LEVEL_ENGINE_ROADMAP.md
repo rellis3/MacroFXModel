@@ -185,7 +185,7 @@ Evidence Book id and verdict chip read live from `js/deskEvidence.js`:
 | Q3 reaction | fade or follow at the touch: placebo after costs | `level-context-engine`, `level-near-miss-entry`, `live-range-line-race` | null |
 | Q5 trade | none shown; direction never implied | (stopping rule 3 above) | n/a |
 
-**No lookahead:** bars later than the clock are dropped inside the core; with the time machine (`?asof=`) the clock is the as-of time and the forecast, bars and spx20 come from the saved records (a feed with no record at that time says so).
+**No lookahead:** bars later than the clock are dropped inside the core; with the time machine (`?asof=`) the clock is the as-of time and the forecast, bars and spx20 come from the saved records (a feed with no record at that time says so). Checked 2026-11-28 in headless Chrome: `/api/vol-forecast` is NOT in the desk snapshot record, so a past view (?asof=2026-11-27T14:00Z) shows "No record of this at ..." rather than an answer. Adding the forecast to the snapshot FULL record would make the time machine answer (item 7 below).
 
 **Phases this completes:** the Phase 2 output for any level price (reach + race + time-of-reach horizons) is now on the desk, and the Phase 5 scenario card in its honest form (validated reach and race, reaction = the null, no trade). Phase 1 (registry) and Phase 3 (reaction research; its stopping rule has fired: every family tested since is null) are unchanged.
 
@@ -196,3 +196,4 @@ Evidence Book id and verdict chip read live from `js/deskEvidence.js`:
 4. **Beyond 3 sigma and before 03:00 London** M1 has no answer (its domain); the card says so instead of extrapolating.
 5. **Weekly from-now** is geometry only; a calibrated multi-session reach model is not built.
 6. **Phase 6** (engine shadow + one confirmatory look) is not started for the card itself; the S3 shadow covers M1.
+7. **Time machine inputs:** record `/api/vol-forecast` (and `/api/drawdown-shadow`) in the desk snapshot FULL record so `?asof=` can answer; the card already uses the as-of clock.
