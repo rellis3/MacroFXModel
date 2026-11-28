@@ -17,7 +17,9 @@ import { marketState } from '../js/marketState.js';
 import { bootDiff as _bootDiff, circularBlock } from './lib/eventBootstrap.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.join(__dirname, 'output', 'outcome_loop.json');
+// Re-run options (2026-11-28, DATA_SPEC §5 #14 re-run): MV_OUT redirects the output, MV_BUNDLE reads a saved
+// bundle instead of the API, MV_END drops sessions after that date (lockbox cut). Defaults unchanged.
+const OUT = process.env.MV_OUT ?? path.join(__dirname, 'output', 'outcome_loop.json');
 const API = process.env.MV_API ?? 'https://macrofxmodel-production.up.railway.app/api/drill-series';
 
 // ── frozen in the pre-registration ──────────────────────────────────────────
@@ -44,9 +46,13 @@ const wilson = (k, n) => { if (!n) return null; const p = k / n, z = 1.96, d = 1
 
 // ── the bundle ──────────────────────────────────────────────────────────────
 console.log('fetching the bundle...');
-const res = await fetch(API);
-const B = await res.json();
+const B = process.env.MV_BUNDLE ? JSON.parse(fs.readFileSync(process.env.MV_BUNDLE, 'utf8')) : await (await fetch(API)).json();
 if (!B?.ok) throw new Error(B?.error ?? 'no bundle');
+if (process.env.MV_END) {
+  const keep = B.dates.filter(d => d <= process.env.MV_END).length;
+  B.dates = B.dates.slice(0, keep);
+  for (const k of Object.keys(B.series)) if (Array.isArray(B.series[k])) B.series[k] = B.series[k].slice(0, keep);
+}
 const N = B.dates.length;
 console.log(`${N} sessions, ${B.dates[0]} -> ${B.dates.at(-1)}, ${Object.keys(B.series).length} series`);
 
