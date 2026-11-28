@@ -41,6 +41,23 @@ All of it is written daily to R2 by `_archiveDaily` (server.js), append-only, un
 | FRED | STLFSI4, NFCI, ANFCI, G10 dollar (DTWEXAFEGS), ECB and BoJ balance sheets, Fed Treasuries/MBS, M2, C&I loans, deposits, loan-officer tightening, AAA/AA/A, HY and IG effective yields, EM HY/IG | full | `series/fred/` |
 | Desk terminal | ICE DXY rebuilt daily from six OANDA legs (`js/dxyIce.js`) and USD/SEK, on the Insight boards | 2020 | drill bundle |
 
+**Added 2026-11-28 (§3 phase 3, `js/g10FreeCapture.js`, tested in `js/g10FreeCapture.test.mjs`, its own call in `_archiveDaily`).**
+History starts are from the live probe; "deep" = only on the first fill (`scripts/g10_free_fill.mjs`, `deep: true`).
+
+| Family | Series | Source (exact URL / code) | From | R2 |
+|---|---|---|---|---|
+| UK fitted curves | nominal 0.5–40y, real 2.5–40y, implied inflation 2.5–40y, SONIA OIS 0.5–5y spot (37 series) | BoE `…/statistics/yield-curves/latest-yield-curve-data.zip` daily (current month, xlsx sheet `4. spot curve`); deep: `glcnominalddata.zip`, `glcrealddata.zip`, `glcinflationddata.zip`, `oisddata.zip` | 1979 nominal, 1985 real/inflation, 2009 OIS, 2016 for 30/40y | `series/boe_glc/` |
+| UK zero-coupon | nominal / real / inflation 5, 10, 20y (9) | BoE IADB IUDSNZC, IUDMNZC, IUDLNZC, IUDSRZC, IUDMRZC, IUDLRZC, IUDSIZC, IUDMIZC, IUDLIZC (via `fetchBoeSeries('BOE_<code>')`) | 1982 nominal, 1985 real | `series/g10_yields/UK_*_ZC_*` |
+| SONIA tails | 10th, 25th, 75th, 90th percentile, total volume £mn (5) | IADB IUDZLS6/7/8/9, IUDZLT2 | 2018-04-23 | `series/overnight/SONIA_*` |
+| BoE weekly report | reserves, notes, APF loan, TFSME, TFS, short/long-term operations, sterling bonds, FX reserves, FX securities, CCFF, W&M (14) | IADB RPWB55A, RPWB56A, RPWB59A, RPWB66A, RPWB69A, RPWB72A, RPWB9R6, RPWZ4TL/M/N, RPWZO8Q, RPWZOI7, RPWZOQ3, RPWZOQ4 | 1996 notes, 2006 reserves | `series/boe/` |
+| Swiss | Confederation 2/5/10y interpolated (3), SARON; deep: SNB spot curve 1/2/5/10/20/30y (6) | `data.snb.ch/api/cube/rendoeid/data/csv/en`, `…/snbgwdzid/…` (SARON), deep `…/rendoblid/…` | 10y 2017, 5y 2022, 2y 2025; SARON 2009; spot 1988–2025-07 | `series/g10_yields/CH_*`, `series/overnight/SARON` |
+| Euro money | €STR rate, P25, P75, volume, transactions, banks, VL (7); M3 and yoy; loans to firms and households, stock and yoy; BLS standards and demand for firms, house purchase, consumer credit (12) | `data-api.ecb.europa.eu/service/data/EST/B.EU000A2X2A25.WT+R25+R75+TT+NT+NB+VL`; BSI `M.U2.Y.V.M30.X.{1,I}.U2.2300.Z01.{E,A}`, `M.U2.Y.U.A20T.A.{1,I}.U2.{2240,2250}.Z01.{E,A}`; BLS `Q.U2.ALL.O.E.Z.B3.{ST.S,ZZ.D}.WFNET`, `Q.U2.ALL.Z.H.{H,C}.B3.{ST.S,ZZ.D}.WFNET` | €STR 2019-10, M3 1980, loans 2003, BLS 2003 | `series/ecb/` |
+| Japan | TONA average, high, low (3) | `www.stat-search.boj.or.jp/api/v1/getDataCode?format=json&lang=en&db=FM01&code=STRDCLUCON{,H,L}&startDate=199501` | 1998 (high/low 2005) | `series/overnight/TONA*` |
+| US Treasury TIC | major foreign holders by country, total, foreign official (bills / bonds and notes), $bn | `ticdata.treasury.gov/…/tic/Documents/mfhhis01.txt` (2000–2025) + `slt_table5.txt` (last 13 months) | 2000-03 | `tables/tic/major_foreign_holders` |
+| IMF COFER | world FX reserves by currency (USD, EUR, JPY, GBP, CNY, AUD, CAD, CHF, other), $ and share; allocated / unallocated (24) | `api.imf.org/external/sdmx/2.1/data/COFER/G001....Q?detail=dataonly` (Accept: SDMX CSV) | 1999 (AUD/CAD 2012, CNY 2016) | `series/imf/` |
+| CFTC TFF | dealers / asset managers / leveraged funds / other / non-reportable, long, short, spread, trader counts, OI for 27 markets: EUR GBP JPY CHF CAD AUD NZD MXN BRL ZAR DXY EURGBP EURJPY, TU FV TY TN US UB, ZQ SR3 SR1 ED €STR, SOFR swaps 2/5/10y | `publicreporting.cftc.gov/resource/gpe5-46if.json` (TFF futures only), old + renamed contract names stitched | 2006-06 (newer contracts later) | `tables/cftc_tff/<sym>` (weekly) |
+| Gilt ETFs | IGLT.L, INXG.L, VGOV.L daily and 15-min | Yahoo (`YAHOO_LONG`, `INTRADAY_15M`) | 2008-02 (VGOV 2012-05); 15-min ~60 days | `series/yahoo/`, `i15_<ID>/` |
+
 ## 3. The plan: pull, store, roll
 
 Five phases, in order. Rule throughout: **store every contract on its own and build continuous series from the
@@ -146,6 +163,9 @@ If that is too slow, run them as a separate hourly task.
 
 Each gets a parser test on a real response cut down, and a `js/dataCatalogue.js` entry, as in §2.
 
+**Built 2026-11-28** (branch g10-sources): every row above plus BoE fitted curves, SONIA tails and gilt ETFs; see the
+2026-11-28 table in §2 for URLs and history. UK DMO auctions and reference prices: not built (§4).
+
 ### Phase 4. A daily IBKR record in the server archive
 `legs_r2.py push` also writes one close per day per continuous root to `archive/series/ibkr/` (ZN1, GBL1, JGB1...).
 The G10 system then reads each country's bond future from the same place as its cash yields. Yahoo's `=F` fronts
@@ -192,6 +212,13 @@ additive (new registry, old names kept as aliases), requested by the owner 2026-
 - PMIs (S&P Global): paid; headlines come through the calendar. Citi surprise indices: paid; we have our own
   surprise store.
 - Live ICE futures data (gilts, SONIA, Brent options): needs an ICE Europe subscription on IBKR.
+- UK DMO gilt auction results (cover, tail, yield) and daily reference prices: `www.dmo.gov.uk/data/ExportReport?reportCode=D2.1E`
+  and the `XmlDataReport` / `pdfdatareport` endpoints answered once, then sit behind a Radware bot shield (302 to a JS challenge,
+  2026-11-28), as `js/fiscalEvents.js` already found. Not scriptable; skipped. Proxy: the BoE fitted curve and the gilt ETFs.
+- BoE short-term repo after 21 Sep 2022: the weekly report's short-term OMO lines (RPWB66A, RPWB9R6) stop at the 2022 restatement
+  and the database node lists no successor code; the 14 captured codes are all the node shows.
+- CFTC TFF futures-and-options combined (`yw9f-hn96`): not pulled; futures only is the published headline.
+- BoJ current-account (reserve) balances: not pulled this round (the TONA API works; the BoJ balance sheet is already in FRED JPNASSETS).
 
 ## 5. Running log
 - 2026-11-27: §2 built and tested; DXY rebuilt and on the terminal. IBKR probe run (results in §3 phase 2).
@@ -203,3 +230,8 @@ additive (new registry, old names kept as aliases), requested by the owner 2026-
   Correction: BAX no longer lists at IBKR (0 contracts); the CORRA 3M future (CRA, CDE) is the Canadian strip. The 30-minute job
   (`--tier auto`) pulls the phase-1 roots every run and the G10 roots on the run in the first half of each hour; a rolled root pulls its
   current front, plus the next contract inside 10 business days of the roll.
+- 2026-11-28: §3 phase 3 built (branch g10-sources): `js/g10FreeCapture.js` `archiveG10Free()`, its own try in `_archiveDaily`,
+  fixture tests in `js/g10FreeCapture.test.mjs`, catalogue entries, feed `g10_free_capture` in `js/dataFeeds.js`. Live probe (fake
+  archive, no R2), zero failures, 111 s with TFF, 156 MB: BoE IADB 28 series, fitted curves 37 (current month; deep fill gives the
+  history), SNB 4, ECB 19, BoJ 3, TIC 319 months (2000-03..2026-09), COFER 24, CFTC TFF 27 markets (1,067 weeks for the 2006 ones).
+  Skipped: DMO (bot shield), see §4. First fill: `railway run node scripts/g10_free_fill.mjs` (deep, from a laptop; `--dry` to preview).

@@ -144,6 +144,7 @@ export const OFR_SERIES = {
 export const INTRADAY_15M = {
   MOVE: '^MOVE', DXY: 'DX-Y.NYB', TNX: '^TNX', FVX: '^FVX', TYX: '^TYX', IRX: '^IRX',
   ZT: 'ZT=F', ZN: 'ZN=F', ZB: 'ZB=F', SR3: 'SR3=F', ZQ: 'ZQ=F', VIX: '^VIX', HYG: 'HYG', LQD: 'LQD', KRE: 'KRE',
+  IGLT: 'IGLT.L', INXG: 'INXG.L', VGOV: 'VGOV.L',   // UK gilt ETFs (LSE hours only; no ICE Europe gilt futures feed), 2026-11-28
 };
 /** FRED series the archive job adds (stress, banking, balance sheets, more of the ICE BofA credit family). */
 export const FRED_EXTRA = [
