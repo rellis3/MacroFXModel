@@ -21,7 +21,7 @@ test('the review\'s moves: Changed beside Overview, Monitor beside Assets, Repla
   assert.equal(at('monitor'), at('assets') + 1);
   assert.equal(at('replay'), at('kchart') + 1);
   assert.ok(at('read') > at('replay') && at('workspace') > at('read') && at('infomap') > at('workspace'));
-  assert.deepEqual(groups.at(-1).tabs, ['read', 'workspace', 'infomap']); assert.ok(groups.at(-1).link, 'the Research link stays in the Tools group');
+  assert.deepEqual(groups.at(-1).tabs, ['read', 'workspace', 'infomap', 'media']);   // media: the owner's H.E.L.I.X. videos and podcast (2026-11-28) assert.ok(groups.at(-1).link, 'the Research link stays in the Tools group');
   assert.ok(at('deep') === at('pair') + 1, 'the Deep dive sits right after Pair');
 });
 test('every tab keeps its id and surface id (Access switches and saved state are unchanged)', () => {
