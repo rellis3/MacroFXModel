@@ -120,3 +120,41 @@ the gap and the pair agree with the textbook 57% [47–67] for GBP/USD, 74%
   exceptions are the days everyone remembers.
 - No "bad rise" claim, no range trigger, no direction lean. The ledger carries
   Y1 (bunds real on the tails, gilts null), Y2 null, Y3 as the base rate.
+
+---
+
+## RE-RUN — 2026-11-28 (data fault #13; FRED user-agent)
+
+Inputs fixed, nothing else: London-dated OANDA D1 bars from the fixed `fetchD1Aligned` (DATA_SPEC §5 #13: London
+calendar date, weekends dropped, cut at the lockbox 2026-08-21), the shared event bootstrap
+`analysis/lib/eventBootstrap.mjs` where the script used the copied `drawBlock` (§5 #14), and FRED fetched with a
+named user-agent (`analysis/lib/fredCsv.mjs`; FRED 503s the default node UA, faults-log 2026-11-01). Same
+definitions, thresholds, seeds and gates as the original. Branch `wf2/rerun-a`; outputs and logs in
+`analysis/output/rerun-2026-11-28/`. Post-hoc data re-run: it can only describe or demote. Output `analysis/output/rerun-2026-11-28/nonus_yields.json`.
+
+Common dates now n = 3,823 (GBP), 3,822 (EUR), 3,675 (JPY), 2011-01 → 2026-08-21 (as run: 3,457 / 3,464 / 3,315;
+the summer Fridays are back and "next session" is the next London session, not two later).
+
+**Y2 — range (post-hoc bar, as before: difference against the ordinary-day control and against a US-led control).**
+
+| | big gap − control | led rise − control | led fall − control | big gap − US-led |
+|---|---|---|---|---|
+| gilts / GBP | **+0.138 [0.021, 0.292]** | **+0.108 [0.003, 0.253]** | +0.037 [−0.04, 0.13] | +0.089 [−0.046, 0.239] |
+| bunds / EUR | +0.031 [−0.022, 0.09] | −0.011 | −0.001 | +0.008 [−0.084, 0.089] |
+| JGBs / JPY | **+0.084 [0.025, 0.149]** | +0.099 [−0.018, 0.163] | **+0.248 [0.075, 0.426]** | +0.055 [−0.095, 0.174] |
+
+A big gap day is now followed by a wider session on gilts and JGBs (the gilt cell crossed zero as run). Against a
+big US-led Treasury day with no divergence, nothing clears on any leg. **Verdict nonus-yield-gap-range: CONTEXT**
+(was NULL): a big yield day widens the next session, but no more when the foreign leg led than when the US did,
+so it is vol clustering, which is already on the book. The foreign-specific part (big gap − US-led) cannot be
+told apart from zero on these counts (intervals about ±0.13).
+
+**Y3 — direction.** Next-session textbook direction after a foreign-led rise 50% [42–57] GBP (n 169), 50% [43–57] EUR
+(n 199), 51% [42–61] JPY (n 105); after a foreign-led fall 48%, 48%, 49%. All hold the coin, more tightly than as run.
+**Verdict nonus-yield-gap-direction: NULL** (unchanged).
+
+**Y1 (the context label, not one of the re-run rows; stated so its entry can be updated):** gilt-led rise on GBP/USD
+worst days ×1.41 [0.71, 2.24] (bad-rise label still null), gilt-led FALL on worst days ×2.24 [1.37, 3.36]; bund-led
+fall on EUR/USD worst days ×2.57 [1.68, 3.69], bund-led rise on best days ×1.49 [0.80, 2.29] (now crosses 1);
+JGB-led rise on USD/JPY worst days ×3.23 [1.71, 4.76] (now clear); same-day corr(Δgap, return) +0.16 GBP, +0.15
+EUR, −0.43 JPY (as run +0.09, +0.08, −0.26). 20-session windows agree with the textbook 69% GBP, 69% EUR, 75% JPY.

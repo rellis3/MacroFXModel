@@ -128,3 +128,35 @@ properly conditioned test on risk-off episodes some day; not worth a claim today
 
 Harness: `analysis/yield_move_fx_range_study.mjs`.
 Output: `analysis/output/yield_move_fx_range.json`.
+
+---
+
+## RE-RUN — 2026-11-28 (data fault #13; FRED user-agent)
+
+Inputs fixed, nothing else: London-dated OANDA D1 bars from the fixed `fetchD1Aligned` (DATA_SPEC §5 #13: London
+calendar date, weekends dropped, cut at the lockbox 2026-08-21), the shared event bootstrap
+`analysis/lib/eventBootstrap.mjs` where the script used the copied `drawBlock` (§5 #14), and FRED fetched with a
+named user-agent (`analysis/lib/fredCsv.mjs`; FRED 503s the default node UA, faults-log 2026-11-01). Same
+definitions, thresholds, seeds and gates as the original. Branch `wf2/rerun-a`; outputs and logs in
+`analysis/output/rerun-2026-11-28/`. Post-hoc data re-run: it can only describe or demote. The bootstrap here was not the copied `drawBlock` (blocks of 5 on n = 255) and is unchanged, except
+that it is now seeded (20260927) instead of `Math.random`. Output `analysis/output/rerun-2026-11-28/yield_move_fx_range.json`.
+
+1,920 top-decile DGS10 days (1,016 up, 904 down), 255 de-clustered setups per pair, 2011-01 → 2026-08-21.
+
+| | EUR/USD | USD/JPY | GBP/USD |
+|---|---|---|---|
+| next 1 session | **+0.097 [0.035, 0.157]** | **+0.111 [0.025, 0.208]** | **+0.116 [0.045, 0.202]** |
+| next 5 sessions | **+0.103 [0.046, 0.162]** | **+0.093 [0.011, 0.183]** | **+0.090 [0.027, 0.156]** |
+| 1d halves (early / late) | +0.036 [−0.05, 0.125] / **+0.147** | +0.080 [−0.036, 0.202] / **+0.137** | +0.067 [−0.01, 0.142] / **+0.156** |
+| 5d halves (early / late) | **+0.094 / +0.110** | +0.061 [−0.03, 0.165] / **+0.120** | **+0.063 [0.002, 0.133] / +0.112** |
+
+With the bars dated right, all three pairs clear at both horizons (as run: EUR/USD only). The gate (all three pairs
+AND both halves) still fails: at 5 sessions on one cell only, USD/JPY's early half; at 1 session on all three early
+halves. Every early-half estimate is positive. The prereg expected +0.15 to +0.30; the pooled cells are +0.09 to
++0.12 with upper bounds +0.16 to +0.21, so the expected effect is not ruled out.
+
+**Verdict: UNDERPOWERED** (was NULL). The early halves (n = 115 each) could not meet the gate; that is not the same
+as the effect being absent. The mirror is unchanged in shape and is still the warning: yield DOWN days widen on 3 of
+3 at both horizons (+0.22, +0.33, +0.25 at 1 session; +0.16, +0.22, +0.15 at 5), yield UP days on 0 of 3 at 5
+sessions, and USD/JPY after a yield rise is NARROWER next session (−0.102 [−0.194, −0.008]). The wider FX after a big
+10-year day still reads as the risk-off episode a yield fall sits inside, not the size of the yield move.

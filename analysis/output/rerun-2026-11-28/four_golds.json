@@ -1,0 +1,230 @@
+{
+ "ranAt": "2026-11-28T07:50:37.565Z",
+ "g1": {
+  "n": 63,
+  "excess5": {
+   "nA": 63,
+   "nB": 1660,
+   "diff": 0.19,
+   "lo": -0.457,
+   "hi": 0.866
+  },
+  "excess20": {
+   "nA": 63,
+   "nB": 1660,
+   "diff": -0.078,
+   "lo": -1.482,
+   "hi": 1.258
+  },
+  "mean5": 0.385,
+  "mean20": 0.703,
+  "ctl5": 0.195,
+  "ctl20": 0.781,
+  "upAt5": {
+   "n": 63,
+   "share": 0.492,
+   "lo": 0.373,
+   "hi": 0.612
+  },
+  "upThenGaveBack": {
+   "n": 63,
+   "share": 0.127,
+   "lo": 0.066,
+   "hi": 0.231
+  },
+  "episodes": [
+   {
+    "date": "2024-10-03",
+    "dVix": 5.12,
+    "g5": -1.182,
+    "g20": 3.227
+   },
+   {
+    "date": "2024-12-18",
+    "dVix": 14.04,
+    "g5": -0.56,
+    "g20": 2.078
+   },
+   {
+    "date": "2025-02-27",
+    "dVix": 5.47,
+    "g5": -0.309,
+    "g20": 4.566
+   },
+   {
+    "date": "2025-04-03",
+    "dVix": 11.33,
+    "g5": 1.366,
+    "g20": 2.975
+   },
+   {
+    "date": "2025-05-23",
+    "dVix": 5.05,
+    "g5": -0.247,
+    "g20": 2.127
+   },
+   {
+    "date": "2025-08-01",
+    "dVix": 5.45,
+    "g5": 3.067,
+    "g20": 4.519
+   },
+   {
+    "date": "2025-10-10",
+    "dVix": 5.01,
+    "g5": 6.781,
+    "g20": 0.651
+   },
+   {
+    "date": "2025-11-18",
+    "dVix": 7.41,
+    "g5": 2.379,
+    "g20": 6.505
+   },
+   {
+    "date": "2026-03-05",
+    "dVix": 5.12,
+    "g5": -1.31,
+    "g20": -9.937
+   },
+   {
+    "date": "2026-06-05",
+    "dVix": 6.19,
+    "g5": -5.787,
+    "g20": -6.808
+   }
+  ]
+ },
+ "g2": {
+  "windows": 765,
+  "from": "2010-12-30",
+  "to": "2026-08-21",
+  "shares": {
+   "rates": 0.21,
+   "dollar": 0.246,
+   "both": 0.475,
+   "neither": 0.069,
+   "wrongSign": 0
+  },
+  "byYear": {
+   "2011": {
+    "rates": 0.231,
+    "dollar": 0.487,
+    "both": 0.282,
+    "neither": 0,
+    "wrongSign": 0
+   },
+   "2012": {
+    "rates": 0,
+    "dollar": 0.24,
+    "both": 0.76,
+    "neither": 0,
+    "wrongSign": 0
+   },
+   "2013": {
+    "rates": 0.184,
+    "dollar": 0.49,
+    "both": 0.061,
+    "neither": 0.265,
+    "wrongSign": 0
+   },
+   "2014": {
+    "rates": 0.224,
+    "dollar": 0.204,
+    "both": 0.429,
+    "neither": 0.143,
+    "wrongSign": 0
+   },
+   "2015": {
+    "rates": 0.04,
+    "dollar": 0.42,
+    "both": 0.54,
+    "neither": 0,
+    "wrongSign": 0
+   },
+   "2016": {
+    "rates": 0.633,
+    "dollar": 0.02,
+    "both": 0.347,
+    "neither": 0,
+    "wrongSign": 0
+   },
+   "2017": {
+    "rates": 0.1,
+    "dollar": 0,
+    "both": 0.9,
+    "neither": 0,
+    "wrongSign": 0
+   },
+   "2018": {
+    "rates": 0,
+    "dollar": 0.449,
+    "both": 0.551,
+    "neither": 0,
+    "wrongSign": 0
+   },
+   "2019": {
+    "rates": 0.5,
+    "dollar": 0.22,
+    "both": 0.28,
+    "neither": 0,
+    "wrongSign": 0
+   },
+   "2020": {
+    "rates": 0.633,
+    "dollar": 0.102,
+    "both": 0.265,
+    "neither": 0,
+    "wrongSign": 0
+   },
+   "2021": {
+    "rates": 0,
+    "dollar": 0.02,
+    "both": 0.98,
+    "neither": 0,
+    "wrongSign": 0
+   },
+   "2022": {
+    "rates": 0.24,
+    "dollar": 0,
+    "both": 0.76,
+    "neither": 0,
+    "wrongSign": 0
+   },
+   "2023": {
+    "rates": 0.204,
+    "dollar": 0.02,
+    "both": 0.776,
+    "neither": 0,
+    "wrongSign": 0
+   },
+   "2024": {
+    "rates": 0.3,
+    "dollar": 0.38,
+    "both": 0.2,
+    "neither": 0.12,
+    "wrongSign": 0
+   },
+   "2025": {
+    "rates": 0,
+    "dollar": 0.48,
+    "both": 0.02,
+    "neither": 0.5,
+    "wrongSign": 0
+   },
+   "2026": {
+    "rates": 0.031,
+    "dollar": 0.563,
+    "both": 0.344,
+    "neither": 0.063,
+    "wrongSign": 0
+   }
+  },
+  "latest": {
+   "date": "2026-08-18",
+   "lab": "dollar",
+   "tReal": -1.706,
+   "tDxy": -2.859
+  }
+ }
+}

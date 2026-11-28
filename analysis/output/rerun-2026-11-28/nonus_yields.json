@@ -1,0 +1,596 @@
+{
+ "ranAt": "2026-11-28T07:52:58.468Z",
+ "from": "2008-01-01",
+ "legs": {
+  "GBP": {
+   "key": "gb10y",
+   "pair": "GBP_USD",
+   "sign": 1,
+   "T": 5,
+   "big": 8,
+   "fredMonthly": "IRLTLT01GBM156N",
+   "n": 3823,
+   "from": "2011-01-20",
+   "to": "2026-08-21",
+   "validation": [
+    {
+     "m": "2026-03",
+     "fred": 4.7007,
+     "ours": 4.782,
+     "diffBp": 8
+    },
+    {
+     "m": "2026-04",
+     "fred": 4.8207,
+     "ours": 4.912,
+     "diffBp": 9
+    },
+    {
+     "m": "2026-05",
+     "fred": 4.9416,
+     "ours": 5.026,
+     "diffBp": 8
+    },
+    {
+     "m": "2026-06",
+     "fred": 4.796,
+     "ours": 4.88,
+     "diffBp": 8
+    },
+    {
+     "m": "2026-07",
+     "fred": 4.9318,
+     "ours": 5.01,
+     "diffBp": 8
+    },
+    {
+     "m": "2026-08",
+     "fred": 4.9886,
+     "ours": 5.07,
+     "diffBp": 8
+    },
+    {
+     "m": "2026-09",
+     "fred": 5.2421,
+     "ours": 5.284,
+     "diffBp": 4
+    },
+    {
+     "m": "2026-10",
+     "fred": 5.3393,
+     "ours": 5.374,
+     "diffBp": 4
+    }
+   ],
+   "baseRates": {
+    "ledRise": 0.044,
+    "ledFall": 0.042,
+    "bigGap": 0.07
+   },
+   "y1": {
+    "worstDays": {
+     "ledRise": {
+      "n": 192,
+      "share": 0.063,
+      "base": 0.044,
+      "ratio": 1.414,
+      "lo": 0.707,
+      "hi": 2.239
+     },
+     "ledFall": {
+      "n": 192,
+      "share": 0.094,
+      "base": 0.042,
+      "ratio": 2.24,
+      "lo": 1.369,
+      "hi": 3.36
+     }
+    },
+    "bestDays": {
+     "ledRise": {
+      "n": 192,
+      "share": 0.115,
+      "base": 0.044,
+      "ratio": 2.592,
+      "lo": 1.649,
+      "hi": 3.652
+     },
+     "ledFall": {
+      "n": 192,
+      "share": 0.042,
+      "base": 0.042,
+      "ratio": 0.996,
+      "lo": 0.373,
+      "hi": 1.742
+     }
+    },
+    "sameDayCorr": 0.164,
+    "episodes": [
+     "2020-03-18 gap 10bp ret -4.27%",
+     "2022-03-07 gap 5bp ret -0.94%",
+     "2022-09-23 gap 30bp ret -3.66%",
+     "2022-09-26 gap 15bp ret -1.40%",
+     "2022-10-06 gap 9bp ret -1.46%",
+     "2022-10-11 gap 16bp ret -1.01%",
+     "2022-10-14 gap 5bp ret -1.32%",
+     "2025-01-08 gap 12bp ret -0.95%"
+    ]
+   },
+   "y2": {
+    "bigGap": {
+     "n": 267,
+     "mean": 1.237,
+     "lo": 1.125,
+     "hi": 1.393
+    },
+    "ledRise": {
+     "n": 168,
+     "mean": 1.207,
+     "lo": 1.109,
+     "hi": 1.354
+    },
+    "ledFall": {
+     "n": 160,
+     "mean": 1.136,
+     "lo": 1.07,
+     "hi": 1.23
+    },
+    "control": {
+     "n": 3535,
+     "mean": 1.099,
+     "lo": 1.076,
+     "hi": 1.124
+    },
+    "posthoc": {
+     "bigGapVsControl": {
+      "nA": 267,
+      "nB": 3535,
+      "diff": 0.138,
+      "lo": 0.021,
+      "hi": 0.292
+     },
+     "ledRiseVsControl": {
+      "nA": 168,
+      "nB": 3535,
+      "diff": 0.108,
+      "lo": 0.003,
+      "hi": 0.253
+     },
+     "ledFallVsControl": {
+      "nA": 160,
+      "nB": 3535,
+      "diff": 0.037,
+      "lo": -0.04,
+      "hi": 0.13
+     },
+     "usLed": {
+      "n": 391,
+      "mean": 1.148,
+      "lo": 1.103,
+      "hi": 1.204
+     },
+     "bigGapVsUsLed": {
+      "nA": 267,
+      "nB": 391,
+      "diff": 0.089,
+      "lo": -0.046,
+      "hi": 0.239
+     }
+    }
+   },
+   "y3": {
+    "nextAfterLedRise": {
+     "n": 169,
+     "share": 0.497,
+     "lo": 0.423,
+     "hi": 0.572
+    },
+    "nextAfterLedFall": {
+     "n": 160,
+     "share": 0.481,
+     "lo": 0.405,
+     "hi": 0.558
+    },
+    "window20Agree": {
+     "n": 77,
+     "share": 0.688,
+     "lo": 0.578,
+     "hi": 0.781
+    }
+   }
+  },
+  "EUR": {
+   "key": "de10y",
+   "pair": "EUR_USD",
+   "sign": 1,
+   "T": 5,
+   "big": 8,
+   "fredMonthly": "IRLTLT01DEM156N",
+   "n": 3822,
+   "from": "2011-01-26",
+   "to": "2026-08-21",
+   "validation": [
+    {
+     "m": "2026-03",
+     "fred": 2.91,
+     "ours": 2.955,
+     "diffBp": 5
+    },
+    {
+     "m": "2026-04",
+     "fred": 3.001,
+     "ours": 3.06,
+     "diffBp": 6
+    },
+    {
+     "m": "2026-05",
+     "fred": 3.0465,
+     "ours": 3.09,
+     "diffBp": 4
+    },
+    {
+     "m": "2026-06",
+     "fred": 2.96409090909091,
+     "ours": 3.009,
+     "diffBp": 4
+    },
+    {
+     "m": "2026-07",
+     "fred": 3.0704347826087,
+     "ours": 3.119,
+     "diffBp": 5
+    },
+    {
+     "m": "2026-08",
+     "fred": 3.18571428571429,
+     "ours": 3.215,
+     "diffBp": 3
+    },
+    {
+     "m": "2026-09",
+     "fred": 3.4740909091,
+     "ours": 3.499,
+     "diffBp": 2
+    },
+    {
+     "m": "2026-10",
+     "fred": 3.4159090909,
+     "ours": 3.454,
+     "diffBp": 4
+    }
+   ],
+   "baseRates": {
+    "ledRise": 0.052,
+    "ledFall": 0.047,
+    "bigGap": 0.154
+   },
+   "y1": {
+    "worstDays": {
+     "ledRise": {
+      "n": 192,
+      "share": 0.036,
+      "base": 0.052,
+      "ratio": 0.697,
+      "lo": 0.199,
+      "hi": 1.294
+     },
+     "ledFall": {
+      "n": 192,
+      "share": 0.12,
+      "base": 0.047,
+      "ratio": 2.572,
+      "lo": 1.677,
+      "hi": 3.69
+     }
+    },
+    "bestDays": {
+     "ledRise": {
+      "n": 192,
+      "share": 0.078,
+      "base": 0.052,
+      "ratio": 1.493,
+      "lo": 0.796,
+      "hi": 2.289
+     },
+     "ledFall": {
+      "n": 192,
+      "share": 0.052,
+      "base": 0.047,
+      "ratio": 1.118,
+      "lo": 0.559,
+      "hi": 1.789
+     }
+    },
+    "sameDayCorr": 0.153,
+    "episodes": [
+     "2011-10-17 gap 13bp ret -1.00%",
+     "2015-05-07 gap 31bp ret -0.90%",
+     "2015-07-13 gap 8bp ret -1.34%",
+     "2020-04-02 gap 7bp ret -0.97%",
+     "2021-10-29 gap 9bp ret -1.05%",
+     "2022-03-11 gap 7bp ret -0.92%",
+     "2022-09-23 gap 16bp ret -1.45%"
+    ]
+   },
+   "y2": {
+    "bigGap": {
+     "n": 585,
+     "mean": 1.125,
+     "lo": 1.079,
+     "hi": 1.182
+    },
+    "ledRise": {
+     "n": 200,
+     "mean": 1.083,
+     "lo": 1.033,
+     "hi": 1.155
+    },
+    "ledFall": {
+     "n": 178,
+     "mean": 1.093,
+     "lo": 1.038,
+     "hi": 1.158
+    },
+    "control": {
+     "n": 3216,
+     "mean": 1.094,
+     "lo": 1.074,
+     "hi": 1.118
+    },
+    "posthoc": {
+     "bigGapVsControl": {
+      "nA": 585,
+      "nB": 3216,
+      "diff": 0.031,
+      "lo": -0.022,
+      "hi": 0.09
+     },
+     "ledRiseVsControl": {
+      "nA": 200,
+      "nB": 3216,
+      "diff": -0.011,
+      "lo": -0.066,
+      "hi": 0.064
+     },
+     "ledFallVsControl": {
+      "nA": 178,
+      "nB": 3216,
+      "diff": -0.001,
+      "lo": -0.057,
+      "hi": 0.072
+     },
+     "usLed": {
+      "n": 231,
+      "mean": 1.117,
+      "lo": 1.054,
+      "hi": 1.193
+     },
+     "bigGapVsUsLed": {
+      "nA": 585,
+      "nB": 231,
+      "diff": 0.008,
+      "lo": -0.084,
+      "hi": 0.089
+     }
+    }
+   },
+   "y3": {
+    "nextAfterLedRise": {
+     "n": 199,
+     "share": 0.503,
+     "lo": 0.434,
+     "hi": 0.571
+    },
+    "nextAfterLedFall": {
+     "n": 178,
+     "share": 0.478,
+     "lo": 0.405,
+     "hi": 0.551
+    },
+    "window20Agree": {
+     "n": 97,
+     "share": 0.691,
+     "lo": 0.593,
+     "hi": 0.774
+    }
+   }
+  },
+  "JPY": {
+   "key": "jp10y",
+   "pair": "USD_JPY",
+   "sign": -1,
+   "T": 3,
+   "big": 5,
+   "fredMonthly": "IRLTLT01JPM156N",
+   "n": 3675,
+   "from": "2011-01-20",
+   "to": "2026-08-21",
+   "validation": [
+    {
+     "m": "2026-03",
+     "fred": 2.345,
+     "ours": 2.243,
+     "diffBp": -10
+    },
+    {
+     "m": "2026-04",
+     "fred": 2.515,
+     "ours": 2.42,
+     "diffBp": -9
+    },
+    {
+     "m": "2026-05",
+     "fred": 2.65,
+     "ours": 2.648,
+     "diffBp": 0
+    },
+    {
+     "m": "2026-06",
+     "fred": 2.67,
+     "ours": 2.654,
+     "diffBp": -2
+    },
+    {
+     "m": "2026-07",
+     "fred": 2.79,
+     "ours": 2.773,
+     "diffBp": -2
+    },
+    {
+     "m": "2026-08",
+     "fred": 2.94,
+     "ours": 2.871,
+     "diffBp": -7
+    },
+    {
+     "m": "2026-09",
+     "fred": 3.05,
+     "ours": 2.992,
+     "diffBp": -6
+    },
+    {
+     "m": "2026-10",
+     "fred": 2.755,
+     "ours": 2.966,
+     "diffBp": 21
+    }
+   ],
+   "baseRates": {
+    "ledRise": 0.029,
+    "ledFall": 0.024,
+    "bigGap": 0.307
+   },
+   "y1": {
+    "worstDays": {
+     "ledRise": {
+      "n": 184,
+      "share": 0.092,
+      "base": 0.029,
+      "ratio": 3.234,
+      "lo": 1.712,
+      "hi": 4.755
+     },
+     "ledFall": {
+      "n": 184,
+      "share": 0.027,
+      "base": 0.024,
+      "ratio": 1.122,
+      "lo": 0.224,
+      "hi": 2.244
+     }
+    },
+    "bestDays": {
+     "ledRise": {
+      "n": 184,
+      "share": 0.027,
+      "base": 0.029,
+      "ratio": 0.951,
+      "lo": 0.19,
+      "hi": 1.902
+     },
+     "ledFall": {
+      "n": 184,
+      "share": 0.06,
+      "base": 0.024,
+      "ratio": 2.469,
+      "lo": 1.346,
+      "hi": 4.039
+     }
+    },
+    "sameDayCorr": -0.431,
+    "episodes": [
+     "2022-08-10 gap 5bp ret -1.69%",
+     "2023-03-15 gap 18bp ret -1.15%",
+     "2023-12-07 gap 8bp ret -2.02%",
+     "2024-07-31 gap 12bp ret -1.79%",
+     "2024-08-16 gap 7bp ret -1.11%",
+     "2025-04-10 gap 4bp ret -2.28%",
+     "2026-03-19 gap 5bp ret -1.18%",
+     "2026-07-30 gap 3bp ret -2.31%"
+    ]
+   },
+   "y2": {
+    "bigGap": {
+     "n": 1121,
+     "mean": 1.201,
+     "lo": 1.142,
+     "hi": 1.261
+    },
+    "ledRise": {
+     "n": 104,
+     "mean": 1.216,
+     "lo": 1.107,
+     "hi": 1.272
+    },
+    "ledFall": {
+     "n": 88,
+     "mean": 1.365,
+     "lo": 1.188,
+     "hi": 1.561
+    },
+    "control": {
+     "n": 2533,
+     "mean": 1.117,
+     "lo": 1.084,
+     "hi": 1.151
+    },
+    "posthoc": {
+     "bigGapVsControl": {
+      "nA": 1121,
+      "nB": 2533,
+      "diff": 0.084,
+      "lo": 0.025,
+      "hi": 0.149
+     },
+     "ledRiseVsControl": {
+      "nA": 104,
+      "nB": 2533,
+      "diff": 0.099,
+      "lo": -0.018,
+      "hi": 0.163
+     },
+     "ledFallVsControl": {
+      "nA": 88,
+      "nB": 2533,
+      "diff": 0.248,
+      "lo": 0.075,
+      "hi": 0.426
+     },
+     "usLed": {
+      "n": 175,
+      "mean": 1.146,
+      "lo": 1.047,
+      "hi": 1.286
+     },
+     "bigGapVsUsLed": {
+      "nA": 1121,
+      "nB": 175,
+      "diff": 0.055,
+      "lo": -0.095,
+      "hi": 0.174
+     }
+    }
+   },
+   "y3": {
+    "nextAfterLedRise": {
+     "n": 105,
+     "share": 0.514,
+     "lo": 0.42,
+     "hi": 0.608
+    },
+    "nextAfterLedFall": {
+     "n": 89,
+     "share": 0.494,
+     "lo": 0.393,
+     "hi": 0.596
+    },
+    "window20Agree": {
+     "n": 102,
+     "share": 0.745,
+     "lo": 0.653,
+     "hi": 0.82
+    }
+   }
+  }
+ }
+}

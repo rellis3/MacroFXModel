@@ -1,0 +1,23 @@
+DGS10 1962-01-02 -> 2026-11-25 (16210)
+GBP: gb10y 2008-01-02 -> 2026-11-25 (4777); vs FRED monthly: 2026-03 8bp, 2026-04 9bp, 2026-05 8bp, 2026-06 8bp, 2026-07 8bp, 2026-08 8bp, 2026-09 4bp, 2026-10 4bp
+  n=3823 2011-01-20->2026-08-21; same-day corr(dGap, ret) 0.164
+  Y1 worst-5% days: led-rise 0.063 vs base 0.044 -> x1.414 [0.707, 2.239] n=192 | led-fall 0.094 vs base 0.042 -> x2.24 [1.369, 3.36] n=192
+  Y1 best-5% days:  led-rise 0.115 vs base 0.044 -> x2.592 [1.649, 3.652] n=192 | led-fall 0.042 vs base 0.042 -> x0.996 [0.373, 1.742] n=192
+  Y2 next range: big gap x1.237 [1.125, 1.393] n=267 | led-rise x1.207 [1.109, 1.354] n=168 | led-fall x1.136 [1.07, 1.23] n=160 | control x1.099 [1.076, 1.124] n=3535
+  Y2 post-hoc: big gap - control +0.138 [0.021, 0.292] (n 267 vs 3535) | led-rise - control +0.108 [0.003, 0.253] (n 168 vs 3535) | led-fall - control +0.037 [-0.04, 0.13] (n 160 vs 3535) | US-led x1.148 [1.103, 1.204] n=391 | big gap - US-led +0.089 [-0.046, 0.239] (n 267 vs 391)
+  Y3 next-day textbook: after led-rise 50% [42-57] n=169 | after led-fall 48% [41-56] n=160 | 20d windows agree 69% [58-78] n=77
+EUR: de10y 2008-01-02 -> 2026-11-27 (4803); vs FRED monthly: 2026-03 5bp, 2026-04 6bp, 2026-05 4bp, 2026-06 4bp, 2026-07 5bp, 2026-08 3bp, 2026-09 2bp, 2026-10 4bp
+  n=3822 2011-01-26->2026-08-21; same-day corr(dGap, ret) 0.153
+  Y1 worst-5% days: led-rise 0.036 vs base 0.052 -> x0.697 [0.199, 1.294] n=192 | led-fall 0.12 vs base 0.047 -> x2.572 [1.677, 3.69] n=192
+  Y1 best-5% days:  led-rise 0.078 vs base 0.052 -> x1.493 [0.796, 2.289] n=192 | led-fall 0.052 vs base 0.047 -> x1.118 [0.559, 1.789] n=192
+  Y2 next range: big gap x1.125 [1.079, 1.182] n=585 | led-rise x1.083 [1.033, 1.155] n=200 | led-fall x1.093 [1.038, 1.158] n=178 | control x1.094 [1.074, 1.118] n=3216
+  Y2 post-hoc: big gap - control +0.031 [-0.022, 0.09] (n 585 vs 3216) | led-rise - control -0.011 [-0.066, 0.064] (n 200 vs 3216) | led-fall - control -0.001 [-0.057, 0.072] (n 178 vs 3216) | US-led x1.117 [1.054, 1.193] n=231 | big gap - US-led +0.008 [-0.084, 0.089] (n 585 vs 231)
+  Y3 next-day textbook: after led-rise 50% [43-57] n=199 | after led-fall 48% [41-55] n=178 | 20d windows agree 69% [59-77] n=97
+JPY: jp10y 2008-01-04 -> 2026-11-26 (4621); vs FRED monthly: 2026-03 -10bp, 2026-04 -9bp, 2026-05 0bp, 2026-06 -2bp, 2026-07 -2bp, 2026-08 -7bp, 2026-09 -6bp, 2026-10 21bp
+  n=3675 2011-01-20->2026-08-21; same-day corr(dGap, ret) -0.431
+  Y1 worst-5% days: led-rise 0.092 vs base 0.029 -> x3.234 [1.712, 4.755] n=184 | led-fall 0.027 vs base 0.024 -> x1.122 [0.224, 2.244] n=184
+  Y1 best-5% days:  led-rise 0.027 vs base 0.029 -> x0.951 [0.19, 1.902] n=184 | led-fall 0.06 vs base 0.024 -> x2.469 [1.346, 4.039] n=184
+  Y2 next range: big gap x1.201 [1.142, 1.261] n=1121 | led-rise x1.216 [1.107, 1.272] n=104 | led-fall x1.365 [1.188, 1.561] n=88 | control x1.117 [1.084, 1.151] n=2533
+  Y2 post-hoc: big gap - control +0.084 [0.025, 0.149] (n 1121 vs 2533) | led-rise - control +0.099 [-0.018, 0.163] (n 104 vs 2533) | led-fall - control +0.248 [0.075, 0.426] (n 88 vs 2533) | US-led x1.146 [1.047, 1.286] n=175 | big gap - US-led +0.055 [-0.095, 0.174] (n 1121 vs 175)
+  Y3 next-day textbook: after led-rise 51% [42-61] n=105 | after led-fall 49% [39-60] n=89 | 20d windows agree 75% [65-82] n=102
+written C:\Users\relli\AppData\Local\Temp\claude\181f22e54fe44b96\ba057ee6-408e-4750-b791-01b9637fe5de\scratchpad\wf2-rerun-a\analysis\output\nonus_yields.json

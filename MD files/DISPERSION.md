@@ -280,3 +280,35 @@ means it is breaking — is **falsified in sign**: it is the quiet arm.
 - Ledger: `dispersion-reset` as the D2b/D2a finding.
 - No Desk Watch trigger. Thin n, and the actionable half is "expect less", which
   is not something to alert on.
+
+---
+
+## RE-RUN — 2026-11-28 (data faults #13, #14; FRED user-agent)
+
+Inputs fixed, nothing else: London-dated OANDA D1 bars from the fixed `fetchD1Aligned` (DATA_SPEC §5 #13: London
+calendar date, weekends dropped, cut at the lockbox 2026-08-21), the shared event bootstrap
+`analysis/lib/eventBootstrap.mjs` where the script used the copied `drawBlock` (§5 #14), and FRED fetched with a
+named user-agent (`analysis/lib/fredCsv.mjs`; FRED 503s the default node UA, faults-log 2026-11-01). Same
+definitions, thresholds, seeds and gates as the original. Branch `wf2/rerun-a`; outputs and logs in
+`analysis/output/rerun-2026-11-28/`. Post-hoc data re-run: it can only describe or demote. Output `analysis/output/rerun-2026-11-28/dispersion.json`. Not addressed: the audit's note that the
+controls are not matched for VIX regime ("calm controls") is a design question, not one of the faults.
+
+DSPX 2014-06 → 2026-11 (setups are on DSPX's own clock; outcomes stop at 2026-08-21). 70 rising setups (67 with
+outcomes), 32 falling (30–31 with outcomes), 1,858 controls.
+
+**D1 (dispersion-crowded-week).** Next-5 range vs control SPX500 **+0.070 [−0.062, +0.222]**, NQ **+0.087 [−0.041,
++0.225]**; a 2× day within five 24% [15–35] vs 27% control (SPX500), 25% vs 22% (NQ). Below-median VIX 5d −0.008,
++0.012. The headline week and the tail stay null. The 20-session window (also-reported) is +0.190 [+0.030, +0.418]
+and +0.175 [+0.035, +0.339], and survives a below-median VIX (+0.279, +0.245, n 25), but the halves say where it
+lives: early (split 2018-10-02, n 16) +0.059 [−0.164, +0.357] and +0.074 [−0.133, +0.304], late (n 51) +0.313 and
++0.316, both clear. **Verdict dispersion-crowded-week: NULL** (unchanged) on the registered week and tail claims;
+the month reading is late-sample only.
+
+**D2 (dispersion-reset).** THE GATE, rising minus falling: SPX500 5d **+0.126 [−0.009, +0.294]**, 20d **+0.294
+[+0.093, +0.538]**; NQ 5d **+0.115 [−0.008, +0.267]**, 20d **+0.271 [+0.112, +0.465]**. 2 of 4 cells clear (as run 4
+of 4). The falling arm against control: 5d −0.056 [−0.187, +0.070] and −0.028 [−0.145, +0.103], 20d −0.104 [−0.233,
++0.035] and −0.096 [−0.214, +0.029]. None clears, so the "calmer week" after a reset is no longer shown. Direction
+null in both arms (falling +0.010, rising −0.005 at 20 sessions, intervals across zero). The arms do separate at a
+month, but that separation is carried by the rising arm, which is D1's late-half month result. Falling arm n = 30
+against a floor of 25. **Verdict dispersion-reset: UNDERPOWERED** (was VALIDATED): the gate held on 2 of 4 cells,
+the reset arm itself does not differ from control on any cell, and the sample cannot resolve it.

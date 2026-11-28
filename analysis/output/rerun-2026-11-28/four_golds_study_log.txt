@@ -1,0 +1,10 @@
+sessions 2010-12-29 -> 2026-08-21 (3967)
+G1: 63 VIX spikes. gold +5 sessions 0.385% vs control 0.195% -> excess {"nA":63,"nB":1660,"diff":0.19,"lo":-0.457,"hi":0.866}; +20 0.703% vs 0.781% -> {"nA":63,"nB":1660,"diff":-0.078,"lo":-1.482,"hi":1.258}; up at +5 {"n":63,"share":0.492,"lo":0.373,"hi":0.612}; up then gave back half by +20 {"n":63,"share":0.127,"lo":0.066,"hi":0.231}
+G2: 765 60-session windows 2010-12-30->2026-08-21: rates gold 0.21, dollar gold 0.246, both 0.475, neither 0.069, wrong sign 0; latest {"date":"2026-08-18","lab":"dollar","tReal":-1.706,"tDxy":-2.859}
+  2014: {"rates":0.224,"dollar":0.204,"both":0.429,"neither":0.143,"wrongSign":0}
+  2015: {"rates":0.04,"dollar":0.42,"both":0.54,"neither":0,"wrongSign":0}
+  2022: {"rates":0.24,"dollar":0,"both":0.76,"neither":0,"wrongSign":0}
+  2024: {"rates":0.3,"dollar":0.38,"both":0.2,"neither":0.12,"wrongSign":0}
+  2025: {"rates":0,"dollar":0.48,"both":0.02,"neither":0.5,"wrongSign":0}
+  2026: {"rates":0.031,"dollar":0.563,"both":0.344,"neither":0.063,"wrongSign":0}
+written C:\Users\relli\AppData\Local\Temp\claude\181f22e54fe44b96\ba057ee6-408e-4750-b791-01b9637fe5de\scratchpad\wf2-rerun-a\analysis\output\four_golds.json
