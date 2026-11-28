@@ -1,0 +1,7145 @@
+{
+ "id": "cboe-vol-indices-range",
+ "ranAt": "2026-11-28T08:24:38Z",
+ "seed": 20261128,
+ "B": 2000,
+ "block": 63,
+ "prereg": "forge/CBOE_VOL_INDICES_RANGE_PREREG.md",
+ "branch": "wf2/vol-indices-range",
+ "maps": [
+  {
+   "id": "cboe-vol-range-ovx-wti-1d",
+   "family": "A",
+   "index": "OVX",
+   "inst": "WTI",
+   "h": 1,
+   "verdict": "VALIDATED",
+   "cells": {
+    "Lin": "VALIDATED",
+    "Ext": "VALIDATED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-ovx-wti-5d",
+   "family": "A",
+   "index": "OVX",
+   "inst": "WTI",
+   "h": 5,
+   "verdict": "VALIDATED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "VALIDATED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxslv-silver-1d",
+   "family": "A",
+   "index": "VXSLV",
+   "inst": "SILVER",
+   "h": 1,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxslv-silver-5d",
+   "family": "A",
+   "index": "VXSLV",
+   "inst": "SILVER",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxtlt-zb-1d",
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZB",
+   "h": 1,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxtlt-zb-5d",
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZB",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxtlt-zn-1d",
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZN",
+   "h": 1,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxtlt-zn-5d",
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZN",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-rvx-us2000-1d",
+   "family": "A",
+   "index": "RVX",
+   "inst": "US2000",
+   "h": 1,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-rvx-us2000-5d",
+   "family": "A",
+   "index": "RVX",
+   "inst": "US2000",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxd-us30-1d",
+   "family": "A",
+   "index": "VXD",
+   "inst": "US30",
+   "h": 1,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxd-us30-5d",
+   "family": "A",
+   "index": "VXD",
+   "inst": "US30",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-skew-spx500-1d",
+   "family": "A",
+   "index": "SKEW",
+   "inst": "SPX500",
+   "h": 1,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-skew-spx500-5d",
+   "family": "A",
+   "index": "SKEW",
+   "inst": "SPX500",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-skew-nq-1d",
+   "family": "A",
+   "index": "SKEW",
+   "inst": "NQ",
+   "h": 1,
+   "verdict": "NULL",
+   "cells": {
+    "Lin": "NULL",
+    "Ext": "NULL"
+   }
+  },
+  {
+   "id": "cboe-vol-range-skew-nq-5d",
+   "family": "A",
+   "index": "SKEW",
+   "inst": "NQ",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "NULL",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxeem-audusd-1d",
+   "family": "B",
+   "index": "VXEEM",
+   "inst": "AUDUSD",
+   "h": 1,
+   "verdict": "NULL",
+   "cells": {
+    "Lin": "NULL",
+    "Ext": "NULL"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxeem-audusd-5d",
+   "family": "B",
+   "index": "VXEEM",
+   "inst": "AUDUSD",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxfxi-audusd-1d",
+   "family": "B",
+   "index": "VXFXI",
+   "inst": "AUDUSD",
+   "h": 1,
+   "verdict": "NULL",
+   "cells": {
+    "Lin": "NULL",
+    "Ext": "NULL"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxfxi-audusd-5d",
+   "family": "B",
+   "index": "VXFXI",
+   "inst": "AUDUSD",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxgdx-gold-1d",
+   "family": "B",
+   "index": "VXGDX",
+   "inst": "GOLD",
+   "h": 1,
+   "verdict": "NULL",
+   "cells": {
+    "Lin": "NULL",
+    "Ext": "NULL"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxgdx-gold-5d",
+   "family": "B",
+   "index": "VXGDX",
+   "inst": "GOLD",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxapl-nq-1d",
+   "family": "B",
+   "index": "VXAPL",
+   "inst": "NQ",
+   "h": 1,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxapl-nq-5d",
+   "family": "B",
+   "index": "VXAPL",
+   "inst": "NQ",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxazn-nq-1d",
+   "family": "B",
+   "index": "VXAZN",
+   "inst": "NQ",
+   "h": 1,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-vxazn-nq-5d",
+   "family": "B",
+   "index": "VXAZN",
+   "inst": "NQ",
+   "h": 5,
+   "verdict": "NULL",
+   "cells": {
+    "Lin": "NULL",
+    "Ext": "NULL"
+   }
+  },
+  {
+   "id": "cboe-vol-range-ovx-usdcad-1d",
+   "family": "B",
+   "index": "OVX",
+   "inst": "USDCAD",
+   "h": 1,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "UNDERPOWERED",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-ovx-usdcad-5d",
+   "family": "B",
+   "index": "OVX",
+   "inst": "USDCAD",
+   "h": 5,
+   "verdict": "UNDERPOWERED",
+   "cells": {
+    "Lin": "NULL",
+    "Ext": "UNDERPOWERED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-ovx-brent-1d",
+   "family": "B",
+   "index": "OVX",
+   "inst": "BRENT",
+   "h": 1,
+   "verdict": "VALIDATED",
+   "cells": {
+    "Lin": "VALIDATED",
+    "Ext": "VALIDATED"
+   }
+  },
+  {
+   "id": "cboe-vol-range-ovx-brent-5d",
+   "family": "B",
+   "index": "OVX",
+   "inst": "BRENT",
+   "h": 5,
+   "verdict": "VALIDATED",
+   "cells": {
+    "Lin": "VALIDATED",
+    "Ext": "VALIDATED"
+   }
+  }
+ ],
+ "cells": [
+  {
+   "family": "A",
+   "index": "OVX",
+   "inst": "WTI",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "B_har_garcht",
+   "n": 1971,
+   "ratio": 0.9401,
+   "lo": 0.91676,
+   "hi": 0.96485,
+   "p": 0.0004997501249375312,
+   "se_log": 0.0133,
+   "mde": 0.03724,
+   "halves": {
+    "2018-22": 0.9240667377609462,
+    "2023-26": 0.96325201097303
+   },
+   "B_p75_exc": 0.238,
+   "L_p75_exc": 0.2425,
+   "dates": [
+    "2019-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2019": 0.9477,
+    "2020": 0.8814,
+    "2021": 0.941,
+    "2022": 0.9691,
+    "2023": 0.952,
+    "2024": 0.9939,
+    "2025": 0.9626,
+    "2026": 0.9551
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 284,
+     "ratio": 0.8591,
+     "p": 0.027486256871564217,
+     "B_p75_exc": 0.377,
+     "L_p75_exc": 0.271,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 231,
+     "ratio": 0.9044,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.134,
+     "L_p75_exc": 0.277,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 244,
+     "ratio": 0.8699,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.381,
+     "L_p75_exc": 0.295,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 256,
+     "ratio": 0.9524,
+     "p": 0.07846076961519241,
+     "B_p75_exc": 0.16,
+     "L_p75_exc": 0.27,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00021,
+    "min": 0.99678,
+    "max": 1.00435,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0859,
+    0.022,
+    0.0346
+   ],
+   "holm": true,
+   "repl_ratio": 0.8916,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": true,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "VALIDATED"
+  },
+  {
+   "family": "A",
+   "index": "OVX",
+   "inst": "WTI",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "B_har_garcht",
+   "n": 1971,
+   "ratio": 0.95181,
+   "lo": 0.93475,
+   "hi": 0.97145,
+   "p": 0.0004997501249375312,
+   "se_log": 0.01003,
+   "mde": 0.02808,
+   "halves": {
+    "2018-22": 0.935846904292213,
+    "2023-26": 0.9748545710630704
+   },
+   "B_p75_exc": 0.238,
+   "L_p75_exc": 0.2324,
+   "dates": [
+    "2019-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2019": 0.958,
+    "2020": 0.9075,
+    "2021": 0.9495,
+    "2022": 0.9591,
+    "2023": 0.9906,
+    "2024": 0.9944,
+    "2025": 0.9592,
+    "2026": 0.9656
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 284,
+     "ratio": 0.9175,
+     "p": 0.1024487756121939,
+     "B_p75_exc": 0.377,
+     "L_p75_exc": 0.239,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 231,
+     "ratio": 0.8734,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.134,
+     "L_p75_exc": 0.234,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 244,
+     "ratio": 0.9115,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.381,
+     "L_p75_exc": 0.275,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 256,
+     "ratio": 0.921,
+     "p": 0.00849575212393803,
+     "B_p75_exc": 0.16,
+     "L_p75_exc": 0.238,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00077,
+    "min": 0.99778,
+    "max": 1.00549,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0612,
+    -0.037,
+    0.0416,
+    -0.0269
+   ],
+   "holm": true,
+   "repl_ratio": 0.92043,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": true,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "VALIDATED"
+  },
+  {
+   "family": "A",
+   "index": "OVX",
+   "inst": "WTI",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "B_har_garcht",
+   "n": 1967,
+   "ratio": 0.94375,
+   "lo": 0.90141,
+   "hi": 1.0044,
+   "p": 0.03398300849575212,
+   "se_log": 0.02819,
+   "mde": 0.07893,
+   "halves": {
+    "2018-22": 0.9530100534197602,
+    "2023-26": 0.9312518134219074
+   },
+   "B_p75_exc": 0.2476,
+   "L_p75_exc": 0.2511,
+   "dates": [
+    "2019-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2019": 0.9105,
+    "2020": 0.9954,
+    "2021": 0.9148,
+    "2022": 0.9288,
+    "2023": 0.9254,
+    "2024": 1.0025,
+    "2025": 0.9311,
+    "2026": 0.9058
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 284,
+     "ratio": 0.8813,
+     "p": 0.028985507246376812,
+     "B_p75_exc": 0.426,
+     "L_p75_exc": 0.257,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 230,
+     "ratio": 0.9393,
+     "p": 0.4302848575712144,
+     "B_p75_exc": 0.07,
+     "L_p75_exc": 0.261,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 244,
+     "ratio": 0.9421,
+     "p": 0.39430284857571213,
+     "B_p75_exc": 0.455,
+     "L_p75_exc": 0.32,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 255,
+     "ratio": 1.0051,
+     "p": 0.5922038980509745,
+     "B_p75_exc": 0.137,
+     "L_p75_exc": 0.235,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.01927,
+    "min": 1.00087,
+    "max": 1.03616,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.1115,
+    0.0001,
+    0.0286
+   ],
+   "holm": false,
+   "repl_ratio": 0.88833,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "OVX",
+   "inst": "WTI",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "B_har_garcht",
+   "n": 1967,
+   "ratio": 0.95075,
+   "lo": 0.92909,
+   "hi": 0.98183,
+   "p": 0.0009995002498750624,
+   "se_log": 0.01413,
+   "mde": 0.03956,
+   "halves": {
+    "2018-22": 0.9501706575256579,
+    "2023-26": 0.951528891492591
+   },
+   "B_p75_exc": 0.2476,
+   "L_p75_exc": 0.2405,
+   "dates": [
+    "2019-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2019": 0.9385,
+    "2020": 0.9456,
+    "2021": 0.9877,
+    "2022": 0.9377,
+    "2023": 0.9633,
+    "2024": 0.9951,
+    "2025": 0.945,
+    "2026": 0.9327
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 284,
+     "ratio": 0.9113,
+     "p": 0.4497751124437781,
+     "B_p75_exc": 0.426,
+     "L_p75_exc": 0.208,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 230,
+     "ratio": 0.8641,
+     "p": 0.08245877061469266,
+     "B_p75_exc": 0.07,
+     "L_p75_exc": 0.222,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 244,
+     "ratio": 0.929,
+     "p": 0.06196901549225387,
+     "B_p75_exc": 0.455,
+     "L_p75_exc": 0.32,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 255,
+     "ratio": 0.9686,
+     "p": 0.26686656671664166,
+     "B_p75_exc": 0.137,
+     "L_p75_exc": 0.212,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00789,
+    "min": 0.99925,
+    "max": 1.0232,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0777,
+    -0.0504,
+    0.0311,
+    -0.0153
+   ],
+   "holm": true,
+   "repl_ratio": 0.91179,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": true,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "VALIDATED"
+  },
+  {
+   "family": "A",
+   "index": "OVX",
+   "inst": "WTI",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "G_garch",
+   "n": 2227,
+   "ratio": 0.8916,
+   "lo": 0.84189,
+   "hi": 0.94108,
+   "p": 0.0004997501249375312,
+   "se_log": 0.0292,
+   "mde": 0.08175,
+   "halves": {
+    "2018-22": 0.8683919371152842,
+    "2023-26": 0.9345486780880531
+   },
+   "B_p75_exc": 0.2474,
+   "L_p75_exc": 0.2272,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.991,
+    "2019": 0.9239,
+    "2020": 0.7956,
+    "2021": 0.9035,
+    "2022": 0.892,
+    "2023": 0.9062,
+    "2024": 0.9727,
+    "2025": 0.9511,
+    "2026": 0.9214
+   }
+  },
+  {
+   "family": "A",
+   "index": "OVX",
+   "inst": "WTI",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "G_garch",
+   "n": 2227,
+   "ratio": 0.92043,
+   "lo": 0.88559,
+   "hi": 0.95966,
+   "p": 0.0004997501249375312,
+   "se_log": 0.02118,
+   "mde": 0.0593,
+   "halves": {
+    "2018-22": 0.8983186626901783,
+    "2023-26": 0.96135168608342
+   },
+   "B_p75_exc": 0.2474,
+   "L_p75_exc": 0.2371,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.9953,
+    "2019": 0.9516,
+    "2020": 0.8405,
+    "2021": 0.9288,
+    "2022": 0.9091,
+    "2023": 0.9697,
+    "2024": 0.9783,
+    "2025": 0.9393,
+    "2026": 0.9633
+   }
+  },
+  {
+   "family": "A",
+   "index": "OVX",
+   "inst": "WTI",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "G_garch",
+   "n": 2223,
+   "ratio": 0.88833,
+   "lo": 0.82026,
+   "hi": 0.95175,
+   "p": 0.0004997501249375312,
+   "se_log": 0.03743,
+   "mde": 0.1048,
+   "halves": {
+    "2018-22": 0.8824806252714876,
+    "2023-26": 0.8985606192067526
+   },
+   "B_p75_exc": 0.2605,
+   "L_p75_exc": 0.2357,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 0.9816,
+    "2019": 0.8869,
+    "2020": 0.8875,
+    "2021": 0.8556,
+    "2022": 0.8339,
+    "2023": 0.857,
+    "2024": 0.973,
+    "2025": 0.9096,
+    "2026": 0.8823
+   }
+  },
+  {
+   "family": "A",
+   "index": "OVX",
+   "inst": "WTI",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "G_garch",
+   "n": 2223,
+   "ratio": 0.91179,
+   "lo": 0.86859,
+   "hi": 0.95785,
+   "p": 0.0004997501249375312,
+   "se_log": 0.02502,
+   "mde": 0.07005,
+   "halves": {
+    "2018-22": 0.9002320699018697,
+    "2023-26": 0.9319916126506073
+   },
+   "B_p75_exc": 0.2605,
+   "L_p75_exc": 0.2425,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 0.968,
+    "2019": 0.9373,
+    "2020": 0.886,
+    "2021": 0.8737,
+    "2022": 0.895,
+    "2023": 0.9465,
+    "2024": 0.9584,
+    "2025": 0.915,
+    "2026": 0.9254
+   }
+  },
+  {
+   "family": "A",
+   "index": "VXSLV",
+   "inst": "SILVER",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "HARCJ",
+   "n": 1968,
+   "ratio": 0.98859,
+   "lo": 0.97152,
+   "hi": 1.00256,
+   "p": 0.06646676661669165,
+   "se_log": 0.00817,
+   "mde": 0.02287,
+   "halves": {
+    "2018-22": 0.9762226759065944,
+    "2023-26": 1.0002197360563831
+   },
+   "B_p75_exc": 0.2627,
+   "L_p75_exc": 0.2429,
+   "dates": [
+    "2019-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2019": 0.954,
+    "2020": 0.9623,
+    "2021": 0.9812,
+    "2022": 1.0118,
+    "2023": 1.0269,
+    "2024": 0.9887,
+    "2025": 0.971,
+    "2026": 1.0118
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 333,
+     "ratio": 0.9412,
+     "p": 0.10144927536231885,
+     "B_p75_exc": 0.351,
+     "L_p75_exc": 0.246,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 221,
+     "ratio": 1.0021,
+     "p": 0.3708145927036482,
+     "B_p75_exc": 0.226,
+     "L_p75_exc": 0.271,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 188,
+     "ratio": 0.9345,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.335,
+     "L_p75_exc": 0.271,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 208,
+     "ratio": 1.0115,
+     "p": 0.45827086456771615,
+     "B_p75_exc": 0.26,
+     "L_p75_exc": 0.308,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00742,
+    "min": 1.00461,
+    "max": 1.26422,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.065,
+    0.0285,
+    0.0229
+   ],
+   "holm": false,
+   "repl_ratio": 0.94362,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXSLV",
+   "inst": "SILVER",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "HARCJ",
+   "n": 1968,
+   "ratio": 0.99486,
+   "lo": 0.98092,
+   "hi": 1.0069,
+   "p": 0.20389805097451275,
+   "se_log": 0.00683,
+   "mde": 0.01911,
+   "halves": {
+    "2018-22": 0.995291952200337,
+    "2023-26": 0.9944486405827329
+   },
+   "B_p75_exc": 0.2627,
+   "L_p75_exc": 0.2632,
+   "dates": [
+    "2019-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2019": 0.9882,
+    "2020": 0.9708,
+    "2021": 1.0112,
+    "2022": 1.0282,
+    "2023": 0.9972,
+    "2024": 0.9945,
+    "2025": 0.972,
+    "2026": 1.0077
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 333,
+     "ratio": 0.9634,
+     "p": 0.239880059970015,
+     "B_p75_exc": 0.351,
+     "L_p75_exc": 0.258,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 221,
+     "ratio": 1.0041,
+     "p": 0.6756621689155422,
+     "B_p75_exc": 0.226,
+     "L_p75_exc": 0.285,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 188,
+     "ratio": 0.9564,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.335,
+     "L_p75_exc": 0.287,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 208,
+     "ratio": 1.0004,
+     "p": 0.35582208895552225,
+     "B_p75_exc": 0.26,
+     "L_p75_exc": 0.327,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00493,
+    "min": 1.00089,
+    "max": 1.01467,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0434,
+    -0.0236,
+    0.0109,
+    -0.0287
+   ],
+   "holm": false,
+   "repl_ratio": 0.96214,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXSLV",
+   "inst": "SILVER",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "HARCJ",
+   "n": 1963,
+   "ratio": 0.98156,
+   "lo": 0.95364,
+   "hi": 1.0093,
+   "p": 0.095952023988006,
+   "se_log": 0.0147,
+   "mde": 0.04117,
+   "halves": {
+    "2018-22": 0.990815714785482,
+    "2023-26": 0.9720534622631122
+   },
+   "B_p75_exc": 0.272,
+   "L_p75_exc": 0.2741,
+   "dates": [
+    "2019-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2019": 0.9366,
+    "2020": 1.0179,
+    "2021": 0.9743,
+    "2022": 0.9873,
+    "2023": 0.9682,
+    "2024": 0.977,
+    "2025": 0.9713,
+    "2026": 0.972
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 336,
+     "ratio": 0.923,
+     "p": 0.0069965017491254375,
+     "B_p75_exc": 0.378,
+     "L_p75_exc": 0.283,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 221,
+     "ratio": 0.997,
+     "p": 0.5102448775612194,
+     "B_p75_exc": 0.149,
+     "L_p75_exc": 0.317,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 188,
+     "ratio": 0.9496,
+     "p": 0.44577711144427784,
+     "B_p75_exc": 0.426,
+     "L_p75_exc": 0.41,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 205,
+     "ratio": 1.0127,
+     "p": 0.4732633683158421,
+     "B_p75_exc": 0.22,
+     "L_p75_exc": 0.254,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.0121,
+    "min": 1.00616,
+    "max": 1.11752,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0985,
+    0.0201,
+    0.0055
+   ],
+   "holm": false,
+   "repl_ratio": 0.93629,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXSLV",
+   "inst": "SILVER",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "HARCJ",
+   "n": 1963,
+   "ratio": 0.98216,
+   "lo": 0.96267,
+   "hi": 1.00182,
+   "p": 0.038980509745127435,
+   "se_log": 0.01031,
+   "mde": 0.02887,
+   "halves": {
+    "2018-22": 0.992140010169585,
+    "2023-26": 0.971917891414135
+   },
+   "B_p75_exc": 0.272,
+   "L_p75_exc": 0.2807,
+   "dates": [
+    "2019-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2019": 0.9792,
+    "2020": 0.9865,
+    "2021": 0.981,
+    "2022": 1.0263,
+    "2023": 0.9727,
+    "2024": 0.9844,
+    "2025": 0.9743,
+    "2026": 0.9636
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 336,
+     "ratio": 0.926,
+     "p": 0.050474762618690654,
+     "B_p75_exc": 0.378,
+     "L_p75_exc": 0.298,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 221,
+     "ratio": 0.9698,
+     "p": 0.4492753623188406,
+     "B_p75_exc": 0.149,
+     "L_p75_exc": 0.262,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 188,
+     "ratio": 0.9223,
+     "p": 0.0009995002498750624,
+     "B_p75_exc": 0.426,
+     "L_p75_exc": 0.426,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 205,
+     "ratio": 0.967,
+     "p": 0.03548225887056472,
+     "B_p75_exc": 0.22,
+     "L_p75_exc": 0.249,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.01624,
+    "min": 1.00208,
+    "max": 1.03826,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0572,
+    -0.0396,
+    0.0006,
+    -0.0143
+   ],
+   "holm": false,
+   "repl_ratio": 0.94201,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXSLV",
+   "inst": "SILVER",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "G_gjr",
+   "n": 2046,
+   "ratio": 0.94362,
+   "lo": 0.91865,
+   "hi": 0.96861,
+   "p": 0.0004997501249375312,
+   "se_log": 0.01372,
+   "mde": 0.03843,
+   "halves": {
+    "2018-22": 0.9223723472678705,
+    "2023-26": 0.966054950668863
+   },
+   "B_p75_exc": 0.2683,
+   "L_p75_exc": 0.2405,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.948,
+    "2019": 0.9334,
+    "2020": 0.9007,
+    "2021": 0.9349,
+    "2022": 0.9271,
+    "2023": 1.0277,
+    "2024": 0.9711,
+    "2025": 0.9116,
+    "2026": 0.9678
+   }
+  },
+  {
+   "family": "A",
+   "index": "VXSLV",
+   "inst": "SILVER",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "G_gjr",
+   "n": 2046,
+   "ratio": 0.96214,
+   "lo": 0.93821,
+   "hi": 0.98446,
+   "p": 0.0004997501249375312,
+   "se_log": 0.01224,
+   "mde": 0.03428,
+   "halves": {
+    "2018-22": 0.9557233621485269,
+    "2023-26": 0.9689275570612963
+   },
+   "B_p75_exc": 0.2683,
+   "L_p75_exc": 0.2708,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.9588,
+    "2019": 0.9532,
+    "2020": 0.9197,
+    "2021": 0.9769,
+    "2022": 0.9973,
+    "2023": 0.9692,
+    "2024": 0.9888,
+    "2025": 0.9055,
+    "2026": 0.9978
+   }
+  },
+  {
+   "family": "A",
+   "index": "VXSLV",
+   "inst": "SILVER",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "G_gjr",
+   "n": 1950,
+   "ratio": 0.93629,
+   "lo": 0.89626,
+   "hi": 0.97391,
+   "p": 0.0024987506246876563,
+   "se_log": 0.02163,
+   "mde": 0.06056,
+   "halves": {
+    "2018-22": 0.9346974758311548,
+    "2023-26": 0.9381628916023912
+   },
+   "B_p75_exc": 0.2713,
+   "L_p75_exc": 0.2697,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 0.8613,
+    "2019": 0.9241,
+    "2020": 0.9574,
+    "2021": 0.9829,
+    "2022": 0.8833,
+    "2023": 0.9504,
+    "2024": 0.9437,
+    "2025": 0.8941,
+    "2026": 0.9593
+   }
+  },
+  {
+   "family": "A",
+   "index": "VXSLV",
+   "inst": "SILVER",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "G_gjr",
+   "n": 1950,
+   "ratio": 0.94201,
+   "lo": 0.91093,
+   "hi": 0.97535,
+   "p": 0.001999000499750125,
+   "se_log": 0.01789,
+   "mde": 0.0501,
+   "halves": {
+    "2018-22": 0.940282811140948,
+    "2023-26": 0.9440396887194689
+   },
+   "B_p75_exc": 0.2713,
+   "L_p75_exc": 0.2744,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 0.8803,
+    "2019": 0.9451,
+    "2020": 0.9234,
+    "2021": 0.981,
+    "2022": 0.9671,
+    "2023": 0.9082,
+    "2024": 0.9785,
+    "2025": 0.9387,
+    "2026": 0.9472
+   }
+  },
+  {
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZB",
+   "track": "F",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "HARCJ",
+   "n": 1980,
+   "ratio": 0.99447,
+   "lo": 0.97859,
+   "hi": 1.01433,
+   "p": 0.2593703148425787,
+   "se_log": 0.00941,
+   "mde": 0.02636,
+   "halves": {
+    "2018-22": 1.004422601365272,
+    "2023-26": 0.9811464370319464
+   },
+   "B_p75_exc": 0.251,
+   "L_p75_exc": 0.2364,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.9825,
+    "2019": 1.016,
+    "2020": 1.0579,
+    "2021": 0.9909,
+    "2022": 0.9706,
+    "2023": 0.9804,
+    "2024": 0.9845,
+    "2025": 0.9776,
+    "2026": 0.9827
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 365,
+     "ratio": 1.0402,
+     "p": 0.9490254872563718,
+     "B_p75_exc": 0.293,
+     "L_p75_exc": 0.2,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 146,
+     "ratio": 0.9536,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.158,
+     "L_p75_exc": 0.212,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 248,
+     "ratio": 0.9429,
+     "p": 0.017991004497751123,
+     "B_p75_exc": 0.343,
+     "L_p75_exc": 0.286,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 267,
+     "ratio": 0.9918,
+     "p": 0.5662168915542228,
+     "B_p75_exc": 0.187,
+     "L_p75_exc": 0.213,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 0.9999,
+    "min": 0.99311,
+    "max": 1.01904,
+    "n_below_real": 3,
+    "n": 20
+   },
+   "beta": [
+    0.0378,
+    -0.0015,
+    0.0204
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZB",
+   "track": "F",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "HARCJ",
+   "n": 1980,
+   "ratio": 0.98912,
+   "lo": 0.97384,
+   "hi": 1.00231,
+   "p": 0.05747126436781609,
+   "se_log": 0.00745,
+   "mde": 0.02087,
+   "halves": {
+    "2018-22": 0.9915657139586307,
+    "2023-26": 0.9858399237581175
+   },
+   "B_p75_exc": 0.251,
+   "L_p75_exc": 0.2439,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.9978,
+    "2019": 1.0174,
+    "2020": 0.9716,
+    "2021": 0.9928,
+    "2022": 0.9876,
+    "2023": 0.9846,
+    "2024": 0.9895,
+    "2025": 0.9806,
+    "2026": 0.9913
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 365,
+     "ratio": 0.9837,
+     "p": 0.5087456271864068,
+     "B_p75_exc": 0.293,
+     "L_p75_exc": 0.236,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 146,
+     "ratio": 0.9402,
+     "p": 0.009495252373813094,
+     "B_p75_exc": 0.158,
+     "L_p75_exc": 0.185,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 248,
+     "ratio": 0.9247,
+     "p": 0.001999000499750125,
+     "B_p75_exc": 0.343,
+     "L_p75_exc": 0.278,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 267,
+     "ratio": 0.9824,
+     "p": 0.16491754122938532,
+     "B_p75_exc": 0.187,
+     "L_p75_exc": 0.228,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00086,
+    "min": 0.99372,
+    "max": 1.00979,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0136,
+    -0.0193,
+    0.0214,
+    -0.0187
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZB",
+   "track": "F",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "HARCJ",
+   "n": 1839,
+   "ratio": 1.00127,
+   "lo": 0.97074,
+   "hi": 1.04509,
+   "p": 0.5157421289355323,
+   "se_log": 0.01876,
+   "mde": 0.05252,
+   "halves": {
+    "2018-22": 1.0277228280650432,
+    "2023-26": 0.9656486523309761
+   },
+   "B_p75_exc": 0.2703,
+   "L_p75_exc": 0.2605,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 0.9865,
+    "2019": 1.0244,
+    "2020": 1.1271,
+    "2021": 0.9706,
+    "2022": 0.9974,
+    "2023": 0.9613,
+    "2024": 0.9625,
+    "2025": 0.9725,
+    "2026": 0.9672
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 343,
+     "ratio": 1.0714,
+     "p": 0.8765617191404298,
+     "B_p75_exc": 0.309,
+     "L_p75_exc": 0.21,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 134,
+     "ratio": 0.9414,
+     "p": 0.1969015492253873,
+     "B_p75_exc": 0.172,
+     "L_p75_exc": 0.276,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 226,
+     "ratio": 0.9815,
+     "p": 0.31434282858570717,
+     "B_p75_exc": 0.314,
+     "L_p75_exc": 0.27,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 249,
+     "ratio": 0.9817,
+     "p": 0.5712143928035982,
+     "B_p75_exc": 0.209,
+     "L_p75_exc": 0.245,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00626,
+    "min": 0.99947,
+    "max": 1.07609,
+    "n_below_real": 6,
+    "n": 20
+   },
+   "beta": [
+    0.0626,
+    -0.0077,
+    0.0181
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZB",
+   "track": "F",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "HARCJ",
+   "n": 1839,
+   "ratio": 0.99833,
+   "lo": 0.97873,
+   "hi": 1.01968,
+   "p": 0.42828585707146427,
+   "se_log": 0.0104,
+   "mde": 0.02911,
+   "halves": {
+    "2018-22": 1.0104600335654779,
+    "2023-26": 0.9819913863451905
+   },
+   "B_p75_exc": 0.2703,
+   "L_p75_exc": 0.2681,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 1.0104,
+    "2019": 1.0048,
+    "2020": 1.0069,
+    "2021": 1.011,
+    "2022": 1.0189,
+    "2023": 0.9763,
+    "2024": 0.9814,
+    "2025": 0.9802,
+    "2026": 1.0003
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 343,
+     "ratio": 1.0085,
+     "p": 0.8355822088955522,
+     "B_p75_exc": 0.309,
+     "L_p75_exc": 0.251,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 134,
+     "ratio": 0.9306,
+     "p": 0.05547226386806597,
+     "B_p75_exc": 0.172,
+     "L_p75_exc": 0.224,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 226,
+     "ratio": 0.9753,
+     "p": 0.16691654172913542,
+     "B_p75_exc": 0.314,
+     "L_p75_exc": 0.261,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 249,
+     "ratio": 0.9831,
+     "p": 0.375312343828086,
+     "B_p75_exc": 0.209,
+     "L_p75_exc": 0.269,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00643,
+    "min": 0.99685,
+    "max": 1.03101,
+    "n_below_real": 2,
+    "n": 20
+   },
+   "beta": [
+    0.0337,
+    -0.0285,
+    0.012,
+    -0.0233
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZN",
+   "track": "F",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "H8",
+   "n": 2009,
+   "ratio": 1.01378,
+   "lo": 0.9796,
+   "hi": 1.06586,
+   "p": 0.7381309345327336,
+   "se_log": 0.02158,
+   "mde": 0.06042,
+   "halves": {
+    "2018-22": 1.0465048888719837,
+    "2023-26": 0.9730756646600577
+   },
+   "B_p75_exc": 0.2573,
+   "L_p75_exc": 0.2638,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.9919,
+    "2019": 1.0195,
+    "2020": 1.2945,
+    "2021": 0.9919,
+    "2022": 0.9732,
+    "2023": 0.9716,
+    "2024": 0.9773,
+    "2025": 0.9635,
+    "2026": 0.9858
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 293,
+     "ratio": 1.2483,
+     "p": 0.9890054972513743,
+     "B_p75_exc": 0.283,
+     "L_p75_exc": 0.154,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 311,
+     "ratio": 0.957,
+     "p": 0.033483258370814596,
+     "B_p75_exc": 0.148,
+     "L_p75_exc": 0.241,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 247,
+     "ratio": 0.9424,
+     "p": 0.005997001499250375,
+     "B_p75_exc": 0.36,
+     "L_p75_exc": 0.291,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 264,
+     "ratio": 1.0159,
+     "p": 0.7106446776611695,
+     "B_p75_exc": 0.197,
+     "L_p75_exc": 0.242,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00235,
+    "min": 1.00045,
+    "max": 1.00852,
+    "n_below_real": 20,
+    "n": 20
+   },
+   "beta": [
+    0.0453,
+    0.0,
+    0.0326
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZN",
+   "track": "F",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "H8",
+   "n": 2009,
+   "ratio": 0.98149,
+   "lo": 0.96634,
+   "hi": 0.99894,
+   "p": 0.020989505247376312,
+   "se_log": 0.00852,
+   "mde": 0.02387,
+   "halves": {
+    "2018-22": 0.9917385846838691,
+    "2023-26": 0.9687362728115599
+   },
+   "B_p75_exc": 0.2573,
+   "L_p75_exc": 0.2648,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.9935,
+    "2019": 0.9965,
+    "2020": 1.0117,
+    "2021": 1.006,
+    "2022": 0.9698,
+    "2023": 0.9697,
+    "2024": 0.9568,
+    "2025": 0.9721,
+    "2026": 0.9842
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 293,
+     "ratio": 1.0042,
+     "p": 0.5952023988005997,
+     "B_p75_exc": 0.283,
+     "L_p75_exc": 0.212,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 311,
+     "ratio": 0.9238,
+     "p": 0.0014992503748125937,
+     "B_p75_exc": 0.148,
+     "L_p75_exc": 0.251,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 247,
+     "ratio": 0.9181,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.36,
+     "L_p75_exc": 0.263,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 264,
+     "ratio": 0.963,
+     "p": 0.15092453773113443,
+     "B_p75_exc": 0.197,
+     "L_p75_exc": 0.265,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00263,
+    "min": 0.99934,
+    "max": 1.00694,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0055,
+    -0.0315,
+    0.0372,
+    -0.0151
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZN",
+   "track": "F",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "H8",
+   "n": 1875,
+   "ratio": 1.0748,
+   "lo": 0.98473,
+   "hi": 1.20783,
+   "p": 0.9330334832583708,
+   "se_log": 0.05455,
+   "mde": 0.15273,
+   "halves": {
+    "2018-22": 1.1607706951229055,
+    "2023-26": 0.9624735240801238
+   },
+   "B_p75_exc": 0.2555,
+   "L_p75_exc": 0.2475,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 0.9539,
+    "2019": 1.0397,
+    "2020": 1.6743,
+    "2021": 1.003,
+    "2022": 1.0047,
+    "2023": 0.9512,
+    "2024": 0.9647,
+    "2025": 0.9723,
+    "2026": 0.9632
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 281,
+     "ratio": 1.5612,
+     "p": 0.9980009995002499,
+     "B_p75_exc": 0.299,
+     "L_p75_exc": 0.149,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 294,
+     "ratio": 0.9016,
+     "p": 0.005997001499250375,
+     "B_p75_exc": 0.112,
+     "L_p75_exc": 0.214,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 222,
+     "ratio": 1.0257,
+     "p": 0.9180409795102449,
+     "B_p75_exc": 0.32,
+     "L_p75_exc": 0.239,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 243,
+     "ratio": 1.0945,
+     "p": 0.8750624687656172,
+     "B_p75_exc": 0.206,
+     "L_p75_exc": 0.267,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00348,
+    "min": 0.99453,
+    "max": 1.04472,
+    "n_below_real": 20,
+    "n": 20
+   },
+   "beta": [
+    0.0794,
+    -0.0121,
+    0.0307
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXTLT",
+   "inst": "ZN",
+   "track": "F",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "H8",
+   "n": 1875,
+   "ratio": 1.00186,
+   "lo": 0.96195,
+   "hi": 1.05746,
+   "p": 0.5737131434282858,
+   "se_log": 0.02447,
+   "mde": 0.06853,
+   "halves": {
+    "2018-22": 1.0404910817166935,
+    "2023-26": 0.9513826132780814
+   },
+   "B_p75_exc": 0.2555,
+   "L_p75_exc": 0.2603,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 0.9636,
+    "2019": 1.0071,
+    "2020": 1.1378,
+    "2021": 1.07,
+    "2022": 1.0058,
+    "2023": 0.9387,
+    "2024": 0.9393,
+    "2025": 0.9715,
+    "2026": 0.9697
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 281,
+     "ratio": 1.1132,
+     "p": 0.881559220389805,
+     "B_p75_exc": 0.299,
+     "L_p75_exc": 0.192,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 294,
+     "ratio": 0.861,
+     "p": 0.00399800099950025,
+     "B_p75_exc": 0.112,
+     "L_p75_exc": 0.265,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 222,
+     "ratio": 0.9676,
+     "p": 0.3403298350824588,
+     "B_p75_exc": 0.32,
+     "L_p75_exc": 0.239,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 243,
+     "ratio": 0.9818,
+     "p": 0.44427786106946526,
+     "B_p75_exc": 0.206,
+     "L_p75_exc": 0.305,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 0.99867,
+    "min": 0.98951,
+    "max": 1.01205,
+    "n_below_real": 13,
+    "n": 20
+   },
+   "beta": [
+    0.022,
+    -0.0598,
+    0.0267,
+    -0.0188
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "RVX",
+   "inst": "US2000",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "E_ewma_090",
+   "n": 1967,
+   "ratio": 0.97545,
+   "lo": 0.95616,
+   "hi": 0.99575,
+   "p": 0.009995002498750625,
+   "se_log": 0.01061,
+   "mde": 0.02971,
+   "halves": {
+    "2018-22": 0.9866963963187263,
+    "2023-26": 0.9626702912427366
+   },
+   "B_p75_exc": 0.2893,
+   "L_p75_exc": 0.2816,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9624,
+    "2020": 1.019,
+    "2021": 0.9581,
+    "2022": 0.9868,
+    "2023": 0.9912,
+    "2024": 0.9678,
+    "2025": 0.936,
+    "2026": 0.9644
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 229,
+     "ratio": 0.9407,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.432,
+     "L_p75_exc": 0.349,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 75,
+     "ratio": 0.8814,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.32,
+     "L_p75_exc": 0.36,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 165,
+     "ratio": 0.8788,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.461,
+     "L_p75_exc": 0.37,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 183,
+     "ratio": 1.0722,
+     "p": 0.9640179910044977,
+     "B_p75_exc": 0.24,
+     "L_p75_exc": 0.306,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00027,
+    "min": 0.99125,
+    "max": 1.00992,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0366,
+    0.0044,
+    0.0597
+   ],
+   "holm": false,
+   "repl_ratio": 0.97415,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "RVX",
+   "inst": "US2000",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "E_ewma_090",
+   "n": 1967,
+   "ratio": 0.97846,
+   "lo": 0.96068,
+   "hi": 0.99642,
+   "p": 0.006496751624187906,
+   "se_log": 0.00921,
+   "mde": 0.02578,
+   "halves": {
+    "2018-22": 0.9870318876582098,
+    "2023-26": 0.9687093269132802
+   },
+   "B_p75_exc": 0.2893,
+   "L_p75_exc": 0.2893,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9799,
+    "2020": 0.9982,
+    "2021": 0.9609,
+    "2022": 1.0,
+    "2023": 0.9856,
+    "2024": 0.9683,
+    "2025": 0.9511,
+    "2026": 0.9788
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 229,
+     "ratio": 0.9132,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.432,
+     "L_p75_exc": 0.31,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 75,
+     "ratio": 0.9091,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.32,
+     "L_p75_exc": 0.307,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 165,
+     "ratio": 0.8846,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.461,
+     "L_p75_exc": 0.327,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 183,
+     "ratio": 1.0378,
+     "p": 0.8855572213893054,
+     "B_p75_exc": 0.24,
+     "L_p75_exc": 0.29,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00193,
+    "min": 0.99719,
+    "max": 1.00889,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0412,
+    -0.0033,
+    0.0431,
+    -0.0161
+   ],
+   "holm": false,
+   "repl_ratio": 0.97917,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "RVX",
+   "inst": "US2000",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "E_ewma_090",
+   "n": 1962,
+   "ratio": 0.99077,
+   "lo": 0.97734,
+   "hi": 1.0044,
+   "p": 0.09795102448775612,
+   "se_log": 0.00694,
+   "mde": 0.01944,
+   "halves": {
+    "2018-22": 1.0007398882518628,
+    "2023-26": 0.9781768915250209
+   },
+   "B_p75_exc": 0.2941,
+   "L_p75_exc": 0.2971,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 0.979,
+    "2020": 1.0195,
+    "2021": 0.9749,
+    "2022": 1.0022,
+    "2023": 1.014,
+    "2024": 0.9678,
+    "2025": 0.9549,
+    "2026": 0.9793
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 231,
+     "ratio": 0.9388,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.455,
+     "L_p75_exc": 0.42,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 80,
+     "ratio": 0.9573,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.275,
+     "L_p75_exc": 0.35,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 165,
+     "ratio": 1.0083,
+     "p": 0.9075462268865567,
+     "B_p75_exc": 0.315,
+     "L_p75_exc": 0.242,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 181,
+     "ratio": 1.0439,
+     "p": 0.9855072463768116,
+     "B_p75_exc": 0.232,
+     "L_p75_exc": 0.331,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00085,
+    "min": 0.99715,
+    "max": 1.01084,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0397,
+    -0.0083,
+    0.0452
+   ],
+   "holm": false,
+   "repl_ratio": 0.9922,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "RVX",
+   "inst": "US2000",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "E_ewma_090",
+   "n": 1962,
+   "ratio": 0.99213,
+   "lo": 0.97848,
+   "hi": 1.00438,
+   "p": 0.11544227886056972,
+   "se_log": 0.00677,
+   "mde": 0.01895,
+   "halves": {
+    "2018-22": 1.0033169136192246,
+    "2023-26": 0.978013556830889
+   },
+   "B_p75_exc": 0.2941,
+   "L_p75_exc": 0.2875,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 1.0021,
+    "2020": 1.0061,
+    "2021": 0.9741,
+    "2022": 1.0235,
+    "2023": 0.9927,
+    "2024": 0.9679,
+    "2025": 0.967,
+    "2026": 0.9958
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 231,
+     "ratio": 0.8988,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.455,
+     "L_p75_exc": 0.333,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 80,
+     "ratio": 0.9702,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.275,
+     "L_p75_exc": 0.312,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 165,
+     "ratio": 1.0033,
+     "p": 0.7721139430284858,
+     "B_p75_exc": 0.315,
+     "L_p75_exc": 0.212,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 181,
+     "ratio": 1.0103,
+     "p": 0.9760119940029985,
+     "B_p75_exc": 0.232,
+     "L_p75_exc": 0.271,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00569,
+    "min": 0.99646,
+    "max": 1.01387,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0385,
+    -0.0139,
+    0.0277,
+    -0.0132
+   ],
+   "holm": false,
+   "repl_ratio": 0.99821,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "RVX",
+   "inst": "US2000",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "E_ewma_090",
+   "n": 1682,
+   "ratio": 0.97415,
+   "lo": 0.95232,
+   "hi": 0.99942,
+   "p": 0.02348825587206397,
+   "se_log": 0.0122,
+   "mde": 0.03415,
+   "halves": {
+    "2018-22": 0.9873566467146361,
+    "2023-26": 0.9611184286454684
+   },
+   "B_p75_exc": 0.3163,
+   "L_p75_exc": 0.3062,
+   "dates": [
+    "2020-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2020": 1.0012,
+    "2021": 0.9622,
+    "2022": 0.9911,
+    "2023": 0.9928,
+    "2024": 0.9714,
+    "2025": 0.9273,
+    "2026": 0.9623
+   }
+  },
+  {
+   "family": "A",
+   "index": "RVX",
+   "inst": "US2000",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "E_ewma_090",
+   "n": 1682,
+   "ratio": 0.97917,
+   "lo": 0.95979,
+   "hi": 1.00037,
+   "p": 0.02948525737131434,
+   "se_log": 0.01081,
+   "mde": 0.03028,
+   "halves": {
+    "2018-22": 0.9905392043825596,
+    "2023-26": 0.9679470531780453
+   },
+   "B_p75_exc": 0.3163,
+   "L_p75_exc": 0.3103,
+   "dates": [
+    "2020-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2020": 0.9856,
+    "2021": 0.9668,
+    "2022": 1.0169,
+    "2023": 0.9902,
+    "2024": 0.9648,
+    "2025": 0.9461,
+    "2026": 0.982
+   }
+  },
+  {
+   "family": "A",
+   "index": "RVX",
+   "inst": "US2000",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "E_ewma_090",
+   "n": 1656,
+   "ratio": 0.9922,
+   "lo": 0.9775,
+   "hi": 1.01142,
+   "p": 0.25087456271864067,
+   "se_log": 0.00882,
+   "mde": 0.02469,
+   "halves": {
+    "2018-22": 1.004677738218937,
+    "2023-26": 0.978092176548237
+   },
+   "B_p75_exc": 0.314,
+   "L_p75_exc": 0.3098,
+   "dates": [
+    "2020-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2020": 1.0149,
+    "2021": 0.9793,
+    "2022": 1.0075,
+    "2023": 1.0194,
+    "2024": 0.9637,
+    "2025": 0.9552,
+    "2026": 0.9762
+   }
+  },
+  {
+   "family": "A",
+   "index": "RVX",
+   "inst": "US2000",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "E_ewma_090",
+   "n": 1656,
+   "ratio": 0.99821,
+   "lo": 0.98361,
+   "hi": 1.01252,
+   "p": 0.42328835582208896,
+   "se_log": 0.00753,
+   "mde": 0.02108,
+   "halves": {
+    "2018-22": 1.0098885344769262,
+    "2023-26": 0.9850089220248975
+   },
+   "B_p75_exc": 0.314,
+   "L_p75_exc": 0.3158,
+   "dates": [
+    "2020-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2020": 1.0168,
+    "2021": 0.9762,
+    "2022": 1.0257,
+    "2023": 1.0001,
+    "2024": 0.9718,
+    "2025": 0.979,
+    "2026": 0.9984
+   }
+  },
+  {
+   "family": "A",
+   "index": "VXD",
+   "inst": "US30",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "E_har_rv_log",
+   "n": 1971,
+   "ratio": 0.961,
+   "lo": 0.91545,
+   "hi": 1.00169,
+   "p": 0.035982008995502246,
+   "se_log": 0.02417,
+   "mde": 0.06768,
+   "halves": {
+    "2018-22": 0.9546647492997797,
+    "2023-26": 0.9707472308335106
+   },
+   "B_p75_exc": 0.2562,
+   "L_p75_exc": 0.2572,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9558,
+    "2020": 0.8908,
+    "2021": 1.0018,
+    "2022": 1.0109,
+    "2023": 1.0127,
+    "2024": 1.0144,
+    "2025": 0.9027,
+    "2026": 0.9806
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 74,
+     "ratio": 0.9936,
+     "p": 0.9930034982508745,
+     "B_p75_exc": 0.297,
+     "L_p75_exc": 0.243,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 312,
+     "ratio": 0.9475,
+     "p": 0.2688655672163918,
+     "B_p75_exc": 0.212,
+     "L_p75_exc": 0.202,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 193,
+     "ratio": 0.7714,
+     "p": 0.08895552223888056,
+     "B_p75_exc": 0.42,
+     "L_p75_exc": 0.275,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 210,
+     "ratio": 1.0559,
+     "p": 1.0,
+     "B_p75_exc": 0.176,
+     "L_p75_exc": 0.324,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 0.99844,
+    "min": 0.99475,
+    "max": 1.01248,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    -0.0128,
+    -0.0052,
+    0.0945
+   ],
+   "holm": false,
+   "repl_ratio": 0.959,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXD",
+   "inst": "US30",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "E_har_rv_log",
+   "n": 1971,
+   "ratio": 0.97569,
+   "lo": 0.94603,
+   "hi": 1.00149,
+   "p": 0.03648175912043978,
+   "se_log": 0.01453,
+   "mde": 0.04067,
+   "halves": {
+    "2018-22": 0.9708434286553483,
+    "2023-26": 0.9831392803243354
+   },
+   "B_p75_exc": 0.2562,
+   "L_p75_exc": 0.2603,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9829,
+    "2020": 0.9384,
+    "2021": 0.9628,
+    "2022": 1.0127,
+    "2023": 1.0083,
+    "2024": 1.0188,
+    "2025": 0.9516,
+    "2026": 0.9595
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 74,
+     "ratio": 0.9904,
+     "p": 1.0,
+     "B_p75_exc": 0.297,
+     "L_p75_exc": 0.257,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 312,
+     "ratio": 0.9706,
+     "p": 0.26436781609195403,
+     "B_p75_exc": 0.212,
+     "L_p75_exc": 0.199,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 193,
+     "ratio": 0.861,
+     "p": 0.17841079460269865,
+     "B_p75_exc": 0.42,
+     "L_p75_exc": 0.207,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 210,
+     "ratio": 1.0051,
+     "p": 0.6481759120439781,
+     "B_p75_exc": 0.176,
+     "L_p75_exc": 0.267,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00015,
+    "min": 0.99233,
+    "max": 1.0075,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0042,
+    -0.001,
+    0.0809,
+    -0.0211
+   ],
+   "holm": false,
+   "repl_ratio": 0.97348,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXD",
+   "inst": "US30",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "E_har_rv_log",
+   "n": 1967,
+   "ratio": 0.98243,
+   "lo": 0.96834,
+   "hi": 1.0019,
+   "p": 0.03698150924537731,
+   "se_log": 0.00862,
+   "mde": 0.02414,
+   "halves": {
+    "2018-22": 0.9770377934041848,
+    "2023-26": 0.9920459233345383
+   },
+   "B_p75_exc": 0.2267,
+   "L_p75_exc": 0.2389,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 0.9441,
+    "2020": 0.9671,
+    "2021": 1.0261,
+    "2022": 0.9831,
+    "2023": 0.9791,
+    "2024": 1.0062,
+    "2025": 0.9862,
+    "2026": 0.9996
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 74,
+     "ratio": 0.9806,
+     "p": 0.008995502248875561,
+     "B_p75_exc": 0.446,
+     "L_p75_exc": 0.338,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 312,
+     "ratio": 0.9812,
+     "p": 0.2098950524737631,
+     "B_p75_exc": 0.147,
+     "L_p75_exc": 0.196,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 193,
+     "ratio": 0.9592,
+     "p": 0.41879060469765117,
+     "B_p75_exc": 0.244,
+     "L_p75_exc": 0.181,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 210,
+     "ratio": 1.0174,
+     "p": 0.6611694152923538,
+     "B_p75_exc": 0.181,
+     "L_p75_exc": 0.276,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00277,
+    "min": 0.99888,
+    "max": 1.02629,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0456,
+    0.0013,
+    0.0495
+   ],
+   "holm": false,
+   "repl_ratio": 0.99763,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXD",
+   "inst": "US30",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "E_har_rv_log",
+   "n": 1967,
+   "ratio": 0.98993,
+   "lo": 0.97743,
+   "hi": 1.00602,
+   "p": 0.10494752623688156,
+   "se_log": 0.00721,
+   "mde": 0.02018,
+   "halves": {
+    "2018-22": 0.9846314477895819,
+    "2023-26": 0.9993935915288547
+   },
+   "B_p75_exc": 0.2267,
+   "L_p75_exc": 0.2405,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 0.9773,
+    "2020": 0.9742,
+    "2021": 1.002,
+    "2022": 0.9964,
+    "2023": 0.9909,
+    "2024": 1.0143,
+    "2025": 0.9921,
+    "2026": 1.002
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 74,
+     "ratio": 0.9742,
+     "p": 0.0704647676161919,
+     "B_p75_exc": 0.446,
+     "L_p75_exc": 0.297,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 312,
+     "ratio": 0.9712,
+     "p": 0.026486756621689155,
+     "B_p75_exc": 0.147,
+     "L_p75_exc": 0.237,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 193,
+     "ratio": 1.0028,
+     "p": 0.7416291854072964,
+     "B_p75_exc": 0.244,
+     "L_p75_exc": 0.145,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 210,
+     "ratio": 0.9821,
+     "p": 0.1794102948525737,
+     "B_p75_exc": 0.181,
+     "L_p75_exc": 0.276,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00223,
+    "min": 0.99872,
+    "max": 1.00712,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0458,
+    -0.0246,
+    0.0474,
+    -0.0223
+   ],
+   "holm": false,
+   "repl_ratio": 0.99563,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "VXD",
+   "inst": "US30",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "E_har_rv_log",
+   "n": 2192,
+   "ratio": 0.959,
+   "lo": 0.92195,
+   "hi": 0.99553,
+   "p": 0.010994502748625687,
+   "se_log": 0.02002,
+   "mde": 0.05607,
+   "halves": {
+    "2018-22": 0.9527391206118915,
+    "2023-26": 0.9716437958035682
+   },
+   "B_p75_exc": 0.2555,
+   "L_p75_exc": 0.2559,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.9385,
+    "2019": 0.952,
+    "2020": 0.8966,
+    "2021": 0.9955,
+    "2022": 1.0179,
+    "2023": 1.0168,
+    "2024": 1.0182,
+    "2025": 0.8997,
+    "2026": 0.979
+   }
+  },
+  {
+   "family": "A",
+   "index": "VXD",
+   "inst": "US30",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "E_har_rv_log",
+   "n": 2192,
+   "ratio": 0.97348,
+   "lo": 0.94955,
+   "hi": 0.99657,
+   "p": 0.010494752623688156,
+   "se_log": 0.01236,
+   "mde": 0.0346,
+   "halves": {
+    "2018-22": 0.9680902480871998,
+    "2023-26": 0.9843609227736628
+   },
+   "B_p75_exc": 0.2555,
+   "L_p75_exc": 0.2555,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.9576,
+    "2019": 0.9722,
+    "2020": 0.9392,
+    "2021": 0.9666,
+    "2022": 1.0176,
+    "2023": 1.0053,
+    "2024": 1.0179,
+    "2025": 0.9541,
+    "2026": 0.9661
+   }
+  },
+  {
+   "family": "A",
+   "index": "VXD",
+   "inst": "US30",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "E_har_rv_log",
+   "n": 2158,
+   "ratio": 0.99763,
+   "lo": 0.97856,
+   "hi": 1.01549,
+   "p": 0.344327836081959,
+   "se_log": 0.00931,
+   "mde": 0.02607,
+   "halves": {
+    "2018-22": 1.0000883072762852,
+    "2023-26": 0.9918620662948947
+   },
+   "B_p75_exc": 0.2678,
+   "L_p75_exc": 0.2831,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 1.0568,
+    "2019": 0.9512,
+    "2020": 0.978,
+    "2021": 1.0287,
+    "2022": 0.989,
+    "2023": 0.9894,
+    "2024": 1.0008,
+    "2025": 0.9836,
+    "2026": 0.9971
+   }
+  },
+  {
+   "family": "A",
+   "index": "VXD",
+   "inst": "US30",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "E_har_rv_log",
+   "n": 2158,
+   "ratio": 0.99563,
+   "lo": 0.98166,
+   "hi": 1.01118,
+   "p": 0.30184907546226886,
+   "se_log": 0.00764,
+   "mde": 0.0214,
+   "halves": {
+    "2018-22": 0.9924431205863008,
+    "2023-26": 1.0031068931675895
+   },
+   "B_p75_exc": 0.2678,
+   "L_p75_exc": 0.2845,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 1.0253,
+    "2019": 0.9672,
+    "2020": 0.9714,
+    "2021": 1.0114,
+    "2022": 0.9978,
+    "2023": 1.0041,
+    "2024": 1.0113,
+    "2025": 0.9958,
+    "2026": 1.0026
+   }
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "SPX500",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "G_garch_t",
+   "n": 1964,
+   "ratio": 0.99034,
+   "lo": 0.97683,
+   "hi": 1.00418,
+   "p": 0.09395302348825588,
+   "se_log": 0.00715,
+   "mde": 0.02003,
+   "halves": {
+    "2018-22": 0.9794650969377465,
+    "2023-26": 1.0057384933468119
+   },
+   "B_p75_exc": 0.2622,
+   "L_p75_exc": 0.2862,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9968,
+    "2020": 0.9692,
+    "2021": 0.9668,
+    "2022": 0.9875,
+    "2023": 1.0018,
+    "2024": 1.0096,
+    "2025": 0.9966,
+    "2026": 1.0242
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 495,
+     "ratio": 0.9821,
+     "p": 0.24387806096951525,
+     "B_p75_exc": 0.204,
+     "L_p75_exc": 0.289,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 189,
+     "ratio": 0.9583,
+     "p": 0.02498750624687656,
+     "B_p75_exc": 0.317,
+     "L_p75_exc": 0.243,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 200,
+     "ratio": 0.9833,
+     "p": 0.344327836081959,
+     "B_p75_exc": 0.175,
+     "L_p75_exc": 0.285,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 179,
+     "ratio": 0.9441,
+     "p": 0.0009995002498750624,
+     "B_p75_exc": 0.358,
+     "L_p75_exc": 0.318,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00493,
+    "min": 0.99747,
+    "max": 1.01435,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    -0.052,
+    -0.0091,
+    -0.0281
+   ],
+   "holm": false,
+   "repl_ratio": 0.98976,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "SPX500",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "G_garch_t",
+   "n": 1964,
+   "ratio": 0.99399,
+   "lo": 0.98003,
+   "hi": 1.00526,
+   "p": 0.1469265367316342,
+   "se_log": 0.00646,
+   "mde": 0.01808,
+   "halves": {
+    "2018-22": 0.9869554045020733,
+    "2023-26": 1.0039324565207997
+   },
+   "B_p75_exc": 0.2622,
+   "L_p75_exc": 0.2724,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 1.0058,
+    "2020": 0.9676,
+    "2021": 0.9817,
+    "2022": 0.9992,
+    "2023": 1.0072,
+    "2024": 1.0028,
+    "2025": 0.9949,
+    "2026": 1.0199
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 495,
+     "ratio": 0.9933,
+     "p": 0.4572713643178411,
+     "B_p75_exc": 0.204,
+     "L_p75_exc": 0.281,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 189,
+     "ratio": 0.9579,
+     "p": 0.09195402298850575,
+     "B_p75_exc": 0.317,
+     "L_p75_exc": 0.222,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 200,
+     "ratio": 0.9761,
+     "p": 0.10194902548725637,
+     "B_p75_exc": 0.175,
+     "L_p75_exc": 0.235,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 179,
+     "ratio": 0.939,
+     "p": 0.05747126436781609,
+     "B_p75_exc": 0.358,
+     "L_p75_exc": 0.324,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00382,
+    "min": 0.99822,
+    "max": 1.01876,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    -0.0316,
+    0.031,
+    -0.0062,
+    0.0209
+   ],
+   "holm": false,
+   "repl_ratio": 0.99112,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "SPX500",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "G_garch_t",
+   "n": 1957,
+   "ratio": 0.99974,
+   "lo": 0.98553,
+   "hi": 1.01475,
+   "p": 0.43278360819590206,
+   "se_log": 0.00749,
+   "mde": 0.02097,
+   "halves": {
+    "2018-22": 0.9972523308451348,
+    "2023-26": 1.003842289017469
+   },
+   "B_p75_exc": 0.2601,
+   "L_p75_exc": 0.2718,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 1.0439,
+    "2020": 0.9951,
+    "2021": 0.9876,
+    "2022": 0.9824,
+    "2023": 0.9892,
+    "2024": 0.9941,
+    "2025": 1.0201,
+    "2026": 1.0035
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 503,
+     "ratio": 1.0061,
+     "p": 0.7041479260369815,
+     "B_p75_exc": 0.237,
+     "L_p75_exc": 0.298,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 188,
+     "ratio": 1.0302,
+     "p": 0.9105447276361819,
+     "B_p75_exc": 0.239,
+     "L_p75_exc": 0.17,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 210,
+     "ratio": 0.9952,
+     "p": 0.02148925537231384,
+     "B_p75_exc": 0.214,
+     "L_p75_exc": 0.267,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 179,
+     "ratio": 0.9987,
+     "p": 0.3098450774612694,
+     "B_p75_exc": 0.307,
+     "L_p75_exc": 0.313,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.0087,
+    "min": 1.00087,
+    "max": 1.01668,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    -0.0388,
+    -0.0003,
+    -0.0032
+   ],
+   "holm": false,
+   "repl_ratio": 0.99762,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "SPX500",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "G_garch_t",
+   "n": 1957,
+   "ratio": 1.019,
+   "lo": 1.0029,
+   "hi": 1.03593,
+   "p": 0.9910044977511244,
+   "se_log": 0.00826,
+   "mde": 0.02314,
+   "halves": {
+    "2018-22": 1.0237336682686236,
+    "2023-26": 1.0111983339782957
+   },
+   "B_p75_exc": 0.2601,
+   "L_p75_exc": 0.2683,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 1.1199,
+    "2020": 1.0061,
+    "2021": 0.9974,
+    "2022": 1.0128,
+    "2023": 1.0105,
+    "2024": 1.0055,
+    "2025": 1.0198,
+    "2026": 1.0019
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 503,
+     "ratio": 1.0211,
+     "p": 0.9265367316341829,
+     "B_p75_exc": 0.237,
+     "L_p75_exc": 0.306,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 188,
+     "ratio": 1.1345,
+     "p": 0.9930034982508745,
+     "B_p75_exc": 0.239,
+     "L_p75_exc": 0.138,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 210,
+     "ratio": 1.0076,
+     "p": 0.2653673163418291,
+     "B_p75_exc": 0.214,
+     "L_p75_exc": 0.243,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 179,
+     "ratio": 1.019,
+     "p": 0.7811094452773614,
+     "B_p75_exc": 0.307,
+     "L_p75_exc": 0.291,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00667,
+    "min": 0.99858,
+    "max": 1.02003,
+    "n_below_real": 19,
+    "n": 20
+   },
+   "beta": [
+    -0.0235,
+    0.0346,
+    0.008,
+    -0.0007
+   ],
+   "holm": false,
+   "repl_ratio": 1.00609,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": false,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "SPX500",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "B_har_garcht",
+   "n": 2197,
+   "ratio": 0.98976,
+   "lo": 0.98071,
+   "hi": 0.9992,
+   "p": 0.01899050474762619,
+   "se_log": 0.0048,
+   "mde": 0.01344,
+   "halves": {
+    "2018-22": 0.9813677906252116,
+    "2023-26": 1.0050776480312853
+   },
+   "B_p75_exc": 0.2676,
+   "L_p75_exc": 0.2813,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.9762,
+    "2019": 0.9925,
+    "2020": 0.9754,
+    "2021": 0.9787,
+    "2022": 0.987,
+    "2023": 1.0046,
+    "2024": 1.0104,
+    "2025": 0.9956,
+    "2026": 1.0173
+   }
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "SPX500",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "B_har_garcht",
+   "n": 2197,
+   "ratio": 0.99112,
+   "lo": 0.98109,
+   "hi": 1.0019,
+   "p": 0.062468765617191405,
+   "se_log": 0.00538,
+   "mde": 0.01507,
+   "halves": {
+    "2018-22": 0.9832187520649284,
+    "2023-26": 1.0055598859643358
+   },
+   "B_p75_exc": 0.2676,
+   "L_p75_exc": 0.2781,
+   "dates": [
+    "2018-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2018": 0.9654,
+    "2019": 1.0012,
+    "2020": 0.971,
+    "2021": 0.989,
+    "2022": 0.9965,
+    "2023": 1.0066,
+    "2024": 1.0075,
+    "2025": 0.9982,
+    "2026": 1.0162
+   }
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "SPX500",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "VIX",
+   "bench_arm": "B_har_garcht",
+   "n": 2165,
+   "ratio": 0.99762,
+   "lo": 0.99034,
+   "hi": 1.00643,
+   "p": 0.28285857071464265,
+   "se_log": 0.00405,
+   "mde": 0.01133,
+   "halves": {
+    "2018-22": 0.9955355426668898,
+    "2023-26": 1.0020019660417279
+   },
+   "B_p75_exc": 0.2887,
+   "L_p75_exc": 0.2993,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 1.0005,
+    "2019": 1.0111,
+    "2020": 0.9946,
+    "2021": 0.9933,
+    "2022": 0.9861,
+    "2023": 0.9982,
+    "2024": 0.9987,
+    "2025": 1.0059,
+    "2026": 1.0039
+   }
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "SPX500",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "VIX",
+   "bench_arm": "B_har_garcht",
+   "n": 2165,
+   "ratio": 1.00609,
+   "lo": 0.99284,
+   "hi": 1.01905,
+   "p": 0.847576211894053,
+   "se_log": 0.00659,
+   "mde": 0.01844,
+   "halves": {
+    "2018-22": 1.007164303964911,
+    "2023-26": 1.0038321336257077
+   },
+   "B_p75_exc": 0.2887,
+   "L_p75_exc": 0.2882,
+   "dates": [
+    "2018-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2018": 0.9668,
+    "2019": 1.0713,
+    "2020": 1.0097,
+    "2021": 0.9957,
+    "2022": 1.0113,
+    "2023": 1.0011,
+    "2024": 0.9993,
+    "2025": 1.0092,
+    "2026": 1.0027
+   }
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1971,
+   "ratio": 0.99542,
+   "lo": 0.98832,
+   "hi": 1.00101,
+   "p": 0.053973013493253376,
+   "se_log": 0.00322,
+   "mde": 0.00901,
+   "halves": {
+    "2018-22": 0.9920984020007233,
+    "2023-26": 0.9998226186962719
+   },
+   "B_p75_exc": 0.2532,
+   "L_p75_exc": 0.2633,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9976,
+    "2020": 0.9858,
+    "2021": 0.9905,
+    "2022": 0.9965,
+    "2023": 0.9936,
+    "2024": 1.006,
+    "2025": 0.9899,
+    "2026": 1.0162
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 487,
+     "ratio": 0.9927,
+     "p": 0.21889055472263869,
+     "B_p75_exc": 0.218,
+     "L_p75_exc": 0.261,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 215,
+     "ratio": 0.9811,
+     "p": 0.008995502248875561,
+     "B_p75_exc": 0.302,
+     "L_p75_exc": 0.26,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 187,
+     "ratio": 0.981,
+     "p": 0.022488755622188907,
+     "B_p75_exc": 0.171,
+     "L_p75_exc": 0.23,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 182,
+     "ratio": 0.9791,
+     "p": 0.0024987506246876563,
+     "B_p75_exc": 0.324,
+     "L_p75_exc": 0.319,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00282,
+    "min": 0.99919,
+    "max": 1.00974,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    -0.0279,
+    -0.0067,
+    -0.0177
+   ],
+   "holm": false,
+   "repl_ratio": 0.99568,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1971,
+   "ratio": 0.99643,
+   "lo": 0.98727,
+   "hi": 1.00346,
+   "p": 0.1664167916041979,
+   "se_log": 0.00411,
+   "mde": 0.01151,
+   "halves": {
+    "2018-22": 0.9915201928037081,
+    "2023-26": 1.002918196583219
+   },
+   "B_p75_exc": 0.2532,
+   "L_p75_exc": 0.2593,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9974,
+    "2020": 0.9766,
+    "2021": 0.9922,
+    "2022": 1.0031,
+    "2023": 1.0037,
+    "2024": 1.0019,
+    "2025": 0.993,
+    "2026": 1.0214
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 487,
+     "ratio": 1.0011,
+     "p": 0.5172413793103449,
+     "B_p75_exc": 0.218,
+     "L_p75_exc": 0.251,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 215,
+     "ratio": 0.974,
+     "p": 0.053973013493253376,
+     "B_p75_exc": 0.302,
+     "L_p75_exc": 0.247,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 187,
+     "ratio": 0.9903,
+     "p": 0.0024987506246876563,
+     "B_p75_exc": 0.171,
+     "L_p75_exc": 0.187,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 182,
+     "ratio": 0.9495,
+     "p": 0.00399800099950025,
+     "B_p75_exc": 0.324,
+     "L_p75_exc": 0.28,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00299,
+    "min": 0.9958,
+    "max": 1.00864,
+    "n_below_real": 1,
+    "n": 20
+   },
+   "beta": [
+    -0.0115,
+    0.0252,
+    0.0059,
+    0.0257
+   ],
+   "holm": false,
+   "repl_ratio": 0.99684,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1967,
+   "ratio": 1.00248,
+   "lo": 0.99721,
+   "hi": 1.0076,
+   "p": 0.7971014492753623,
+   "se_log": 0.0026,
+   "mde": 0.00728,
+   "halves": {
+    "2018-22": 1.0032696629800806,
+    "2023-26": 1.0014528522219381
+   },
+   "B_p75_exc": 0.242,
+   "L_p75_exc": 0.2471,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 1.0178,
+    "2020": 0.9993,
+    "2021": 1.008,
+    "2022": 0.9969,
+    "2023": 0.9975,
+    "2024": 1.0041,
+    "2025": 1.0019,
+    "2026": 1.0021
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 490,
+     "ratio": 1.0081,
+     "p": 0.8940529735132434,
+     "B_p75_exc": 0.239,
+     "L_p75_exc": 0.263,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 216,
+     "ratio": 1.0077,
+     "p": 0.8855572213893054,
+     "B_p75_exc": 0.213,
+     "L_p75_exc": 0.181,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 186,
+     "ratio": 1.0065,
+     "p": 0.3408295852073963,
+     "B_p75_exc": 0.194,
+     "L_p75_exc": 0.231,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 183,
+     "ratio": 1.0013,
+     "p": 0.09295352323838081,
+     "B_p75_exc": 0.246,
+     "L_p75_exc": 0.246,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00462,
+    "min": 0.99905,
+    "max": 1.01265,
+    "n_below_real": 4,
+    "n": 20
+   },
+   "beta": [
+    -0.0094,
+    -0.0078,
+    0.001
+   ],
+   "holm": false,
+   "repl_ratio": 1.0029,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": false,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1967,
+   "ratio": 1.01729,
+   "lo": 1.00526,
+   "hi": 1.03078,
+   "p": 0.9985007496251874,
+   "se_log": 0.00631,
+   "mde": 0.01766,
+   "halves": {
+    "2018-22": 1.0261459119335203,
+    "2023-26": 1.0056605890871044
+   },
+   "B_p75_exc": 0.242,
+   "L_p75_exc": 0.2415,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 1.0757,
+    "2020": 1.0131,
+    "2021": 1.041,
+    "2022": 1.0047,
+    "2023": 1.0021,
+    "2024": 1.0082,
+    "2025": 1.01,
+    "2026": 0.9981
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 490,
+     "ratio": 1.041,
+     "p": 0.9995002498750625,
+     "B_p75_exc": 0.239,
+     "L_p75_exc": 0.243,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 216,
+     "ratio": 1.0747,
+     "p": 0.999000499750125,
+     "B_p75_exc": 0.213,
+     "L_p75_exc": 0.153,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 186,
+     "ratio": 1.014,
+     "p": 0.5697151424287856,
+     "B_p75_exc": 0.194,
+     "L_p75_exc": 0.215,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 183,
+     "ratio": 1.0033,
+     "p": 0.8300849575212393,
+     "B_p75_exc": 0.246,
+     "L_p75_exc": 0.251,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00631,
+    "min": 0.99899,
+    "max": 1.01395,
+    "n_below_real": 20,
+    "n": 20
+   },
+   "beta": [
+    0.0016,
+    0.0172,
+    0.004,
+    -0.0021
+   ],
+   "holm": false,
+   "repl_ratio": 1.01972,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": false,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "NQ",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1946,
+   "ratio": 0.99568,
+   "lo": 0.98634,
+   "hi": 1.00347,
+   "p": 0.14342828585707146,
+   "se_log": 0.00438,
+   "mde": 0.01228,
+   "halves": {
+    "2018-22": 0.9901087421921574,
+    "2023-26": 1.0032917118917528
+   },
+   "B_p75_exc": 0.2503,
+   "L_p75_exc": 0.2631,
+   "dates": [
+    "2019-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2019": 1.0004,
+    "2020": 0.982,
+    "2021": 0.9886,
+    "2022": 0.9938,
+    "2023": 0.9942,
+    "2024": 1.0164,
+    "2025": 0.9934,
+    "2026": 1.0135
+   }
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "NQ",
+   "track": "F",
+   "role": "replication",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1946,
+   "ratio": 0.99684,
+   "lo": 0.98697,
+   "hi": 1.00576,
+   "p": 0.2353823088455772,
+   "se_log": 0.00476,
+   "mde": 0.01333,
+   "halves": {
+    "2018-22": 0.9893786888127796,
+    "2023-26": 1.007021798180441
+   },
+   "B_p75_exc": 0.2503,
+   "L_p75_exc": 0.258,
+   "dates": [
+    "2019-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2019": 0.9986,
+    "2020": 0.9739,
+    "2021": 0.9895,
+    "2022": 1.0002,
+    "2023": 1.0078,
+    "2024": 1.0101,
+    "2025": 0.998,
+    "2026": 1.0179
+   }
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "NQ",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1922,
+   "ratio": 1.0029,
+   "lo": 0.99627,
+   "hi": 1.00887,
+   "p": 0.7351324337831084,
+   "se_log": 0.00322,
+   "mde": 0.00901,
+   "halves": {
+    "2018-22": 1.0032170661060666,
+    "2023-26": 1.0024778710332423
+   },
+   "B_p75_exc": 0.2534,
+   "L_p75_exc": 0.256,
+   "dates": [
+    "2019-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2019": 1.0348,
+    "2020": 0.9982,
+    "2021": 1.0026,
+    "2022": 0.9918,
+    "2023": 0.996,
+    "2024": 1.0122,
+    "2025": 0.9998,
+    "2026": 1.0023
+   }
+  },
+  {
+   "family": "A",
+   "index": "SKEW",
+   "inst": "NQ",
+   "track": "F",
+   "role": "replication",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1922,
+   "ratio": 1.01972,
+   "lo": 1.00648,
+   "hi": 1.03236,
+   "p": 1.0,
+   "se_log": 0.00659,
+   "mde": 0.01846,
+   "halves": {
+    "2018-22": 1.02870272703682,
+    "2023-26": 1.0079895267640666
+   },
+   "B_p75_exc": 0.2534,
+   "L_p75_exc": 0.256,
+   "dates": [
+    "2019-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2019": 1.0914,
+    "2020": 1.0181,
+    "2021": 1.0336,
+    "2022": 1.0033,
+    "2023": 1.0017,
+    "2024": 1.0153,
+    "2025": 1.0111,
+    "2026": 0.9997
+   }
+  },
+  {
+   "family": "B",
+   "index": "VXEEM",
+   "inst": "AUDUSD",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "SETTLE:aud_usd",
+   "bench_arm": "R15",
+   "n": 943,
+   "ratio": 0.99488,
+   "lo": 0.98754,
+   "hi": 1.00284,
+   "p": 0.14792603698150925,
+   "se_log": 0.00401,
+   "mde": 0.01124,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 0.9948775843281513
+   },
+   "B_p75_exc": 0.2174,
+   "L_p75_exc": 0.2174,
+   "dates": [
+    "2023-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2023": 1.0049,
+    "2024": 1.0006,
+    "2025": 0.9868,
+    "2026": 0.9816
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 146,
+     "ratio": 0.9827,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.219,
+     "L_p75_exc": 0.24,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 215,
+     "ratio": 1.0046,
+     "p": 0.656671664167916,
+     "B_p75_exc": 0.223,
+     "L_p75_exc": 0.209,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 84,
+     "ratio": 0.9835,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.286,
+     "L_p75_exc": 0.274,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 80,
+     "ratio": 0.9698,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.113,
+     "L_p75_exc": 0.125,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00141,
+    "min": 0.99631,
+    "max": 1.00909,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    -0.0079,
+    -0.0018,
+    0.0212
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "B",
+   "index": "VXEEM",
+   "inst": "AUDUSD",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "SETTLE:aud_usd",
+   "bench_arm": "R15",
+   "n": 943,
+   "ratio": 1.0044,
+   "lo": 0.99506,
+   "hi": 1.01315,
+   "p": 0.7896051974012993,
+   "se_log": 0.00453,
+   "mde": 0.0127,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 1.0044048315885732
+   },
+   "B_p75_exc": 0.2174,
+   "L_p75_exc": 0.2142,
+   "dates": [
+    "2023-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2023": 1.0103,
+    "2024": 1.0004,
+    "2025": 0.9967,
+    "2026": 1.0135
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 146,
+     "ratio": 1.0294,
+     "p": 0.992503748125937,
+     "B_p75_exc": 0.219,
+     "L_p75_exc": 0.178,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 215,
+     "ratio": 1.0149,
+     "p": 0.775112443778111,
+     "B_p75_exc": 0.223,
+     "L_p75_exc": 0.205,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 84,
+     "ratio": 1.0155,
+     "p": 0.9955022488755623,
+     "B_p75_exc": 0.286,
+     "L_p75_exc": 0.25,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 80,
+     "ratio": 0.9425,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.113,
+     "L_p75_exc": 0.188,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00071,
+    "min": 0.9901,
+    "max": 1.01004,
+    "n_below_real": 17,
+    "n": 20
+   },
+   "beta": [
+    0.0248,
+    0.0039,
+    0.008,
+    -0.0285
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "B",
+   "index": "VXEEM",
+   "inst": "AUDUSD",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "SETTLE:aud_usd",
+   "bench_arm": "R15",
+   "n": 939,
+   "ratio": 1.00018,
+   "lo": 0.98768,
+   "hi": 1.01067,
+   "p": 0.39080459770114945,
+   "se_log": 0.006,
+   "mde": 0.0168,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 1.0001840458881541
+   },
+   "B_p75_exc": 0.2236,
+   "L_p75_exc": 0.2311,
+   "dates": [
+    "2023-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2023": 0.9975,
+    "2024": 1.01,
+    "2025": 0.9865,
+    "2026": 1.0154
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 141,
+     "ratio": 1.0364,
+     "p": 0.928535732133933,
+     "B_p75_exc": 0.227,
+     "L_p75_exc": 0.184,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 214,
+     "ratio": 0.9949,
+     "p": 0.3193403298350825,
+     "B_p75_exc": 0.243,
+     "L_p75_exc": 0.276,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 84,
+     "ratio": 0.9971,
+     "p": 0.23938030984507747,
+     "B_p75_exc": 0.238,
+     "L_p75_exc": 0.214,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 79,
+     "ratio": 0.9903,
+     "p": 0.012993503248375811,
+     "B_p75_exc": 0.203,
+     "L_p75_exc": 0.241,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00341,
+    "min": 0.99567,
+    "max": 1.02223,
+    "n_below_real": 7,
+    "n": 20
+   },
+   "beta": [
+    0.0112,
+    -0.0158,
+    0.0213
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXEEM",
+   "inst": "AUDUSD",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "SETTLE:aud_usd",
+   "bench_arm": "R15",
+   "n": 939,
+   "ratio": 1.0086,
+   "lo": 0.99409,
+   "hi": 1.01926,
+   "p": 0.8420789605197402,
+   "se_log": 0.00626,
+   "mde": 0.01752,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 1.0085971108819072
+   },
+   "B_p75_exc": 0.2236,
+   "L_p75_exc": 0.2183,
+   "dates": [
+    "2023-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2023": 1.0045,
+    "2024": 1.0089,
+    "2025": 0.9964,
+    "2026": 1.0366
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 141,
+     "ratio": 1.0739,
+     "p": 1.0,
+     "B_p75_exc": 0.227,
+     "L_p75_exc": 0.121,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 214,
+     "ratio": 0.9988,
+     "p": 0.6596701649175413,
+     "B_p75_exc": 0.243,
+     "L_p75_exc": 0.271,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 84,
+     "ratio": 1.0294,
+     "p": 1.0,
+     "B_p75_exc": 0.238,
+     "L_p75_exc": 0.214,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 79,
+     "ratio": 0.9849,
+     "p": 0.13193403298350825,
+     "B_p75_exc": 0.203,
+     "L_p75_exc": 0.278,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00309,
+    "min": 0.99585,
+    "max": 1.02671,
+    "n_below_real": 14,
+    "n": 20
+   },
+   "beta": [
+    0.0273,
+    -0.0128,
+    -0.0057,
+    -0.0256
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXFXI",
+   "inst": "AUDUSD",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "SETTLE:aud_usd",
+   "bench_arm": "R15",
+   "n": 943,
+   "ratio": 0.99667,
+   "lo": 0.99303,
+   "hi": 1.00032,
+   "p": 0.0399800099950025,
+   "se_log": 0.00187,
+   "mde": 0.00522,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 0.9966700927485712
+   },
+   "B_p75_exc": 0.2174,
+   "L_p75_exc": 0.2248,
+   "dates": [
+    "2023-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2023": 1.0004,
+    "2024": 1.0004,
+    "2025": 0.991,
+    "2026": 0.9939
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 240,
+     "ratio": 1.0022,
+     "p": 0.999000499750125,
+     "B_p75_exc": 0.242,
+     "L_p75_exc": 0.246,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 16
+    },
+    "d5_hi": {
+     "n": 219,
+     "ratio": 0.9957,
+     "p": 0.001999000499750125,
+     "B_p75_exc": 0.228,
+     "L_p75_exc": 0.242,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 59,
+     "ratio": 0.9565,
+     "p": null,
+     "B_p75_exc": 0.136,
+     "L_p75_exc": 0.169
+    }
+   },
+   "placebo": {
+    "median": 1.00146,
+    "min": 0.99449,
+    "max": 1.04447,
+    "n_below_real": 3,
+    "n": 20
+   },
+   "beta": [
+    -0.009,
+    -0.0293,
+    0.0448
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "B",
+   "index": "VXFXI",
+   "inst": "AUDUSD",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "SETTLE:aud_usd",
+   "bench_arm": "R15",
+   "n": 943,
+   "ratio": 1.00278,
+   "lo": 0.99644,
+   "hi": 1.01275,
+   "p": 0.8125937031484258,
+   "se_log": 0.00417,
+   "mde": 0.01169,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 1.002776972513587
+   },
+   "B_p75_exc": 0.2174,
+   "L_p75_exc": 0.2078,
+   "dates": [
+    "2023-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2023": 0.999,
+    "2024": 1.0196,
+    "2025": 0.9957,
+    "2026": 0.9953
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 240,
+     "ratio": 1.0276,
+     "p": 1.0,
+     "B_p75_exc": 0.242,
+     "L_p75_exc": 0.188,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 16
+    },
+    "d5_hi": {
+     "n": 219,
+     "ratio": 1.0007,
+     "p": 0.2893553223388306,
+     "B_p75_exc": 0.228,
+     "L_p75_exc": 0.228,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 59,
+     "ratio": 0.9464,
+     "p": null,
+     "B_p75_exc": 0.136,
+     "L_p75_exc": 0.169
+    }
+   },
+   "placebo": {
+    "median": 1.00464,
+    "min": 0.99567,
+    "max": 1.0275,
+    "n_below_real": 9,
+    "n": 20
+   },
+   "beta": [
+    0.0039,
+    0.0265,
+    0.0082,
+    -0.0308
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "B",
+   "index": "VXFXI",
+   "inst": "AUDUSD",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "SETTLE:aud_usd",
+   "bench_arm": "R15",
+   "n": 939,
+   "ratio": 1.00405,
+   "lo": 0.99448,
+   "hi": 1.01615,
+   "p": 0.8180909545227386,
+   "se_log": 0.00538,
+   "mde": 0.01508,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 1.0040476587020608
+   },
+   "B_p75_exc": 0.2236,
+   "L_p75_exc": 0.2066,
+   "dates": [
+    "2023-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2023": 0.9879,
+    "2024": 1.0257,
+    "2025": 1.0056,
+    "2026": 0.9952
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 238,
+     "ratio": 1.0145,
+     "p": 0.841079460269865,
+     "B_p75_exc": 0.218,
+     "L_p75_exc": 0.181,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 15
+    },
+    "d5_hi": {
+     "n": 219,
+     "ratio": 1.0062,
+     "p": 0.9995002498750625,
+     "B_p75_exc": 0.196,
+     "L_p75_exc": 0.192,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 59,
+     "ratio": 0.9871,
+     "p": null,
+     "B_p75_exc": 0.203,
+     "L_p75_exc": 0.203
+    }
+   },
+   "placebo": {
+    "median": 1.00584,
+    "min": 0.99174,
+    "max": 1.0198,
+    "n_below_real": 8,
+    "n": 20
+   },
+   "beta": [
+    0.0166,
+    -0.0085,
+    0.0245
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXFXI",
+   "inst": "AUDUSD",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "SETTLE:aud_usd",
+   "bench_arm": "R15",
+   "n": 939,
+   "ratio": 1.01135,
+   "lo": 1.00088,
+   "hi": 1.02871,
+   "p": 0.9820089955022488,
+   "se_log": 0.00696,
+   "mde": 0.01949,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 1.0113541849487349
+   },
+   "B_p75_exc": 0.2236,
+   "L_p75_exc": 0.2055,
+   "dates": [
+    "2023-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2023": 0.9933,
+    "2024": 1.0395,
+    "2025": 1.0107,
+    "2026": 1.0005
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 238,
+     "ratio": 1.0369,
+     "p": 0.9795102448775612,
+     "B_p75_exc": 0.218,
+     "L_p75_exc": 0.164,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 15
+    },
+    "d5_hi": {
+     "n": 219,
+     "ratio": 1.006,
+     "p": 0.9870064967516242,
+     "B_p75_exc": 0.196,
+     "L_p75_exc": 0.201,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 59,
+     "ratio": 1.0349,
+     "p": null,
+     "B_p75_exc": 0.203,
+     "L_p75_exc": 0.237
+    }
+   },
+   "placebo": {
+    "median": 1.0061,
+    "min": 0.99499,
+    "max": 1.03587,
+    "n_below_real": 14,
+    "n": 20
+   },
+   "beta": [
+    0.007,
+    0.0063,
+    -0.0034,
+    -0.035
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXGDX",
+   "inst": "GOLD",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "GVZ",
+   "bench_arm": "HARCJ",
+   "n": 1971,
+   "ratio": 0.99345,
+   "lo": 0.98529,
+   "hi": 1.00075,
+   "p": 0.03798100949525238,
+   "se_log": 0.00403,
+   "mde": 0.01127,
+   "halves": {
+    "2018-22": 1.0002223885864987,
+    "2023-26": 0.9870059506940828
+   },
+   "B_p75_exc": 0.2664,
+   "L_p75_exc": 0.2542,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9923,
+    "2020": 0.9963,
+    "2021": 1.0036,
+    "2022": 1.0093,
+    "2023": 0.9973,
+    "2024": 0.9969,
+    "2025": 0.9837,
+    "2026": 0.9771
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 177,
+     "ratio": 1.0006,
+     "p": 0.015992003998001,
+     "B_p75_exc": 0.249,
+     "L_p75_exc": 0.249,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 367,
+     "ratio": 0.9783,
+     "p": 0.01249375312343828,
+     "B_p75_exc": 0.319,
+     "L_p75_exc": 0.297,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 812,
+     "ratio": 0.9833,
+     "p": 0.03398300849575212,
+     "B_p75_exc": 0.296,
+     "L_p75_exc": 0.284,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 136,
+     "ratio": 0.9944,
+     "p": 0.19440279860069964,
+     "B_p75_exc": 0.169,
+     "L_p75_exc": 0.184,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00037,
+    "min": 0.99595,
+    "max": 1.02777,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    -0.0121,
+    0.0002,
+    0.0198
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "B",
+   "index": "VXGDX",
+   "inst": "GOLD",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "GVZ",
+   "bench_arm": "HARCJ",
+   "n": 1971,
+   "ratio": 0.99282,
+   "lo": 0.98712,
+   "hi": 0.99927,
+   "p": 0.011494252873563218,
+   "se_log": 0.00307,
+   "mde": 0.0086,
+   "halves": {
+    "2018-22": 0.9945923477727414,
+    "2023-26": 0.9911364796877925
+   },
+   "B_p75_exc": 0.2664,
+   "L_p75_exc": 0.2547,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9888,
+    "2020": 0.994,
+    "2021": 0.9939,
+    "2022": 1.0009,
+    "2023": 1.0048,
+    "2024": 0.9962,
+    "2025": 0.984,
+    "2026": 0.9854
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 177,
+     "ratio": 1.0111,
+     "p": 0.9775112443778111,
+     "B_p75_exc": 0.249,
+     "L_p75_exc": 0.215,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 367,
+     "ratio": 0.9805,
+     "p": 0.0074962518740629685,
+     "B_p75_exc": 0.319,
+     "L_p75_exc": 0.283,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 812,
+     "ratio": 0.9883,
+     "p": 0.19990004997501248,
+     "B_p75_exc": 0.296,
+     "L_p75_exc": 0.276,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 136,
+     "ratio": 0.9757,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.169,
+     "L_p75_exc": 0.221,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00199,
+    "min": 0.9926,
+    "max": 1.01553,
+    "n_below_real": 1,
+    "n": 20
+   },
+   "beta": [
+    0.001,
+    0.0111,
+    0.0093,
+    -0.0239
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": true,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "B",
+   "index": "VXGDX",
+   "inst": "GOLD",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "GVZ",
+   "bench_arm": "HARCJ",
+   "n": 1967,
+   "ratio": 1.00732,
+   "lo": 0.99659,
+   "hi": 1.01818,
+   "p": 0.9045477261369316,
+   "se_log": 0.00549,
+   "mde": 0.01537,
+   "halves": {
+    "2018-22": 1.0035165319725605,
+    "2023-26": 1.0107322432701145
+   },
+   "B_p75_exc": 0.2852,
+   "L_p75_exc": 0.2842,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 1.0131,
+    "2020": 1.0037,
+    "2021": 0.9904,
+    "2022": 1.009,
+    "2023": 1.012,
+    "2024": 0.986,
+    "2025": 1.0388,
+    "2026": 1.0038
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 176,
+     "ratio": 1.0038,
+     "p": 0.5757121439280359,
+     "B_p75_exc": 0.261,
+     "L_p75_exc": 0.21,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 363,
+     "ratio": 1.0147,
+     "p": 0.8045977011494253,
+     "B_p75_exc": 0.311,
+     "L_p75_exc": 0.35,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 813,
+     "ratio": 1.0128,
+     "p": 0.847576211894053,
+     "B_p75_exc": 0.327,
+     "L_p75_exc": 0.311,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 135,
+     "ratio": 0.9676,
+     "p": 0.0014992503748125937,
+     "B_p75_exc": 0.163,
+     "L_p75_exc": 0.2,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00753,
+    "min": 0.99727,
+    "max": 1.07593,
+    "n_below_real": 10,
+    "n": 20
+   },
+   "beta": [
+    0.0225,
+    -0.0022,
+    0.0197
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXGDX",
+   "inst": "GOLD",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "GVZ",
+   "bench_arm": "HARCJ",
+   "n": 1967,
+   "ratio": 0.9979,
+   "lo": 0.98739,
+   "hi": 1.01145,
+   "p": 0.3193403298350825,
+   "se_log": 0.00627,
+   "mde": 0.01756,
+   "halves": {
+    "2018-22": 0.997229004394568,
+    "2023-26": 0.9984981254011203
+   },
+   "B_p75_exc": 0.2852,
+   "L_p75_exc": 0.2806,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 1.0016,
+    "2020": 0.9962,
+    "2021": 0.9986,
+    "2022": 0.9932,
+    "2023": 1.0125,
+    "2024": 0.9886,
+    "2025": 1.0048,
+    "2026": 0.9927
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 176,
+     "ratio": 1.0073,
+     "p": 0.5882058970514743,
+     "B_p75_exc": 0.261,
+     "L_p75_exc": 0.193,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 363,
+     "ratio": 0.9937,
+     "p": 0.09295352323838081,
+     "B_p75_exc": 0.311,
+     "L_p75_exc": 0.311,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 813,
+     "ratio": 0.9989,
+     "p": 0.5352323838080959,
+     "B_p75_exc": 0.327,
+     "L_p75_exc": 0.308,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 135,
+     "ratio": 0.9664,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.163,
+     "L_p75_exc": 0.2,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00191,
+    "min": 0.99254,
+    "max": 1.06776,
+    "n_below_real": 3,
+    "n": 20
+   },
+   "beta": [
+    0.0222,
+    -0.0032,
+    0.0138,
+    -0.011
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXAPL",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1971,
+   "ratio": 0.97245,
+   "lo": 0.94413,
+   "hi": 0.9981,
+   "p": 0.015492253873063468,
+   "se_log": 0.01422,
+   "mde": 0.03982,
+   "halves": {
+    "2018-22": 0.9709716100411179,
+    "2023-26": 0.9744148793177375
+   },
+   "B_p75_exc": 0.2532,
+   "L_p75_exc": 0.2572,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9882,
+    "2020": 0.9373,
+    "2021": 0.9892,
+    "2022": 0.9843,
+    "2023": 1.0067,
+    "2024": 0.9949,
+    "2025": 0.9192,
+    "2026": 1.0052
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 100,
+     "ratio": 1.0252,
+     "p": 1.0,
+     "B_p75_exc": 0.25,
+     "L_p75_exc": 0.3,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 329,
+     "ratio": 0.9876,
+     "p": 0.3728135932033983,
+     "B_p75_exc": 0.258,
+     "L_p75_exc": 0.222,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 163,
+     "ratio": 0.8425,
+     "p": 0.015492253873063468,
+     "B_p75_exc": 0.393,
+     "L_p75_exc": 0.27,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 146,
+     "ratio": 1.0083,
+     "p": 0.22488755622188905,
+     "B_p75_exc": 0.24,
+     "L_p75_exc": 0.336,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 0.99703,
+    "min": 0.99106,
+    "max": 1.00969,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    -0.0436,
+    0.015,
+    0.0644
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXAPL",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1971,
+   "ratio": 0.99127,
+   "lo": 0.97611,
+   "hi": 1.00612,
+   "p": 0.1539230384807596,
+   "se_log": 0.00798,
+   "mde": 0.02235,
+   "halves": {
+    "2018-22": 0.9885083432820597,
+    "2023-26": 0.9949160034128861
+   },
+   "B_p75_exc": 0.2532,
+   "L_p75_exc": 0.2628,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9954,
+    "2020": 0.9738,
+    "2021": 1.002,
+    "2022": 0.9912,
+    "2023": 1.0047,
+    "2024": 1.006,
+    "2025": 0.967,
+    "2026": 1.0174
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 100,
+     "ratio": 1.0058,
+     "p": 0.9905047476261869,
+     "B_p75_exc": 0.25,
+     "L_p75_exc": 0.26,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 329,
+     "ratio": 0.9943,
+     "p": 0.31784107946026985,
+     "B_p75_exc": 0.258,
+     "L_p75_exc": 0.24,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 163,
+     "ratio": 0.9181,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.393,
+     "L_p75_exc": 0.27,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 146,
+     "ratio": 1.0177,
+     "p": 0.5097451274362819,
+     "B_p75_exc": 0.24,
+     "L_p75_exc": 0.308,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.0003,
+    "min": 0.99299,
+    "max": 1.00612,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    -0.0051,
+    0.0094,
+    0.0445,
+    -0.0246
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXAPL",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1967,
+   "ratio": 0.99447,
+   "lo": 0.98257,
+   "hi": 1.00822,
+   "p": 0.21989005497251374,
+   "se_log": 0.00654,
+   "mde": 0.01831,
+   "halves": {
+    "2018-22": 0.9993470026691929,
+    "2023-26": 0.9880649931692257
+   },
+   "B_p75_exc": 0.242,
+   "L_p75_exc": 0.2491,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 1.0101,
+    "2020": 0.988,
+    "2021": 0.983,
+    "2022": 1.0152,
+    "2023": 0.9942,
+    "2024": 0.9871,
+    "2025": 0.9702,
+    "2026": 1.0165
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 101,
+     "ratio": 0.9915,
+     "p": 0.07796101949025487,
+     "B_p75_exc": 0.366,
+     "L_p75_exc": 0.356,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 329,
+     "ratio": 1.0009,
+     "p": 0.6331834082958521,
+     "B_p75_exc": 0.201,
+     "L_p75_exc": 0.228,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 167,
+     "ratio": 0.9649,
+     "p": 0.14142928535732133,
+     "B_p75_exc": 0.275,
+     "L_p75_exc": 0.246,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 146,
+     "ratio": 1.012,
+     "p": 0.8995502248875562,
+     "B_p75_exc": 0.205,
+     "L_p75_exc": 0.26,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.01133,
+    "min": 1.00098,
+    "max": 1.0229,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0057,
+    0.004,
+    0.0333
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXAPL",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1967,
+   "ratio": 1.00082,
+   "lo": 0.9889,
+   "hi": 1.0141,
+   "p": 0.5817091454272864,
+   "se_log": 0.00646,
+   "mde": 0.01808,
+   "halves": {
+    "2018-22": 1.00533789939911,
+    "2023-26": 0.9948904619471788
+   },
+   "B_p75_exc": 0.242,
+   "L_p75_exc": 0.2511,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 1.0206,
+    "2020": 0.9822,
+    "2021": 0.9854,
+    "2022": 1.0337,
+    "2023": 0.9844,
+    "2024": 1.0034,
+    "2025": 0.9835,
+    "2026": 1.0198
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 101,
+     "ratio": 0.968,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.366,
+     "L_p75_exc": 0.277,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 329,
+     "ratio": 1.0089,
+     "p": 0.7916041979010495,
+     "B_p75_exc": 0.201,
+     "L_p75_exc": 0.237,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 167,
+     "ratio": 1.0098,
+     "p": 0.656671664167916,
+     "B_p75_exc": 0.275,
+     "L_p75_exc": 0.174,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 146,
+     "ratio": 1.0128,
+     "p": 0.9790104947526237,
+     "B_p75_exc": 0.205,
+     "L_p75_exc": 0.226,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00878,
+    "min": 1.0001,
+    "max": 1.01939,
+    "n_below_real": 1,
+    "n": 20
+   },
+   "beta": [
+    0.0296,
+    -0.0048,
+    0.034,
+    -0.0047
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXAZN",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1971,
+   "ratio": 0.97693,
+   "lo": 0.95177,
+   "hi": 0.99781,
+   "p": 0.015992003998001,
+   "se_log": 0.01214,
+   "mde": 0.03398,
+   "halves": {
+    "2018-22": 0.9716920584015875,
+    "2023-26": 0.9838720591265618
+   },
+   "B_p75_exc": 0.2532,
+   "L_p75_exc": 0.2613,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9805,
+    "2020": 0.933,
+    "2021": 0.9917,
+    "2022": 0.9937,
+    "2023": 0.9995,
+    "2024": 1.0173,
+    "2025": 0.9507,
+    "2026": 0.9762
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 163,
+     "ratio": 1.0241,
+     "p": 1.0,
+     "B_p75_exc": 0.27,
+     "L_p75_exc": 0.325,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 282,
+     "ratio": 0.9243,
+     "p": 0.021989005497251374,
+     "B_p75_exc": 0.291,
+     "L_p75_exc": 0.234,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 156,
+     "ratio": 0.8628,
+     "p": 0.01999000499750125,
+     "B_p75_exc": 0.378,
+     "L_p75_exc": 0.276,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 165,
+     "ratio": 0.9807,
+     "p": 0.23588205897051473,
+     "B_p75_exc": 0.23,
+     "L_p75_exc": 0.315,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 0.99406,
+    "min": 0.98906,
+    "max": 1.01184,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    -0.0349,
+    0.0229,
+    0.0604
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXAZN",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1971,
+   "ratio": 0.98885,
+   "lo": 0.97294,
+   "hi": 1.00332,
+   "p": 0.0769615192403798,
+   "se_log": 0.00795,
+   "mde": 0.02227,
+   "halves": {
+    "2018-22": 0.9833485051662663,
+    "2023-26": 0.9961193483986771
+   },
+   "B_p75_exc": 0.2532,
+   "L_p75_exc": 0.2653,
+   "dates": [
+    "2019-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2019": 0.9818,
+    "2020": 0.9504,
+    "2021": 0.9987,
+    "2022": 1.0082,
+    "2023": 1.0077,
+    "2024": 1.016,
+    "2025": 0.9739,
+    "2026": 0.9933
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 163,
+     "ratio": 1.0377,
+     "p": 1.0,
+     "B_p75_exc": 0.27,
+     "L_p75_exc": 0.313,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 282,
+     "ratio": 0.9486,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.291,
+     "L_p75_exc": 0.259,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 156,
+     "ratio": 0.9088,
+     "p": 0.12893553223388307,
+     "B_p75_exc": 0.378,
+     "L_p75_exc": 0.224,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 165,
+     "ratio": 0.9982,
+     "p": 0.6921539230384808,
+     "B_p75_exc": 0.23,
+     "L_p75_exc": 0.309,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 0.99924,
+    "min": 0.99346,
+    "max": 1.00408,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    -0.0116,
+    0.0156,
+    0.0548,
+    -0.0181
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "VXAZN",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1967,
+   "ratio": 0.99483,
+   "lo": 0.98766,
+   "hi": 1.00397,
+   "p": 0.13543228385807096,
+   "se_log": 0.00413,
+   "mde": 0.01157,
+   "halves": {
+    "2018-22": 0.9965140616077321,
+    "2023-26": 0.9926190041835752
+   },
+   "B_p75_exc": 0.242,
+   "L_p75_exc": 0.243,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 0.9843,
+    "2020": 0.9915,
+    "2021": 0.9885,
+    "2022": 1.0132,
+    "2023": 1.0072,
+    "2024": 0.9935,
+    "2025": 0.9792,
+    "2026": 0.9983
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 163,
+     "ratio": 0.9832,
+     "p": 0.0239880059970015,
+     "B_p75_exc": 0.35,
+     "L_p75_exc": 0.319,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 282,
+     "ratio": 0.9752,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.206,
+     "L_p75_exc": 0.234,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 157,
+     "ratio": 0.9982,
+     "p": 0.7531234382808596,
+     "B_p75_exc": 0.255,
+     "L_p75_exc": 0.217,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 164,
+     "ratio": 0.9833,
+     "p": 0.4062968515742129,
+     "B_p75_exc": 0.207,
+     "L_p75_exc": 0.256,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00512,
+    "min": 1.00151,
+    "max": 1.01432,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0174,
+    0.0168,
+    0.0177
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "B",
+   "index": "VXAZN",
+   "inst": "NQ",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "VXN",
+   "bench_arm": "E6",
+   "n": 1967,
+   "ratio": 0.99935,
+   "lo": 0.99263,
+   "hi": 1.00627,
+   "p": 0.4432783608195902,
+   "se_log": 0.00349,
+   "mde": 0.00976,
+   "halves": {
+    "2018-22": 1.002084464189727,
+    "2023-26": 0.9957542320464428
+   },
+   "B_p75_exc": 0.242,
+   "L_p75_exc": 0.2476,
+   "dates": [
+    "2019-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2019": 0.9948,
+    "2020": 0.9983,
+    "2021": 0.9929,
+    "2022": 1.0154,
+    "2023": 0.9997,
+    "2024": 0.9935,
+    "2025": 0.9936,
+    "2026": 0.9979
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 163,
+     "ratio": 0.9874,
+     "p": 0.1199400299850075,
+     "B_p75_exc": 0.35,
+     "L_p75_exc": 0.319,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 282,
+     "ratio": 0.9859,
+     "p": 0.12343828085957022,
+     "B_p75_exc": 0.206,
+     "L_p75_exc": 0.245,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 157,
+     "ratio": 1.0225,
+     "p": 0.9820089955022488,
+     "B_p75_exc": 0.255,
+     "L_p75_exc": 0.217,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 164,
+     "ratio": 0.9789,
+     "p": 0.21239380309845077,
+     "B_p75_exc": 0.207,
+     "L_p75_exc": 0.25,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00664,
+    "min": 1.0003,
+    "max": 1.01899,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0101,
+    -0.0085,
+    0.0171,
+    -0.0115
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "B",
+   "index": "OVX",
+   "inst": "USDCAD",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": "SETTLE:usd_cad",
+   "bench_arm": "B_har_garcht",
+   "n": 943,
+   "ratio": 1.00416,
+   "lo": 0.98675,
+   "hi": 1.01939,
+   "p": 0.6466766616691654,
+   "se_log": 0.00832,
+   "mde": 0.02331,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 1.0041575431987109
+   },
+   "B_p75_exc": 0.2227,
+   "L_p75_exc": 0.2439,
+   "dates": [
+    "2023-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2023": 1.0263,
+    "2024": 0.9913,
+    "2025": 0.9825,
+    "2026": 1.0288
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 291,
+     "ratio": 1.0132,
+     "p": 0.8525737131434283,
+     "B_p75_exc": 0.199,
+     "L_p75_exc": 0.275,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 116,
+     "ratio": 1.0109,
+     "p": 0.8225887056471765,
+     "B_p75_exc": 0.216,
+     "L_p75_exc": 0.19,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 112,
+     "ratio": 1.0012,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.259,
+     "L_p75_exc": 0.259,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 100,
+     "ratio": 1.0414,
+     "p": 0.8320839580209896,
+     "B_p75_exc": 0.25,
+     "L_p75_exc": 0.31,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00011,
+    "min": 0.99542,
+    "max": 1.00657,
+    "n_below_real": 19,
+    "n": 20
+   },
+   "beta": [
+    -0.0307,
+    -0.0048,
+    0.0305
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "OVX",
+   "inst": "USDCAD",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": "SETTLE:usd_cad",
+   "bench_arm": "B_har_garcht",
+   "n": 943,
+   "ratio": 1.00871,
+   "lo": 0.99709,
+   "hi": 1.0203,
+   "p": 0.8915542228885557,
+   "se_log": 0.006,
+   "mde": 0.01681,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 1.0087061841160185
+   },
+   "B_p75_exc": 0.2227,
+   "L_p75_exc": 0.2301,
+   "dates": [
+    "2023-01-02",
+    "2026-08-20"
+   ],
+   "by_year": {
+    "2023": 1.0319,
+    "2024": 1.0019,
+    "2025": 0.9982,
+    "2026": 0.9956
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 291,
+     "ratio": 1.0032,
+     "p": 0.5212393803098451,
+     "B_p75_exc": 0.199,
+     "L_p75_exc": 0.234,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 116,
+     "ratio": 1.0361,
+     "p": 1.0,
+     "B_p75_exc": 0.216,
+     "L_p75_exc": 0.198,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 112,
+     "ratio": 0.9946,
+     "p": 0.0014992503748125937,
+     "B_p75_exc": 0.259,
+     "L_p75_exc": 0.25,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 100,
+     "ratio": 1.028,
+     "p": 0.5387306346826587,
+     "B_p75_exc": 0.25,
+     "L_p75_exc": 0.3,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00094,
+    "min": 0.98963,
+    "max": 1.00844,
+    "n_below_real": 20,
+    "n": 20
+   },
+   "beta": [
+    -0.005,
+    0.0069,
+    0.0024,
+    -0.0225
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "OVX",
+   "inst": "USDCAD",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": "SETTLE:usd_cad",
+   "bench_arm": "B_har_garcht",
+   "n": 939,
+   "ratio": 1.0017,
+   "lo": 0.99316,
+   "hi": 1.0098,
+   "p": 0.6446776611694153,
+   "se_log": 0.00433,
+   "mde": 0.01211,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 1.0016975942361825
+   },
+   "B_p75_exc": 0.2343,
+   "L_p75_exc": 0.2279,
+   "dates": [
+    "2023-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2023": 0.9948,
+    "2024": 1.0019,
+    "2025": 1.0102,
+    "2026": 0.9965
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 287,
+     "ratio": 1.0031,
+     "p": 0.5132433783108445,
+     "B_p75_exc": 0.3,
+     "L_p75_exc": 0.275,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 117,
+     "ratio": 1.0027,
+     "p": 0.12843578210894552,
+     "B_p75_exc": 0.214,
+     "L_p75_exc": 0.231,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 112,
+     "ratio": 1.0007,
+     "p": 0.9535232383808095,
+     "B_p75_exc": 0.357,
+     "L_p75_exc": 0.304,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 99,
+     "ratio": 0.9956,
+     "p": 0.025987006496751622,
+     "B_p75_exc": 0.192,
+     "L_p75_exc": 0.182,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00509,
+    "min": 0.99731,
+    "max": 1.04865,
+    "n_below_real": 4,
+    "n": 20
+   },
+   "beta": [
+    0.0144,
+    -0.0004,
+    -0.0037
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": true
+   },
+   "verdict": "NULL"
+  },
+  {
+   "family": "B",
+   "index": "OVX",
+   "inst": "USDCAD",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": "SETTLE:usd_cad",
+   "bench_arm": "B_har_garcht",
+   "n": 939,
+   "ratio": 1.00775,
+   "lo": 0.99604,
+   "hi": 1.02035,
+   "p": 0.904047976011994,
+   "se_log": 0.00609,
+   "mde": 0.01706,
+   "halves": {
+    "2018-22": null,
+    "2023-26": 1.007748996360244
+   },
+   "B_p75_exc": 0.2343,
+   "L_p75_exc": 0.2407,
+   "dates": [
+    "2023-01-02",
+    "2026-08-14"
+   ],
+   "by_year": {
+    "2023": 0.9837,
+    "2024": 1.0247,
+    "2025": 1.0189,
+    "2026": 1.0033
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 287,
+     "ratio": 1.0246,
+     "p": 1.0,
+     "B_p75_exc": 0.3,
+     "L_p75_exc": 0.317,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 117,
+     "ratio": 1.0049,
+     "p": 0.16541729135432284,
+     "B_p75_exc": 0.214,
+     "L_p75_exc": 0.231,
+     "bh": false
+    },
+    "d5_hi": {
+     "n": 112,
+     "ratio": 0.9952,
+     "p": 0.5627186406796602,
+     "B_p75_exc": 0.357,
+     "L_p75_exc": 0.357,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 99,
+     "ratio": 0.9987,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.192,
+     "L_p75_exc": 0.242,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00979,
+    "min": 0.99885,
+    "max": 1.03424,
+    "n_below_real": 9,
+    "n": 20
+   },
+   "beta": [
+    0.0023,
+    -0.018,
+    -0.0069,
+    -0.011
+   ],
+   "holm": false,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": false,
+    "ci_hi<1": false,
+    "holm": false,
+    "halves": false,
+    "placebo_19of20": false,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "UNDERPOWERED"
+  },
+  {
+   "family": "B",
+   "index": "OVX",
+   "inst": "BRENT",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "B_har_garcht",
+   "n": 1972,
+   "ratio": 0.9504,
+   "lo": 0.93464,
+   "hi": 0.97205,
+   "p": 0.0004997501249375312,
+   "se_log": 0.00999,
+   "mde": 0.02798,
+   "halves": {
+    "2018-22": 0.9441785998780097,
+    "2023-26": 0.9588985873301222
+   },
+   "B_p75_exc": 0.2434,
+   "L_p75_exc": 0.2246,
+   "dates": [
+    "2019-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2019": 0.9295,
+    "2020": 0.9338,
+    "2021": 0.9492,
+    "2022": 0.9668,
+    "2023": 0.9597,
+    "2024": 0.994,
+    "2025": 0.955,
+    "2026": 0.9435
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 376,
+     "ratio": 0.9338,
+     "p": 0.01249375312343828,
+     "B_p75_exc": 0.354,
+     "L_p75_exc": 0.226,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 164,
+     "ratio": 0.8982,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.146,
+     "L_p75_exc": 0.293,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 244,
+     "ratio": 0.8866,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.406,
+     "L_p75_exc": 0.283,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 256,
+     "ratio": 0.9586,
+     "p": 0.17791104447776113,
+     "B_p75_exc": 0.188,
+     "L_p75_exc": 0.254,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00061,
+    "min": 0.99942,
+    "max": 1.00646,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0888,
+    0.0129,
+    0.0418
+   ],
+   "holm": true,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": true,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "VALIDATED"
+  },
+  {
+   "family": "B",
+   "index": "OVX",
+   "inst": "BRENT",
+   "track": "C",
+   "role": "primary",
+   "h": 1,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "B_har_garcht",
+   "n": 1972,
+   "ratio": 0.96216,
+   "lo": 0.94829,
+   "hi": 0.98039,
+   "p": 0.0004997501249375312,
+   "se_log": 0.00849,
+   "mde": 0.02378,
+   "halves": {
+    "2018-22": 0.9515404435322966,
+    "2023-26": 0.9766671402748365
+   },
+   "B_p75_exc": 0.2434,
+   "L_p75_exc": 0.2307,
+   "dates": [
+    "2019-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2019": 0.9369,
+    "2020": 0.943,
+    "2021": 0.9722,
+    "2022": 0.9587,
+    "2023": 0.9889,
+    "2024": 0.9788,
+    "2025": 0.9663,
+    "2026": 0.9751
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 376,
+     "ratio": 0.9508,
+     "p": 0.028985507246376812,
+     "B_p75_exc": 0.354,
+     "L_p75_exc": 0.234,
+     "bh": true
+    },
+    "lvl_lo": {
+     "n": 164,
+     "ratio": 0.8857,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.146,
+     "L_p75_exc": 0.256,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 244,
+     "ratio": 0.9117,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.406,
+     "L_p75_exc": 0.27,
+     "bh": true
+    },
+    "d5_lo": {
+     "n": 256,
+     "ratio": 0.9447,
+     "p": 0.051974012993503245,
+     "B_p75_exc": 0.188,
+     "L_p75_exc": 0.266,
+     "bh": false
+    }
+   },
+   "placebo": {
+    "median": 1.00155,
+    "min": 0.99877,
+    "max": 1.00711,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0436,
+    -0.0503,
+    0.0504,
+    -0.0298
+   ],
+   "holm": true,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": true,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "VALIDATED"
+  },
+  {
+   "family": "B",
+   "index": "OVX",
+   "inst": "BRENT",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Lin",
+   "own_iv": null,
+   "bench_arm": "B_har_garcht",
+   "n": 1968,
+   "ratio": 0.92889,
+   "lo": 0.8965,
+   "hi": 0.96885,
+   "p": 0.0009995002498750624,
+   "se_log": 0.01987,
+   "mde": 0.05564,
+   "halves": {
+    "2018-22": 0.9296573216851804,
+    "2023-26": 0.9278426556065028
+   },
+   "B_p75_exc": 0.2363,
+   "L_p75_exc": 0.2256,
+   "dates": [
+    "2019-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2019": 0.9121,
+    "2020": 0.934,
+    "2021": 0.9325,
+    "2022": 0.9324,
+    "2023": 0.9105,
+    "2024": 1.0024,
+    "2025": 0.9436,
+    "2026": 0.8947
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 382,
+     "ratio": 0.895,
+     "p": 0.09045477261369315,
+     "B_p75_exc": 0.395,
+     "L_p75_exc": 0.243,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 164,
+     "ratio": 0.7418,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.043,
+     "L_p75_exc": 0.189,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 244,
+     "ratio": 0.9695,
+     "p": 0.655672163918041,
+     "B_p75_exc": 0.439,
+     "L_p75_exc": 0.311,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 255,
+     "ratio": 0.9166,
+     "p": 0.0069965017491254375,
+     "B_p75_exc": 0.141,
+     "L_p75_exc": 0.208,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.01444,
+    "min": 1.00215,
+    "max": 1.02647,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.1245,
+    -0.0003,
+    0.0251
+   ],
+   "holm": true,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": true,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "VALIDATED"
+  },
+  {
+   "family": "B",
+   "index": "OVX",
+   "inst": "BRENT",
+   "track": "C",
+   "role": "primary",
+   "h": 5,
+   "variant": "Ext",
+   "own_iv": null,
+   "bench_arm": "B_har_garcht",
+   "n": 1968,
+   "ratio": 0.93881,
+   "lo": 0.91898,
+   "hi": 0.97024,
+   "p": 0.0004997501249375312,
+   "se_log": 0.01378,
+   "mde": 0.03859,
+   "halves": {
+    "2018-22": 0.9357732290201183,
+    "2023-26": 0.9429397093846794
+   },
+   "B_p75_exc": 0.2363,
+   "L_p75_exc": 0.218,
+   "dates": [
+    "2019-01-02",
+    "2026-08-17"
+   ],
+   "by_year": {
+    "2019": 0.917,
+    "2020": 0.9253,
+    "2021": 0.9865,
+    "2022": 0.9293,
+    "2023": 0.9639,
+    "2024": 0.9799,
+    "2025": 0.953,
+    "2026": 0.9104
+   },
+   "buckets": {
+    "lvl_hi": {
+     "n": 382,
+     "ratio": 0.9211,
+     "p": 0.16091954022988506,
+     "B_p75_exc": 0.395,
+     "L_p75_exc": 0.246,
+     "bh": false
+    },
+    "lvl_lo": {
+     "n": 164,
+     "ratio": 0.7092,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.043,
+     "L_p75_exc": 0.165,
+     "bh": true
+    },
+    "d5_hi": {
+     "n": 244,
+     "ratio": 0.9284,
+     "p": 0.19490254872563717,
+     "B_p75_exc": 0.439,
+     "L_p75_exc": 0.283,
+     "bh": false
+    },
+    "d5_lo": {
+     "n": 255,
+     "ratio": 0.8977,
+     "p": 0.0004997501249375312,
+     "B_p75_exc": 0.141,
+     "L_p75_exc": 0.184,
+     "bh": true
+    }
+   },
+   "placebo": {
+    "median": 1.00875,
+    "min": 0.99472,
+    "max": 1.02259,
+    "n_below_real": 0,
+    "n": 20
+   },
+   "beta": [
+    0.0585,
+    -0.0743,
+    0.0368,
+    -0.0126
+   ],
+   "holm": true,
+   "repl_ratio": null,
+   "gates": {
+    "ratio<=0.985": true,
+    "ci_hi<1": true,
+    "holm": true,
+    "halves": true,
+    "placebo_19of20": true,
+    "replication": true,
+    "mde<=bar": false
+   },
+   "verdict": "VALIDATED"
+  }
+ ],
+ "controls": {
+  "planted": {
+   "n": 1971,
+   "ratio": 0.76585,
+   "lo": 0.74186,
+   "hi": 0.79594,
+   "p": 0.0004997501249375312,
+   "se_log": 0.01803,
+   "mde": 0.0505,
+   "halves": {
+    "2018-22": 0.7640864351340587,
+    "2023-26": 0.7684043678325753
+   },
+   "B_p75_exc": 0.238,
+   "L_p75_exc": 0.2486,
+   "dates": [
+    "2019-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2019": 0.7431,
+    "2020": 0.726,
+    "2021": 0.7614,
+    "2022": 0.8488,
+    "2023": 0.769,
+    "2024": 0.8212,
+    "2025": 0.7813,
+    "2026": 0.7304
+   }
+  },
+  "noise": {
+   "n": 1971,
+   "ratio": 0.99788,
+   "lo": 0.99296,
+   "hi": 1.0028,
+   "p": 0.23138430784607697,
+   "se_log": 0.00255,
+   "mde": 0.00715,
+   "halves": {
+    "2018-22": 0.9977722257609577,
+    "2023-26": 0.9980310101783673
+   },
+   "B_p75_exc": 0.238,
+   "L_p75_exc": 0.242,
+   "dates": [
+    "2019-01-02",
+    "2026-08-21"
+   ],
+   "by_year": {
+    "2019": 0.9966,
+    "2020": 0.9967,
+    "2021": 0.9999,
+    "2022": 0.9987,
+    "2023": 0.9992,
+    "2024": 1.0007,
+    "2025": 0.9995,
+    "2026": 0.9947
+   }
+  },
+  "pass": true
+ },
+ "preregCommit": "fe892ae7",
+ "amendmentCommit": "b94a0873",
+ "verdict": "validated (OVX on WTI and Brent); others null/underpowered, see maps",
+ "concentration": {
+  "OVX->WTI C 1d Lin": {
+   "all": 0.9401,
+   "ex2020": 0.959,
+   "ex_top1pct_days": 0.9533,
+   "2024-26": 0.9666,
+   "beta_lvl_mean": 0.0859
+  },
+  "OVX->WTI C 1d Ext": {
+   "all": 0.9518,
+   "ex2020": 0.966,
+   "ex_top1pct_days": 0.9576,
+   "2024-26": 0.9702,
+   "beta_lvl_mean": 0.0612
+  },
+  "OVX->WTI C 5d Ext": {
+   "all": 0.9507,
+   "ex2020": 0.9525,
+   "ex_top1pct_days": 0.9506,
+   "2024-26": 0.9488,
+   "beta_lvl_mean": 0.0777
+  },
+  "OVX->WTI F 1d Lin": {
+   "all": 0.8916,
+   "ex2020": 0.9276,
+   "ex_top1pct_days": 0.886,
+   "2024-26": 0.9431,
+   "beta_lvl_mean": 0.1291
+  },
+  "OVX->BRENT C 1d Lin": {
+   "all": 0.9504,
+   "ex2020": 0.9551,
+   "ex_top1pct_days": 0.9712,
+   "2024-26": 0.9587,
+   "beta_lvl_mean": 0.0888
+  },
+  "OVX->BRENT C 1d Ext": {
+   "all": 0.9622,
+   "ex2020": 0.9676,
+   "ex_top1pct_days": 0.9735,
+   "2024-26": 0.9731,
+   "beta_lvl_mean": 0.0436
+  },
+  "OVX->BRENT C 5d Lin": {
+   "all": 0.9289,
+   "ex2020": 0.9273,
+   "ex_top1pct_days": 0.9491,
+   "2024-26": 0.9319,
+   "beta_lvl_mean": 0.1245
+  },
+  "OVX->BRENT C 5d Ext": {
+   "all": 0.9388,
+   "ex2020": 0.943,
+   "ex_top1pct_days": 0.9508,
+   "2024-26": 0.938,
+   "beta_lvl_mean": 0.0585
+  }
+ }
+}
