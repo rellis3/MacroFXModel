@@ -1004,4 +1004,6 @@ globalThis.liveEmCell = liveEmCell; globalThis.liveWiderChip = liveWiderChip;
 globalThis.ccyStrengthMount = () => { try { mountOverview(getJson); } catch (e) { console.warn('ccy strength', e); } };   // the newer Macro boards (js/terminal/moreBoards.js)
 globalThis.boePathHtml = doc => { try { return BOEV.boePathHtml(doc, { esc }); } catch (e) { console.warn('boe path', e); return ''; } };
 globalThis.fedYieldsHtml = (fp, rb, tp) => { try { return FYV.boardHtml(fp, rb, tp, { esc }); } catch (e) { console.warn('fed path yields', e); return ''; } };
+// a "source stale since" chip on the boards whose feed the Info map flags (js/terminal/staleChips.js), once the page has settled
+setTimeout(() => import('./staleChips.js').then(m => m.install(document, window)).catch(e => console.warn('stale chips', e)), 8000);
 dispatchEvent(new Event('terminalmodule'));   // every hook above now exists: the classic page repaints what it drew before they did (the Macro sections need macroSubs)
