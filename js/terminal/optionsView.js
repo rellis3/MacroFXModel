@@ -90,7 +90,7 @@ const LCOL = { call_wall: 'var(--up)', put_wall: 'var(--dn)', max_pain: 'var(--g
 //   26 Nov 2026; also 18=19 Nov and 23=24 Nov), so it is dropped before the percentile; `repeat` says the latest day was one.
 //   A one-day move in total open interest of more than ROLL_JUMP (an expiry rolling off: gold 416,945 -> 149,627 on 25 Nov
 //   2026) makes the ratio a different book, so a reading within ROLL_DAYS settlements of one is flagged `roll`.
-export const ROLL_JUMP = 0.35, ROLL_DAYS = 10;
+export const ROLL_JUMP = 0.5, ROLL_DAYS = 10;   // index books churn as weeklies roll off; half the book in a day is a roll
 export function dedupeHist(rows = []) {
   const out = []; let repeat = false;
   for (const r of rows ?? []) {
@@ -183,7 +183,7 @@ export function ukStampMs(s) {
 export const captureDateOf = row => { const ms = row?.savedAtMs ?? ukStampMs(row?.savedAt); return fin(ms) ? londonDate(ms) : null; };
 /** The distance unit by market: pips for FX, dollars for metals, points for indices and the rest. */
 export const distUnit = pair => { const k = productOf(pair); return k === 'fx' ? 'pips' : k === 'metal' ? '$' : 'pts'; };
-const SWITCH = new Set(['gamma_flip', 'gex_flip', 'hvl']);
+const SWITCH = new Set(['gamma_flip', 'gex_flip']);
 /**
  * The option lines a desk can still use, merged by price.
  *  - each line's expiry date: from the stored book's contract code for that DTE where it decodes, else capture date + DTE;
@@ -232,10 +232,13 @@ export function ladderHtml(row, { now = Date.now(), legs = [], dealer = null } =
   const lab = i => `<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${LCOL[i.type] ?? 'var(--flat)'};margin-right:5px"></i>${esc(i.label)}${i.tier ? ` <span class="muted" style="font-size:10px">${esc(i.tier)}</span>` : ''}${i.note ? ` <span class="muted" style="font-size:10px" title="${esc(i.note)}">(ITM)</span>` : ''}`;
   const tr = g => { const dtes = [...new Set(g.items.map(i => i.dte).filter(fin))].sort((a, b) => a - b), types = [...new Set(g.items.map(i => i.type))];
     const expTitle = [...new Set(g.items.map(i => (i.exp ? `${dm(i.exp)}${i.code ? ` (${i.code})` : ''}` : null)).filter(Boolean))].join(', ');
-    return `<tr><td>${g.items.map(lab).join('<br>')}</td><td class="n mono muted"${expTitle ? ` title="expires ${esc(expTitle)}"` : ''}>${dtes.length ? dtes.map(dteTxt).join(', ') : '–'}</td><td class="n mono">${px(g.price)}</td><td class="n mono ${g.above ? 'up' : 'dn'}">${dist(g.dist)}</td><td class="n mono">${fin(g.touch) ? `${g.touch}%` : '–'}</td><td>${types.map(evChip).join(' ')}</td></tr>`; };
+    const chips = [...new Map(types.map(t => [(EVIDENCE[t] ?? EVIDENCE.oi_cluster).word, t])).values()];   // one chip per verdict word
+    return `<tr><td>${g.items.map(lab).join('<br>')}</td><td class="n mono muted"${expTitle ? ` title="expires ${esc(expTitle)}"` : ''}>${dtes.length ? dtes.map(dteTxt).join(', ') : '–'}</td><td class="n mono">${px(g.price)}</td><td class="n mono ${g.above ? 'up' : 'dn'}">${dist(g.dist)}</td><td class="n mono">${fin(g.touch) ? `${g.touch}%` : '–'}</td><td>${chips.map(evChip).join(' ')}</td></tr>`; };
   // where hedging changes side: every such level, named by the expiry it is read from, so three "switch" numbers read as three sources
-  const sw = R.switches.slice().sort((a, b) => Math.abs(a.dist ?? 0) - Math.abs(b.dist ?? 0));
-  const swTxt = [...sw.map(i => `${esc(LTYPE[i.type] ?? i.type)} ${px(i.price)} (${i.type === 'gex_flip' ? 'where the summed gamma of the book crosses zero' : i.type === 'hvl' ? 'the high-volume gamma line' : 'this expiry\'s own regime boundary'}, ${i.exp ? `${esc(dm(i.exp))} book` : 'primary book'})`),
+  // one line per source: each expiry's gamma flip, the nearest crossing of the summed gamma (with how many more there are), the dealer model's switch point
+  const sw = R.switches.slice().sort((a, b) => Math.abs(a.dist ?? 0) - Math.abs(b.dist ?? 0)), gex = sw.filter(i => i.type === 'gex_flip');
+  const swTxt = [...sw.filter(i => i.type === 'gamma_flip').map(i => `gamma flip ${px(i.price)} (the ${i.exp ? esc(dm(i.exp)) : 'primary'} expiry's own regime boundary)`),
+    ...(gex.length ? [`GEX flip ${px(gex[0].price)} (where the summed gamma crosses zero${gex.length > 1 ? `; the nearest of ${gex.length} crossings` : ''})`] : []),
     ...(fin(dealer?.switchPoint) ? [`dealer switch point ${px(dealer.switchPoint)} (the Dealer hedging panel: the whole listed book re-priced across price)`] : [])];
   const gone = R.gone ? ` ${R.gone === 1 ? 'One expiry' : `${R.gone} expiries`} (${R.goneDates.map(dm).join(', ')}) stopped trading today, so ${R.gone === 1 ? 'its lines are' : 'their lines are'} left out.` : '';
   return `<div class="card"><div class="ch"><span class="lbl">${esc(NAME[id] ?? row.pair)} · option lines</span><span class="r muted">${row.savedAt ? `book ${esc(row.savedAt)} ${tileChip('oi-store', { asOf: row.savedAtMs ?? ukStampMs(row.savedAt) })}` : ''}</span></div><div class="scroll"><table><thead><tr><th>Line</th><th class="n" title="days to the expiry the line comes from, counted from today's date (hover for the date): two lines of one kind are two expiries">Expiry</th><th class="n">Price</th><th class="n">${R.unit === '$' ? '$ away' : R.unit === 'pts' ? 'Points' : 'Pips'}</th><th class="n" title="chance of a touch within 4 hours (calibrated Monte Carlo)">Touch 4h</th><th>Evidence</th></tr></thead><tbody>${above.map(tr).join('')}<tr style="background:var(--bg3)"><td><b>Price now</b></td><td></td><td class="n mono"><b>${fin(row.spot) ? px(row.spot) : '–'}</b></td><td colspan="3" class="muted" style="font-size:11px">${row.regime === 'PIN' ? 'dealers long gamma: hedging calms moves' : row.regime === 'BREAKOUT' ? 'dealers short gamma: hedging speeds moves' : ''}</td></tr>${below.map(tr).join('')}</tbody></table></div>

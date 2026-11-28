@@ -38,7 +38,6 @@ import * as ACV from './autocorrView.js';
 import * as LLV from './leadLagView.js';
 import * as OPV from './optionsView.js';
 import { terrainHtml, mountTerrain, terrainKeys, terrainStore, bookLegs } from './terrainPanel.js';
-import { nextCotRelease } from '../cotState.js';
 import { smilePanelHtml, mountSmile, SMILE_SYMS } from '../smileChart.js';
 import { mountPathChart } from './pathChart.js';
 import * as NV from './newsView.js';
@@ -963,7 +962,6 @@ const RENDER = { today: renderToday, pair: renderPair, deep: renderDeep, changed
   corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if ((t !== 'pair' && /pair=/.test(location.hash)) || (t !== 'deep' && /^#deep/.test(location.hash))) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
-globalThis.cotNextRelease = nextCotRelease;   // the Positioning tab's COT card (desk-terminal.html positioning(), a classic script)
 installReplayLink();                               // globalThis.openReplay(inst, ts) and the #replay/NQ/2026-11-12T14:30 deep link
 // the asset card pop-up (desk-terminal.html assetCard) carries the same Analyse box
 globalThis.analyseBoxHtml = AAV.boxHtml;
