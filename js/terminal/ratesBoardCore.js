@@ -16,6 +16,7 @@
  * S is { us2y, us5y, us10y, us30y, effr, ... }: ascending [{date, value}] in percent (FRED H.15 / NY Fed, daily).
  */
 
+import { thinFlags } from '../fedPathZq.js';
 const DAY = 864e5;
 const ts = d => Date.parse(`${String(d).slice(0, 10)}T00:00:00Z`);
 const iso = t => new Date(t).toISOString().slice(0, 10);
@@ -78,15 +79,16 @@ export function buildRatesBoard(S, now = Date.now()) {
   const asOf = [us2.date, us10.date, us30.date].sort().at(-1);
   const tenors = TENORS.map(([k, y, key]) => {
     const l = last(S[key]); if (!l) return null;
-    return { k, y, level: l.value, asOf: l.date, ageDays: ageDays(l.date, now), chg1d: changeBp(S[key], 1), chg5d: changeBp(S[key], 5), chg20d: changeBp(S[key], 20),
-      // 7 and 28 calendar days = the chain's 5D and 20D (trading days): the spans the fed funds strip is looked back over (js/fedPathYieldsCore.js)
+    // 5d and 20d are 5 and 20 TRADING days, i.e. 7 and 28 calendar days: the chain's 5D and 20D, the curve board's and the Fed-path card's windows.
+    // (Until 2026-11-27 they were 5 and 20 calendar days, so this card's "5d" and the Fed-path card's "5D" disagreed: 2Y -2bp against -19bp.)
+    return { k, y, level: l.value, asOf: l.date, ageDays: ageDays(l.date, now), chg1d: changeBp(S[key], 1), chg5d: changeBp(S[key], 7), chg20d: changeBp(S[key], 28),
       chg7d: changeBp(S[key], 7), chg28d: changeBp(S[key], 28) };
   }).filter(Boolean);
   const slopes = SLOPES.map(([k, label, long, short]) => {
     const sr = spreadSeries(S[long], S[short]); const l = last(sr); if (!l) return null;
     const p1 = pctile(sr, 1), p5 = pctile(sr, 5, 250);
     const chg = n => { const ref = onOrBefore(sr, iso(ts(l.date) - n * DAY)); return ref && ref.date !== l.date ? +(l.value - ref.value).toFixed(1) : null; };
-    return { k, label, bp: Math.round(l.value), asOf: l.date, ageDays: ageDays(l.date, now), chg1d: chg(1), chg5d: chg(5), chg20d: chg(20), chg7d: chg(7), chg28d: chg(28),
+    return { k, label, bp: Math.round(l.value), asOf: l.date, ageDays: ageDays(l.date, now), chg1d: chg(1), chg5d: chg(7), chg20d: chg(28), chg7d: chg(7), chg28d: chg(28),
       pct1y: p1.pct, n1y: p1.n, pct5y: p5.pct, n5y: p5.n, inverted: l.value < 0, spark: sr.slice(-60).map(p => p.value) };
   }).filter(Boolean);
   const wk = iso(ts(asOf) - 7 * DAY), mo = iso(ts(asOf) - 28 * DAY);
@@ -112,9 +114,9 @@ const cumBp = (rows, i) => (rows.length ? +(((rows[i].rAfter - rows[0].rBefore) 
  * traded almost nothing (the back half of the strip is decoration: js/fedPathZq.js).
  */
 export function fedPathRows(zq, board, { count = 3 } = {}) {
-  const now = (zq?.meetings ?? []).filter(m => m && fin(m.rAfter) && fin(m.rBefore) && m.meeting >= String(zq.asOf ?? '').slice(0, 10));
+  const now = thinFlags((zq?.meetings ?? []).filter(m => m && fin(m.rAfter) && fin(m.rBefore) && m.meeting >= String(zq.asOf ?? '').slice(0, 10)));
   if (!now.length) return null;
-  const ago = (zq.weekAgo?.meetings ?? []).filter(m => m && fin(m.rAfter) && fin(m.rBefore) && m.meeting >= String(zq.weekAgo.asOf ?? '').slice(0, 10));
+  const ago = thinFlags((zq.weekAgo?.meetings ?? []).filter(m => m && fin(m.rAfter) && fin(m.rBefore) && m.meeting >= String(zq.weekAgo.asOf ?? '').slice(0, 10)));
   const agoBy = new Map(ago.map(m => [m.meeting, m]));
   const rows = now.slice(0, count).map((m, i) => {
     const w = agoBy.get(m.meeting) ?? null;

@@ -16,10 +16,10 @@ const lbl = k => metaFor(k).label;
 export function gridHtml(g) {
   if (!g.rows.length) return '<div class="in-empty">None of the basket is in the bundle.</div>';
   const by = new Map(); for (const r of g.rows) { if (!by.has(r.group)) by.set(r.group, []); by.get(r.group).push(r); }
-  const body = [...by.entries()].map(([grp, rows]) => `<tbody><tr class="in-grp"><th colspan="4">${esc(GROUPS[grp] ?? grp)}</th></tr>${rows.map(r => `<tr><th scope="row"><button type="button" class="in-link" ${r.go ? `data-go="${esc(r.go)}"` : 'disabled'}>${esc(r.label)}</button>${r.stale ? ` <i class="in-gr">stale</i>` : ''}</th>${r.moves.map((m, i) => m
+  const body = [...by.entries()].map(([grp, rows]) => `<tbody><tr class="in-grp"><th colspan="4">${esc(GROUPS[grp] ?? grp)}</th></tr>${rows.map(r => `<tr><th scope="row"><button type="button" class="in-link" ${r.go ? `data-go="${esc(r.go)}"` : 'disabled'}>${esc(r.label)}</button>${r.stale ? ` <i class="in-gr">stale</i>` : ''}${r.to && g.asOf && r.to !== g.asOf && !r.stale ? ` <i class="in-gr" title="This row's last close; its windows end there">to ${esc(r.to.slice(5))}</i>` : ''}</th>${r.moves.map((m, i) => m
     ? `<td><span class="in-mv ${m.chg > 0 ? 'u' : m.chg < 0 ? 'd' : ''}" style="--s:${m.pct.toFixed(2)}" title="${esc(`${['1','5','20'][i]} session move ${m.text}: bigger than ${Math.round(m.pct * 100)}% of its own such moves`)}">${esc(m.text)}</span></td>` : '<td class="muted">n/a</td>').join('')}</tr>`).join('')}</tbody>`).join('');
   return `<div class="in-tblw"><table class="in-tbl"><thead><tr><th>Market</th><th>1 session</th><th>5 sessions</th><th>20 sessions</th></tr></thead>${body}</table></div>
-<p class="in-foot muted">Colour is which way it moved; brightness is how big that move is for that market against its own history (a dim cell is an ordinary move for it). As at the close of ${esc(g.asOf)}.</p>`;
+<p class="in-foot muted">Colour is which way it moved; brightness is how big that move is for that market against its own history (a dim cell is an ordinary move for it). Each row counts sessions back from its own last close: ${esc(g.asOf)} unless the row says otherwise, so a 20-session move here can end a day apart from one on another board.</p>`;
 }
 
 /** The correlation matrix as HTML. mode: 'short' (20 sessions), 'long' (120) or 'chg' (20 minus 120). */

@@ -44,6 +44,37 @@ export { evaluateGauges };   // gauges on this file's own triggers (progress + l
 
 const _last = a => Array.isArray(a) && a.length ? a[a.length - 1] : null;
 const _nth = (a, k) => Array.isArray(a) && a.length > k ? a[a.length - 1 - k] : null;
+
+/**
+ * VIX against VIX3M on the LAST DATE BOTH HAVE, and how many consecutive common dates (counting back from it) VIX has
+ * been at or above VIX3M. The two legs print on different days (a US holiday, a late FRED update): VIX 26.8 stamped
+ * 26 Nov over a VIX3M of 25 Nov read 1.02 on the flags while the spreads board, on 25 Nov for both, read 1.08. Every
+ * reader of the ratio now takes this. fred: { vix: { value, asOf, prev, prevAsOf }, vix3m: ... } (latest + previous);
+ * hist: { vix: [{date, value}], vix3m: [...] } ascending (optional). The latest prints override history on their dates.
+ * Returns { vix, vix3m, ratio, date, dayN, inverted } or null.
+ */
+export function vixTermCommon(fred = {}, hist = {}) {
+  const map = k => {
+    const m = new Map();
+    for (const p of Array.isArray(hist?.[k]) ? hist[k] : []) if (p?.date && Number.isFinite(+p.value)) m.set(String(p.date).slice(0, 10), +p.value);
+    const f = fred?.[k];
+    if (f?.prevAsOf && Number.isFinite(+f.prev)) m.set(String(f.prevAsOf).slice(0, 10), +f.prev);
+    if (f?.asOf && Number.isFinite(+f.value)) m.set(String(f.asOf).slice(0, 10), +f.value);
+    return m;
+  };
+  const a = map('vix'), b = map('vix3m');
+  const common = [...a.keys()].filter(d => b.has(d)).sort();
+  if (!common.length) {
+    // undated inputs (older callers, tests): the latest values as they stand
+    const v = fred?.vix?.value, v3 = fred?.vix3m?.value;
+    if (v == null || v3 == null || fred?.vix?.asOf || fred?.vix3m?.asOf) return null;
+    return { vix: +v, vix3m: +v3, ratio: +v / +v3, date: null, dayN: +v >= +v3 ? 1 : 0, inverted: +v >= +v3 };
+  }
+  const date = common.at(-1), v = a.get(date), v3 = b.get(date);
+  let dayN = 0;
+  for (let i = common.length - 1; i >= 0 && a.get(common[i]) >= b.get(common[i]); i--) dayN++;
+  return { vix: v, vix3m: v3, ratio: v / v3, date, dayN, inverted: v >= v3 };
+}
 const _fmt = (v, dp = 1) => v == null ? '?' : `${v > 0 ? '+' : ''}${Number(v).toFixed(dp)}`;
 const _sign = v => (v > 0 ? 'up' : v < 0 ? 'down' : 'flat');
 
@@ -113,17 +144,21 @@ export function evaluateTriggers(inp = {}) {
 
   // ── tested: VIX above VIX3M ────────────────────────────────────────────────
   {
-    const v = fred.vix?.value, v3 = fred.vix3m?.value;
-    if (v != null && v3 != null) {
-      const inv = v >= v3;
-      let dayN = 0;
-      if (inv) { dayN = 1; const h = hist.vix ?? [], h3 = hist.vix3m ?? []; for (let i = h.length - 2, j = h3.length - 2; i >= 0 && j >= 0; i--, j--) { if (h[i].date !== h3[j].date) break; if (h[i].value >= h3[j].value) dayN++; else break; } }
-      const expect = inv ? expectFor(atrBy, { SPX500: 0.76, NQ: 0.82, USDJPY: 0.44, GOLD: 0.43 }, 5) : [];
-      push({ id: 'vix-inversion', kind: 'tested', evidenceId: 'vix-inversion', label: 'VIX above VIX3M', firing: inv, value: { vix: v, vix3m: v3, dayN }, expect,
+    // both legs on the last date both printed, and the day count from that common history (review 2026-11-27: the count
+    // broke on the first date mismatch and said "day 1" on the ninth day of an inversion)
+    const vt = vixTermCommon(fred, hist);
+    if (vt) {
+      const { vix: v, vix3m: v3, dayN, date } = vt, inv = vt.inverted;
+      const on = date ? ` on ${date}` : '';
+      // the tested finding is a FIRST-DAY finding: quoted as the expectation only on day 1
+      const expect = inv && dayN <= 1 ? expectFor(atrBy, { SPX500: 0.76, NQ: 0.82, USDJPY: 0.44, GOLD: 0.43 }, 5) : [];
+      push({ id: 'vix-inversion', kind: 'tested', evidenceId: 'vix-inversion', label: 'VIX above VIX3M', firing: inv, value: { vix: v, vix3m: v3, dayN, date }, expect,
         instruments: ['SPX500', 'NQ', 'USDJPY', 'GOLD'],
-        detail: inv
-          ? `VIX ${v.toFixed(1)} is above VIX3M ${v3.toFixed(1)} (day ${dayN}): near-term fear priced above the 3-month. Tested here: on the first day of an inversion the next five sessions ran +0.76 ATR wider on SPX500, +0.82 on Nasdaq, +0.44 on USD/JPY, +0.43 on gold (86 inversions since 2008). Inversions usually last a session or two. Range, not direction.`
-          : `VIX ${v.toFixed(1)} back below VIX3M ${v3.toFixed(1)}: the term structure has normalised.` });
+        detail: !inv
+          ? `VIX ${v.toFixed(1)} back below VIX3M ${v3.toFixed(1)}${on}: the term structure has normalised.`
+          : dayN <= 1
+            ? `VIX ${v.toFixed(1)} is above VIX3M ${v3.toFixed(1)}${on} (day 1): near-term fear priced above the 3-month. Tested here: on the first day of an inversion the next five sessions ran +0.76 ATR wider on SPX500, +0.82 on Nasdaq, +0.44 on USD/JPY, +0.43 on gold (86 inversions since 2008). Inversions usually last a session or two. Range, not direction.`
+            : `VIX ${v.toFixed(1)} is above VIX3M ${v3.toFixed(1)}${on}, day ${dayN} of the inversion: near-term fear priced above the 3-month. The tested finding here (five wider sessions after, 86 inversions since 2008) is for the FIRST day of an inversion; this one is ${dayN} sessions old and inversions usually last a session or two, so no tested expectation applies now. Range, not direction.` });
     }
   }
   // ── tested: Nasdaq down-week ───────────────────────────────────────────────

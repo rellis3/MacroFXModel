@@ -17,6 +17,7 @@ const LEVEL = { ok: 0, watch: 1, stress: 2 };
 const TILE = { risk: 'Risk flags', credit: 'Credit', funding: 'Dollar funding', em: 'EM carry', liquidity: 'Fed liquidity', tp: 'Term premium', cycle: 'Global rate cycle' };
 const FLAG = { vix_level: 'VIX level', vix_term: 'VIX term structure', hy_speed: 'the speed of the high-yield spread', jpy_bid: 'the yen bid', evz_stress: 'euro vol stress', stock_bond_corr: 'the stock-bond correlation' };
 const BANK = { fomc: 'the Fed', ecb: 'the ECB', boe: 'the Bank of England', boj: 'the Bank of Japan', boc: 'the Bank of Canada', rba: 'the RBA', rbnz: 'the RBNZ', snb: 'the SNB' };
+const SPAN = { '1H': '1-hour', '4H': '4-hour', '1D': '1-day', '1W': '1-week' };
 const WINDOW = { '1H': 'the last hour', '4H': 'the last four hours', '1D': 'the last day', '1W': 'the last week' };
 const word = l => (l === 2 ? 'stress' : l === 1 ? 'watch' : 'OK');
 const sg = (v, d = 1) => (fin(v) ? `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(d)}` : '–');
@@ -29,19 +30,21 @@ export function pickPoint(points, ts) {
 }
 
 /** Today's issue of the desk's morning call, 06:45 London, in ms; null at the weekend, in the first 15 minutes after it, or when it is more than 20 hours old. The call itself never changes during the day (it is the scored record); this only lets the card list what moved AFTER it. */
-export function issueFrom(now) {
+export function issueFrom(now, bookAtMs = null) {
   const day = new Date(now).toLocaleDateString('en-CA', { timeZone: 'Europe/London' }), dow = new Date(`${day}T12:00:00Z`).getUTCDay();
   if (dow === 0 || dow === 6) return null;
-  const ms = zonedEpoch(day, 6, 45, 'Europe/London') * 1000, age = now - ms;
+  // the book's own publication time when the page has it and it is today's (review 2026-11-27: "06:45" beside a book stamped 06:53)
+  const bookDay = fin(bookAtMs) ? new Date(bookAtMs).toLocaleDateString('en-CA', { timeZone: 'Europe/London' }) : null;
+  const ms = bookDay === day ? bookAtMs : zonedEpoch(day, 6, 45, 'Europe/London') * 1000, age = now - ms;
   return age >= 15 * 60e3 && age < 20 * 3600e3 ? ms : null;
 }
 
 /** The ranges the card offers: label, and the start time for a given "now". `lastLook` is the stored time of the previous visit (ms) or null. */
-export function ranges(now, lastLook) {
+export function ranges(now, lastLook, bookAtMs = null) {
   const out = [];
   if (fin(lastLook) && now - lastLook >= 10 * 60e3) out.push({ id: 'last', label: `Since your last visit (${ago(now - lastLook)} ago)`, from: lastLook });
-  const issue = issueFrom(now);
-  if (issue != null) out.push({ id: 'issue', label: `Since this morning's call (06:45 London, ${ago(now - issue)} ago)`, from: issue });
+  const issue = issueFrom(now, bookAtMs), hhmm = new Date(issue ?? 0).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' });
+  if (issue != null) out.push({ id: 'issue', label: `Since this morning's book (${hhmm} London, ${ago(now - issue)} ago)`, from: issue });
   out.push({ id: '1h', label: 'Last hour', from: now - 3600e3 }, { id: '4h', label: 'Last 4 hours', from: now - 4 * 3600e3 }, { id: '24h', label: 'Last 24 hours', from: now - 24 * 3600e3 });
   return out;
 }
@@ -75,7 +78,9 @@ export function compare(a, b, ctx = {}) {
       const x = A.strength.h[w], y = B.strength.h[w]; if (!x?.s || !y?.s) continue;
       if (x.lead && y.lead && x.lead !== y.lead) push('strength', `lead-${w}`, 4, `${y.lead} now leads ${WINDOW[w]}`, `${x.lead} did before; ${y.lag} is last (spread ${y.spread ?? '–'}σ)`);
       if (x.lag && y.lag && x.lag !== y.lag) push('strength', `lag-${w}`, 3, `${y.lag} is now the weakest over ${WINDOW[w]}`, `it was ${x.lag}`);
-      for (const c of Object.keys(y.s)) { const d = (y.s[c] ?? NaN) - (x.s[c] ?? NaN); if (fin(d) && Math.abs(d) >= 1.2) push('strength', `${w}-${c}`, 2 + Math.abs(d), `${c} moved ${sg(d)}σ against the other seven over ${WINDOW[w]}`, `${sg(x.s[c])}σ to ${sg(y.s[c])}σ`); }
+      // the score is a rolling window's strength read twice (then and now), not a move over that window (review 2026-11-27: "NZD moved +3.8σ over
+      // the last four hours" compared the 4H score at 06:42 with the 4H score now)
+      for (const c of Object.keys(y.s)) { const d = (y.s[c] ?? NaN) - (x.s[c] ?? NaN); if (fin(d) && Math.abs(d) >= 1.2) push('strength', `${w}-${c}`, 2 + Math.abs(d), `${c}'s ${SPAN[w] ?? w} strength, then vs now: ${sg(d)}σ`, `${sg(x.s[c])}σ then, ${sg(y.s[c])}σ now (against the other seven)`); }
     }
   }
   // the Fed path's next meeting

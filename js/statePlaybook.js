@@ -50,7 +50,7 @@ export function quadrant(doc) {
   }[state];
   const rows = E.map(([k, w]) => expect(doc, k, w));
   return { id: 'quadrant', name: 'Growth × inflation quadrant', state,
-    why: `growth ${growthUp ? 'above' : 'below'} trend (${gdp != null ? `GDPNow ${gdp.toFixed(1)}%` : `US surprises ${us?.toFixed(2)}σ`}), inflation ${inflUp ? 'running hot' : 'cooling'} (${cpi != null ? `core CPI nowcast ${(cpi * 12).toFixed(1)}% annualised` : 'breakevens'})`,
+    why: `growth ${growthUp ? 'above' : 'below'} trend (${gdp != null ? `GDPNow ${gdp.toFixed(1)}%` : `US surprises ${us?.toFixed(2)}σ`}), inflation ${inflUp ? 'at or above' : 'below'} the 2.5% line (${cpi != null ? `core CPI nowcast ${(cpi * 12).toFixed(1)}% annualised` : 'breakevens'})`,
     expectations: rows, conformity: score(rows), evidence: { status: 'theory', note: 'The growth × inflation regime is tested here only as a 20-day FX direction descriptor (macro-regime-fx, descriptive); the quadrant asset map is theory.' } };
 }
 

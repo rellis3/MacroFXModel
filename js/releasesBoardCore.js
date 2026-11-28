@@ -18,6 +18,7 @@ import { crowding } from './atlasPosition.js';
 import { FLIPPED } from './cotState.js';
 import { eventImpactFor } from './eventImpactMap.js';
 import { COUNTRY_INSTRUMENTS } from './releaseScorecard.js';
+import { plausibleActual } from './surpriseReader.js';
 
 const fin = v => v != null && Number.isFinite(+v);
 const HOUR = 3600e3, DAY = 864e5;
@@ -49,6 +50,16 @@ export function upcoming(events, now, { back = 12 * HOUR, ahead = 7 * DAY } = {}
   return [...by.values()].sort((a, b) => a.ms - b.ms);
 }
 
+/** A reaction row that may be shown as "what the release did": not held back by the live reader (`rejected`, a held-back surprise), and with an
+    actual that is plausible for the release (Canada's y/y CPI logged as the m/m print, 2.5% vs 0.3%, z +10, before the 2026-11-27 matcher fix). */
+export function countable(x) {
+  if (!x || x.rejected || x.surprise?.heldBack || x.surprise?.ok === false) return false;
+  const a = x.surprise?.actual, e = x.surprise?.estimate;
+  if (a == null || e == null) return true;
+  if (typeof a !== 'string' || typeof e !== 'string') return true;   // the study backfill carries bare numbers from its own clean archive
+  return plausibleActual({ estimate: e, prev: null }, a);
+}
+
 export function buildReleasesBoard({ events = [], cot = null, reactions = null, eventDay = null, now = Date.now() } = {}) {
   const pos = positions(cot), byCcy = Object.fromEntries(pos.map(p => [p.ccy, p]));
   const rel = upcoming(events, now).map(r => {
@@ -59,7 +70,11 @@ export function buildReleasesBoard({ events = [], cot = null, reactions = null, 
   });
   // one row per release moment (same country, same minute): the prints share the market reaction, so the names are joined
   const seen = new Map();
-  for (const x of [...(reactions?.live ?? []), ...(reactions?.recent ?? [])].filter(x => x?.surprise && x.ms).sort((a, b) => b.ms - a.ms)) {
+  // a release moment with one held-back or implausible read is dropped whole: the reader matched that moment's rows on the same faulty pass
+  // (Canada 2026-11-16: CPI m/m 2.5% and median / trimmed CPI 3.1%, all wrong rows on the feed)
+  const all = [...(reactions?.live ?? []), ...(reactions?.recent ?? [])].filter(x => x?.surprise && x.ms);
+  const bad = new Set(all.filter(x => !countable(x)).map(x => `${x.country}|${x.ms}`));
+  for (const x of all.filter(x => !bad.has(`${x.country}|${x.ms}`)).sort((a, b) => b.ms - a.ms)) {
     const k = `${x.country}|${x.ms}`; if (!seen.has(k)) seen.set(k, { ...x, _names: [x.event] }); else if (!seen.get(k)._names.includes(x.event)) seen.get(k)._names.push(x.event);
   }
   const rec = [...seen.values()].slice(0, 6).map(x => ({

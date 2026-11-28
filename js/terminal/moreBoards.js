@@ -40,7 +40,7 @@ export function macroMoreHtml(E, extra = {}) {
 export function macroMoreBoard(key, E, extra = {}) {
   const draw = BOARDS.find(([k]) => k === key)?.[1];
   if (!draw || !E || E[key] === undefined) return '';
-  try { return draw(E[key], extra); } catch (e) { console.warn('board', key, e); return ''; }
+  try { return draw(E[key], { ...extra, E }); } catch (e) { console.warn('board', key, e); return ''; }   // E: a board may read a sibling feed (credit-liquidity reads credit-board)
 }
 
 /** The live layer (js/terminal/liveLayerView.js): start its refresh and fill the Overview's price-read slot. getAnalyst = () => the desk's dawn read per currency. */

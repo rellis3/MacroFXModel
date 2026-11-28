@@ -43,6 +43,21 @@ export function toCcyRow(row) {
     dlNet: neg(row.dlNet), dlShare: neg(row.dlShare), splitChg4w: neg(row.splitChg4w), ccyTerms: true };
 }
 
+const ordN = n => `${n}${[11, 12, 13].includes(n % 100) ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
+const CCY_NAME = { JPY: 'yen', CAD: 'Canadian dollar', CHF: 'Swiss franc' };
+/**
+ * The same state read in "long the currency" terms, beside the instrument-terms fields, for the readers that talk about the currency. The
+ * Desk Pack's analysts read the USDCHF row's "side: long, pct 91, share +15.6" as "specs crowded long CHF" (2026-11-27); long USDCHF is SHORT the
+ * franc (9th percentile, -15.6% in franc terms). {} for the rows already in currency terms (EUR, GBP, AUD, NZD and the assets).
+ */
+export function ccyView(sym, st) {
+  if (!FLIPPED.has(sym) || !st) return {};
+  const pct = pctToCcyTerms(sym, st.pct), share = toCcyTerms(sym, st.share), side = st.side === 'long' ? 'short' : st.side === 'short' ? 'long' : st.side ?? null;
+  const pair = `USD${sym}`, name = CCY_NAME[sym] ?? sym;
+  return { ccy: sym, ccySide: side, ccyPct: pct, ccyShare: share,
+    ccyReads: `Speculators are net ${st.side ?? '?'} ${pair}, which is net ${String(side ?? '?').toUpperCase()} the ${name}${Number.isFinite(pct) ? ` (${ordN(Math.round(pct))} percentile in ${name} terms` : ''}${Number.isFinite(share) ? `${Number.isFinite(pct) ? ', ' : ' ('}${share > 0 ? '+' : ''}${Math.round(share * 10) / 10}% of open interest)` : Number.isFinite(pct) ? ')' : ''}.` };
+}
+
 /** Instrument the desk quotes -> its COT feed row. Rows are already in these instruments' terms. */
 export const COT_ROW_FOR = {
   EURUSD: 'EUR', GBPUSD: 'GBP', AUDUSD: 'AUD', NZDUSD: 'NZD', USDJPY: 'JPY', USDCAD: 'CAD', USDCHF: 'CHF',
@@ -156,4 +171,23 @@ export function cotStateFor({ row, series, bars }) {
   if (!c) return null;
   return { ...c, ...describeCot(c), reportDate: row.reportDate ?? null, share, share4,
            move13: move13 == null ? null : +move13.toFixed(4), move4: move4 == null ? null : +move4.toFixed(4) };
+}
+
+/**
+ * When the next COT report comes out. The CFTC publishes Friday 15:30 New York for the Tuesday before; in a week with a
+ * federal holiday on the Thursday or Friday (Thanksgiving, Christmas, Independence Day, New Year) it publishes on the
+ * Monday after (owner review 27 Nov 2026: the 24 Nov report is due Mon 30 Nov). reportDate = the latest report's Tuesday.
+ * Returns { dataDate, release: 'YYYY-MM-DD', delayed } for the next report.
+ */
+export function nextCotRelease(reportDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(reportDate ?? ''))) return null;
+  const add = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+  const nthWd = (y, m, wd, n) => { const f = new Date(Date.UTC(y, m, 1)).getUTCDay(); return new Date(Date.UTC(y, m, 1 + ((wd - f + 7) % 7) + (n - 1) * 7)).toISOString().slice(0, 10); };
+  const obs = d => { const w = new Date(`${d}T12:00:00Z`).getUTCDay(); return w === 6 ? add(d, -1) : w === 0 ? add(d, 1) : d; };
+  const fed = d => { const y = +d.slice(0, 4); return [obs(`${y}-01-01`), obs(`${y + 1}-01-01`), obs(`${y}-07-04`), nthWd(y, 10, 4, 4), obs(`${y}-12-25`), obs(`${y}-06-19`), obs(`${y}-11-11`)].includes(d); };
+  const dataDate = add(reportDate, 7), fri = add(dataDate, 3), thu = add(dataDate, 2);
+  const delayed = fed(fri) || fed(thu);
+  let release = delayed ? add(fri, 3) : fri;
+  while (fed(release)) release = add(release, 1);
+  return { dataDate, release, delayed };
 }

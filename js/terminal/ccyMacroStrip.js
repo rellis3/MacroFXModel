@@ -4,8 +4,9 @@
 // the next release date, and a glowing 12-month ribbon of the prints. Under it, the stacked bar of the six scorecard factors, so the composite is auditable and
 // a missing factor is visible. The numbers are the macro-engines board's own (/api/macro-engines-board, js/terminal/macroEnginesCore.js): nothing is refetched.
 // Description only: macro-as-signal is a banked null; the strip says what printed, not what a currency will do. Tokens only (macro-strip.css).
-import { FAMILIES } from './macroEnginesCore.js';
+import { FAMILIES, isStopped } from './macroEnginesCore.js';
 import { stackHtml, scorecardHtml } from './scorecardView.js';
+import { plainRuling, pairFit, engineSplit } from './ccyCardCore.js';
 
 const E = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const fin = v => Number.isFinite(v);
@@ -35,10 +36,15 @@ export function rowParts(ccy, fam, c) {
     const s = c.engine?.score;
     return { ...none, print: `engine ${sg(s)}`, sub: `latest level against its own history${c.engine?.asOf ? ` · ${c.engine.asOf}` : ''}`, dirWord: s > 0.05 ? 'Above its norm' : s < -0.05 ? 'Below its norm' : 'Near its norm', dirCls: s > 0.05 ? 'up' : s < -0.05 ? 'dn' : 'flat', arrow: s > 0.05 ? '▲' : s < -0.05 ? '▼' : '=', next };
   }
+  if (isStopped(c)) {
+    const when = new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric', timeZone: 'Europe/London' }).format(new Date(c.ms));
+    const eng = c.engine?.score != null ? `engine ${sg(c.engine.score)}${c.engine.asOf ? ` · ${String(c.engine.asOf).slice(0, 10)}` : ''}` : '';
+    return { ...none, print: `feed stopped ${when}`, sub: `last print ${c.actual} · no current release in the store${eng ? ` · ${eng}` : ''}`, dirWord: 'No current read', next, stopped: true, event: c.event };
+  }
   const st = c.strength, basis = c.basis === 'consensus' ? 'vs expected' : c.basis === 'prior' ? 'vs prior' : 'no comparison';
   const word = st > 0 ? 'Stronger' : st < 0 ? 'Weaker' : st === 0 ? 'In line' : 'Printed';
   const sub = [c.estimate != null ? `expected ${c.estimate}` : '', c.prev != null ? `prior ${c.prev}` : '', ageText(c.ageDays)].filter(Boolean).join(' · ');
-  return { fam, print: String(c.actual), sub, dirWord: word, dirCls: st > 0 ? 'up' : st < 0 ? 'dn' : 'flat', arrow: st > 0 ? '▲' : st < 0 ? '▼' : st === 0 ? '=' : '', basis, next, stale: !!c.stale, event: c.event, z: c.z, ribbon: ribbonSvg(c.history) };
+  return { fam, print: `${c.actual}${c.unit && !String(c.event ?? '').toLowerCase().includes(c.unit) ? ` ${c.unit}` : ''}`, sub, dirWord: word, dirCls: st > 0 ? 'up' : st < 0 ? 'dn' : 'flat', arrow: st > 0 ? '▲' : st < 0 ? '▼' : st === 0 ? '=' : '', basis, next, stale: !!c.stale, event: c.event, z: c.z, ribbon: ribbonSvg(c.history) };
 }
 
 /** The Currency modal's section. board = /api/macro-engines-board, sc = /api/macro-scorecard. Returns '' when neither has this currency. */
@@ -74,5 +80,5 @@ export function open(ccy, famKey) {
   globalThis.openMacroBoard?.('panel.macro.engines');
 }
 
-globalThis.ccyMacro = { stripHtml, miniHtml, rowParts, ribbonSvg, scorecardHtml };
+globalThis.ccyMacro = { stripHtml, miniHtml, rowParts, ribbonSvg, scorecardHtml, plainRuling, pairFit, engineSplit };   // the Currencies card's wording and fit rules ride along (js/terminal/ccyCardCore.js)
 globalThis.ttMacroOpen = open;

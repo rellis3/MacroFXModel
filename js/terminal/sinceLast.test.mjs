@@ -33,7 +33,7 @@ const rows = [{ id: '2026-11-16T12:30:00Z|CPI', family: 'CPI', name: 'Core CPI m
 test('compare: every section that moved is described in plain words, nothing that did not move is', () => {
   const printed = C.printedBetween(rows, A.ts, B.ts); assert.equal(printed.length, 1, 'only the printed release between the two points');
   const items = C.compare(A, B, { printed, rows }), has = re => items.some(x => re.test(`${x.title} ${x.detail}`));
-  for (const re of [/World stress went from OK to watch/, /Credit went from watch to stress/, /Dollar funding went from OK to watch/, /VIX level flag turned on/, /VIX rose from 18 to 21.5/, /EUR now leads the last four hours/, /EUR moved \+1\.4σ/, /chance of a move at 2026-12-09 went from 80% to 95%/, /Goldilocks to Reflation/, /Correlation between markets went from normal to high/, /Bank of England: a newer statement \(2026-11-05\)/, /2s10s slope steepened by 6 bp/, /VIX went from 18 to 21.5/, /term premium moved/, /Stressed/, /cb-futures feed went missing/, /US CPI printed at 12:30 UTC/]) assert.ok(has(re), String(re));
+  for (const re of [/World stress went from OK to watch/, /Credit went from watch to stress/, /Dollar funding went from OK to watch/, /VIX level flag turned on/, /VIX rose from 18 to 21.5/, /EUR now leads the last four hours/, /EUR's 4-hour strength, then vs now: \+1\.4σ/, /chance of a move at 2026-12-09 went from 80% to 95%/, /Goldilocks to Reflation/, /Correlation between markets went from normal to high/, /Bank of England: a newer statement \(2026-11-05\)/, /2s10s slope steepened by 6 bp/, /VIX went from 18 to 21.5/, /term premium moved/, /Stressed/, /cb-futures feed went missing/, /US CPI printed at 12:30 UTC/]) assert.ok(has(re), String(re));
   assert.ok(!has(/1D.*leads/), 'the 1D leader did not change'); assert.ok(!items.some(x => x.key === 'lag-4H'), 'the 4H laggard did not change');
   const rel = items.find(x => x.kind === 'release'); assert.match(rel.detail, /0\.3 against 0\.2 expected \(\+0\.1\)/); assert.match(rel.detail, /Nasdaq moved −0\.70% in the next 30 minutes \(a typical reaction to this kind of release is 0\.\d\d%\)/);
 });
@@ -57,6 +57,8 @@ test('pickPoint: the point in force at the time (never a later one), the earlies
 
 test('ranges: your last visit only when it was at least 10 minutes ago, then 1h, 4h, 24h', () => {
   const now = Date.parse('2026-11-16T16:00:00Z'), r = C.ranges(now, now - 3 * 3600e3); assert.deepEqual(r.map(x => x.id), ['last', 'issue', '1h', '4h', '24h']); assert.match(r[0].label, /3 h ago/); assert.equal(r[1].from, Date.parse('2026-11-16T06:45:00Z'));
+  const rb = C.ranges(now, null, Date.parse('2026-11-16T06:53:44Z')); assert.equal(rb[0].from, Date.parse('2026-11-16T06:53:44Z'), 'the book\'s own time'); assert.match(rb[0].label, /this morning's book \(06:53 London/);
+  assert.equal(C.ranges(now, null, Date.parse('2026-11-13T06:53:00Z'))[0].from, Date.parse('2026-11-16T06:45:00Z'), 'an older book: the usual 06:45');
   assert.deepEqual(C.ranges(now, now - 60e3).map(x => x.id), ['issue', '1h', '4h', '24h']); assert.deepEqual(C.ranges(now, null).map(x => x.id), ['issue', '1h', '4h', '24h']); assert.equal(C.ranges(now, null)[2].from, now - 4 * 3600e3);
   assert.deepEqual(C.ranges(Date.parse('2026-11-14T16:00:00Z'), null).map(x => x.id), ['1h', '4h', '24h'], 'no morning call at the weekend');
   assert.deepEqual(C.ranges(Date.parse('2026-11-16T06:50:00Z'), null).map(x => x.id), ['1h', '4h', '24h'], 'not in the first 15 minutes');

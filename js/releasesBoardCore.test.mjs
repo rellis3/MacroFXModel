@@ -2,13 +2,28 @@
 //   node js/releasesBoardCore.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildReleasesBoard, describeReleases, positions, upcoming, ord } from './releasesBoardCore.js';
+import { buildReleasesBoard, describeReleases, positions, upcoming, ord, countable } from './releasesBoardCore.js';
 import { boardHtml } from './terminal/releasesBoardView.js';
 import { moreFixtures } from './terminal/moreBoards.fixtures.mjs';
 
 const NOW = Date.parse('2026-11-13T12:00:00Z');
 const RB = () => buildReleasesBoard({ ...moreFixtures.releases(NOW), now: NOW });
 
+test('what the last releases did: a held-back or implausible read drops its whole release moment (Canada CPI 2.5% vs 0.3%, z +10)', () => {
+  const ms = Date.parse('2026-11-16T13:30:00Z'), m = [{ id: 'eurusd', label: 'EUR/USD', m30: 0.1, unit: '%' }];
+  const live = [
+    { country: 'CA', ms, event: 'CPI m/m', surprise: { ok: true, actual: '2.5%', estimate: '0.3%', direction: 'above', z: 10.27 }, markets: m, source: 'live' },
+    { country: 'CA', ms, event: 'Median CPI y/y', surprise: { ok: true, actual: '3.1%', estimate: '2.0%', direction: 'above', z: 6.7 }, markets: m, source: 'live' },
+    { country: 'US', ms: ms - 864e5, event: 'Retail Sales m/m', rejected: true, surprise: { ok: false, heldBack: true, actual: '9%', estimate: '0.3%' }, markets: m, source: 'live' },
+    { country: 'US', ms: ms - 2 * 864e5, event: 'Core CPI m/m', surprise: { ok: true, actual: 0.3, estimate: 0.2, direction: 'above', z: 1.1 }, markets: m, source: 'study' },
+  ];
+  assert.equal(countable(live[0]), false, '2.5% against 0.3% is not a plausible CPI m/m');
+  assert.equal(countable(live[1]), true, 'on its own the median CPI looks plausible');
+  assert.equal(countable(live[2]), false, 'a row the reader holds back');
+  assert.equal(countable(live[3]), true, 'study rows carry bare numbers and are kept');
+  const rb = buildReleasesBoard({ reactions: { live, recent: [] }, now: ms + 864e5 });
+  assert.deepEqual(rb.recent.map(x => x.event), ['Core CPI m/m'], 'the Canada moment goes whole, the held-back US row goes, the study row stays');
+});
 test('ordinals read right', () => { assert.deepEqual([1, 2, 3, 4, 11, 12, 21, 82, 0].map(ord), ['1st', '2nd', '3rd', '4th', '11th', '12th', '21st', '82nd', '0th']); });
 
 test('positions are long-the-currency and crowded needs the percentile AND the sign to agree', () => {

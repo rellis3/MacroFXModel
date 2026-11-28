@@ -77,7 +77,7 @@ test('concentration: three or more cards on the same side of one leg, with their
   assert.deepEqual({ ccy: fl[0].ccy, side: fl[0].side, units: fl[0].units }, { ccy: 'JPY', side: -1, units: 2.1 });
   assert.deepEqual(fl[0].cards.sort(), ['AUDJPY', 'EURJPY', 'GBPJPY']);
   assert.equal(fl[0].bets.bets, 1.07); assert.equal(fl[0].cluster.lead, 'EURJPY');
-  assert.match(BV.flagText(fl[0], { days: 60 }), /^3 cards short JPY \(2\.1 units\), ~1\.07 independent bets on the last 60 sessions' correlations: /);
+  assert.match(BV.flagText(fl[0], { days: 60 }), /^3 cards short JPY \(2\.1 units\), ~1\.07 independent bets within this group on the last 60 sessions' correlations: /);
   assert.equal(BV.concentration(BOOK, null)[0].bets, null);
   assert.equal(BV.concentration(BOOK, null, { min: 4 }).length, 0);
 });
@@ -166,14 +166,23 @@ test('bookIntel: the strip and the template sentences come from the book, the ri
   assert.equal(x.bullets.length, 4);
   assert.match(x.bullets[0], /short JPY, 2\.1 units across 3 cards, at the ±2 cap \(the cap cut it from −3\)/);
   assert.match(x.bullets[1], /^Tightest cluster: 3 cards short JPY/);
-  assert.match(x.bullets[2], /"Yen carry unwind": −40 card-σ \(−2% of gross\), most from AUDJPY, EURJPY and GBPJPY\. Today's sensitivities, not a forecast\./);
-  assert.match(x.bullets[3], /^3 of 4 FX cards agree with their currencies' biases; against the currency view: EURAUD\.$/);
+  assert.match(x.bullets[2], /"Yen carry unwind": −40 card-σ \(−2% of the book's gross size\), most from AUDJPY, EURJPY and GBPJPY\. Today's sensitivities, not a forecast\./);
+  assert.match(x.bullets[3], /^3 of the 4 FX cards that have a direction agree with their currencies' biases \(1 yen cross has equal biases on both currencies: EURJPY\); against the currency view: EURAUD\.$/);
+  assert.match(x.tiles[4].s, /FX cards with a direction · 3 agree .* 1 yen cross has equal biases/);
   // nothing loaded yet: still a strip, no invented numbers
   const y = bookIntel({ run });
   assert.equal(y.tiles[2].v, '–'); assert.equal(y.tiles[3].v, '–');
   assert.equal(y.bullets.length, 3); assert.ok(!y.bullets.join(' ').includes('independent bets')); assert.match(y.bullets[1], /^Concentration: 3 cards short JPY/);
   const z = bookIntel({ run: { ...run, head: { ok: true, book: { ...run.head.book, instruments: { GBPJPY: BOOK.GBPJPY } } } } });
   assert.match(z.bullets[0], /global ruling is risk-off at high conviction; the book holds 1 live card, 1 of them FX/);
+});
+
+test('exposureAgainstView: net long a currency the ruling calls bearish (27 Nov: JPY +0.6 against JPY -1)', () => {
+  const net = { USD: 3.35, EUR: -0.4, GBP: -0.65, JPY: 0.6, AUD: -0.5, NZD: -0.2, CAD: -1.2, CHF: -0.5, NOK: 0 };
+  const view = { USD: { bias: 2 }, EUR: { bias: -1 }, GBP: { bias: -1 }, JPY: { bias: -1 }, AUD: { bias: -1 }, NZD: { bias: -1 }, CAD: { bias: -1 }, CHF: { bias: 0 } };
+  assert.deepEqual(BV.exposureAgainstView(net, view), [{ ccy: 'JPY', net: 0.6, bias: -1 }], 'CHF at 0 is no view, NOK has no ruling');
+  const run = { head: { ok: true, book: { instruments: {}, exposure: { cap: 4, after: net } } }, debate: { currency: { view: { currencies: view } } } };
+  assert.match(bookIntel({ run }).bullets.join(' '), /Net exposure against the currency view: long JPY 0\.6 while the currency ruling is bearish \(−1\)/);
 });
 
 // ── ranking vs realised ──

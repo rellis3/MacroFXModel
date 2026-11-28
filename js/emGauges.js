@@ -38,5 +38,11 @@ export function emGauges(byPair) {
   const zs = ['USDMXN', 'USDZAR'].map(k => out[k]?.z5).filter(Number.isFinite), z = zs.length ? zs.reduce((a, b) => a + b, 0) / zs.length : null;
   const stress = z == null ? null : { z: r2(z), level: z >= 2 ? 'stress' : z >= 1 ? 'watch' : z <= -1 ? 'risk-on' : 'calm',
     read: z >= 2 ? 'the carry currencies are being sold hard: risk-off conditions' : z >= 1 ? 'the carry currencies are weakening faster than usual' : z <= -1 ? 'the carry currencies are rallying: risk appetite is strong' : 'nothing unusual in the carry currencies' };
+  // the read is the MEAN of two 5-day z-scores: when MXN and ZAR point opposite ways, one of them alone made it, so the read says so
+  // (review 2026-11-27: "weakening faster than usual" from USD/MXN z +1.9 while USD/ZAR was -0.9 and the live rows were firmer)
+  const mx = out.USDMXN?.z5, za = out.USDZAR?.z5;
+  if (stress && Number.isFinite(mx) && Number.isFinite(za) && Math.sign(mx) !== Math.sign(za) && Math.abs(mx - za) >= 1.5 && stress.level !== 'calm')
+    stress.read = `mixed: ${mx > za ? 'MXN' : 'ZAR'} weaker (USD/${mx > za ? 'MXN' : 'ZAR'} z ${r2(Math.max(mx, za))}) while ${mx > za ? 'ZAR' : 'MXN'} is firmer (z ${r2(Math.min(mx, za))}); on the mean the carry pair reads ${stress.level}`;
+  if (stress) { stress.horizon = '5-day move, daily closes'; stress.asOf = [out.USDMXN?.date, out.USDZAR?.date].filter(Boolean).sort().at(-1) ?? null; }
   return { pairs: out, stress, label: 'gauges the desk reads, not trades; USD/EM up = the EM currency weaker' };
 }

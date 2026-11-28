@@ -78,8 +78,9 @@ export function mergedLevels(card, m) {
   const rows = [];
   for (const x of raw) {
     const prev = rows.at(-1);
-    if (prev && u && Math.abs(prev.price - x.price) <= 0.08 * u) { if (!prev.labels.includes(x.label)) { prev.labels.push(x.label); prev.kinds.push(x.kind); } continue; }
-    rows.push({ price: x.price, labels: [x.label], kinds: [x.kind] });
+    // a merged level keeps each part's own price, so the row can say "today's open 1.42464" when it is drawn at 1.42483 (review 2026-11-27)
+    if (prev && u && Math.abs(prev.price - x.price) <= 0.08 * u) { if (!prev.labels.includes(x.label)) { prev.labels.push(x.label); prev.kinds.push(x.kind); prev.prices.push(x.price); } continue; }
+    rows.push({ price: x.price, labels: [x.label], kinds: [x.kind], prices: [x.price] });
   }
   const last = fin(m?.last) ? m.last : null;
   for (const row of rows) row.dU = u && last != null ? Math.round(((row.price - last) / u) * 100) / 100 : null;
@@ -96,10 +97,11 @@ export function ladderHtml(rows, m) {
   for (const r of rows) {
     if (!placed && r.price < last) { out.push(priceRow()); placed = true; }
     const k = r.kinds.includes('invalid') ? 'invalid' : r.kinds.includes('plan') ? 'plan' : r.kinds.includes('open') ? 'open' : r.kinds[0];
-    out.push(`<div class="ct-lad-row ct-${k}"><span class="mono">${px(r.price)}</span><span class="${KIND_CLS[k] ?? ''}">${E(r.labels.join(' · '))}</span><span class="mono muted">${fin(r.dU) ? `${sg(r.dU)}u` : ''}</span></div>`);
+    const lab = r.labels.map((l, i) => (r.prices?.[i] != null && r.prices[i] !== r.price ? `${l} ${px(r.prices[i])}` : l)).join(' · ');
+    out.push(`<div class="ct-lad-row ct-${k}"><span class="mono">${px(r.price)}</span><span class="${KIND_CLS[k] ?? ''}"${r.labels.length > 1 ? ' title="levels this close together are drawn as one row; each keeps its own price"' : ''}>${E(lab)}</span><span class="mono muted">${fin(r.dU) ? `${sg(r.dU)}u` : ''}</span></div>`);
   }
   if (!placed) out.push(priceRow());
-  return `<div class="ct-ladder" role="list" aria-label="levels, highest first">${out.join('')}</div><p class="muted" style="font-size:11.5px;margin:6px 0 0">Every level once, highest first; levels within 0.08u are merged. The right column is the distance from the price now, in u (the day's p50 distance). Yesterday's levels and the week open are from completed daily bars.</p>`;
+  return `<div class="ct-ladder" role="list" aria-label="levels, highest first">${out.join('')}</div><p class="muted" style="font-size:11.5px;margin:6px 0 0">Every level once, highest first; levels within 0.08u are one row, and a merged level shows its own price. The right column is the distance from the price now, in u (the day's p50 distance). Yesterday's levels and the week open are from completed daily bars.</p>`;
 }
 
 /** The nearest level above and below price (not today's own high or low), for "what changes the read". */

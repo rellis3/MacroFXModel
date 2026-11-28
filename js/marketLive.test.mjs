@@ -53,7 +53,7 @@ test('ccyStrength: base counts for, quote against, ranked', () => {
   assert.equal(by.GBP.rank, 1);
 });
 
-import { dayType, riskTape, tapeHistory, priceAt, reaction, retailSince, nudges, sessionOf } from './marketLive.js';
+import { dayType, riskTape, tapeHistory, tapeSince, priceAt, reaction, retailSince, nudges, sessionOf } from './marketLive.js';
 
 test('dayType: the day forecaster\'s rule', () => {
   assert.equal(dayType(0.2, 0.3), 'quiet');
@@ -80,6 +80,16 @@ test('riskTape: equities for, havens against, AUD/NZD for; gold shown, not score
   assert.equal(riskTape({}, []), null);
   const h = []; tapeHistory(h, t, 1); tapeHistory(h, t, 2); tapeHistory(h, { label: 'mixed' }, 3);
   assert.deepEqual(h.map(x => x.at), [1, 3]);
+});
+
+test('tapeSince: "since at least" when the history began mid-day with one label (a restart with no saved history)', () => {
+  const day = Date.parse('2026-11-27T00:00:00Z'), restart = Date.parse('2026-11-27T18:31:00Z');
+  assert.deepEqual(tapeSince([{ at: restart, label: 'risk-on' }], restart, day), { since: restart, atLeast: true });
+  // seen from the start of the day: the time is exact
+  assert.deepEqual(tapeSince([{ at: day + 60_000, label: 'risk-on' }], day + 60_000, day), { since: day + 60_000, atLeast: false });
+  // a change seen after the restart is exact too
+  assert.equal(tapeSince([{ at: restart, label: 'mixed' }, { at: restart + 600_000, label: 'risk-on' }], restart, day).atLeast, false);
+  assert.equal(tapeSince([], restart, day), null);
 });
 
 test('reaction: the currency\'s move over 15 minutes after a print, across its pairs', () => {

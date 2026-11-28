@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { KLINE, periodFor, INDICATORS, toKline, precisionFor, newerThan, levelsFromDay, styleFor, TOKENS, cleanSymbol, NEAR, validateSettings, defaultSettings, describeSettings, loadSettings, saveSettings, settingsFor, SETTINGS_KEY } from './kchartCore.js';
+import { KLINE, periodFor, INDICATORS, toKline, precisionFor, newerThan, levelsFromDay, mergeNearLines, fmtLevel, styleFor, TOKENS, cleanSymbol, NEAR, validateSettings, defaultSettings, describeSettings, loadSettings, saveSettings, settingsFor, SETTINGS_KEY } from './kchartCore.js';
 import { TF_KEYS } from '../deskBarsCore.js';
 import { INSTRUMENTS } from '../replayCore.js';
 let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
@@ -71,7 +71,7 @@ ok(L.lines.some(l => l.id === 'open') && L.lines.some(l => l.id === 'sess:hi') &
 ok(L.lines.filter(l => l.kind === 'oi').every(l => Math.abs(l.price / L.price - 1) <= NEAR), 'option walls only within 3% of price (the 140 wall is not drawn)');
 ok(L.lines.some(l => l.kind === 'oi' && l.price === 101) && L.lines.some(l => l.kind === 'fc'), 'a near wall and the forecast lines are drawn');
 ok(L.lines.filter(l => l.kind === 'fc').every(l => l.tone === 'gold') && L.lines.filter(l => l.kind === 'oi').every(l => l.tone === 'pur2') && L.lines.every(l => TOKENS.includes(l.tone)), 'colour says what a line is, from the token set');
-ok(/Dawn read: bullish, medium, written 0\d:\d\d London/.test(L.dawn) && /not a tested signal/.test(L.dawn), 'the dawn read is a chip, worded as a description');
+ok(/Morning read: bullish, medium, written 0\d:\d\d London/.test(L.dawn) && /not a tested signal/.test(L.dawn), 'the dawn read is a chip, worded as a description');
 ok(!/buy|sell|will rise|will fall/i.test(JSON.stringify(L)), 'no direction or trade wording in the lines');
 const early = levelsFromDay(day, start - HOUR);
 ok(early.ok && !early.lines.some(l => l.kind === 'fc'), 'before the session open there is no forecast line (nothing known yet)');
@@ -85,11 +85,17 @@ ok(Q.calc === 'qlike' && !Q.lines.some(l => l.kind === 'fc') && Q.lines.filter(l
 ok(Math.abs(Q.lines.find(l => l.id === 'ql:oh_p90').price - o0 * 1.012) < 1e-9 && Math.abs(Q.lines.find(l => l.id === 'ql:cdn_p75').price - o0 * 0.993) < 1e-9, 'rungs hang off the 00:00 London open, as the v3 chart');
 const hiQ = Q.lines.find(l => l.id === 'sess:hi').price, loQ = Q.lines.find(l => l.id === 'sess:lo').price;
 ok(Math.abs(Q.lines.find(l => l.id === 'ql:projH').price - (loQ + o0 * 0.011)) < 1e-9 && Math.abs(Q.lines.find(l => l.id === 'ql:projL').price - (hiQ - o0 * 0.011)) < 1e-9, 'projected high = low so far + HL p50, low = high so far - HL p50');
-ok(/QLIKE per-line/.test(Q.note) && Q.lines.every(l => TOKENS.includes(l.tone)), 'the note says which calc drew the lines');
+ok(/scored best for that line/.test(Q.note) && !/QLIKE|CFD|v3/.test(Q.note) && Q.lines.every(l => TOKENS.includes(l.tone)), 'the note says which calc drew the lines');
 const stale = levelsFromDay({ ...day, inst: 'NQ' }, now, { ...qb, session: '2026-11-17' });
 ok(stale.calc === 'forecast' && stale.lines.some(l => l.kind === 'fc') && /not ready/.test(stale.note), 'a board for another session (after 22:00 it is tomorrow\'s) falls back to the plain forecast, and says so');
 ok(levelsFromDay({ ...day, inst: 'GOLD' }, now, qb).calc === 'forecast', 'a market missing from the board keeps the plain forecast');
 ok(levelsFromDay({ ...day, inst: 'NQ' }, start - HOUR, qb).lines.every(l => l.kind !== 'ql'), 'no QLIKE line before the session open');
+
+// labels: the market's precision, near lines share one label (review 2026-11-27: "Close+ p75 1.1010995440687975", labels printed over each other)
+ok(fmtLevel(1.1010995440687975) === '1.10110' && fmtLevel(3613.2) === '3613.2' && fmtLevel(159.6213) === '159.62', 'prices at the market\'s precision');
+const mg = mergeNearLines([{ id: 'a', label: 'high p50', price: 1.10110 }, { id: 'b', label: 'close up p75', price: 1.10112 }, { id: 'c', label: 'low p50', price: 1.0950 }], 0.0002);
+ok(mg.length === 2 && mg[0].text === 'close up p75 1.10112 · high p50 1.10110' && mg[1].text === 'low p50 1.09500', 'near lines share one label, each with its price');
+ok(Q.lines.every(l => !/O-H|O-L|Close[+-]|Proj [HL]|\(Lo\+HL\)/.test(l.label)), 'line names are plain words');
 
 // themes
 const s = styleFor({ up: '#0a0', dn: '#a00', tx2: '#888', tx3: '#666', line: '#222', bg1: '#000', pur2: '#80f', gold: '#fa0' });

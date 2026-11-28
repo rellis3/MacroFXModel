@@ -106,7 +106,8 @@ async function drawRankReality(el) {
   const latest = days.at(-1), t = rankRows(latest), hist = rankHistory(days, { w: 5 }), last = hist.rolling.at(-1);
   const pct = v => (v == null ? '–' : `${Math.round(v * 100)}%`), sg = v => (v == null ? '–' : `${v > 0 ? '+' : ''}${v.toFixed(2)}`);
   el.innerHTML = `<div class="grid g2"><div class="card"><div class="ch"><span class="lbl">Ranking vs realised · ${h(t?.date ?? '–')}</span><span class="r muted">latest scored day</span></div>${rankTableHtml(t)}</div>
-<div class="card"><div class="ch"><span class="lbl">History</span><span class="r muted">n = ${hist.days} scored day${hist.days === 1 ? '' : 's'}</span></div>
+<div class="card"><div class="ch"><span class="lbl">History</span><span class="r muted">n = ${hist.days} scored day${hist.days === 1 ? '' : 's'} · last scored ${h(latest?.date ?? '–')}</span></div>
+${rankVerdictHtml(hist, latest?.date)}
 <div class="tt-tiles"><div class="tt-tile"><div class="lbl">Mean Spearman</div><div class="v">${sg(hist.meanRho)}</div><div class="s">over ${hist.rhoN} day${hist.rhoN === 1 ? '' : 's'}</div></div><div class="tt-tile"><div class="lbl">Rolling ${hist.w}-day</div><div class="v">${sg(last?.mean ?? null)}</div><div class="s">mean of the last ${last?.n ?? 0}</div></div><div class="tt-tile"><div class="lbl">Top / bottom hit rate</div><div class="v">${pct(hist.hit.share)}</div><div class="s">${hist.hit.right} of ${hist.hit.n} calls in the right half</div></div></div>
 ${rankHeatHtml(hist)}
 <p class="tt-note">Cells show each currency's realised rank that day (1 = strongest). ▲ / ▼ = the desk ranked it top / bottom that morning, coloured by where it finished (green = near the top, red = near the bottom). rho = Spearman of the morning order against the realised order. Hit rate: the desk's top currency finishing in the realised top half and its bottom one in the bottom half. From the thesis-vs-reality records (08:00-21:00 London, moves in u). Descriptive of the desk's own record, ${hist.days < 20 ? `only ${hist.days} day${hist.days === 1 ? '' : 's'}: an anecdote, not evidence` : 'not a tested signal'}.</p></div></div>`;
@@ -116,6 +117,19 @@ globalThis.drawBookIntel = drawBookIntel;
 globalThis.drawBookFlow = drawBookFlow;
 globalThis.drawScenarioMap = drawScenarioMap;
 globalThis.drawRankReality = drawRankReality;
+/**
+ * The ranking record said plainly at the top (review 2026-11-27: "mean Spearman +0.08 (no skill) buried"). Below 0.2 in size,
+ * or under 20 days, the line says no skill is shown; it never calls a record skill on fewer than 20 days.
+ */
+export function rankVerdictHtml(hist, date) {
+  const r = hist?.meanRho, n = hist?.rhoN ?? 0;
+  if (r == null || !n) return '';
+  const s = `${r > 0 ? '+' : ''}${r.toFixed(2)}`;
+  const word = Math.abs(r) < 0.2 ? `no skill shown: the morning order matched how the currencies finished about as well as chance (mean Spearman ${s} over ${n} day${n === 1 ? '' : 's'})`
+    : r < 0 ? `the morning order ran against how the currencies finished (mean Spearman ${s} over ${n} days)`
+      : n < 20 ? `leaning right (mean Spearman ${s}) but only ${n} days: too few to call it skill` : `the morning order matched the finish better than chance (mean Spearman ${s} over ${n} days)`;
+  return `<p class="tt-sum" style="margin:0 0 8px"><b>Verdict so far:</b> ${word}${date ? `. Last scored ${h(date)}` : ''}.</p>`;
+}
 // the Overview was drawn before this module loaded
 const ready = () => new Promise(res => { const t0 = Date.now(); const go = () => ((typeof D !== 'undefined' && D.run) || Date.now() - t0 > 30_000 ? res() : setTimeout(go, 150)); go(); });
 ready().then(() => { drawBookIntel(document.getElementById('bkintel')); if (document.getElementById('flow') && !document.getElementById('flow').innerHTML) drawBookFlow(document.getElementById('flow')); });

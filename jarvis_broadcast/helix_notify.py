@@ -15,6 +15,7 @@ import json
 import os
 import time
 import urllib.error
+import ssl
 import urllib.request
 from pathlib import Path
 
@@ -33,8 +34,21 @@ def push_secret() -> str:
         return ''
 
 
+def _ssl_context():
+    """certifi's CA bundle when it is installed. On 2026-11-28 the recorder's own venv (JarvisBroadcast/.venv-local) rejected
+    the server's certificate as expired with its default store while certifi's bundle verified it, so the first Telegram note never left."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return None
+
+
+_CTX = _ssl_context()
+
+
 def _open(req, timeout):
-    return urllib.request.urlopen(req, timeout=timeout)
+    return urllib.request.urlopen(req, timeout=timeout, context=_CTX) if _CTX else urllib.request.urlopen(req, timeout=timeout)
 
 
 def call(base: str, path: str, *, body=None, data: bytes | None = None, ctype: str = 'application/json', method: str | None = None, retries: int = 4,

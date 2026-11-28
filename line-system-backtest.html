@@ -73,10 +73,10 @@ svg text{font:11px var(--mono);fill:var(--text2)}
       <label>Sizing <select id="sizing"><option value="fixed">Fixed % of starting account</option><option value="comp">Compounding % of current equity</option><option value="contract">1 contract (no scaling)</option></select></label>
     </div>
     <div class="ctl">
-      <span>Lines (descriptive only, the validated system is all 18):</span>
+      <span>Lines (descriptive only; the system is Jordan's 8 lines):</span>
       <span id="tierBox"></span><span id="famBox"></span>
       <label>Side <select id="side"><option value="">both</option><option>long</option><option>short</option></select></label>
-      <button id="resetF">Reset to the validated system</button>
+      <button id="resetF">Reset to the system</button>
     </div>
     <p class="warn" id="filterWarn" style="display:none">Line filters are on. Any split chosen after seeing the results is post-hoc: treat it as a lead, not a result.</p>
   </div>
@@ -137,7 +137,7 @@ svg text{font:11px var(--mono);fill:var(--text2)}
 
   <div class="box" id="tradeBox">
     <h2>Trade chart</h2>
-    <div class="ctl"><button id="prevT">◀ Prev</button><button id="nextT">Next ▶</button><button id="bestT">🏆 Best trade</button><button id="worstT">⚠ Worst trade</button><button id="bestD">Best day</button><button id="worstD">Worst day</button><button id="randT">Random trade</button><label><input type="checkbox" id="allLines" checked> all 18 lines</label></div>
+    <div class="ctl"><button id="prevT">◀ Prev</button><button id="nextT">Next ▶</button><button id="bestT">🏆 Best trade</button><button id="worstT">⚠ Worst trade</button><button id="bestD">Best day</button><button id="worstD">Worst day</button><button id="randT">Random trade</button><label><input type="checkbox" id="allLines" checked> show the other forecast lines</label></div>
     <div class="legend"><span><i style="background:var(--violet)"></i>VWAP (bars before)</span><span><i style="background:var(--amber)"></i>traded line</span><span><i style="background:var(--bull)"></i>target</span><span><i style="background:var(--red)"></i>stop</span><span><i style="background:#4b5563"></i>other lines</span><span>▲▼ fill · ✕ exit · ┊ arm</span></div>
     <div id="tradeInfo" class="note">Click any trade in the list below.</div>
     <div id="tradeChart"></div>
@@ -176,10 +176,10 @@ svg text{font:11px var(--mono);fill:var(--text2)}
 // Instrument registry: one row per instrument in the book. Add an instrument by exporting it with
 // scripts/gold-line-system-base/export_backtest.py <SYM> and adding a row here (with its own banked verdict).
 const INSTR = [
-  { sym: 'GOLD', label: 'Gold (GC)', dir: 'analysis/output/line-system-backtest/GOLD', results: 'analysis/output/gold-line-system-base/GOLD/results.json', arm: 'S2', on: true, status: 'VALIDATED' },
+  { sym: 'GOLD', label: 'Gold (GC)', dir: 'analysis/output/line-system-backtest/GOLD', results: 'analysis/output/gold-line-system-jordan/results.json', arm: 'S2', on: true, status: 'UNDERPOWERED' },
 ];
-const NOT_IN_BOOK = 'NQ (UNDERPOWERED: fake lines do as well) and EURUSD (NULL after costs) are not in the book; see the study page.';
-const TIERS = ['P50', 'P75', 'P90'], FAMS = ['OH', 'OL', 'Close+', 'Close-', 'HL up', 'HL down'];
+const NOT_IN_BOOK = 'NQ and EURUSD are not in the book (the 18-line version failed on both); they would need their own run on these 8 lines.';
+const TIERS = ['P75', 'P90'], FAMS = ['HL up', 'HL down', 'Close+', 'Close-'];
 const LINE_NAME = { OH: 'OH (forecast high)', OL: 'OL (forecast low)', 'Close+': 'Close+', 'Close-': 'Close−', 'HL up': 'HL projection up', 'HL down': 'HL projection down' };
 const $ = id => document.getElementById(id);
 const D = { meta: {}, trades: [], res: {}, candles: {} };
@@ -194,7 +194,7 @@ const mm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60)
 async function getJSON(u) { const r = await fetch(u); if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); }
 
 async function init() {
-  $('instrBox').innerHTML = 'Instruments in the book: ' + INSTR.map(i => `<label><input type="checkbox" data-sym="${i.sym}" ${i.on ? 'checked' : ''}> ${i.label} <span class="tag" style="color:var(--bull)">${i.status}</span></label>`).join('') + `<span class="note">${NOT_IN_BOOK}</span>`;
+  $('instrBox').innerHTML = 'Instruments in the book: ' + INSTR.map(i => `<label><input type="checkbox" data-sym="${i.sym}" ${i.on ? 'checked' : ''}> ${i.label} <span class="tag" style="color:${i.status === 'VALIDATED' ? 'var(--bull)' : 'var(--amber)'}">${i.status}</span></label>`).join('') + `<span class="note">${NOT_IN_BOOK}</span>`;
   $('tierBox').innerHTML = TIERS.map(t => `<button class="on" data-tier="${t}">${t}</button>`).join(' ');
   $('famBox').innerHTML = FAMS.map(t => `<button class="on" data-fam="${t}">${t === 'Close-' ? 'Close−' : t}</button>`).join(' ');
   for (const i of INSTR) {
@@ -286,7 +286,7 @@ function weekdays(a, b) { let n = 0; for (let d = new Date(a + 'T12:00:00Z'); d 
 // ---------- render ----------
 function render() {
   const sample = $('sample').value, cx = +$('costx').value, acct = +$('acct').value || 100000;
-  const filt = st.tiers.size < 3 || st.fams.size < 6 || $('side').value;
+  const filt = st.tiers.size < TIERS.length || st.fams.size < FAMS.length || $('side').value;
   $('filterWarn').style.display = filt ? '' : 'none';
   st.cur = sized(filtered(sample), cx); st.all = sized(filtered('ALL'), cx); st.acct = acct;
   const s = stats(st.cur, acct);
@@ -321,9 +321,9 @@ function costText() { return INSTR.filter(i => i.on).map(i => { const c = D.meta
 function renderVerdict() {
   const parts = INSTR.map(i => {
     const p = D.res[i.sym]?.primary?.[i.arm]; if (!p) return '';
-    return `<p><b>${i.label}: ${p.verdict}.</b> Out of sample ${fs(p.OOS_R, 3)}R a trade [90% CI ${fs(p.OOS_lo, 3)}, ${fs(p.OOS_hi, 3)}], ${p.OOS_n.toLocaleString()} trades, ${fs(p.OOS_totR, 0)}R; in sample ${fs(p.IS_R, 3)}. Fake lines (100 shuffles) average ${fs(p.pl1_mean, 3)} (95th percentile ${fs(p.pl1_p95, 3)}); the real lines rank at the ${f(100 * p.pl1_rank, 0)}th percentile; one-sided p ${f(p.p_one_sided, 3)}.</p>`;
+    return `<p><b>${i.label}: ${p.verdict}.</b> Out of sample (2023 → Aug 2026) <b>${fs(p.OOS_R, 3)}R a trade</b> [90% CI ${fs(p.OOS_lo, 3)}, ${fs(p.OOS_hi, 3)}], ${p.OOS_n.toLocaleString()} trades, ${fs(p.OOS_totR, 0)}R; <b>without the best 1% of trades ${fs(p.OOS_tot_wo_top1, 0)}R</b>. Fake lines (100 shuffles) average ${fs(p.pl1_mean, 3)} (95th percentile ${fs(p.pl1_p95, 3)}); the real lines beat ${f(100 * p.pl1_rank, 0)}% of them; one-sided p ${f(p.p_one_sided, 3)}. <b>In sample (2021–22) ${fs(p.IS_R, 3)}R</b>: negative, which is the gate it fails.</p>`;
   }).join('');
-  $('verdict').innerHTML = `<h2>What this is</h2><p>The gold line system as banked: <b>18 shadow lines → Jordan's gold entry → VWAP ± 0.5σ target → rolling-MAE stop</b>. Every trade 2021 → 21 Aug 2026, with the standard backtest read-outs. More instruments join the book once each has its own validated result.</p>${parts}<p class="warn">Fragile: the top 1% of trades carry the result (without them it is negative), and most of the profit comes from the smallest stops ($1.30–2.90). M1 bars can't show the fill order inside a minute, so a tick-data or forward check comes next.</p>`;
+  $('verdict').innerHTML = `<h2>What this is</h2><p>The gold line system on <b>Jordan's 8 shadow lines</b> (HL projection up / down, Close+, Close−, at P75 and P90) → <b>Jordan's gold entry</b> (arm then retest) → <b>target VWAP ± 0.5σ</b> fixed at the fill → <b>rolling-MAE stop</b> (3 months per line). Every trade 2021 → 21 Aug 2026, with the standard backtest read-outs. More instruments join the book once each has its own result.</p>${parts}<p class="warn">Read it carefully: 2023–26 is strong and well above fake lines, but 2021–22 lost (shorts at Close+ and HL up lost then; longs made money). The 2023–26 period was partly seen when this line set was picked, so the clean test is the held-back data after 21 Aug 2026, used once at the end. M1 bars can't show the fill order inside a minute; a tick-data or forward check is still needed for the small stops.</p>`;
 }
 function renderHow() {
   const m = D.meta.GOLD;
@@ -384,7 +384,7 @@ function group(S, key, order) {
 }
 function renderBreakdowns() {
   const S = st.cur;
-  const order = []; for (const fm of ['oh', 'ol', 'cup', 'cdn', 'hlH', 'hlL']) for (const t of ['50', '75', '90']) order.push(fm + t);
+  const order = []; for (const fm of ['hlH', 'hlL', 'cup', 'cdn']) for (const t of ['75', '90']) order.push(fm + t);
   $('byLine').innerHTML = group(S, t => t.level, order);
   $('byFam').innerHTML = group(S, t => LINE_NAME[t.fam], FAMS.map(x => LINE_NAME[x]));
   $('byTier').innerHTML = group(S, t => t.tier, TIERS);

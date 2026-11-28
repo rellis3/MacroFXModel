@@ -134,3 +134,11 @@ test('boardHtml: a stale print is dimmed and carries its age; the curve svg name
   assert.match(svg, /a week ago/); assert.match(svg, /a month ago/); assert.match(svg, /<svg/);
   assert.equal(curveSvg(null), '');
 });
+
+test('5d / 20d are 5 and 20 trading days (7 and 28 calendar days), the windows of the Fed-path and curve cards', () => {
+  const b = C.buildRatesBoard(S, NOW);
+  for (const t of [...b.tenors, ...b.slopes]) { assert.equal(t.chg5d, t.chg7d, `${t.k} 5d`); assert.equal(t.chg20d, t.chg28d, `${t.k} 20d`); }
+  // a payload from before the fix (5d = 5 calendar days) is drawn on the 7-day window
+  const old = { ...b, tenors: b.tenors.map(t => ({ ...t, chg5d: 999 })) };
+  assert.doesNotMatch(boardHtml(old, null, null), /\+999bp/);
+});

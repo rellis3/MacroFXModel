@@ -1,10 +1,10 @@
 // js/terminal/monitorView.js: the DOM half of the MONITOR tab (the rules are monitorCore.js, the memory and saving monitorState.js).
 // A dense, sortable, keyboard-friendly table of the markets you picked with live columns. Click a row to select the market (linked selection:
 // the Pair page, chart and Replay follow when it is on); Enter or a double click opens the Pair page. Refreshes every minute while the tab is on screen.
-// Everything shown is a description (size, age, the morning card as written); the Morning read column says in its tooltip that direction is context only.
+// Everything shown is a description (size, age, the morning card as written); the Desk call column says in its tooltip that direction is context only.
 //
 // A PREVIEW feature (registry id tab.monitor): js/terminal/terminalFeel.js only loads this file when the session may see that surface.
-import { COLUMNS, buildRows, sortRows, fmtPrice, fmtPct, rowsToTable } from './monitorCore.js';
+import { COLUMNS, IMPACTS, buildRows, sortRows, fmtPrice, fmtPct, rowsToTable, callText, entryText, invalText } from './monitorCore.js';
 import { createMonitorState, FAV_MONITOR } from './monitorState.js';
 import { ALL_INSTRUMENTS, instLabel } from './commandCore.js';
 import { TAGS } from '../volClockCore.js';
@@ -45,16 +45,19 @@ ${owner ? '<button type="button" class="btn" data-mon="save">Save</button><butto
 <span class="mon-sep"></span>
 <label class="mon-l" for="mon-add">Add a market</label><input id="mon-add" list="mon-list" autocomplete="off" spellcheck="false" placeholder="EURUSD, GOLD, NQ…"><datalist id="mon-list">${ALL_INSTRUMENTS.map(k => `<option value="${esc(k)}">${esc(instLabel(k))}</option>`).join('')}</datalist>
 <button type="button" class="btn" data-mon="add">Add</button>
+<span class="mon-sep"></span><label class="mon-l" for="mon-imp">Next release</label><select id="mon-imp">${IMPACTS.map(i => `<option value="${i.id}">${esc(i.label)}</option>`).join('')}</select>
 <span class="mon-sep"></span><span id="mon-tools" class="mon-tools"></span><span id="mon-stamp" class="mon-stamp muted"></span>
 </div><div id="mon-note" class="mon-note" role="status" aria-live="polite"></div><div class="mon-wrap"><table class="mon-t" id="mon-t" aria-label="Monitor"></table></div>
-<p class="tt-note">Every column describes size, age or the morning card as written: how big a move is expected and how much is used, not which way. Direction is context only. Click a row to select the market; Enter opens its Pair page.</p>`;
+<p class="tt-note">Every column describes size, age or the morning desk card as written: how big a move is expected and how much is used, not which way; u is the day's usual move from the open. Direction is context only. Click a row to select the market; Enter opens its Pair page.</p>`;
   const $ = s => sec.querySelector(s);
-  const pick = $('#mon-pick'), table = $('#mon-t'), noteEl = $('#mon-note'), stampEl = $('#mon-stamp'), addEl = $('#mon-add');
-  let data = { bars: {}, vc: null, global: null, events: [], at: 0 }, sortCol = null, sortDir = 1, open = false, timer = null, flash = '', busy = false, selInst = null;
+  const pick = $('#mon-pick'), table = $('#mon-t'), noteEl = $('#mon-note'), stampEl = $('#mon-stamp'), addEl = $('#mon-add'), impEl = $('#mon-imp');
+  let data = { bars: {}, vc: null, events: [], at: 0 }, sortCol = null, sortDir = 1, open = false, timer = null, flash = '', busy = false, selInst = null;
+  let impact = 'headline'; try { const v = store?.getItem?.('deskMonitorImpact'); if (IMPACTS.some(i => i.id === v)) impact = v; } catch { /* default */ }
+  if (impEl) impEl.value = impact;
 
   const rows = () => {
     const closed = !clockState(now()).open;
-    const r = buildRows({ items: state.current.items, bars: data.bars, vc: data.vc, global: data.global, events: data.events, now: now(), closed });
+    const r = buildRows({ items: state.current.items, bars: data.bars, vc: data.vc, cards: win.deskCardsAll?.() ?? {}, events: data.events, now: now(), closed, impact });
     return sortCol ? sortRows(r, sortCol, sortDir) : r;
   };
   function drawBar() {
@@ -73,7 +76,9 @@ ${owner ? '<button type="button" class="btn" data-mon="save">Save</button><butto
       case 'chg': return `<td class="n mono ${r.chgPct > 0 ? 'up' : r.chgPct < 0 ? 'dn' : ''}">${fmtPct(r.chgPct)}</td>`;
       case 'used': return `<td class="n mono" title="${esc(r.used == null ? (r.why.used ?? '') : `${r.usedMode === 'last' ? 'The last finished session' : 'So far today'}: ${Math.round(r.used * 100)}% of the forecast median range`)}">${r.used == null ? '–' : `<span class="mon-bar-u"><i style="width:${Math.min(100, Math.round(r.used * 50))}%"></i></span>${Math.round(r.used * 100)}%`}</td>`;
       case 'iv': { const t = TAGS[r.tag]; return `<td class="n mono" title="${esc(r.ratio == null ? (r.why.iv ?? '') : `${t?.plain ?? ''}. How much, not which way.`)}">${r.ratio == null ? '–' : r.ratio.toFixed(2)}${t ? ` <span class="mon-tag">${esc(t.label.toLowerCase())}</span>` : ''}</td>`; }
-      case 'dawn': return r.dawn ? `<td class="l mono ${r.dawn.sign > 0 ? 'up' : r.dawn.sign < 0 ? 'dn' : ''}" title="The morning card as written. Direction is context only, never a signal.">${r.dawn.sign > 0 ? '▲' : r.dawn.sign < 0 ? '▼' : '◆'} ${esc(r.dawn.word)}${r.dawn.pct ? ` ${r.dawn.pct}%` : ''}</td>` : '<td class="l muted">–</td>';
+      case 'call': return r.call ? `<td class="l mono ${r.call.sign > 0 ? 'up' : r.call.sign < 0 ? 'dn' : ''}" title="The morning desk book's card as written. Direction is context only, never a signal.">${r.call.sign > 0 ? '▲' : r.call.sign < 0 ? '▼' : '◆'} ${esc(callText(r.call))}</td>` : '<td class="l muted" title="The desk book has no card for this market today.">no card</td>';
+      case 'entry': return r.dist?.entry ? `<td class="n mono${r.dist.entry.side === 'in' ? ' gold' : ''}" title="${esc(r.dist.ok ? 'Distance from the entry zone, in u.' : 'Distance from the entry zone, in u. This card\'s plan levels do not fit together (see the card).')}">${esc(entryText(r.dist))}${r.dist.ok ? '' : ' ⚠'}</td>` : '<td class="n muted">–</td>';
+      case 'inval': return r.dist?.invalid != null ? `<td class="n mono${r.dist.invalid <= 0 ? ' dn' : ''}" title="Room before the invalidation level, in u.">${esc(invalText(r.dist))}</td>` : '<td class="n muted">–</td>';
       case 'next': return r.next ? `<td class="l" title="${esc(r.next.label)}"><span class="mono">${esc(r.next.ccy)}</span> ${esc(r.next.label)} <span class="muted">${esc(r.next.when)}</span></td>` : '<td class="l muted">–</td>';
       case 'age': return `<td class="n mono mon-age ${esc(r.age.state)}" title="${r.age.state === 'shut' ? 'The market is shut: this is the last print.' : 'How old the quote is.'}">${esc(r.age.text)}${r.age.state === 'shut' ? ' <span class="muted">shut</span>' : ''}</td>`;
       default: return '<td></td>';
@@ -92,8 +97,9 @@ ${owner ? '<button type="button" class="btn" data-mon="save">Save</button><butto
     if (busy || !open) return; busy = true;
     try {
       const items = state.current.items;
-      const [bars, vc, global, cal] = await Promise.all([loadBars(win, items), getJson(win, '/api/vol-clock'), getJson(win, '/api/global-read'), getJson(win, '/api/calendar-ahead')]);
-      data = { bars, vc: vc?.ok === false ? null : vc, global, events: cal?.rows ?? [], at: now() };
+      const [bars, vc, cal] = await Promise.all([loadBars(win, items), getJson(win, '/api/vol-clock'), getJson(win, '/api/calendar-ahead')]);
+      // this week's calendar the page already holds (rated by ForexFactory) plus the forward list
+      data = { bars, vc: vc?.ok === false ? null : vc, events: [...(win.deskEvents?.() ?? []), ...(cal?.rows ?? [])], at: now() };
     } catch { /* keep what we had */ }
     busy = false; if (open) drawTable();
   }
@@ -130,6 +136,7 @@ ${owner ? '<button type="button" class="btn" data-mon="save">Save</button><butto
     else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); (e.key === 'ArrowDown' ? row.nextElementSibling : row.previousElementSibling)?.focus?.(); }
   });
   pick.addEventListener('change', () => { const r = state.load(pick.value); say(r); if (r.ok) refresh(); });
+  impEl?.addEventListener('change', () => { impact = impEl.value; try { store?.setItem?.('deskMonitorImpact', impact); } catch { /* fine */ } if (open) drawTable(); });
   const unsubSel = win.deskSelection?.subscribe?.(({ sel }) => { if (sel?.inst && sel.inst !== selInst) { selInst = sel.inst; if (open) drawTable(); } });
   state.subscribe(() => { if (open) { render(); } else drawBar(); });
   const tabBtns = [...doc.querySelectorAll('#tabs [data-t]')], onTab = e => { const b = e.currentTarget ?? e.target; if (b.dataset.t === 'monitor') win.setTimeout(enter, 0); else leave(); };

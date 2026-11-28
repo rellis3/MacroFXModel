@@ -12,7 +12,7 @@ const usd = v => (v >= 1e9 ? `$${(v / 1e9).toFixed(1)}bn` : v >= 1e6 ? `$${(v / 
 function cardHtml(c) {
   const mv = [1, 5, 20].map(k => c.moves[k] ? `<span class="in-chip ${c.moves[k].chg > 0 ? 'u' : c.moves[k].chg < 0 ? 'd' : ''}" title="${k} session move, bigger than ${Math.round(c.moves[k].pct * 100)}% of its own such moves">${k}s ${esc(c.moves[k].text)}</span>` : '').join('');
   const lv = c.level ? `<p class="in-cap">${nth(c.level.pct)} percentile of its own ${(c.n / 252).toFixed(1)} years${c.stale ? ` (last value ${esc(c.stale)})` : ''}</p>` : (c.stale ? `<p class="in-cap">last value ${esc(c.stale)}</p>` : '');
-  return `<div class="in-gcard"><div class="in-gh"><span class="in-gl">${esc(c.label)}</span><b class="in-gv">${esc(c.last)}</b></div><div class="in-chips">${mv}</div>${glowLine(c.spark, { w: 300, h: 76, tone: c.tone, label: `${c.label}, last ${CHART_LABEL} sessions` })}${lv}</div>`;
+  return `<div class="in-gcard"><div class="in-gh"><span class="in-gl">${esc(c.label)}</span><b class="in-gv">${esc(c.last)}</b></div>${c.to && !c.stale ? `<p class="in-cap">last close ${esc(c.to)}: its moves end there</p>` : ''}<div class="in-chips">${mv}</div>${glowLine(c.spark, { w: 300, h: 76, tone: c.tone, label: `${c.label}, last ${CHART_LABEL} sessions` })}${lv}</div>`;
 }
 const CHART_LABEL = 120;
 
@@ -25,7 +25,7 @@ function fitHtml(b) {
   const f = b.fit; if (!f) return '<div class="in-gcard wide"><div class="in-gh"><span class="in-gl">Dollar and real yields against gold</span></div><p class="in-cap">Not enough overlapping history to fit.</p></div>';
   const q = f.fit, tOk = q.t.map(Math.abs).every(t => t >= 2);
   return `<div class="in-gcard wide"><div class="in-gh"><span class="in-gl">How much the dollar and real yields explain</span><b class="in-gv">${Math.round(q.r2 * 100)}%</b></div>
-<p>Over the last ${f.window} sessions gold moved <b>${sgn(f.actualPct)}</b>. At the dollar's and the real yield's moves over that stretch, and gold's usual sensitivity to them, about <b>${sgn(f.fittedPct)}</b> would normally have come with it. The other <b>${sgn(f.unexplainedPct)}</b> is not accounted for by those two.</p>
+<p>Over the last ${f.window} sessions gold moved <b>${sgn(f.wholePct ?? f.actualPct)}</b>${f.n < f.window ? `; on the <b>${f.n}</b> of them where the dollar and the real yield also printed (the broad dollar lags about a week) it moved <b>${sgn(f.actualPct)}</b>, and that is the part the fit can judge` : ''}. At the dollar's and the real yield's moves over ${f.n < f.window ? 'those sessions' : 'that stretch'}, and gold's usual sensitivity to them, about <b>${sgn(f.fittedPct)}</b> would normally have come with it. The other <b>${sgn(f.unexplainedPct)}</b> is not accounted for by those two.</p>
 <p class="in-cap">Usual sensitivity (fitted on the ${q.n} sessions before that stretch): a 1% move in the dollar goes with ${sgn(f.perDollarPct, 1)} on gold; a 10bp move in the real yield with ${sgn(f.perTenBp, 2)}. ${tOk ? 'Both are well above noise (t above 2).' : 'At least one is not clearly above noise.'} The two together explain ${Math.round(q.r2 * 100)}% of gold's day-to-day variation, so this is a rough guide. A fit to the past: it describes, it does not forecast.</p></div>`;
 }
 function positioningHtml(b) {
@@ -46,16 +46,18 @@ function tonnesHtml(t) {
 function etfHtml(b) {
   const e = b.etf, tn = tonnesHtml(e.tonnes);
   if (e.state !== 'ok') return `<div class="in-gcard"><div class="in-gh"><span class="in-gl">Gold ETF holdings (GLD + IAU)</span><b class="in-gv">${e.state === 'one' ? usd(e.last) : 'none yet'}</b></div>${tn}<p class="in-cap">${esc(e.note)}</p></div>`;
-  const rows = Object.entries(e.deltas).map(([k, d]) => `<tr><th scope="row">${k} day${k === '1' ? '' : 's'}</th><td>${sgn(d.raw, 2)}</td><td>${d.flow == null ? 'n/a' : sgn(d.flow, 2)}</td></tr>`).join('');
+  const bad = Object.values(e.deltas).filter(d => d.squares === false);
+  const rows = Object.entries(e.deltas).map(([k, d]) => `<tr><th scope="row">${k} day${k === '1' ? '' : 's'} <span class="muted">(${esc(d.from)} →)</span></th><td>${sgn(d.raw, 2)}${d.squares === false ? ' <b title="Does not square with the tonnes held and the gold price">⚠</b>' : ''}</td><td>${d.squares === false ? '<span class="muted">not shown</span>' : d.flow == null ? 'n/a' : sgn(d.flow, 2)}</td></tr>`).join('');
+  const badNote = bad.length ? ` <b>⚠ ${bad.map(d => `The change from ${esc(d.from)} (${sgn(d.raw, 2)}) does not square with the tonnes held and gold's price over the same dates (about ${sgn(d.expect, 2)})`).join('; ')}: one fund's dollar figure is probably from another day, so it is not read as a flow.</b>` : '';
   return `<div class="in-gcard"><div class="in-gh"><span class="in-gl">Gold ETF holdings (GLD + IAU)</span><b class="in-gv">${usd(e.last)}</b></div>
 ${tn}<div class="in-scrollx"><table class="in-tbl in-mini"><thead><tr><th>Change</th><th>Total assets</th><th>Without gold's own move</th></tr></thead><tbody>${rows}</tbody></table></div>
-<p class="in-cap">${e.days} days held (since ${esc(e.from)}). A fund's assets rise with the gold price as well as with new money, so the last column takes gold's own move over the same dates out: what is left is closer to money coming in or out. Short history: read it as a start, not a trend.</p></div>`;
+<p class="in-cap">${e.days} days held (since ${esc(e.from)}), each on the funds' own as-of date (to ${esc(e.asOf)}).${badNote} A fund's assets rise with the gold price as well as with new money, so the last column takes gold's own move over the same dates out: what is left is closer to money coming in or out. Short history: read it as a start, not a trend.</p></div>`;
 }
 
 /** The whole board as HTML. Pure. */
 export function goldHtml(b) {
   if (!b.haveBundle || !b.cards.length) return '<div class="in-empty">The daily market bundle has no gold series, so the board cannot be drawn.</div>';
-  return `<p class="in-asof">As at the close of <b>${esc(b.asOf)}</b>. Prices are completed daily closes. Positioning is the latest CFTC report we hold; ETF holdings are as recorded daily.</p>${volHtml(b)}
+  return `<p class="in-asof">As at the close of <b>${esc(b.asOf)}</b> (a card whose own last close is earlier says so). Prices are completed daily closes. Positioning is the latest CFTC report we hold; ETF holdings are as recorded daily.</p>${volHtml(b)}
 <div class="in-ggrid">${b.cards.map(cardHtml).join('')}${fitHtml(b)}${positioningHtml(b)}${etfHtml(b)}</div>
 <p class="in-foot muted">Everything here describes what has happened to gold and the things it is read against. None of it is a forecast or a trade: the dollar and real-yield link is a fit to the past, the positioning study found no measured effect on direction, and the ETF history is short.</p>`;
 }

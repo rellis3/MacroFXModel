@@ -161,7 +161,7 @@ import { LADDER_PARAMS as _LA_LADDER_PARAMS } from './js/forecastLadderParams.js
 import { costForPair as _laCostForPair } from './js/perLineStrategy.js';
 import { assetClass as _assetClassOf } from './js/instrumentRegistry.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
-import { cotStateFor as _cotStateFor, COT_ROW_FOR as _COT_ROW_FOR, OANDA_FOR as _COT_OANDA_FOR, FLIPPED as _COT_FLIPPED, toCcyTerms as _cotToCcy, pctToCcyTerms as _cotPctToCcy } from './js/cotState.js';
+import { cotStateFor as _cotStateFor, COT_ROW_FOR as _COT_ROW_FOR, OANDA_FOR as _COT_OANDA_FOR, FLIPPED as _COT_FLIPPED, toCcyTerms as _cotToCcy, pctToCcyTerms as _cotPctToCcy, ccyView as _cotCcyView } from './js/cotState.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical, validateInstrumentWithRegimeSplit as _mveValidateFull } from './js/mve/validateInstrument.js';
@@ -279,10 +279,10 @@ import { attribution as _atAttribution, attributionRecord as _atRecord } from '.
 import { bookRisk as _rkBookRisk } from './js/deskRisk.js';
 import { isoWeek as _wkIso, weekBooks as _wkBooks, weekCalendar as _wkCalendar, validateWeekly as _wkValidate, weeklyNote as _wkNote } from './js/weeklyDesk.js';   // agent 19
 import { DAY_MARKETS as _DF_MARKETS, realisedShape as _dfRealised, validateDayForecast as _dfValidate, scoreDayForecast as _dfScore, dayForecastRecord as _dfRecord } from './js/dayForecast.js';   // Phase 3's day-forecast writer
-import { policyRates as _prRates } from './js/policyRates.js';   // each central bank's policy rate, from its own series
+import { policyRates as _prRates, spreadsToUsd as _prSpreads } from './js/policyRates.js';   // each central bank's policy rate, from its own series
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
-import { pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
+import { isPreview as _nwIsPreview, pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
 import { CHANNEL_KV_KEY as _NC_KEY, MAX_PER_TICK as _NC_MAX_PER_TICK, channelMessage as _ncMessage, channelCandidates as _ncCandidates, allowChannel as _ncAllow, validateConfig as _ncValidate, publicView as _ncPublic, parseConfig as _ncParse, explainTelegramError as _ncExplain, persistConfig as _ncPersist, removeConfig as _ncRemove } from './js/newsChannel.js';   // the shared news channel: its own bot, tier 1-2, no book lines
 import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBackoff, dueSources as _nwDue, allowAlert as _nwAllowAlert, breakingCandidates as _nwBreaking, breakingMessage as _nwBreakingMsg } from './js/newsOps.js';
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
@@ -308,7 +308,7 @@ import { BOT_BASIS as _RK_BASIS } from './js/rulesKeeper.js';
 import { realisedDays as _vcRealised, compare as _vcCompare } from './js/volCheck.js';   // the terminal's vol chart
 import { morningText as _cosMorning, eveningText as _cosEvening } from './js/chiefOfStaff.js';   // agent 22
 import { numberCheck as _ccNumbers, claimsSections as _ccSections, validateClaims as _ccValidate } from './js/claimsCheck.js';   // Phase 16
-import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from './js/tradeWatch.js';   // agent 18: the trade watcher
+import { watchPlan as _twPlan, check as _twCheck, message as _twMessage, invalidAtIssue as _twInvalidAtIssue, markInvalidAtIssue as _twMarkAtIssue } from './js/tradeWatch.js';   // agent 18: the trade watcher
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
 import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/releasePlaybook.js';
@@ -326,7 +326,7 @@ import { styleExamples as _deskStyleExamples, renderDeskNewsletter as _renderDes
 import { expandFeeds as _dpExpandFeeds, buildDeskPack as _dpBuild, packForSkill as _dpForSkill, packSummary as _dpSummary, indexRow as _dpIndexRow, upsertIndex as _dpUpsertIndex, shouldBuild as _dpShouldBuild, londonDate as _dpLondonDate, DESK_SKILLS as _DP_SKILLS, DESK_UNIVERSE as _DP_UNIVERSE, DESK_SUBSETS as _DP_SUBSETS, packFresh as _dpFresh } from './js/deskPack.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { scoreClaimFires as _scoreClaimFires, CLAIMS as _WATCH_CLAIMS } from './js/claimWatch.js';   // the watch register (Crown setups + desk findings) — rides the desk-watch tick, log and Telegram
-import { evaluateGauges as _evaluateGauges } from './js/deskWatch.js';
+import { evaluateGauges as _evaluateGauges, vixTermCommon as _vixTermCommon } from './js/deskWatch.js';
 import { ratesRegimeRead as _ratesRegimeRead, alertText as _ratesRegimeAlert, attributionLine as _ratesRegimeAttrib } from './js/ratesRegime.js';
 import { buildCase1 as _seBuild1, buildCase2 as _seBuild2, analyse as _seAnalyse, alertText as _seAlertText } from './js/spreadEpisodes.js';
 import { alignDaily as _nqrAlign, rollingMonitor as _nqrRolling, describe as _nqrDescribe } from './js/nqRatesResidual.js';
@@ -392,7 +392,7 @@ import { buildDocument as _boeBuildDoc, mergeHistory as _boeMergeHist, snapOnOrB
 import { readEntry as _zipReadEntry, readRemoteEntry as _zipReadRemote } from './js/zipRead.js';
 import { releaseHistory as _relHistory } from './js/releaseHistory.js';   // the Calendar drill's past prints of one release (route /api/release-history)
 import { SHARED_KV as _SR_KV, SHARED_KINDS as _SR_KINDS, dayKey as _srDayKey, rollStore as _srRoll, readToday as _srReadToday, readLatest as _srReadLatest, putRead as _srPutRead, countCall as _srCountCall, callsToday as _srCallsToday, decideRead as _srDecide, createSingleFlight as _srCreateSingleFlight, normInst as _srNormInst, CHAIN_WINDOWS as _SR_CHAIN_WINDOWS } from './js/deskSharedReads.js';
-import { CB_BANKS as _CB_BOARD_BANKS, CB_HISTORY as _CB_BOARD_HISTORY, pastDates as _cbbPastDates, shapeBank as _cbbShape, boardPayload as _cbbPayload } from './js/terminal/cbBoardCore.js';
+import { CB_BANKS as _CB_BOARD_BANKS, CB_HISTORY as _CB_BOARD_HISTORY, pastDates as _cbbPastDates, shapeBank as _cbbShape, boardPayload as _cbbPayload, stanceOf as _cbbStance } from './js/terminal/cbBoardCore.js';
 import { buildRatesBoard as _buildRatesBoard } from './js/terminal/ratesBoardCore.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
@@ -547,6 +547,7 @@ import { createDataArchive, ICE_SPREAD_IDS as _ICE_SPREAD_IDS } from './js/dataA
 import { createSnapshotService as _createSnapshotService } from './js/deskSnapshotStore.js';   // the Desk Terminal time machine: CORE + FULL snapshots, KV window, R2 record (plans/TIME_MACHINE.md)
 import { parseFields as _snapParseFields } from './js/deskSnapshot.js';
 import { createExpiryTrackStore } from './js/expiryTrackStore.js';
+import { isExpired as _optIsExpired, usMarketHoliday as _optHoliday } from './js/optionExpiry.js';   // one expiry rule for the path, lines and terrain
 import { buildSwingMap as _buildSwingMap, sigmaSeries as _swingSigma, THIN_FLOOR as _SWING_THIN_FLOOR } from './js/swingMap.js';
 import { zoneWalk as _swingZoneWalk } from './js/swingPaths.js';
 import { PATH_HORIZON_DAYS as _PATH_HORIZON_DAYS, PATH_CORE_DAYS as _PATH_CORE_DAYS, PATH_SOURCES as _PATH_SOURCES, normaliseSource as _pathNormSource, sourceChoices as _pathSourceChoices, gldXauMap as _gldXauMap, indexCfdMap as _indexCfdMap, cboeExpiryRows as _cboeExpiryRows, mergeSources as _pathMergeSources, swingExpiryRow as _swingExpiryRow, beyondCoreRows as _pathBeyondCore, occOiDate as _occOiDate, sourceAsOf as _pathSourceAsOf, addDaysIso as _pathAddDays } from './js/pathSources.js';   // the path's Cboe sources (GLD for gold, SPX/NDX), horizon
@@ -4429,7 +4430,7 @@ async function _dailySnapshotTick() {
   const day = new Date().toISOString().slice(0, 10);
   const row = { day, at: new Date().toISOString() };
   try { const raw = await kv.get(_MORNING_BRIEF_KV); const b = raw ? JSON.parse(raw) : null; const a = b?.analysis; if (a) row.brief = { generatedAt: b.generatedAt, regime: a.regime ?? null, whatChanged: a.whatChanged ?? null, watch: Array.isArray(a.watch) ? a.watch.slice(0, 3) : a.watch ?? null, headline: a.headline ?? null, theme: typeof a.theme === 'string' ? a.theme.slice(0, 400) : null, boardTrade: a.boardTradeOfDay ? { pair: a.boardTradeOfDay.pair ?? null, direction: a.boardTradeOfDay.direction ?? null } : null }; } catch { /* no brief yet */ }
-  try { const mc = await _loadMacroChanges(); row.moved = (mc?.rows ?? []).map(r => ({ key: r.key, last: r.last, d1: r.deltas?.[1] ?? null, d5: r.deltas?.[5] ?? null, d20: r.deltas?.[20] ?? null })); } catch { /* skipped */ }
+  try { const mc = await _loadMacroChanges(); row.moved = (mc?.rows ?? []).map(r => ({ key: r.key, label: r.label ?? null, last: r.last, d1: r.deltas?.[1] ?? null, d5: r.deltas?.[5] ?? null, d20: r.deltas?.[20] ?? null })); } catch { /* skipped */ }
   try { const ws = await _loadWatchStore(); row.watch = (ws?.states ?? []).filter(t => t.firing).map(t => ({ id: t.id, kind: t.kind, since: t.since ?? null })); row.chain = (ws?.states ?? []).filter(t => t.id.startsWith('chain-')).map(t => ({ id: t.id.slice(6), broken: !!t.firing })); } catch { /* skipped */ }
   try { const cr = await _loadChainReadStore(); if (cr?.latest?.read?.hook) row.chainRead = { at: cr.latest.generatedAt, hook: cr.latest.read.hook, stories: (cr.latest.read.stories ?? []).map(x => ({ name: x.name, status: x.status })) }; } catch { /* skipped */ }
   // The day's high-impact releases, kept so a look-back beyond the calendar feed's
@@ -5377,7 +5378,7 @@ async function _dsScore(date, { reflect = true } = {}) {
   const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
   await kv.put(_DS_INDEX_KV, JSON.stringify(idx.slice(-800)));
   // the morning thesis laid against the day, from the same bars (descriptive; prereg amendment A15)
-  try { await _trBuildDay(date, bars); } catch (e) { console.warn('[desk-score] thesis vs reality:', e.message); }
+  try { const t = await _trBuildDay(date, bars); if (!t?.ok) await _trNoteError(date, t?.error ?? 'not built'); } catch (e) { console.warn('[desk-score] thesis vs reality:', e.message); await _trNoteError(date, e.message); }
   // paper trades on the watcher's own rules, from the same bars (description, not the scored test; prereg H1)
   try { await _dppBuildDay(date, bars); } catch (e) { console.warn('[desk-score] paper trades:', e.message); }
   let reflection = null, evening = null;
@@ -5499,6 +5500,10 @@ app.post('/api/analyst-scorecard/backfill', async (req, res) => {
 const _TR_KV = 'thesis_reality_v1';
 const _TR_DAY_KEY = date => `desk_run_reality_${date}`;
 let _trJob = null;
+// Review 2026-11-27: 25 and 26 Nov were scored but never laid against their day, and nothing said why (the failure was only a log line).
+// The last failure is kept (KV) and shown by GET /api/thesis-reality; the boot catch-up below rebuilds scored days the store is missing.
+const _TR_ERR_KV = 'thesis_reality_last_error';
+const _trNoteError = (date, error) => kv.put(_TR_ERR_KV, JSON.stringify({ date, error: String(error ?? '').slice(0, 300), at: new Date().toISOString() }), { expirationTtl: 30 * 86400 }).catch(() => {});
 async function _trLoad() { try { const raw = await kv.get(_TR_KV); const st = raw ? JSON.parse(raw) : null; return st && Array.isArray(st.days) ? st : { days: [] }; } catch { return { days: [] }; } }
 // the day's vol forecast (London-day high-to-low p50/p75, % of the open) and the realised range from H1 bars (js/volCheck.js)
 async function _trVol(date, insts) {
@@ -5562,7 +5567,8 @@ app.get('/api/thesis-reality', async (req, res) => {
     const raw = date ? await kv.get(_TR_DAY_KEY(date)).catch(() => null) : null, day = raw ? JSON.parse(raw) : null;
     if (req.query.brief === '1') return res.json(TR.briefFeed(day, t));
     if (!day) return res.status(date && req.query.date ? 404 : 200).json({ ok: false, error: date ? `no thesis-vs-reality record for ${date}` : 'no morning has been laid against its evening yet: the first is built after the evening score (21:10 London)', tally: t, dates: st.days.map(d => d.date), job: _trJob });
-    res.json({ ok: true, day, tally: t, dates: st.days.map(d => d.date), job: _trJob });
+    const lastError = await kv.get(_TR_ERR_KV).then(x => (x ? JSON.parse(x) : null)).catch(() => null);
+    res.json({ ok: true, day, tally: t, dates: st.days.map(d => d.date), job: _trJob, lastError });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/thesis-reality/backfill: build every stored day that has an evening score (?force=1 rebuilds days already
@@ -5584,11 +5590,13 @@ app.post('/api/thesis-reality/backfill', async (req, res) => {
   } catch (e) { job.status = 'error'; job.error = e.message; console.error('[thesis-reality] backfill:', e.message); }
   finally { job.finishedAt = Date.now(); console.log(`[thesis-reality] backfill: ${job.done.length} built, ${job.failed.length} failed, ${job.skipped} already done`); }
 });
-// Backfill once after boot when the store is empty: every stored day with an evening score is laid against its day.
+// Backfill once after boot: every stored day with an evening score that the store is missing is laid against its day (all of them when the
+// store is empty; otherwise the last 10 scored days, so a day whose evening build failed is caught up on the next boot).
 setTimeout(async () => {
   try {
-    if ((await _trLoad()).days.length || _trJob) return;
-    for (const r of await _dsLoadIndex()) { const x = await _trBuildDay(r.date).catch(e => ({ ok: false, error: e.message })); console.log(`[thesis-reality] boot backfill ${r.date}: ${x.ok ? 'built' : x.error}`); }
+    if (_trJob) return;
+    const have = new Set((await _trLoad()).days.map(d => d.date)), idx = await _dsLoadIndex(), todo = (have.size ? idx.slice(-10) : idx).filter(r => !have.has(r.date));
+    for (const r of todo) { const x = await _trBuildDay(r.date).catch(e => ({ ok: false, error: e.message })); if (!x.ok) await _trNoteError(r.date, x.error); console.log(`[thesis-reality] boot backfill ${r.date}: ${x.ok ? 'built' : x.error}`); }
   } catch (e) { console.warn('[thesis-reality] boot backfill:', e.message); }
 }, 5 * 60_000).unref?.();
 // ── Paper trades on the trade watcher's own rules (js/deskPaperTrades.js; owner request 2026-11-05) ──────────────
@@ -8070,7 +8078,7 @@ async function _nwFetchSource(src, url, incoming, health) {
 async function _nwReactPass(wire, now) {
   const final = []; let fetches = 0;
   for (const h of wire) {
-    if (!h.pairs?.length || (h.read?.tier ?? h.tier) > 2 || h.react?.done) continue;
+    if (!h.pairs?.length || (h.read?.tier ?? h.tier) > 2 || h.react?.done || _nwIsPreview(h.title)) continue;   // a preview / forecast / bank note has no event to react to
     const st = _nwReactStart(h); if (!st) continue;
     const age = now - st.t0;
     if (age > 6 * 3600e3) { h.react = { ...(h.react ?? { markets: [], m5: null, m30: null }), t0: st.t0, basis: st.basis, done: true }; if (h.react.m5 || h.react.m30) final.push(h); continue; }
@@ -8128,7 +8136,7 @@ async function _nwTick() {
       } catch (e) { console.warn('[news] read:', e.message); }
     }
     // the desk's markets each read touches, against today's book (pure JS, no model)
-    for (const h of wire) if (h.read && !h.pairs && Object.keys(h.read.impact ?? {}).length) h.pairs = _nwPairs(h.read.impact, { book });
+    for (const h of wire) if (h.read && !h.pairs && Object.keys(h.read.impact ?? {}).length) h.pairs = _nwPairs(h.read.impact, { book, title: h.title, extra: 3 });   // only the currencies the title names; the book's markets + 3
     // did the market react? (+5 / +30 min) and the record
     let react = { final: [], fetches: 0 };
     if (process.env.OANDA_KEY) { try { react = await _nwReactPass(wire, now); } catch (e) { console.warn('[news] react:', e.message); } }
@@ -8226,7 +8234,7 @@ app.get('/api/desk-news', async (req, res) => {
     const ccy = req.query.ccy ? String(req.query.ccy).toUpperCase() : null;
     const { book } = await _nwBook().catch(() => ({ book: {} }));
     const items = _nwPick(store.wire, { sinceMs: Date.now() - hours * 3600e3, tier, ccy, limit: 200 })
-      .map(h => (Object.keys(h.read?.impact ?? {}).length ? { ...h, pairs: _nwPairs(h.read.impact, { book }) } : h));
+      .map(h => (Object.keys(h.read?.impact ?? {}).length ? { ...h, pairs: _nwPairs(h.read.impact, { book, title: h.title, extra: 3 }) } : h));
     res.json({ ok: true, updatedAt: store.updatedAt ?? null, health: store.health ?? _nwState.health, backoff: store.backoff ?? {}, label: 'headlines and their read: context, never a signal', items });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -8362,12 +8370,21 @@ app.post('/api/desk-dayfc/run', async (req, res) => {
 // card's entry zone, first target and invalidation fire once a day, on Telegram (tgMaster.tradeWatch) and in
 // desk_trade_watch_<date>. No model call, never an order.
 const _TW_KEY = d => `desk_trade_watch_${d}`;
-let _tw = { date: null, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false };
+// Review 2026-11-27: after a restart the first check found every state already true and stamped them all with the restart time (five
+// events at 18:32:56). The first check of a process that starts after the watch began (a record exists, or it is past 07:05) is a catch-up:
+// what it finds is stamped "seen at" with the last check before the restart, and not sent on Telegram as new.
+let _tw = { date: null, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false, catchUp: null, checkedAt: null };
+const _twSave = date => kv.put(_TW_KEY(date), JSON.stringify({ date, fired: _tw.state.fired, entry: _tw.state.entry ?? {}, events: _tw.events, checkedAt: _tw.checkedAt, issueRunAt: _tw.issueRunAt ?? null }), { expirationTtl: 40 * 86400 }).catch(e => console.warn('[trade-watch] save:', e.message));
 async function _twTick() {
   const now = Date.now(), date = _dpLondonDate(now), dow = new Date(_dsLondonMs(date, 12)).getUTCDay();
   if (dow === 0 || dow === 6 || now < _dsLondonMs(date, 7) || now > _dsLondonMs(date, 21)) return { ok: false, why: 'outside the watch hours' };
-  if (_tw.date !== date) _tw = { date, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false };
-  if (!_tw.loaded) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); if (raw) { const j = JSON.parse(raw); _tw.state.fired = j.fired ?? {}; _tw.state.entry = j.entry ?? {}; _tw.events = j.events ?? []; } _tw.loaded = true; }
+  if (_tw.date !== date) _tw = { date, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false, catchUp: null, checkedAt: null };
+  if (!_tw.loaded) {
+    const raw = await kv.get(_TW_KEY(date)).catch(() => null), j = raw ? JSON.parse(raw) : null;
+    if (j) { _tw.state.fired = j.fired ?? {}; _tw.state.entry = j.entry ?? {}; _tw.events = j.events ?? []; _tw.issueRunAt = j.issueRunAt ?? null; }
+    if (j || now > _dsLondonMs(date, 7, 5)) _tw.catchUp = { since: j?.checkedAt ?? null };
+    _tw.loaded = true;
+  }
   const run = await _drLoad(date);
   if (!run?.head?.ok) return { ok: false, why: 'no book today' };
   const updates = await _duLoad(date), updKey = JSON.stringify(Object.keys(updates.slots ?? {}));
@@ -8375,6 +8392,18 @@ async function _twTick() {
     const view = _duLiveView(run.head.book, updates), cards = {};
     for (const [n, c] of Object.entries(run.head.book.instruments)) { const v = view[n]; if (!v) continue; const d0 = Math.sign({ STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 }[c.rating] ?? 0), d1 = Math.sign({ STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 }[v.rating] ?? 0); if (d0 && d0 === d1) cards[n] = { ...c, rating: v.rating, size: v.size ?? c.size }; }
     _tw.cards = cards; _tw.plan = _twPlan(cards); _tw.runAt = run.finishedAt; _tw.upd = updKey;
+    // a plan already through its invalidation when the book came out is off from the start ("invalid at issue"), not "invalidated" later
+    if (_tw.issueRunAt !== run.finishedAt && Number.isFinite(Date.parse(run.finishedAt))) {
+      const issueMs = Date.parse(run.finishedAt), watched = Object.keys(_tw.plan).filter(n => _dsOanda[n] && _tw.plan[n].invalid != null);
+      const bars = await _dsBars(watched, date, { entryMs: issueMs - 3 * 3600e3, exitMs: issueMs + 60e3 }).catch(() => null);
+      if (bars && Object.values(bars).some(x => x?.length)) {   // no bars at all (the broker call failed): try again next tick
+        const evs = _twMarkAtIssue(_tw.plan, _twInvalidAtIssue(_tw.plan, bars, issueMs), _tw.state);
+        _tw.events.push(...evs.map(e => ({ ...e, at: run.finishedAt })));
+        _tw.issueRunAt = run.finishedAt;
+        await _twSave(date);
+        if (evs.length && tgOn('tradeWatch') && state.tg?.token && state.tg?.chatId) for (const e of evs) await sendTelegram(state.tg.token, state.tg.chatId, _twMessage(e, _tw.cards[e.inst], { date }));
+      }
+    }
   }
   const insts = Object.keys(_tw.plan).filter(n => _dsOanda[n]);
   if (!insts.length) return { ok: true, watching: 0 };
@@ -8382,14 +8411,17 @@ async function _twTick() {
   if (!q.ok) return { ok: false, why: q.reason };
   const prices = {};
   for (const n of insts) { const p = q.pairs[_dsOanda[n]]; if (p?.tradeable !== false && Number.isFinite(p?.bid) && Number.isFinite(p?.ask)) prices[n] = (p.bid + p.ask) / 2; }
-  const evs = _twCheck(_tw.plan, prices, _tw.state);
+  const evs = _twCheck(_tw.plan, prices, _tw.state), catchUp = _tw.catchUp;
+  _tw.checkedAt = new Date(now).toISOString(); _tw.catchUp = null;
   if (evs.length) {
-    const at = new Date().toISOString();
-    _tw.events.push(...evs.map(e => ({ ...e, at })));
-    await kv.put(_TW_KEY(date), JSON.stringify({ date, fired: _tw.state.fired, entry: _tw.state.entry ?? {}, events: _tw.events }), { expirationTtl: 40 * 86400 }).catch(e => console.warn('[trade-watch] save:', e.message));
-    if (tgOn('tradeWatch') && state.tg?.token && state.tg?.chatId) for (const e of evs) await sendTelegram(state.tg.token, state.tg.chatId, _twMessage(e, _tw.cards[e.inst], { date }));
-    console.log(`[trade-watch] ${evs.map(e => `${e.inst} ${e.kind}`).join(', ')}`);
-  }
+    const at = _tw.checkedAt;
+    // found already true on a catch-up check: "seen at", with the last check before the restart when there was one; never sent as new
+    const tagged = evs.map(e => ({ ...e, at, ...(catchUp && e.firstSeen ? { afterRestart: true, since: catchUp.since } : {}) }));
+    _tw.events.push(...tagged);
+    await _twSave(date);
+    if (tgOn('tradeWatch') && state.tg?.token && state.tg?.chatId) for (const e of tagged) if (!e.afterRestart) await sendTelegram(state.tg.token, state.tg.chatId, _twMessage(e, _tw.cards[e.inst], { date }));
+    console.log(`[trade-watch] ${tagged.map(e => `${e.inst} ${e.kind}${e.afterRestart ? ' (catch-up)' : ''}`).join(', ')}`);
+  } else if (catchUp || now - (_tw.savedAt ? Date.parse(_tw.savedAt) : 0) > 10 * 60_000) { _tw.savedAt = _tw.checkedAt; await _twSave(date); }   // keep "last check" fresh enough to bound a restart gap
   return { ok: true, watching: insts.length, events: evs.length };
 }
 svcInterval('tradeWatch', () => _twTick().catch(e => console.warn('[trade-watch]', e.message)), 2 * 60_000);
@@ -8399,7 +8431,7 @@ app.get('/api/trade-watch', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
     const date = _dpLondonDate(Date.now());
     if (_tw.date !== date) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); const j = raw ? JSON.parse(raw) : {}; return res.json({ ok: true, date, live: false, events: j.events ?? [], fired: j.fired ?? {}, plan: {} }); }
-    res.json({ ok: true, date, live: true, events: _tw.events, fired: _tw.state.fired, last: _tw.state.last, plan: _tw.plan });
+    res.json({ ok: true, date, live: true, events: _tw.events, fired: _tw.state.fired, last: _tw.state.last, plan: _tw.plan, checkedAt: _tw.checkedAt });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // ── The live layer (js/marketLive.js; owner 2026-11-23: the terminal should move with the day) ──
@@ -8417,6 +8449,8 @@ app.get('/api/trade-watch', async (_req, res) => {
 const _ML_DAY_KEY = date => `market_live_day_${date}`;
 const _ML_EXTRA = ['NQ', 'SPX500', 'DE30', 'US30', 'GOLD'];
 let _ml = { date: null, runKey: null, cards: {}, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: null };
+// the risk tape's label history for the day, kept in KV so a restart does not reset "since" to the restart time (review 2026-11-27)
+const _ML_TAPE_KEY = date => `market_live_tape_${date}`;
 let _mlBusy = false;
 async function _mlBook(date) {
   for (let i = 0; i < 6; i++) {   // today's book, else the latest within the week (a Monday before the morning run reads Friday's)
@@ -8471,7 +8505,8 @@ async function _mlTick() {
       const { unitOf } = await import('./js/deskScore.js'), cards = {};
       for (const [n, c] of Object.entries(b.run.head.book.instruments ?? {})) cards[n] = b.runDate === date ? { levels: c.levels ?? null } : { unit: unitOf(c.levels) };   // an earlier day's lines do not apply today
       for (const n of _ML_EXTRA) if (!cards[n] && _dsOanda[n]) cards[n] = { unit: null, extra: true };
-      const keep = _ml.date === date ? { tapeHist: _ml.tapeHist, fired: _ml.fired, saved: _ml.saved } : {};
+      let keep = _ml.date === date ? { tapeHist: _ml.tapeHist, tapeFrom: _ml.tapeFrom, fired: _ml.fired, saved: _ml.saved } : null;
+      if (!keep) { const raw = await kv.get(_ML_TAPE_KEY(date)).catch(() => null), j = raw ? JSON.parse(raw) : null; keep = Array.isArray(j?.hist) ? { tapeHist: j.hist, tapeFrom: j.from ?? j.hist[0]?.at ?? now } : { tapeFrom: now }; }
       _ml = { date, runKey, cards, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: b.runDate, tapeHist: [], fired: new Set(), saved: false, retail: null, retailAt: 0, reactions: [], tiltAt: 0, ...keep };
       await _mlExtraUnits(_ml.cards);
       await _mlRefs(ML, _ml.cards, date);
@@ -8489,7 +8524,10 @@ async function _mlTick() {
     }
     const prev = _ml.at ? { markets: _ml.view, ccy: _ml.ccy, tape: _ml.tape } : null;
     _ml.view = ML.view(_ml.state, _ml.cards); _ml.ccy = ML.ccyStrength(Object.fromEntries(Object.entries(_ml.view).filter(([n]) => !_ml.cards[n]?.extra)));
+    const nHist = _ml.tapeHist.length;
     _ml.tape = ML.riskTape(_ml.view, _ml.ccy); ML.tapeHistory(_ml.tapeHist, _ml.tape, now);
+    _ml.tapeSince = ML.tapeSince(_ml.tapeHist, _ml.tapeFrom, _dsLondonMs(date, 0));
+    if (_ml.tapeHist.length !== nHist) await kv.put(_ML_TAPE_KEY(date), JSON.stringify({ hist: _ml.tapeHist, from: _ml.tapeFrom }), { expirationTtl: 3 * 86400 }).catch(e => console.warn('[market-live] tape history', e.message));
     _ml.at = new Date(now).toISOString();
     try { _ml.reactions = await _mlReactions(ML, date, now); } catch (e) { console.warn('[market-live] reactions', e.message); }
     if (now - _ml.retailAt > 20 * 60_000) { _ml.retailAt = now; try { _ml.retail = await _mlRetail(ML, date); } catch (e) { console.warn('[market-live] retail', e.message); } }
@@ -8507,7 +8545,7 @@ async function _mlTick() {
   } finally { _mlBusy = false; }
 }
 const _mlPayload = () => ({ ok: !!_ml.at, date: _ml.date, runDate: _ml.runDate, at: _ml.at, open: _fxWeekOpen(Date.now()), markets: _ml.view, ccy: _ml.ccy,
-  tape: _ml.tape ? { ..._ml.tape, since: _ml.tapeHist?.at(-1)?.at ? new Date(_ml.tapeHist.at(-1).at).toISOString() : null, history: (_ml.tapeHist ?? []).map(h => ({ at: new Date(h.at).toISOString(), label: h.label })) } : null,
+  tape: _ml.tape ? { ..._ml.tape, since: _ml.tapeHist?.at(-1)?.at ? new Date(_ml.tapeHist.at(-1).at).toISOString() : null, sinceAtLeast: !!_ml.tapeSince?.atLeast, history: (_ml.tapeHist ?? []).map(h => ({ at: new Date(h.at).toISOString(), label: h.label })) } : null,
   reactions: _ml.reactions ?? [], retail: _ml.retail ?? null, extra: Object.keys(_ml.cards ?? {}).filter(n => _ml.cards[n]?.extra),
   note: 'Where each market is now against the open, in u (the day\'s p50 distance; for the equity indices and gold off the book, half the median daily range). A description, not a forecast or a call.' });
 svcInterval('marketLive', () => _mlTick().catch(e => console.warn('[market-live]', e.message)), 60_000);
@@ -8563,7 +8601,9 @@ async function _policyRatesNow() {
   // result with any failure is cached for 30 minutes, not 6 hours, so the source is asked again soon.
   for (const [ccy, why] of Object.entries(r.errors ?? {})) if (!r.rates[ccy] && _prLastGood[ccy]) r.rates[ccy] = { ..._prLastGood[ccy], carried: true, error: why };
   for (const [ccy, v] of Object.entries(r.rates)) if (!v.carried) _prLastGood[ccy] = v;
-  const data = { ok: Object.keys(r.rates).length > 0, fetchedAt: new Date().toISOString(), ...r };
+  const data = { ok: Object.keys(r.rates).length > 0, fetchedAt: new Date().toISOString(), ...r,
+    // the spreads are given, not left to the reader: the analysts subtracted wrongly ("275bp to EUR" for 4.00 - 2.50), js/policyRates.js spreadsToUsd
+    spreadToUsdBp: _prSpreads(r.rates), spreadNote: 'spreadToUsdBp = each bank\'s policy rate minus the Fed\'s policy rate as listed under rates.USD, in basis points (negative = below the Fed)' };
   if (data.ok) _prCache = { at: Object.keys(r.errors ?? {}).length ? Date.now() - (6 * 3600e3 - 30 * 60e3) : Date.now(), data };
   return data;
 }
@@ -9499,7 +9539,7 @@ app.get('/api/cog-chart/nq-rates', async (req, res) => {
       const r4 = x => (x == null || !Number.isFinite(x) ? null : +x.toFixed(4));
       const tail = rows.slice(-keep).map(o => ({ date: o.date, nq: o.nq, b2y: r4(10 * o.b2y), bslope: r4(10 * o.bslope), r2: r4(o.r2), z: r4(o.z), z20: r4(o.z20), implied20: r4(o.implied20), actual20: r4(o.actual20) }));
       _nqr.out.set(key, { ok: true, window: W, units: { b2y: '% NQ per +10 bp 2y', bslope: '% NQ per +10 bp steeper 10y-2y', implied20: '%', actual20: '%' }, latest: tail.at(-1), read: _nqrDescribe(rows.at(-1)), rows: tail,
-        source: `FRED ${fid}, DGS2, DGS10 (yields ~15:30 ET, US close 16:00 ET)`, note: 'Exploratory context, not a signal: the residual does not persist and the catch-up trade is banked NULL (rates_residual S1).', at: new Date().toISOString() });
+        source: `FRED ${fid}, DGS2, DGS10 (yields ~15:30 ET, US close 16:00 ET)`, note: 'Exploratory context, not a signal: the residual does not persist and the catch-up trade is banked NULL in the Evidence Book.', at: new Date().toISOString() });
     }
     res.set('Cache-Control', 'public, max-age=900'); res.json(_nqr.out.get(key));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -11232,7 +11272,7 @@ async function _buildMorningBrief(mode = 'column', context = '', { timeoutMs } =
   const macro = [
     `VIX ${g('vix')} (prev ${gp('vix')})${g('vix3m') != null ? ` · VIX3M ${g('vix3m')} (${g('vix') > g('vix3m') ? 'BACKWARDATED — near-term fear' : 'contango — normal'})` : ''}`,
     `HY credit spread ${g('hy')}% (prev ${gp('hy')}%)`,
-    `DXY ${g('dxy')} (prev ${gp('dxy')})`,
+    `Broad dollar index (Fed, not the ICE DXY) ${g('dxy')} (prev ${gp('dxy')})`,
     // US tenors are DAILY series (DGS*) now, not GS* monthly averages — "prev" here
     // is the prior business day, which is what a morning brief has always implied.
     `US 2Y ${g('us2y')} · US 10Y ${g('us10y')} · 2s10s ${s2s10}${fred?.us10y?.asOf ? ` (as of ${fred.us10y.asOf})` : ''}`,
@@ -11937,7 +11977,7 @@ async function _buildCotAnalysis() {
     const fred = fredRaw ? (() => { const p = JSON.parse(fredRaw); return p?.d ?? p; })() : {};
     const g = k => fred?.[k]?.value, gp = k => fred?.[k]?.prev;
     if (g('dxy') != null) {
-      macroLine = `VIX ${g('vix')} (prev ${gp('vix')}) · DXY ${g('dxy')} (prev ${gp('dxy')}) · US 2Y ${g('us2y')} · US10Y ${g('us10y')} · HY spread ${g('hy')}% (prev ${gp('hy')}%)`;
+      macroLine = `VIX ${g('vix')} (prev ${gp('vix')}) · broad $ index (Fed) ${g('dxy')} (prev ${gp('dxy')}) · US 2Y ${g('us2y')} · US10Y ${g('us10y')} · HY spread ${g('hy')}% (prev ${gp('hy')}%)`;
     }
   } catch {}
 
@@ -12017,10 +12057,10 @@ async function _buildCotState() {
     let bars = [];
     try { bars = await _btFetchD1(_COT_OANDA_FOR[inst], 140); } catch (e) { errors.push(`${inst}: ${e.message}`); }
     const st = _cotStateFor({ row, series: series[sym], bars });
-    if (st) out[inst] = { sym, ...st, priced: bars.length > 0 };
+    if (st) out[inst] = { sym, ...st, priced: bars.length > 0, ..._cotCcyView(sym, st) };   // JPY / CAD / CHF also in currency terms (js/cotState.js ccyView)
   }));
   const data = { ok: true, reportDate, generated: new Date().toISOString(), study: 'cot-crowding-programme',
-    note: 'Where speculators sit relative to the trend, and what the desk\'s registered study found for that state. Context, never a direction.',
+    note: 'Where speculators sit relative to the trend, and what the desk\'s registered study found for that state. Context, never a direction. Fields are in the terms of the instrument quoted (USDJPY, USDCAD, USDCHF: long = long USD, SHORT the currency); ccySide / ccyPct / ccyShare / ccyReads give those three in currency terms.',
     instruments: out, errors: errors.length ? errors : undefined };
   _cotStateCache = { ts: Date.now(), reportDate, data };
   return data;
@@ -15023,7 +15063,8 @@ async function _loadCbSentiment() {
       const raw = await kv.get(`${prefix}${latest.date}`);
       if (!raw) return;
       const p = JSON.parse(raw);
-      if (p.analysis?.hawkishScore != null) out[ccy] = { score: p.analysis.hawkishScore, meetingDate: latest.date, regime: p.analysis.regime };
+      // regime = the one threshold rule on the score (js/terminal/cbBoardCore.js stanceOf, the bias engine's 0.5); the reader's own word rides as aiRegime
+      if (p.analysis?.hawkishScore != null) out[ccy] = { score: p.analysis.hawkishScore, meetingDate: latest.date, regime: _cbbStance(p.analysis.hawkishScore), aiRegime: p.analysis.regime ?? null };
     } catch { /* omitted — currency scores on its remaining dims */ }
   }));
   return out;
@@ -22313,7 +22354,7 @@ async function computeRiskFlags() {
     return pctChange ? (b - a) / a * 100 : b - a;
   };
 
-  const [hyHist, jpyHist] = await Promise.all([hist('hy'), hist('usd_jpy')]);
+  const [hyHist, jpyHist, vixHist, vix3mHist] = await Promise.all([hist('hy'), hist('usd_jpy'), hist('vix'), hist('vix3m')]);
   let cvol = null;
   try { cvol = await _getCvol(); } catch { /* flag reports unavailable */ }
   let move = null;
@@ -22322,7 +22363,9 @@ async function computeRiskFlags() {
   try { sbCorr = await _stockBondCorr(); } catch (e) { console.warn('[risk-flags] stock-bond corr failed:', e.message); }
 
   const vix    = fred.vix?.value ?? null;
-  const vix3m  = fred.vix3m?.value ?? null;
+  // the RATIO takes both legs on the last date both printed (js/deskWatch.js vixTermCommon), as the desk watch and the
+  // spreads board do: a VIX of one day over a VIX3M of the day before is not a term structure
+  const vt = _vixTermCommon(fred, { vix: vixHist, vix3m: vix3mHist });
   const hyChg  = lastChange(hyHist, 5, false);            // OAS is in % points
   const jpyChg = lastChange(jpyHist, 5, true);            // DEXJPUS: falling = JPY strengthening
   // Was `cvol?.pct?.EVZCLS` -- a percentile of a 5-year window whose last 1.6 years are
@@ -22335,18 +22378,18 @@ async function computeRiskFlags() {
 
   const flags = [
     { key: 'vix_level', label: 'VIX elevated',
-      on: vix != null ? vix >= 25 : null, value: vix,
-      detail: vix != null ? `VIX ${vix.toFixed(1)} (flag ≥25)` : 'VIX unavailable' },
+      on: vix != null ? vix >= 25 : null, value: vix, asOf: fred.vix?.asOf ?? null,   // dated: other cards show a later Cboe close, so the reader can tell which day each number is
+      detail: vix != null ? `VIX ${vix.toFixed(1)}${fred.vix?.asOf ? ` (FRED close ${fred.vix.asOf})` : ''} (flag ≥25)` : 'VIX unavailable' },
     { key: 'vix_term', label: 'VIX curve backwardated',
-      on: (vix != null && vix3m != null) ? vix / vix3m >= 1.0 : null,
-      value: (vix != null && vix3m != null) ? +(vix / vix3m).toFixed(3) : null,
-      detail: (vix != null && vix3m != null)
-        ? `VIX/VIX3M ${(vix / vix3m).toFixed(2)} (flag ≥1.00 — near-term fear above 3-month)`
+      on: vt ? vt.ratio >= 1.0 : null,
+      value: vt ? +vt.ratio.toFixed(3) : null, asOf: vt?.date ?? null, dayN: vt?.dayN ?? null,
+      detail: vt
+        ? `VIX/VIX3M ${vt.ratio.toFixed(2)}${vt.date ? ` on ${vt.date}, the last date both printed` : ''} (flag ≥1.00 — near-term fear above 3-month)${vt.inverted && vt.dayN > 1 ? `; inverted ${vt.dayN} sessions in a row` : ''}`
         : 'VIX3M (VXVCLS) unavailable' },
     { key: 'hy_speed', label: 'Credit widening fast',
       on: hyChg != null ? hyChg >= 0.25 : null,
-      value: hyChg != null ? +(hyChg * 100).toFixed(0) : null,
-      detail: hyChg != null ? `HY OAS ${hyChg >= 0 ? '+' : ''}${(hyChg * 100).toFixed(0)}bp / 5 obs (flag ≥+25bp)` : 'HY OAS history unavailable' },
+      value: hyChg != null ? +(hyChg * 100).toFixed(0) : null, asOf: Array.isArray(hyHist) ? hyHist.at(-1)?.date ?? null : null,
+      detail: hyChg != null ? `HY OAS ${hyChg >= 0 ? '+' : ''}${(hyChg * 100).toFixed(0)}bp over the last 5 daily prints${Array.isArray(hyHist) && hyHist.at(-1)?.date ? ` to ${hyHist.at(-1).date}` : ''} (flag ≥+25bp)` : 'HY OAS history unavailable' },
     { key: 'jpy_bid', label: 'JPY safe-haven bid',
       on: jpyChg != null ? jpyChg <= -1.5 : null,
       value: jpyChg != null ? +jpyChg.toFixed(2) : null,
@@ -26401,8 +26444,10 @@ app.get('/api/options-history', async (_req, res) => {
           .filter(r => r.pc != null);
         if (rows.length) markets[pair] = rows;
       }
+      // US exchange holidays dropped: FRED's VIXCLS carries a print on most of them (Cboe's extended-hours session; 26.8 on
+      // Thanksgiving 2026) while VXVCLS does not, so the ratio divided a holiday VIX by the day before's 3-month
       const vix = {}, errors = {};
-      for (const [k, id] of [['vix', 'VIXCLS'], ['vix3m', 'VXVCLS']]) { try { vix[k] = (await _mbFred(id, 2)).filter(p => Number.isFinite(p.value)).slice(-260); } catch (e) { errors[k] = e.message; } }
+      for (const [k, id] of [['vix', 'VIXCLS'], ['vix3m', 'VXVCLS']]) { try { vix[k] = (await _mbFred(id, 2)).filter(p => Number.isFinite(p.value) && !_optHoliday(p.date)).slice(-260); } catch (e) { errors[k] = e.message; } }
       return { ok: Object.keys(markets).length > 0, at: new Date().toISOString(), markets, vix, errors };
     });
     res.json(data);
@@ -30886,7 +30931,7 @@ async function _bev2Snapshot(issueMs) {
   const step = async (name, fn) => { try { await fn(); status[name] = status[name] ?? 'ok'; } catch (e) { status[name] = `error: ${e.message}`; } };
   const tail = (xs, n = 320) => (xs ?? []).filter(p => p && p.date < issueDate && Number.isFinite(p.value)).sort((a, b) => (a.date < b.date ? -1 : 1)).slice(-n);
   await Promise.all([
-    step('policyRates', async () => { const pr = await _policyRatesNow(); extra.policyRates = { fetchedAt: pr.fetchedAt ?? new Date().toISOString(), rates: Object.fromEntries(Object.entries(pr.rates ?? {}).map(([c, v]) => [c, { rate: v.rate, asOf: v.asOf ?? null, source: v.source ?? null }])) }; }),
+    step('policyRates', async () => { const pr = await _policyRatesNow(); extra.policyRates = { fetchedAt: pr.fetchedAt ?? new Date().toISOString(), rates: Object.fromEntries(Object.entries(pr.rates ?? {}).map(([c, v]) => [c, { rate: v.upper ?? v.rate, asOf: v.asOf ?? null, source: v.source ?? null }])) }; }),   // V2 is a registered, forward-scored engine: it keeps the Fed's upper bound it was specified on (the policy-rate table moved to the midpoint 2026-11-27); changing its input is an owner decision
     step('futures', async () => {
       const raw = await kv.get('cb_rate_futures_v1'); const p = raw ? JSON.parse(raw) : null, payload = p?.data ?? p;
       if (!payload?.banks) { status.futures = 'no futures pull'; return; }
@@ -45095,9 +45140,23 @@ app.get('/api/corr-terminal', async (_req, res) => {
       error: corrRunning ? 'The correlation build is running now (about 3 minutes).' : 'No correlation panel yet: the scheduled build has not run on this server.' });
   }
   const ageH = (Date.now() - Date.parse(p.generated)) / 3600_000;
+  const yields = await _corrYields().catch(() => null);
   res.setHeader('Content-Type', 'application/json');
-  res.send(`{"ok":true,"refreshEveryH":${CORR_STALE_MS / 3600_000},"ageH":${Number.isFinite(ageH) ? +ageH.toFixed(2) : null},"stale":${ageH > CORR_STALE_MS / 3600_000 * 2},"building":${corrRunning},"src":"${p.src}","panel":${p.body}}`);
+  res.send(`{"ok":true,"refreshEveryH":${CORR_STALE_MS / 3600_000},"ageH":${Number.isFinite(ageH) ? +ageH.toFixed(2) : null},"stale":${ageH > CORR_STALE_MS / 3600_000 * 2},"building":${corrRunning},"src":"${p.src}","yields":${JSON.stringify(yields)},"panel":${p.body}}`);
 });
+// The tab's rates factor (js/terminal/corrMath.js factorsOf): FRED's US 2y and 10y daily yields over the panel's ~3 years, as
+// [[date, %], ...], cached 12 h (a failed fetch keeps the last good copy). Without them the tab falls back to USD/JPY, labelled the proxy.
+let _corrYieldsMem = null;
+async function _corrYields() {
+  if (_corrYieldsMem && Date.now() - _corrYieldsMem.at < 12 * 3600_000) return _corrYieldsMem.body;
+  if (!process.env.FRED_KEY) return _corrYieldsMem?.body ?? null;
+  try {
+    const [y2, y10] = await Promise.all([_mbFred('DGS2', 4), _mbFred('DGS10', 4)]);
+    const body = { US2Y: y2.map(o => [o.date, o.value]), US10Y: y10.map(o => [o.date, o.value]) };
+    if (body.US2Y.length) _corrYieldsMem = { at: Date.now(), body };
+  } catch (e) { console.warn('[corr-terminal] yields', e.message); if (_corrYieldsMem) _corrYieldsMem.at = Date.now() - 11 * 3600_000; }   // retry in an hour
+  return _corrYieldsMem?.body ?? null;
+}
 
 // Hedge for today (Desk Terminal Hedges tab, "Today" card; js/hedgeTodayCore.js; evidence forge/HEDGE_TODAY_PREREG.md):
 // the 08:00-17:00 London price at each hour for the last 200 completed sessions of the correlation build's markets, from
@@ -46833,10 +46892,12 @@ async function _swingMapExpiries(names, sigmaAnnual = null) {
     for (const e of live) {
       const v = await _expiryTrack().view(pair, e.expiry, { topN: 6, sigmaAnnual, withLadder: true }).catch(() => null);
       // every field, the conveyor-belt history included: js/pathSources.js swingExpiryRow, shared with the Cboe rows
-      const row = _swingExpiryRow(pair, v, { greeks: d => _swingGreeksNotional(pair, d) });
-      if (row) out.push(row);
+      const row = _swingExpiryRow(pair, v, { greeks: d => _swingGreeksNotional(pair, d), today });
+      // an expiry that has stopped trading (FX 10:00 New York, gold 12:30 Chicago, index weeklies 15:00 Chicago) is gone:
+      // the morning capture still lists it all day, but it is no longer a book (js/optionExpiry.js)
+      if (row && !_optIsExpired(row.expiry, pair, Date.now(), row.code)) out.push(row);
     }
-    return out;
+    return out.sort((a, b) => (a.expiry < b.expiry ? -1 : a.expiry > b.expiry ? 1 : 0));
   }
   return [];
 }
