@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Surprise Size Study</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --good:#10b981;--warn:#d29922;--bad:#f85149;--blue:#4f7df0;--good-bg:rgba(16,185,129,.12);--warn-bg:rgba(210,153,34,.12);--bad-bg:rgba(248,81,73,.12);--blue-bg:rgba(79,125,240,.12)}
+  @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f6f8fa;--card:#fff;--card2:#f0f3f6;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--text3:#6e7781}}
+  :root[data-theme="light"]{--bg:#f6f8fa;--card:#fff;--card2:#f0f3f6;--border:#d0d7de;--text:#1f2328;--text2:#57606a;--text3:#6e7781}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700}.hdr .sp{flex:1}.hdr .st{font-size:11px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600}
+  .wrap{max-width:980px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;min-width:0}
+  .card h2{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+  .lead{font-size:15px;font-weight:600;line-height:1.45;margin-bottom:8px}
+  .p{color:var(--text2);margin-bottom:8px}
+  .chip{display:inline-block;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700}
+  .c-validated{background:var(--good-bg);color:var(--good)}.c-context{background:var(--blue-bg);color:var(--blue)}
+  .c-null{background:var(--bad-bg);color:var(--bad)}.c-underpowered{background:var(--warn-bg);color:var(--warn)}
+  .tw{overflow-x:auto;max-width:100%}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+  td{padding:6px 8px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .bar{height:8px;border-radius:4px;background:var(--blue);display:inline-block;vertical-align:middle}
+  .note{font-size:11.5px;color:var(--text3);margin-top:8px}
+  .err{color:var(--bad)}
+</style>
+</head>
+<body>
+<div id="commandHub"></div>
+<div class="hdr">
+  <h1>Surprise size and the release window</h1>
+  <span class="sp"></span>
+  <span class="st" id="stamp">loading…</span>
+  <a class="hbtn" href="release-reaction.html">Release reaction</a>
+  <a class="hbtn" href="evidence.html">Evidence Book</a>
+</div>
+<div class="wrap">
+  <div class="card">
+    <h2>The question</h2>
+    <div class="lead">When a data release misses consensus by more than usual, does the next 30 minutes, 2 hours or the rest of the session run wider than the forecast already expected?</div>
+    <div class="p">Pooled over 8 economies, ForexFactory history 2016-01 to 2025-04, release windows only. Size = |actual − consensus| divided by that series' own recent surprise sd (point in time). The comparison is big against small surprises of the SAME series, after the production range forecast, the event multiplier, the window's usual size at that clock time and the hour before the release. Range only: nothing here says which way price goes.</div>
+    <div class="p" id="verdicts"></div>
+  </div>
+  <div class="card">
+    <h2>Scored cells (12, Holm-corrected)</h2>
+    <div class="tw"><table id="prim"><thead><tr><th>Cell</th><th>n</th><th>γ per 1σ</th><th>95% CI</th><th>Range uplift, 0.5σ → 2σ</th><th>Holm p</th><th>Halves (γ)</th><th>Week-before placebo γ</th><th>Verdict</th></tr></thead><tbody></tbody></table></div>
+    <div class="note">γ is the change in log range per 1σ of surprise (capped at 5σ). Uplift = exp(1.5γ) − 1: how much wider a 2σ surprise's window runs than a 0.5σ one. Pass bar 7.5%. The placebo puts the same surprise sizes on the same clock one week earlier: it should be about zero.</div>
+  </div>
+  <div class="card">
+    <h2>By economy (home currency, BH q = 0.10, descriptive)</h2>
+    <div class="tw"><table id="econ"><thead><tr><th>Economy</th><th>30 min</th><th>2 h</th><th>Rest of session</th></tr></thead><tbody></tbody></table></div>
+    <div class="note" id="homog"></div>
+  </div>
+  <div class="card">
+    <h2>By impact tier and family (descriptive)</h2>
+    <div class="tw"><table id="tier"><thead><tr><th>Slice</th><th>n</th><th>γ</th><th>se</th><th>BH q</th></tr></thead><tbody></tbody></table></div>
+  </div>
+  <div class="card">
+    <h2>Checks</h2>
+    <div class="tw"><table id="checks"><thead><tr><th>Check</th><th>Result</th></tr></thead><tbody></tbody></table></div>
+  </div>
+  <div class="card">
+    <h2>Population and data repairs</h2>
+    <div class="p" id="pop"></div>
+    <div class="note">Study <code>surprise-size-pooled</code>. Prereg <code>forge/SURPRISE_SIZE_POOLED_PREREG.md</code>; results <code>analysis/output/surprise-size-pooled/RESULTS.md</code>. Research only: the production forecast and event multipliers are unchanged.</div>
+  </div>
+</div>
+<script src="js/commandHub.js"></script>
+<script>
+const f = (x, d = 3) => (x == null || !isFinite(x)) ? '–' : (+x).toFixed(d);
+const pct = x => (x == null) ? '–' : (x * 100).toFixed(1) + '%';
+const chip = v => `<span class="chip c-${String(v).toLowerCase()}">${v}</span>`;
+const LBL = { fx: 'Home FX (8 economies)', nq: 'NQ (US releases)', spx500: 'S&P 500 (US releases)', gold: 'Gold (US releases)' };
+const WL = { w30: '30 min', w120: '2 h', ros: 'rest of session' };
+(async () => {
+  let R;
+  try { const r = await fetch('analysis/output/surprise-size-pooled/results.json', { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); R = await r.json(); }
+  catch (e) { document.getElementById('stamp').innerHTML = '<span class="err">results not found: ' + e.message + '</span>'; return; }
+  document.getElementById('stamp').textContent = 'run ' + (R.ranAt || '').slice(0, 10) + ' · seed ' + R.seed + ' · B ' + R.B;
+  document.getElementById('verdicts').innerHTML = Object.entries(R.verdicts).map(([k, v]) => `<b>${k}</b> ${chip(v)}`).join(' &nbsp; ') + (R.headline ? `<div class="p" style="margin-top:8px">${R.headline}</div>` : '');
+  const maxU = Math.max(...Object.values(R.primary).map(c => Math.abs(c.uplift_ci[1])), 0.01);
+  document.querySelector('#prim tbody').innerHTML = Object.entries(R.primary).map(([k, c]) => {
+    const [g, w] = k.split('_');
+    const h = Object.values(c.halves).map(x => f(x.gamma)).join(' / ');
+    const wpx = Math.max(0, c['uplift_0.5_to_2']) / maxU * 80;
+    return `<tr><td>${LBL[g]} · ${WL[w]}</td><td>${c.n.toLocaleString()}</td><td>${f(c.gamma)}</td><td>[${f(c.ci95[0])}, ${f(c.ci95[1])}]</td><td><span class="bar" style="width:${wpx}px"></span> ${pct(c['uplift_0.5_to_2'])} <span style="color:var(--text3)">[${pct(c.uplift_ci[0])}, ${pct(c.uplift_ci[1])}]</span></td><td>${f(c.p_holm, 4)}</td><td>${h}</td><td>${f(c.placebo_week.gamma)} ± ${f(1.96 * c.placebo_week.se)}</td><td>${chip(c.cell_verdict)}</td></tr>`;
+  }).join('');
+  const D = R.disagg;
+  const econs = [...new Set(Object.keys(D).filter(k => k.startsWith('econ_')).map(k => k.split('_')[1]))];
+  const cell = k => { const x = D[k]; if (!x) return '–'; if (x.skipped) return `n ${x.n} (too few)`; return `${f(x.gamma)} ± ${f(1.96 * x.se)} <span style="color:var(--text3)">n ${x.n}${x.survives_bh ? ' · BH ✓' : ''}</span>`; };
+  document.querySelector('#econ tbody').innerHTML = econs.map(e => `<tr><td>${e}</td><td>${cell(`econ_${e}_w30`)}</td><td>${cell(`econ_${e}_w120`)}</td><td>${cell(`econ_${e}_ros`)}</td></tr>`).join('');
+  document.getElementById('homog').textContent = 'Equal-γ test across economies (Wald): ' + ['w30', 'w120', 'ros'].map(w => { const h = D['homogeneity_fx_' + w]; return h ? `${WL[w]} χ²(${h.df}) = ${f(h.wald, 1)}, p = ${f(h.p, 4)}` : ''; }).join(' · ') + `. ${R.disagg_summary.survive_bh_positive} of ${R.disagg_summary.tests} slices survive BH (chance ≈ ${R.disagg_summary['chance_expected_at_0.10']}).`;
+  const tk = Object.keys(D).filter(k => k.startsWith('tier_') || k.startsWith('family_'));
+  document.querySelector('#tier tbody').innerHTML = tk.map(k => { const x = D[k]; return `<tr><td>${k.replace(/_/g, ' ')}</td><td>${x.n}</td><td>${f(x.gamma)}</td><td>${f(x.se)}</td><td>${f(x.q_bh, 4)}${x.survives_bh ? ' ✓' : ''}</td></tr>`; }).join('');
+  const ck = [];
+  for (const [k, v] of Object.entries(R.positive_control)) ck.push([`Planted γ 0.05 on week-before windows (${k})`, `recovered ${f(v.recovered)}; unplanted ${f(v.zero_case)}`]);
+  for (const [k, v] of Object.entries(R.permutation)) ck.push([`z shuffled within series, 200× (${k})`, `mean ${f(v.mean, 4)}, 97.5th pct ${f(v['p97.5'], 4)}`]);
+  for (const [k, v] of Object.entries(R.oos)) ck.push([`Fit 2016-20, score 2021-25 (${k})`, `MSE of log range ${v.mse_reduction_pct > 0 ? '−' : '+'}${f(Math.abs(v.mse_reduction_pct), 2)}% with z (n ${v.n_test})`]);
+  for (const [k, v] of Object.entries(R.discrete)) ck.push([`Rate-decision-type series: any surprise vs none (${k})`, `${f(v.coef_log)} ± ${f(1.96 * v.se)} log, n ${v.n} (${v.n_surprise} with a surprise)`]);
+  document.querySelector('#checks tbody').innerHTML = ck.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  const P = R.population, L = R.prep || {};
+  document.getElementById('pop').innerHTML = `Scored home-FX release events by economy (30 min): ${Object.entries(P.fx_events_by_econ_w30).map(([e, n]) => `${e} ${n}`).join(', ')}. US releases on risk assets: ${Object.entries(P.us_risk_events_w30).map(([e, n]) => `${e} ${n}`).join(', ')}. JPY and CHF are thin (mostly rate decisions, GDP, Tankan, CPI) and the live surprise store never fills JPY/AUD/NZD/CHF actuals, so a live layer for those would have no input.` +
+    (L.untimed_dropped != null ? ` Time repair: ${L.placeholder_rows.toLocaleString()} archive rows carry no clock time; ${L.placeholder_timed_from_calendar_events.toLocaleString()} timed from calendar_events.csv (46,095 duplicate rows dropped there), ${L.placeholder_timed_from_schedule.toLocaleString()} from the series' schedule, ${L.untimed_dropped.toLocaleString()} dropped; ${L.realclock_rows_shifted_plus60_2023on} 2023+ rows were an hour early and were shifted.` : '');
+})();
+</script>
+</body>
+</html>
