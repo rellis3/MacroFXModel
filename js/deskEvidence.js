@@ -5368,6 +5368,18 @@ export const DESK_EVIDENCE = [
     result: 'Pre-registered (cross-asset proxy family, Holm over 28 cells). 1968 test sessions 2019-01-02 to 2026-08-17, walk-forward by year, H-L pinball tau 0.50/0.75/0.90, loss ratio layer / benchmark, 63-session blocks, B 2000, pass bar 0.985. Lin 0.929 [0.896, 0.969], Holm yes, MDE 0.056, halves 0.930 / 0.928, placebo median 1.014 (20/20 worse) -> VALIDATED; Ext 0.939 [0.919, 0.970], Holm yes, MDE 0.039, halves 0.936 / 0.943, placebo median 1.009 (20/20 worse) -> VALIDATED.',
     use: 'BRENT range lines may carry an optional OVX layer (off by default, side by side with the ladder-v2 shadow, owner sign-off first). Range size only: says nothing about which side of the range or direction.',
     instruments: ['BRENT'],
+    id: 'fred-untested-range', domain: 'volatility', verdict: 'null', date: '2026-11-28', doc: 'forge/FRED_UNTESTED_RANGE_PREREG.md', also: ['analysis/output/fred-untested-range/RESULTS.md'],
+    claim: 'Do any of the 49 catalogued-but-untested FRED series (curve legs, TIPS, breakevens, EPU, NFCI, H.4.1/H.8 liquidity, funding, credit, OVX/EVZ, H.10 fixings), point-in-time from ALFRED first releases, condition the pooled next-week realised range of EURUSD, USDJPY, GOLD, NQ and SPX500 beyond the shipped range forecast (level or 20-day move-size percentile, top vs bottom tercile)?',
+    result: 'NULL on the pooled target. 0 of 408 scorable cells survived BH q 0.10 discovery (2020-08 to 2023-08; calibrated shift-placebo p, smallest 0.021); 12 cells below p 0.05 against 20.4 expected, none below 0.01; nothing reached the held-out Holm stage. 44 of 68 pooled cells had MDE95 at or below 10% of next-week range; full-sample pooled effects -7.3% to +8.1%. Positive control: a planted +10% came back as +10.0% but passed both stages in 1 of 3 replicates, so effects of about 10% or more are ruled out, not 5%. 30 unit x transform pairs were not scorable (ICE BB/EM history from 2023-11, EVZ dead, global EPU too late, trending levels unbalanced).',
+    use: 'The FRED backlog in FEED_REVIEW 2026-10-22 adds nothing to next-week range beyond the shipped forecast at the 10% scale; do not show these series as range conditioners. Largest leans (not candidates): reserves level (WRESBAL, -5.9% pooled), 5y real yield level (+6.8%), front-end move size on EURUSD (+6 to +9%).',
+    instruments: ['EURUSD', 'USDJPY', 'GOLD', 'NQ', 'SPX500'],
+  },
+  {
+    id: 'fred-untested-range-inst', domain: 'volatility', verdict: 'underpowered', date: '2026-11-28', doc: 'forge/FRED_UNTESTED_RANGE_PREREG.md', also: ['analysis/output/fred-untested-range/RESULTS.md'],
+    claim: 'Same 49 FRED series, per instrument: does any condition EURUSD, USDJPY, GOLD, NQ or SPX500 next-week realised range beyond the shipped forecast?',
+    result: 'UNDERPOWERED. 340 per-instrument cells, none survived BH discovery; 254 of 340 had full-sample MDE95 above the 10% pass bar (USDJPY 67 of 68, SPX500 60 of 68). Single-instrument MDE95 runs about 10-30% of next-week range, because persistent macro signals line up with month-long runs in the forecast miss. 21-day block-bootstrap CIs often excluded zero where the shift placebo did not, so a bootstrap-only screen would have produced false finds.',
+    use: 'Per-instrument effects under about 15% are untested, not ruled out. A follow-up needs a longer outcome history than the 2020-08 forecast OOS table.',
+    instruments: ['EURUSD', 'USDJPY', 'GOLD', 'NQ', 'SPX500'],
   },
 ];
 
@@ -5437,6 +5449,8 @@ const POWER = {
   'g10-2y-gap-l20h5': { n: '5,416 signal days, 9 currencies (8.3 a day), 21-day blocks (~258 blocks)', note: 'MDE 0.029 vs bar 0.03: powered; CI upper +0.025 < bar' },
   'g10-2y-gap-l5h5': { n: '5,416 signal days, 21-day blocks', note: 'MDE 0.027 vs bar 0.03; CI upper +0.031 includes the bar' },
   'g10-2y-gap-l20h20': { n: '5,401 signal days, 40-day blocks (~135 blocks)', note: 'MDE 0.048 vs bar 0.03 (underpowered by design) but CI upper +0.015 < bar' },
+  'fred-untested-range': { n: '1,277 sessions 2020-08 to 2026-08 (~61 21-day blocks), 68 pooled cells', note: 'pooled MDE95 median 8.6% vs 10% bar (44/68 powered); planted +10% found 1 in 3 under BH' },
+  'fred-untested-range-inst': { n: '1,277 sessions, 5 instruments, 340 cells', note: 'MDE95 10-30% vs 10% bar: 254/340 underpowered by design' },
   'g10-2y-gap-l5h20': { n: '5,401 signal days, 40-day blocks', note: 'MDE 0.027 vs bar 0.03; CI upper +0.025 < bar' },
   'ema-regime-line-filter': { n: '31,234 line trades, 3 markets, 21-session date blocks', note: 'every kept net CI upper edge below 0: a +0.05R trade ruled out' },
   'bias-day-trade-fx': { n: '11,788 calls, 27 pairs, 21-session date blocks', note: 'MDE 0.026 (2.8 x random-side placebo sd) vs bar 0.04: powered' },

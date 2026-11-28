@@ -12,6 +12,7 @@ Generated 2026-11-28.
 |---|---|
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 | claims tested (validated + null + underpowered) | **651** |
 | validated | 201 |
 =======
@@ -19,12 +20,21 @@ Generated 2026-11-28.
 | validated | 203 |
 >>>>>>> origin/wf2/surprise-pooled
 | null | 260 |
+=======
+| claims tested (validated + null + underpowered) | **652** |
+| validated | 201 |
+| null | 261 |
+>>>>>>> origin/wf2/fred-untested
 | underpowered | 190 |
 | context (base rates, descriptions: not counted as tests) | 87 |
 | pre-registrations with no banked verdict (below) | 91 |
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 **What the count says (Lesson 02 §05).** If none of the 651 claims were real, tests at the usual 5% size would still pass
+=======
+**What the count says (Lesson 02 §05).** If none of the 652 claims were real, tests at the usual 5% size would still pass
+>>>>>>> origin/wf2/fred-untested
 about **32.6** of them by luck. 201 passed, so most passes are unlikely to be luck alone, but
 **roughly 33 of the 201 could be**. Which ones cannot be told from the backtest.
 =======
@@ -780,6 +790,8 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-27 | gold-rolling-mae-trade | volatility | null | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |
 | 2026-11-27 | gold-rolling-mae-window | volatility | context | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |
 | 2026-11-27 | rolling-mae-window-nq-eur | volatility | context | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |
+| 2026-11-28 | fred-untested-range | volatility | null | forge/FRED_UNTESTED_RANGE_PREREG.md |
+| 2026-11-28 | fred-untested-range-inst | volatility | underpowered | forge/FRED_UNTESTED_RANGE_PREREG.md |
 | 2026-11-28 | g10-2y-gap-l20h20 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
 | 2026-11-28 | g10-2y-gap-l20h5 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
 | 2026-11-28 | g10-2y-gap-l5h20 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |

@@ -1,0 +1,402 @@
+[
+ {
+  "id": "DGS1MO",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DGS3MO",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DGS6MO",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DGS1",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DGS3",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DGS5",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DGS7",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DGS20",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DGS30",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "THREEFYTP10",
+  "mode": "alfred_first_release",
+  "rows": 2711,
+  "valued": 2599,
+  "first": "2016-04-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DFII5",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "T5YIE",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "T5YIFR",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "USEPUINDXD",
+  "mode": "latest_vintage_only",
+  "rows": 4616,
+  "valued": 4616,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "USEPUINDXM",
+  "mode": "alfred_first_release",
+  "rows": 152,
+  "valued": 152,
+  "first": "2014-01-01",
+  "last": "2026-08-01"
+ },
+ {
+  "id": "GEPUCURRENT",
+  "mode": "alfred_first_release",
+  "rows": 82,
+  "valued": 82,
+  "first": "2019-10-01",
+  "last": "2026-07-01"
+ },
+ {
+  "id": "EPUTRADE",
+  "mode": "alfred_first_release",
+  "rows": 83,
+  "valued": 83,
+  "first": "2019-10-01",
+  "last": "2026-08-01"
+ },
+ {
+  "id": "PCEPILFE",
+  "mode": "alfred_first_release",
+  "rows": 152,
+  "valued": 152,
+  "first": "2014-01-01",
+  "last": "2026-08-01"
+ },
+ {
+  "id": "PPIFIS",
+  "mode": "alfred_first_release",
+  "rows": 151,
+  "valued": 151,
+  "first": "2014-02-01",
+  "last": "2026-08-01"
+ },
+ {
+  "id": "EFFR",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3175,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "IORB",
+  "mode": "alfred_first_release",
+  "rows": 1849,
+  "valued": 1849,
+  "first": "2021-07-30",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "IOER",
+  "mode": "alfred_first_release",
+  "rows": 1966,
+  "valued": 1966,
+  "first": "2016-03-11",
+  "last": "2021-07-28"
+ },
+ {
+  "id": "WLCFLPCL",
+  "mode": "alfred_first_release",
+  "rows": 660,
+  "valued": 660,
+  "first": "2014-01-01",
+  "last": "2026-08-19"
+ },
+ {
+  "id": "DTB3",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3161,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DTWEXEMEGS",
+  "mode": "alfred_first_release",
+  "rows": 1970,
+  "valued": 1888,
+  "first": "2019-02-04",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DCPF3M",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 2531,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "WTREGEN",
+  "mode": "alfred_first_release",
+  "rows": 660,
+  "valued": 660,
+  "first": "2014-01-01",
+  "last": "2026-08-19"
+ },
+ {
+  "id": "WRESBAL",
+  "mode": "alfred_first_release",
+  "rows": 660,
+  "valued": 660,
+  "first": "2014-01-01",
+  "last": "2026-08-19"
+ },
+ {
+  "id": "TOTBKCR",
+  "mode": "alfred_first_release",
+  "rows": 660,
+  "valued": 660,
+  "first": "2014-01-01",
+  "last": "2026-08-19"
+ },
+ {
+  "id": "NFCI",
+  "mode": "alfred_first_release",
+  "rows": 660,
+  "valued": 660,
+  "first": "2014-01-03",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "BAMLEMCBPIOAS",
+  "mode": "alfred_first_release",
+  "rows": 724,
+  "valued": 715,
+  "first": "2023-11-29",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "AAA10Y",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3156,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "BAA10Y",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3156,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "EVZCLS",
+  "mode": "latest_vintage_only",
+  "rows": 2920,
+  "valued": 2816,
+  "first": "2014-01-01",
+  "last": "2025-03-11"
+ },
+ {
+  "id": "OVXCLS",
+  "mode": "latest_vintage_only",
+  "rows": 3298,
+  "valued": 3180,
+  "first": "2014-01-01",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DEXUSEU",
+  "mode": "alfred_first_release",
+  "rows": 3250,
+  "valued": 3111,
+  "first": "2014-03-10",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DEXJPUS",
+  "mode": "alfred_first_release",
+  "rows": 3250,
+  "valued": 3111,
+  "first": "2014-03-10",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DEXUSUK",
+  "mode": "alfred_first_release",
+  "rows": 3250,
+  "valued": 3111,
+  "first": "2014-03-10",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DEXCAUS",
+  "mode": "alfred_first_release",
+  "rows": 3250,
+  "valued": 3111,
+  "first": "2014-03-10",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DEXSZUS",
+  "mode": "alfred_first_release",
+  "rows": 3250,
+  "valued": 3111,
+  "first": "2014-03-10",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DEXUSAL",
+  "mode": "alfred_first_release",
+  "rows": 3250,
+  "valued": 3111,
+  "first": "2014-03-10",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DEXUSNZ",
+  "mode": "alfred_first_release",
+  "rows": 3245,
+  "valued": 3106,
+  "first": "2014-03-17",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DEXCHUS",
+  "mode": "alfred_first_release",
+  "rows": 3248,
+  "valued": 3109,
+  "first": "2014-03-12",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DHHNGSP",
+  "mode": "alfred_first_release",
+  "rows": 3051,
+  "valued": 2965,
+  "first": "2014-12-09",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "DGORDER",
+  "mode": "alfred_first_release",
+  "rows": 152,
+  "valued": 152,
+  "first": "2014-01-01",
+  "last": "2026-08-01"
+ },
+ {
+  "id": "BAMLH0A1HYBB",
+  "mode": "alfred_first_release",
+  "rows": 724,
+  "valued": 716,
+  "first": "2023-11-29",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "SWPT",
+  "mode": "alfred_first_release",
+  "rows": 660,
+  "valued": 660,
+  "first": "2014-01-01",
+  "last": "2026-08-19"
+ },
+ {
+  "id": "SOFRVOL",
+  "mode": "alfred_first_release",
+  "rows": 1931,
+  "valued": 1848,
+  "first": "2019-03-29",
+  "last": "2026-08-21"
+ },
+ {
+  "id": "NDFFRIW027SBOG",
+  "mode": "alfred_first_release",
+  "rows": 660,
+  "valued": 660,
+  "first": "2014-01-01",
+  "last": "2026-08-19"
+ },
+ {
+  "id": "WMTSECL1",
+  "mode": "alfred_first_release",
+  "rows": 660,
+  "valued": 660,
+  "first": "2014-01-01",
+  "last": "2026-08-19"
+ }
+]

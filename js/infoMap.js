@@ -187,6 +187,7 @@ export const EXCLUDED_PAGES = {
   'residual-fx8-forward.html': 'forward test',
   'residual-fx8-paper-layers.html': 'backtest',
   'g10-2y-gap-momentum.html': 'research',
+  'fred-untested-range.html': 'research',
   'roe.html': 'research hub',
   'swing-map.html': 'research',
   'system-backtest.html': 'backtest',

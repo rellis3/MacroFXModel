@@ -19,6 +19,8 @@ nowcasts, and Brent (it is in the drill bundle as `brent`; it is only absent fro
 EFFR, IORB, OVXCLS, the daily FRED FX series and most of the curve. The feature store (step 1) and the harness (step 2) make testing
 them cheap, so the highest-return move is a range-first scan of the series we already hold, before adding any new feed.
 
+*2026-11-28: done for the FRED part (`fred-untested-range`, page `fred-untested-range.html`). 43 of the 49 FRED units were scored against next-week range beyond the shipped forecast, point-in-time from ALFRED first releases. None passed: pooled NULL at the 10% scale, per instrument UNDERPOWERED. Six could not be scored (ICE BB/EM history from 2023-11, EVZ dead, global EPU too late, term premium irregular, IORB a step function).*
+
 ## Genuinely missing, probed 2026-10-22
 
 | candidate | source | access | latest | why it could be golden | first test | caveat |
