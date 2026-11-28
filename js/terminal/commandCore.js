@@ -34,6 +34,7 @@ import { PATH_MARKETS } from '../pathReplayCore.js';
 import { VIEWS as OIT_VIEWS, viewByWord as oitView } from './oiTime.js';
 import { familyFromWord as evFamily, marketFromWord as evMarket } from '../eventReplayCore.js';
 import { targetFromWord as oidTarget } from '../oiDrillCore.js';
+import { parseReachArgs } from './levelEngineCore.js';
 import { symFromWord as smileSym, INTRA_SYMS as SMILE_INTRA } from '../smileCore.js';
 import { ANA_GROUPS, densityFromWord } from './flowCore.js';
 import { OV_SUBS } from './overviewSubtabs.js';
@@ -94,7 +95,7 @@ export const INSIGHT_WORDS = {
   rotation: ['ROTATION', ['SECTORS', 'SECTOR'], 'US sector rotation: the 11 sectors against the S&P 500 over 20 sessions, on a map with a four-week trail.'],
   fxmatrix: ['FXMATRIX', ['CURRENCYMATRIX', 'STRENGTHMATRIX', 'FXC'], 'The currency matrix: the eight currencies across four windows, and who has out-run whom.'],
   gold: ['GOLDBOARD', ['XAUBOARD', 'GOLDVIEW'], 'The gold board: gold against real yields, the dollar and its own implied vol, with positioning and ETF holdings.'],
-  reach: ['REACH', ['TOUCH', 'LEVELCHANCE', 'CHANCE'], 'The level-reach calculator: type a price and get the chance price touches it by the end of the London day and over the whole session.'],
+  reach: ['REACH', ['TOUCH', 'LEVELCHANCE', 'CHANCE', 'LEVELENGINE', 'LEVEL'], 'The level engine: REACH <market> <price> [<second price>] [ROS|EOD|EOW]. The chance price touches the price (from now to 22:00 London, over the session, over the week), which of two prices is touched first, how far price may go the other way on the way, and what is known after a touch; every number with its Evidence Book id and verdict. How likely, never which way.'],
   flags: ['FLAGS', ['RISKFLAGS', 'LIGHTS'], 'The risk flags: the six market-stress lights now, each beside what the Evidence Book found for it.'],
   bis: ['BISSTRIP', ['BISHEAT', 'CREDITSTRIP', 'CREDITHEAT'], 'The bank-credit heat strip: five series of cross-border bank-claim growth from 1999 against the bank-credit study bands, the 2000-02 and 2008-09 busts shaded, and 14 borrowers. Context only.'],
   economies: ['ECONOMIES', ['ECONOMY', 'WORLD', 'COUNTRIES'], 'The eight economies side by side: growth, prices, jobs and spending, each with an arrow and a word.'],
@@ -265,7 +266,7 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
   // Insight boards (preview)
   for (const [key, [name, aliases, help]] of Object.entries(INSIGHT_WORDS)) {
     const id = `panel.insight.${key}`, row = surfaceById(id); if (!row) continue;
-    const more = key === 'spreads' ? { args: '[pair]', example: 'ratios rsp-spy', run: args => spreadsRun(args) } : key === 'roc' ? { args: '[market]', example: 'roc spx', run: args => rocRun(args) } : {};
+    const more = key === 'reach' ? { args: '[market] [price] [second price] [ROS|EOD|EOW]', example: 'reach gold 4200 eod', run: args => reachRun(args) } : key === 'spreads' ? { args: '[pair]', example: 'ratios rsp-spy', run: args => spreadsRun(args) } : key === 'roc' ? { args: '[market]', example: 'roc spx', run: args => rocRun(args) } : {};
     add({ id: `insight.${key}`, group: 'Insight boards', name, aliases, help, example: name.toLowerCase(), opens: `Insight > ${row.label.replace(/^Insight:\s*/, '')}`, surface: id, needs: ['tab.insight'], action: { kind: 'insight', panel: key }, ...more });
   }
   // releases by country
@@ -465,6 +466,13 @@ export function buildCommands({ isOn = () => true, now = () => Date.now(), works
     const hit = prices.find(s => norm(s.key) === norm(a)) ?? prices.find(s => norm(s.label) === norm(a)) ?? prices.find(s => norm(s.label).includes(norm(a)) || norm(s.key).startsWith(norm(a)));
     if (!hit) return { error: `No price series called "${args.trim()}". Try ${prices.slice(0, 6).map(s => s.key).join(', ')}.` };
     return { action: { kind: 'roc', key: hit.key }, summary: `Opens ${hit.label} on the Momentum & rate of change board.` };
+  }
+  function reachRun(args) {
+    const q = parseReachArgs(args, resolveInstrument);
+    if (q.error) return { error: q.error };
+    if (!q.inst && q.level == null) return { action: { kind: 'levelengine' }, summary: 'Opens the Level engine on the Insight tab.' };
+    const hz = q.horizon ?? 'ROS', what = q.level == null ? '' : ` ${q.level}${q.level2 != null ? ` against ${q.level2}` : ''}`;
+    return { action: { kind: 'levelengine', inst: q.inst, level: q.level, level2: q.level2, horizon: hz }, summary: `Opens the Level engine on ${q.inst ? instLabel(q.inst) : 'the market it shows'}${what} (${hz}).` };
   }
   function spreadsRun(args) {
     const a = String(args ?? '').trim().toLowerCase().replace(/[\s/]+/g, '-');

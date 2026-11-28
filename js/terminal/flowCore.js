@@ -178,7 +178,7 @@ export function anaPillsHtml(active, isOn = () => true) {
 /** Where an Insight board is linked from. `where` names the host; `target` is the registry surface of the board that is opened. */
 export const PROMOS = [
   { id: 'gold', host: 'assets', label: 'Gold board', text: 'Gold against the real yield, the dollar, its own vol, positioning and the ETF holdings', target: 'panel.insight.gold' },
-  { id: 'reach', host: 'pair', label: 'Level reach', text: 'The chance price touches a level by the end of the day, from the calibrated range', target: 'panel.insight.reach' },
+  { id: 'reach', host: 'pair', label: 'Level engine', text: 'The chance price touches a level today or this week, which of two levels comes first, and how far it may go the other way, each with its evidence', target: 'panel.insight.reach' },
   { id: 'flags', host: 'stress', label: 'Risk flags with their evidence', text: 'Each stress light beside what the tests found for it', target: 'panel.insight.flags' },
   { id: 'fxmatrix', host: 'strength', label: 'Currency matrix', text: 'All eight currencies across 1H, 4H, 1D and 1W: the home of currency strength', target: 'panel.insight.fxmatrix' },
   { id: 'unusual', host: 'overview', label: 'What is unusual right now', text: 'Every series ranked by how extreme it is against its own history', target: 'panel.insight.unusual' },

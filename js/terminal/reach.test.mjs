@@ -2,7 +2,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { exceedance, londonOpenMs, checkpointAt, travelClass, harSigmaDailyPct, reach, ladderRows, band, CHECKPOINTS } from './reachCore.js';
-import { resultHtml, ladderHtml, footHtml } from './reachView.js';
 import { travelClass as shadowClass, harSigmaDailyPct as shadowSigma } from '../harShadowCore.js';
 import { REMAINING_TRAVEL_R3 } from '../remainingTravelParamsR3.js';
 
@@ -51,10 +50,4 @@ test('ladderRows: six distances either side, chance falls with distance on each 
   assert.equal(rows.length, 6); for (let i = 1; i < rows.length; i++) { assert.ok(rows[i].up.p <= rows[i - 1].up.p + 1e-12); assert.ok(rows[i].down.p <= rows[i - 1].down.p + 1e-12); } assert.ok(rows[0].up.level > 1.1 && rows[0].down.level < 1.1);
   assert.ok(band(0.5, { kind: 'r3' }).h < band(0.5, { kind: 'r3', flagged: true }).h); assert.ok(band(0.5, { kind: 'whole' }).h < band(0.5, { kind: 'whole', tail: true }).h); assert.equal(band(0.01, { kind: 'whole' }).lo, 0);
 });
-test('the page text: chances with a band, the calibration notes, an already-touched line, escaped market names, no trade wording, no hard-coded colours', () => {
-  const open = iso('2026-11-16T00:00:00Z'), bars = barsFrom(open, 12 * 10 + 4, i => (i === 20 ? 1.1035 : 1.1)), nowMs = open + 10.3 * 3600e3;
-  const r = reach({ sym: 'EURUSD', fc: FC, bars, nowMs, level: 1.102 }), h = resultHtml(r, 'EURUSD', '2026-11-16') + ladderHtml(ladderRows({ sym: 'EURUSD', fc: FC, bars, nowMs }), 'EURUSD') + footHtml();
-  assert.match(h, /already touched/); assert.match(h, /Likely between/); assert.match(h, /1\.6 points on average/); assert.match(h, /not a trade or a signal/); assert.match(h, /50% chance line/);
-  assert.ok(!/#[0-9a-f]{6}\b/i.test(h)); assert.ok(!/\b(buy|sell|go long|go short|stop loss|take profit|entry)\b/i.test(h.replace(/<[^>]+>/g, ' ')), 'no trade wording');
-  assert.ok(!resultHtml({ ok: false, error: '<img src=x>' }, 'X', null).includes('<img src=x>')); assert.match(resultHtml({ ok: false, error: 'Type a price level.' }, 'X', null), /Type a price level/);
-});
+// the page text tests moved to levelEngine.test.mjs with the Level engine card (reachView.js retired 2026-11-28)

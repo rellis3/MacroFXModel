@@ -60,6 +60,7 @@ export function perform(a, doc = document, win = window) {
     case 'kchart': { const ok = tab('kchart'); if (ok && (a.inst || a.tf)) win.setTimeout(() => win.deskKchart?.show?.(a.inst, a.tf), 60); return ok; }
     case 'spreads': { const ok = tab('insight'); if (ok) { win.deskSpreadsWant = a.id ?? null; win.setTimeout(() => { win.deskInsight?.show?.('spreads'); if (a.id) win.deskSpreads?.open?.(a.id); }, 60); } return ok; }
     case 'roc': { const ok = tab('insight'); if (ok) { win.deskRocWant = a.key ?? null; win.setTimeout(() => { win.deskInsight?.show?.('roc'); if (a.key) win.deskRoc?.open?.(a.key); }, 60); } return ok; }
+    case 'levelengine': { const ok = tab('insight'); if (ok) { win.deskLevelWant = a.inst || a.level ? { inst: a.inst ?? null, level: a.level ?? null, level2: a.level2 ?? null, horizon: a.horizon ?? null } : null; win.setTimeout(() => { win.deskInsight?.show?.('reach'); if (win.deskLevelWant && typeof win.deskLevelEngine?.open === 'function') { win.deskLevelEngine.open(win.deskLevelWant); win.deskLevelWant = null; } }, 60); } return ok; }
     case 'insight': { const ok = tab('insight'); if (ok) win.setTimeout(() => win.deskInsight?.show?.(a.panel), 60); return ok; }
     case 'alerts': return win.deskAlerts?.open ? (win.deskAlerts.open(), true) : false;
     case 'alert-add': return win.deskAlerts?.add ? (win.deskAlerts.add(a.body), true) : false;

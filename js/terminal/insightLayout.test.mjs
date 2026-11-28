@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const rd = f => fs.readFileSync(new URL(f, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const VIEWS = ['insightView.js', 'unusualView.js', 'matrixView.js', 'fxMatrixView.js', 'goldView.js', 'reachView.js', 'flagsView.js', 'economiesView.js'];
+const VIEWS = ['insightView.js', 'unusualView.js', 'matrixView.js', 'fxMatrixView.js', 'goldView.js', 'levelEngineView.js', 'flagsView.js', 'economiesView.js'];
 const css = rd('./insight.css');
 
 test('.in-bar is only the percentile bar (an inline span), never a container', () => {

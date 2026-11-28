@@ -162,3 +162,42 @@ Chosen ladder (Stage B) ─► σ for every phase
 | 3 | S2 consolidation shadow registration (with the S1 recalibration rule) | Feeds scenarios; already frozen | Low |
 | 4 | Phase 3 single registered reaction test of the four untested families | The only route to Q3/Q5 signal; likely null, so time-boxed | High |
 | 5 | Phase 5 scenario engine shadow | Product layer, once 2 (and 3) are known | Medium |
+
+---
+
+## 6. Status (2026-11-28): the engine's output layer is in the Desk Terminal
+
+**Built:** `js/terminal/levelEngineCore.js` (pure, tested in `js/terminal/levelEngine.test.mjs`) and its card `js/terminal/levelEngineView.js`, in the Insight tab's
+"Level engine" pill (surface `panel.insight.reach`, now a `preview` surface: owner-only until switched on) and the command `REACH <market> <price> [<second price>] [ROS|EOD|EOW]`.
+It replaced the Level reach board (`reachView.js`, retired; `reachCore.js` stays as the session/ladder reader). For any typed or clicked price it shows, each number with its
+Evidence Book id and verdict chip read live from `js/deskEvidence.js`:
+
+| Question | What the card shows | Rests on | Verdict |
+|---|---|---|---|
+| Q1 reach, from now | P(touch) by 22:00 London and within 30 min / 1 h / 2 h / 4 h: the frozen Phase 2 model M1 (`js/levelReach.js`, the S3 shadow's model) | `level-p2-reach` | validated (banked 2026-11-28 from the 2026-10-11 run) |
+| Q1 reach, today | P(touch at some point in the session) from the forecast ladder, measured from the London open | `ladder-calibration`, `day-recon-p90-boundary` beyond p90 | validated / context |
+| Q1 reach, this week | from Monday's open on the reverting weekly ladder; plus from now to Friday's close as plain geometry | `horizon-reversion` (chip context: tested as HL range pinball on lines drawn before the week, read here as an OH/OL reach on lines redrawn daily); geometry context | context |
+| Q1 level identity | "where it is, not what it is" | `level-p2-identity` | null |
+| Q2 race | up first / down first / neither by the horizon (two-barrier random walk scaled so each level's reach matches M1), and b/(a+b) with no time limit | `level-p2-race` (a model does not beat b/(a+b)) | null (geometry is the answer) |
+| Q4 on the way | chance of going 0.25 / 0.5 / 1 sigma the other way before the level is touched, by the horizon and with no time limit | geometry; the validated stop-odds model (`vol-layer-stops-confirm-skill`) is named but **not wired** | context |
+| Q4 drawdown layer | after a 20-day S&P fall of 2% or more, FX x1.067 / index x1.028 wider, as a separate column beside the base numbers (never replacing them); spx20 from `/api/drawdown-shadow` | `drawdown-forecast-error-fx` / `-idx` | validated on daily sessions only: never applied to the week (review 2026-11-28) |
+| Q3 after a touch | next-line odds (p50 to p75 ~50%, p75 to p90 ~40%); X7 next-rung odds by London window for NQ / GOLD / EURUSD | `line-touch-reach`, `exhaustion-v2-lockbox` | validated |
+| Q3 reaction | fade or follow at the touch: placebo after costs | `level-context-engine`, `level-near-miss-entry`, `live-range-line-race` | null |
+| Q5 trade | none shown; direction never implied | (stopping rule 3 above) | n/a |
+
+**No lookahead:** bars later than the clock are dropped inside the core; with the time machine (`?asof=`) the clock is the as-of time and the forecast, bars and spx20 come from the saved records (a feed with no record at that time says so). Checked 2026-11-28 in headless Chrome: `/api/vol-forecast` is NOT in the desk snapshot record, so a past view (?asof=2026-11-27T14:00Z) shows "No record of this at ..." rather than an answer. Adding the forecast to the snapshot FULL record would make the time machine answer (item 7 below).
+
+**Phases this completes:** the Phase 2 output for any level price (reach + race + time-of-reach horizons) is now on the desk, and the Phase 5 scenario card in its honest form (validated reach and race, reaction = the null, no trade). Phase 1 (registry) and Phase 3 (reaction research; its stopping rule has fired: every family tested since is null) are unchanged.
+
+**What remains:**
+1. **S3 forward read** (`forge/LEVEL_SCENARIO_SHADOW_PREREG.md`): the one look at 60 valid sessions; until then M1 is validated on history only (E-conf was non-independent).
+2. **Wire the stop-odds model** (`vol-layer-stops-confirm-skill`) into "On the way" in place of the plain geometry (needs its coefficients exported to JS; research-side task).
+3. **Registry levels on the card:** the card scores a typed price; listing the day's registry levels (pivots, prior high/low, VWAP, fibs) with their reach needs the structural confluence artifact in the terminal, as `level-scenarios.html` does.
+4. **Beyond 3 sigma and before 03:00 London** M1 has no answer (its domain); the card says so instead of extrapolating.
+5. **Weekly from-now** is geometry only; a calibrated multi-session reach model is not built.
+6. **Phase 6** (engine shadow + one confirmatory look) is not started for the card itself; the S3 shadow covers M1.
+7. **Time machine inputs:** record `/api/vol-forecast` (and `/api/drawdown-shadow`) in the desk snapshot FULL record so `?asof=` can answer; the card already uses the as-of clock.
+
+**Review 2026-11-28 (branch wf2/level-engine-review):** race now uses each side's own M1 scale and is held to the single reaches (up-first <= reach(up), max <= P(either) <= sum);
+M1 horizons are made monotone (a window reaching 22:00 is the 22:00 number); M1 only for the 34 Phase 2 CFD instruments, and never for a level already traded today
+(Phase 2 scored levels outside the day's range only); X7 only when the level is on a ladder line; drawdown layer FX = the eight study currencies only, daily only.
