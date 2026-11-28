@@ -2599,10 +2599,11 @@ export const DERIVED = {
      "js/terminal/jarvisViewWx.js",
      "js/terminal/kchartCore.js",
      "js/terminal/kchartView.js",
+     "js/terminal/levelEngineCore.js",
+     "js/terminal/levelEngineView.js",
      "js/terminal/monitorCore.js",
      "js/terminal/monitorView.js",
      "js/terminal/reachCore.js",
-     "js/terminal/reachView.js",
      "js/terminal/volClockView.js"
     ],
     "today": [
