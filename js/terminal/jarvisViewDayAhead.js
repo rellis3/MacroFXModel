@@ -17,7 +17,7 @@
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView } from './jarvisGL.js';
-import { isEvening, reactionOf, releasedGroups, reviewScript, reviewFigure, tomorrowScript, REACT_PAIR, familyRead } from './eveningCore.js';
+import { isEvening, reactionOf, releasedGroups, reviewScript, reviewFigure, reviewClaims, tomorrowScript, REACT_PAIR, familyRead } from './eveningCore.js';
 import { SESSIONS, REGION_LABEL, londonParts, polar, angleOf, laneOffset, pylonHeight, mergeDay, nextBig, countdown, hourProfile, ridgeAt, placeLabels, dayScript, outlookScript, sweepMins, dayContext } from './dayAheadCore.js';
 
 const R = 3, R_SESS = 2.68, RB = 1.2, RA = 1.08, FULL = 1.5, TTL = 10 * 60_000, NR = 289, TAIL = 70, MAXP = 64;
@@ -327,7 +327,7 @@ registerShowScene({
   },
   build: (inp, data) => {
     if (!data || !S.day) return null; const text = reviewScript(S.day, data.react, data.now, inp?.mode === 'short' ? 2 : 3, inp?.mode === 'short' ? {} : (data.fam ?? {})); if (!text) return null;
-    return { title: "Today's releases", view: 'ahead', cam: null, text, figure: reviewFigure(S.day, data.react, data.now),
+    return { title: "Today's releases", view: 'ahead', cam: null, text, figure: reviewFigure(S.day, data.react, data.now), claims: reviewClaims(S.day, data.react, data.now, inp?.mode === 'short' ? 2 : 3),
       enter: api => { Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: true }); S.sel = null; S.review = true; S.showP = -1; } };
   },
 });

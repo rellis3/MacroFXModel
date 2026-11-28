@@ -107,9 +107,12 @@ export function pickLead(inp = {}, n = 3) {
     const up = m.ratio > 0, tw = timesWords(m.ratio), k = nm++;
     // two phrasings, so two movers in one lead never share a sentence; beside the full-day ratio, the same move against the usual move by this hour (when the day is young)
     const rh = ratioByHour(m.ratio, inp.todShare), byHour = rh != null && Math.abs(rh) >= Math.abs(m.ratio) * 1.15 ? ` By this hour of the day, that is ${timesWords(rh) === 'about' ? 'about the usual' : `${timesWords(rh)} the usual`} so far.` : '';
-    const say = k === 0 ? `${spokenName(m.key)} is ${up ? 'up' : 'down'} ${pctWords(m.oc)}. That is ${tw === 'about' ? 'about its usual move' : `${tw} its usual move`}.${byHour}`
-      : `${spokenName(m.key)}, ${up ? 'up' : 'down'} ${pctWords(m.oc)}: ${tw === 'about' ? 'a normal-sized day' : `${tw} a normal day's travel`}.${byHour}`;
-    cand.push({ kind: 'mover', key: m.key, score: Math.min(a, 6), figure: timesFig(m.ratio), figLabel: 'its usual move', headline: `${marketName(m.key)} ${up ? 'up' : 'down'} ${pctFig(m.oc).replace(/^[+−]/, '')}`, sub: `${up ? '▲ Up' : '▼ Down'} ${pctFig(m.oc).replace(/^[+−]/, '')} so far today, against its own usual move`, tone: up ? 'up' : 'dn', say });
+    // HELIX MEMORY: at most one day-on-day line (helixDeltas.js, against the last stored day), said with the market it is about
+    const dd = inp.dayDelta && inp.dayDelta.key === m.key && inp.dayDelta.text ? ` ${inp.dayDelta.text}` : '';
+    const say = (k === 0 ? `${spokenName(m.key)} is ${up ? 'up' : 'down'} ${pctWords(m.oc)}. That is ${tw === 'about' ? 'about its usual move' : `${tw} its usual move`}.${byHour}`
+      : `${spokenName(m.key)}, ${up ? 'up' : 'down'} ${pctWords(m.oc)}: ${tw === 'about' ? 'a normal-sized day' : `${tw} a normal day's travel`}.${byHour}`) + dd;
+    // the claim the evening scorer checks (helixScoreCore.js mover_big): a description of the day so far, checked against the close; never a forecast
+    cand.push({ kind: 'mover', key: m.key, claim: { kind: 'mover_big', key: m.key, ratio: m.ratio, oc: m.oc, hl: m.hl, range: m.range }, delta: !!dd, score: Math.min(a, 6), figure: timesFig(m.ratio), figLabel: 'its usual move', headline: `${marketName(m.key)} ${up ? 'up' : 'down'} ${pctFig(m.oc).replace(/^[+−]/, '')}`, sub: `${up ? '▲ Up' : '▼ Down'} ${pctFig(m.oc).replace(/^[+−]/, '')} so far today, against its own usual move`, tone: up ? 'up' : 'dn', say });
   }
   // the textbook-links count no longer competes for the lead (owner, 24 Nov 2026: it led both programmes, and the desk's tests give those macro links little weight); it stays a
   // one-line segment. inp.chainLead = true brings it back.
@@ -130,7 +133,7 @@ export function pickLead(inp = {}, n = 3) {
   const bd = inp.board;
   // a holiday or half day is said with the quiet start, so a thin board is read as the calendar (Helix review wave 1.10)
   let hol = ''; try { const h = holidayTag(+(inp.now ?? Date.now())); const c = h?.today.find(x => x.market === 'US stock market'); if (c) hol = ` Today is ${c.name.replace(/^Day after/, 'the day after')}, ${/early/.test(c.kind) ? 'a US half day' : 'a US holiday'}, so a thin board is the calendar, not a calm market.`; } catch (e) { hol = ''; }
-  if (!out.length && bd && bd.n) out.push({ kind: 'quiet', score: 0, figure: `${bd.quiet} of ${bd.n}`, figLabel: 'markets barely moving', headline: 'A quiet start', sub: hol ? 'A US holiday session' : 'No market is far outside its usual move', tone: 'tx', say: `a quiet start. ${cap1(numWord(bd.quiet))} of the ${bd.n} markets are barely moving against their usual size.${fin(inp.todShare) && inp.todShare < 0.5 ? ` By this hour a usual day has done only about ${Math.round(inp.todShare * 100)} percent of its moving, so part of the quiet is the clock.` : ''}${hol}` });
+  if (!out.length && bd && bd.n) out.push({ kind: 'quiet', score: 0, figure: `${bd.quiet} of ${bd.n}`, figLabel: 'markets barely moving', headline: 'A quiet start', sub: hol ? 'A US holiday session' : 'No market is far outside its usual move', tone: 'tx', claim: { kind: 'quiet_start', quiet: bd.quiet, n: bd.n, todShare: inp.todShare }, say: `a quiet start. ${cap1(numWord(bd.quiet))} of the ${bd.n} markets are barely moving against their usual size.${fin(inp.todShare) && inp.todShare < 0.5 ? ` By this hour a usual day has done only about ${Math.round(inp.todShare * 100)} percent of its moving, so part of the quiet is the clock.` : ''}${hol}` });
   for (const x of out) x.text = cap1(x.say);
   return out;
 }
@@ -161,12 +164,13 @@ export const BUILTIN = {
     if (pick.length < 2) return null;
     const t = [`The vol model's typical range for today, high to low: ${list(pick.map(r => `${spokenName(r.key)} about ${pctWords(r.range)}`))}.`];
     const used = pick.filter(r => fin(r.hl) && r.hl > 0).map(r => ({ r, u: r.hl / r.range })).sort((a, b) => b.u - a.u)[0];
+    const claims = used && used.u >= 0.25 ? [{ kind: 'range_used', key: used.r.key, used: used.u, hl: used.r.hl, range: used.r.range, cue: 'has already used' }] : [];
     if (used && used.u >= 0.25) t.push(`${cap1(spokenName(used.r.key))} has already used ${used.u >= 1 ? 'all' : `${Math.round(used.u * 100)} percent`} of its${used.u >= 1 ? ' typical range, and more' : ''}.`.replace(/of its\.$/, 'of it.'));
     // the typical range is the MEDIAN day, so half of all days run bigger (Helix review 0.3); "one day in four" belongs to the p75 figure, said with it
     const p75 = pick.find(r => fin(r.range75) && r.range75 > r.range);
     if (p75) t.push(`Half of all days run bigger than the typical range; one day in four runs past ${pctWords(p75.range75)} on ${spokenName(p75.key)}. Those are sizes, not direction.`);
     else t.push('Half of all days run bigger than the typical range. Those are sizes, not direction.');
-    return { title: "Today's ranges", view: 'vol', cam: null, text: t.join(' '), figure: { value: `${pick[0].range >= 1 ? pick[0].range.toFixed(1) : String(+pick[0].range.toFixed(2))}%`, label: `${marketName(pick[0].key, { short: true })} typical range` } };
+    return { title: "Today's ranges", view: 'vol', cam: null, text: t.join(' '), claims, figure: { value: `${pick[0].range >= 1 ? pick[0].range.toFixed(1) : String(+pick[0].range.toFixed(2))}%`, label: `${marketName(pick[0].key, { short: true })} typical range` } };
   },
   // EVENING: how much of its typical high-to-low range each headline market actually used today (the morning's ranges scene, told looking back). Sizes, never direction.
   rangeused(inp) {
@@ -189,6 +193,7 @@ export const BUILTIN = {
       const two = fresh.filter(m => m !== top).slice(0, 2).map(mvWord); if (two.length) t.push(`Behind it, ${list(two)}.`);
     } else if (fresh.length) t.push(`Beyond the lead, ${list(fresh.slice(0, 3).map(mvWord))}.`);
     else t.push(`Every candle is scaled to its own market's usual day.`);
+    const dd = inp.dayDelta; if (dd?.text && !inp.guide && inp.leadKeys && !inp.leadKeys.includes(dd.key)) t.push(dd.text);      // HELIX MEMORY: the day-on-day line, once, when the lead did not say it
     return { title: 'Today as candles', view: 'candles', cam: { fly: true }, text: t.join(' '), figure: top ? { value: timesFig(top.ratio), label: `${marketName(top.key, { short: true })} vs usual` } : { value: `${bd.up} / ${bd.dn}`, label: 'up / down' } };
   },
   chain(inp) {
@@ -384,7 +389,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     if (id in built) return built[id];
     let x = null; const h = hooks.find(k => k.id === id);
     try {
-      if (h) { const r = h.build(inp, inp.extra?.[id] ?? null); if (r && r.text) x = { id, title: r.title ?? id, view: r.view ?? 'globe', cam: r.cam ?? null, text: clean(guide ? (GUIDE_TEXT[id] ?? r.guide ?? r.text) : r.text), enter: r.enter, motion: r.motion, sync: !!r.sync, figure: r.figure ?? r.key ?? null, panel: r.panel ?? null }; }
+      if (h) { const r = h.build(inp, inp.extra?.[id] ?? null); if (r && r.text) x = { id, title: r.title ?? id, view: r.view ?? 'globe', cam: r.cam ?? null, text: clean(guide ? (GUIDE_TEXT[id] ?? r.guide ?? r.text) : r.text), enter: r.enter, motion: r.motion, sync: !!r.sync, figure: r.figure ?? r.key ?? null, panel: r.panel ?? null, claims: Array.isArray(r.claims) ? r.claims.map(c => (c?.cue ? { ...c, cue: clean(c.cue) } : c)) : null }; }
       else if (BUILTIN[id]) { const r = BUILTIN[id](inp); if (r) x = { id, ...r }; }
     } catch (e) { x = null; }
     if (x && !viewOk(x.view)) x = null;
