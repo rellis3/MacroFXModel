@@ -16,6 +16,13 @@ import { fileURLToPath } from 'node:url';
 import { normaliseTrades, parseTerminalCsv, systemFiles } from '../../js/systemExports.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+// PUSH-SECRET READINESS: X-Auth-Token from env KV_WRITE_SECRET, else a git-ignored push_secret.txt (repo root or jarvis_broadcast/); none -> headers unchanged
+import { readFileSync, existsSync } from 'node:fs';
+export function pushAuth(headers) {
+  let s = String(process.env.KV_WRITE_SECRET ?? '').trim();
+  for (const f of [path.join(ROOT, 'push_secret.txt'), path.join(ROOT, 'jarvis_broadcast', 'push_secret.txt')]) { if (s) break; try { if (existsSync(f)) s = readFileSync(f, 'utf8').trim(); } catch { /* unreadable: no header */ } }
+  return s ? { ...headers, 'X-Auth-Token': s } : { ...headers };
+}
 export const BIG = 5000;
 export const systemDir = id => path.join(ROOT, 'analysis', 'output', 'systems', id);
 
@@ -45,7 +52,7 @@ export async function writeSystemOutputs(id, raw, meta = {}, { account = 100000,
 export async function pushSystem(base, id, raw, meta = {}) {
   const { trades, errors } = normaliseTrades(raw, meta);
   if (!trades.length) throw new Error(`no usable trades: ${errors.slice(0, 3).join('; ')}`);
-  const r = await fetch(`${String(base).replace(/\/$/, '')}/api/systems/upload`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, meta, trades }) });
+  const r = await fetch(`${String(base).replace(/\/$/, '')}/api/systems/upload`, { method: 'POST', headers: pushAuth({ 'Content-Type': 'application/json' }), body: JSON.stringify({ id, meta, trades }) });
   return { status: r.status, ...(await r.json().catch(() => ({}))) };
 }
 

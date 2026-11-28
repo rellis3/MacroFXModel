@@ -15,6 +15,26 @@ from layer1_lib import *
 from schedule import all_events, HIST_END, BASE
 from daily_lib import refresh_daily, load_daily
 
+
+def _push_auth(headers: dict) -> dict:
+    """PUSH-SECRET READINESS: add X-Auth-Token from env KV_WRITE_SECRET, else from a git-ignored push_secret.txt (the repo root or jarvis_broadcast/), when one exists.
+    With neither the headers go out unchanged, so today's pushes behave exactly as before."""
+    import os
+    from pathlib import Path as _P
+    s = os.environ.get('KV_WRITE_SECRET', '').strip()
+    if not s:
+        for d in _P(__file__).resolve().parents:
+            for f in (d / 'push_secret.txt', d / 'jarvis_broadcast' / 'push_secret.txt'):
+                try:
+                    if f.is_file():
+                        s = f.read_text(encoding='utf-8').strip()
+                        break
+                except OSError:
+                    pass
+            if s or (d / '.git').exists():
+                break
+    return {**headers, 'X-Auth-Token': s} if s else dict(headers)
+
 KV_KEY = 'release_layer1_v1'
 STATE = Path(__file__).resolve().parent / '.state'            # local only (gitignored): when we last pushed, the release times, and the rows already built
 IDLE_PUSH_MIN = 25                                            # with no release near, push at most this often (the page's freshness chip stays green under 35 minutes)
@@ -23,7 +43,7 @@ NAMES = ['SR3U6', 'IH7', 'ZTZ6', 'ZNZ6', 'DXZ6', 'NQZ6', '6EZ6', '6BZ6', '6JZ6',
 
 def kv_set(obj):
     body = json.dumps({'key': KV_KEY, 'data': obj, 'timestamp': int(datetime.now(timezone.utc).timestamp() * 1000)}).encode()
-    req = urllib.request.Request(f'{BASE}/api/kv/set', data=body, headers={'Content-Type': 'application/json'}, method='POST')
+    req = urllib.request.Request(f'{BASE}/api/kv/set', data=body, headers=_push_auth({'Content-Type': 'application/json'}), method='POST')
     with urllib.request.urlopen(req, timeout=60) as r: return r.getcode(), r.read().decode()[:120]
 
 
