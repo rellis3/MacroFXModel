@@ -51,7 +51,10 @@ def _poked(ss, Hj, Lj, Cj, lv, a, ign):
 
 
 @njit(cache=False)
-def sim2(O, H, Lo, C, VB, sv, P, short, S_, sg, o, tmode, be, slip_in, slip_out, comm, out, cnt, fam, ign, chase_same):
+def sim2(O, H, Lo, C, VB, sv, P, short, S_, sg, o, tmode, be, slip_in, slip_out, comm, out, cnt, fam, ign, chase_same,
+         zmin=-1e9, q=-1.0, u=np.zeros(1)):
+    """zmin: VWAP stretch filter (gold-line-vwap-stretch-filter): skip a fill whose (fill - VWAP)/sigma_v in the fade's
+    direction is < zmin (order cancelled, line spent). q >= 0: random-skip placebo instead (skip if u[j] < q)."""
     n = O.shape[0]
     nl = P.shape[0]
     spent = np.zeros(nl, np.bool_)
@@ -125,6 +128,14 @@ def sim2(O, H, Lo, C, VB, sv, P, short, S_, sg, o, tmode, be, slip_in, slip_out,
             if not same:
                 if ss and O[j] < lv: e = O[j]
                 if (not ss) and O[j] > lv: e = O[j]
+            if q >= 0.0:
+                skip = u[j] < q
+            else:
+                zz = ((e - VB[j]) if ss else (VB[j] - e)) / sv
+                skip = (zz < zmin) if np.isfinite(zz) else (zmin > -1e8)
+            if skip:
+                spent[k] = True; armed[side] = -1; cnt[4] += 1
+                continue
             fk = k; fe = e; ftp = atp[side]; fab = armbar[side]
             break
         if fk < 0: continue
@@ -155,18 +166,19 @@ def sim2(O, H, Lo, C, VB, sv, P, short, S_, sg, o, tmode, be, slip_in, slip_out,
     return nt
 
 
-def run_var(sess, stops, costs, floor, ign, chase_same, mask=None):
+def run_var(sess, stops, costs, floor, ign, chase_same, mask=None, zmin=-1e9, q=-1.0, rng=None):
     mask = J.MASK8 if mask is None else mask
     si_, so, cm = costs
-    out = np.zeros((64, 12)); cnt = np.zeros(4, np.int64); rows = []
+    out = np.zeros((64, 12)); cnt = np.zeros(5, np.int64); rows = []
     for (si, d, O, H, Lo, C, VB, sv, P, sg, o, p90) in sess:
         st = np.where(mask, S.stop_vec("S2", si, sg, p90, stops, None, floor), np.nan)
-        nt = sim2(O, H, Lo, C, VB, sv, P, SHORT_V, st, sg, o, 1, 0, si_, so, cm, out, cnt, FAMID, ign, chase_same)
+        u = rng.random(len(O)) if rng is not None else np.zeros(1)
+        nt = sim2(O, H, Lo, C, VB, sv, P, SHORT_V, st, sg, o, 1, 0, si_, so, cm, out, cnt, FAMID, ign, chase_same, zmin, q, u)
         for r in out[:nt]:
             rows.append((d, si) + tuple(r))
     X = pd.DataFrame(rows, columns=["date", "si", "k", "entry", "exit", "S", "oc", "R", "gR", "armbar", "fillbar",
                                     "exitbar", "tp", "notgt"])
-    return X[X["date"] >= S.START].reset_index(drop=True), dict(zip(["armed", "chased", "cancelled", "filled"], cnt.tolist()))
+    return X[X["date"] >= S.START].reset_index(drop=True), dict(zip(["armed", "chased", "cancelled", "filled", "skipped"], cnt.tolist()))
 
 
 def setup():

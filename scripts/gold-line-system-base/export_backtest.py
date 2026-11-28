@@ -8,7 +8,7 @@ No new test: the engines of scripts/gold-line-system-jordan/entry_rules.py. Ever
     python scripts/gold-line-system-base/export_backtest.py
 
 Outputs analysis/output/line-system-backtest/GOLD/:
-  <variant>/trades.json   one row per trade (lv = the 18 line prices at the arming bar, LEVELS order)
+  <variant>[__vwap2]/trades.json   one row per trade (__vwap2 = with the VWAP stretch filter layer) (lv = the 18 line prices at the arming bar, LEVELS order)
   days_<year>.json        per trade day: M1 bars covering every variant's trades (prices = whole ticks from the open)
   meta.json
 """
@@ -63,8 +63,9 @@ def main(sym="GOLD"):
     hm = lambda m: f"{int(m) // 60:02d}:{int(m) % 60:02d}"
     span = {}                                                    # date -> [first bar, last bar] across variants
     counts = {}
-    for key, (ign, cs, lab) in ER.VARIANTS.items():
-        X, cnt = ER.run_var(sess, stops, costs, floor, ign, cs)
+    runs = [(k + suf, ign, cs, z) for k, (ign, cs, _) in ER.VARIANTS.items() for suf, z in (("", -1e9), ("__vwap2", 2.0))]
+    for key, ign, cs, z in runs:
+        X, cnt = ER.run_var(sess, stops, costs, floor, ign, cs, zmin=z)
         X = X.sort_values(["date", "fillbar"]).reset_index(drop=True)
         counts[key] = cnt
         trades = []
@@ -114,7 +115,8 @@ def main(sym="GOLD"):
         json.dump(c, open(out / f"days_{y}.json", "w"), separators=(",", ":"))
     meta = dict(sym=sym, name="Gold (GC futures)", point_value=100.0, tick=round(tick, 8), dp=dp, levels=LEVELS,
                 costs=dict(slip_in=costs[0], slip_out=costs[1], commission=costs[2]),
-                variants={k: v[2] for k, v in ER.VARIANTS.items()}, primary="fill_any", counts=counts,
+                variants={k: v[2] for k, v in ER.VARIANTS.items()}, primary="fill_any",
+                layers={"vwap2": "Only fade when the fill is 2σ+ from VWAP (gold-line-vwap-stretch-filter, under test)"}, counts=counts,
                 system="Jordan's 8 shadow lines (HL projection up/down, Close+, Close-, at P75/P90; N7_ALL walk-forward "
                        "widths) + Jordan's gold entry (arm 0.10 x stop through, fill on the retest, cancel 1.2 x stop, "
                        "chase outward) + target VWAP +/- 0.5 sigma_v fixed at the fill + rolling-MAE stop (3-month median "

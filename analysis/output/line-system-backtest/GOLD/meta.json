@@ -36,30 +36,65 @@
   "ignore_same": "Same-candle retouch ignored \u00b7 chase same line only (PDF)"
  },
  "primary": "fill_any",
+ "layers": {
+  "vwap2": "Only fade when the fill is 2\u03c3+ from VWAP (gold-line-vwap-stretch-filter, under test)"
+ },
  "counts": {
   "fill_any": {
    "armed": 1593,
    "chased": 41,
    "cancelled": 297,
-   "filled": 1248
+   "filled": 1248,
+   "skipped": 0
+  },
+  "fill_any__vwap2": {
+   "armed": 1593,
+   "chased": 41,
+   "cancelled": 296,
+   "filled": 1069,
+   "skipped": 180
   },
   "ignore_any": {
    "armed": 1526,
    "chased": 56,
    "cancelled": 452,
-   "filled": 1012
+   "filled": 1012,
+   "skipped": 0
+  },
+  "ignore_any__vwap2": {
+   "armed": 1526,
+   "chased": 56,
+   "cancelled": 450,
+   "filled": 838,
+   "skipped": 176
   },
   "fill_same": {
    "armed": 1552,
    "chased": 0,
    "cancelled": 310,
-   "filled": 1235
+   "filled": 1235,
+   "skipped": 0
+  },
+  "fill_same__vwap2": {
+   "armed": 1552,
+   "chased": 0,
+   "cancelled": 309,
+   "filled": 1055,
+   "skipped": 181
   },
   "ignore_same": {
    "armed": 1470,
    "chased": 0,
    "cancelled": 469,
-   "filled": 994
+   "filled": 994,
+   "skipped": 0
+  },
+  "ignore_same__vwap2": {
+   "armed": 1470,
+   "chased": 0,
+   "cancelled": 467,
+   "filled": 819,
+   "skipped": 177
   }
  },
  "system": "Jordan's 8 shadow lines (HL projection up/down, Close+, Close-, at P75/P90; N7_ALL walk-forward widths) + Jordan's gold entry (arm 0.10 x stop through, fill on the retest, cancel 1.2 x stop, chase outward) + target VWAP +/- 0.5 sigma_v fixed at the fill + rolling-MAE stop (3-month median line-to-line MAE per line, 5-tick floor), BE off, one trade at a time, flat 22:00 London",
