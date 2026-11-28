@@ -17,7 +17,7 @@ import { marketState } from '../js/marketState.js';
 import { bootDiff as _bootDiff, circularBlock } from './lib/eventBootstrap.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.join(__dirname, 'output', 'outcome_loop.json');
+const OUT = process.env.MV_OUT ?? path.join(__dirname, 'output', 'outcome_loop.json');
 const API = process.env.MV_API ?? 'https://macrofxmodel-production.up.railway.app/api/drill-series';
 
 // ── frozen in the pre-registration ──────────────────────────────────────────
@@ -44,9 +44,20 @@ const wilson = (k, n) => { if (!n) return null; const p = k / n, z = 1.96, d = 1
 
 // ── the bundle ──────────────────────────────────────────────────────────────
 console.log('fetching the bundle...');
-const res = await fetch(API);
-const B = await res.json();
+const B = process.env.MV_BUNDLE_FILE ? JSON.parse(fs.readFileSync(process.env.MV_BUNDLE_FILE, 'utf8')) : await (await fetch(API)).json();
 if (!B?.ok) throw new Error(B?.error ?? 'no bundle');
+// Lockbox cut (re-run 2026-11-28, REPO_REVIEW_2026-10-31 / DATA_SPEC §5 #14 RE-RUN rows): the live
+// bundle runs to today, so sessions after the H-A holdout start (2026-08-21) are dropped before the
+// replay. Every series is index-aligned to B.dates, so one slice cuts them all. MV_TO overrides.
+const LOCKBOX_TO = process.env.MV_TO ?? '2026-08-21';
+{
+  const keep = B.dates.findLastIndex(d => d <= LOCKBOX_TO) + 1;
+  const cut = B.dates.length - keep;
+  B.dates = B.dates.slice(0, keep);
+  for (const k of Object.keys(B.series)) B.series[k] = B.series[k].slice(0, keep);
+  B.to = B.dates.at(-1); B.n = keep;
+  console.log(`lockbox cut at ${LOCKBOX_TO}: dropped ${cut} sessions`);
+}
 const N = B.dates.length;
 console.log(`${N} sessions, ${B.dates[0]} -> ${B.dates.at(-1)}, ${Object.keys(B.series).length} series`);
 
@@ -88,7 +99,7 @@ for (let i = WARMUP; i < N - HORIZON; i++) {
 }
 console.log('\nreplay done.');
 
-const result = { ranAt: new Date().toISOString(), bundle: { from: B.dates[0], to: B.dates.at(-1), n: N },
+const result = { ranAt: new Date().toISOString(), lockboxTo: LOCKBOX_TO, seed: 20260923, bundle: { from: B.dates[0], to: B.dates.at(-1), n: N },
   horizon: HORIZON, warmup: WARMUP, minFirings: MIN_FIRINGS, kinds: {} };
 
 for (const [kind, all] of [...fired.entries()].sort((a, b) => b[1].length - a[1].length)) {

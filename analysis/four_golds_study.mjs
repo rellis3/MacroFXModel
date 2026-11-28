@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { fetchD1Aligned } from '../js/volBacktestEngine.js';
+import { fredCsv } from './lib/fredCsv.mjs';
 import { bootDiff as _bootDiff, circularBlock } from './lib/eventBootstrap.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, 'output', 'four_golds.json');
@@ -20,7 +21,7 @@ const r3 = v => v == null || !Number.isFinite(v) ? null : +v.toFixed(3);
 const drawBlock = (x, block) => circularBlock(x, block, rnd);
 const bootDiff = (a, b, block = 20) => _bootDiff(a, b, { block, reps: REPS, rnd, minA: 5 });
 const wilson = (k, n) => { if (!n) return null; const p = k / n, z = 1.96; const d = 1 + z * z / n; const c = (p + z * z / (2 * n)) / d; const h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d; return { n, share: r3(p), lo: r3(c - h), hi: r3(c + h) }; };
-async function fredCsv(id) { const t = await (await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`)).text(); return t.trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; }).filter(o => Number.isFinite(o.value)); }
+// fredCsv: shared helper with a named user-agent (FRED 503s the default node UA, faults-log 2026-11-01)
 
 const [vix, real, dxy] = await Promise.all(['VIXCLS', 'DFII10', 'DTWEXBGS'].map(fredCsv));
 const bars = await fetchD1Aligned('XAU_USD', 5000, { dailyAlignment: 0, alignmentTimezone: 'Europe/London', to: '2026-08-21' });
