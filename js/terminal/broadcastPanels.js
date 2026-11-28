@@ -10,12 +10,15 @@
 import { registerShowScene } from './showCore.js';
 import { intradayAsset } from './jarvisSessionCore.js';
 import { marketName, spokenName } from './jarvisNames.js';
+import { closuresOn } from './dayAheadCore.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const list = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
 const NUMW = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 const numWord = n => NUMW[n] ?? String(n);
+/** Zero as a count: "zero of one", "none against" (never "no of one", "no against": Helix evening 27 Nov 2026). */
+const ofWord = n => (n === 0 ? 'zero' : numWord(n)), noneWord = n => (n === 0 ? 'none' : numWord(n));
 const cap1 = s => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const CCY = { USD: 'the US dollar', EUR: 'the euro', GBP: 'sterling', JPY: 'the yen', CHF: 'the Swiss franc', AUD: 'the Australian dollar', NZD: 'the New Zealand dollar', CAD: 'the Canadian dollar' };
 const label = k => { try { return marketName(k, { short: true }) || k; } catch (e) { return k; } };
@@ -82,9 +85,25 @@ function wireHtml(items) {
 }
 
 // ───────────────────────── THE CURVE ─────────────────────────
-export function curveText(rb) {
+const wkday = iso => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' });
+const addIso = (iso, n) => new Date(Date.parse(`${iso}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+/**
+ * How old the close is, said: '' when it is the last close due; " as of Monday's close" when a day old; two or more business days old, the latest published close and why
+ * (" at the latest published close, Wednesday's, since Thursday was Thanksgiving, a US holiday"). now: the broadcast's clock (default: asOf + ageDays, the feed's own count).
+ */
+export function closeAge(asOf, ageDays, now = null) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(asOf ?? ''))) return '';
+  const today = fin(now) ? londonDate(now) : fin(ageDays) ? addIso(asOf, Math.round(ageDays)) : null; if (!today || today <= asOf) return '';
+  const gap = []; for (let d = addIso(asOf, 1); d < today; d = addIso(d, 1)) { const w = new Date(`${d}T12:00:00Z`).getUTCDay(); if (w !== 0 && w !== 6) gap.push(d); }
+  const days = Math.round((Date.parse(`${today}T12:00:00Z`) - Date.parse(`${asOf}T12:00:00Z`)) / 864e5);
+  if (!gap.length) return days > 1 ? ` as of ${wkday(asOf)}'s close` : '';      // a weekend in between, or the day just traded (its close prints tomorrow)
+  const why = gap.map(d => { const c = closuresOn(d).find(x => /^US/.test(x.market) && !/early/.test(x.kind)); return c ? `${wkday(d)} was ${c.name.replace(/^Day after/, 'the day after')}, a US holiday` : null; });
+  const said = why.filter(Boolean);
+  return ` at the latest published close, ${wkday(asOf)}'s${said.length === gap.length ? `, since ${list(said)}` : ''}`;
+}
+export function curveText(rb, now = null) {
   const s = (rb?.slopes ?? []).find(x => x.k === '2s10s'), two = (rb?.tenors ?? []).find(x => x.k === '2y'); if (!s || !fin(s.bp)) return '';
-  const old = (s.ageDays ?? 0) > 1 ? ` as of ${new Date(`${s.asOf}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'UTC' })}'s close` : '';
+  const old = closeAge(s.asOf, s.ageDays, now);
   const t = [`The Treasury curve${old}: the two-to-ten year spread is ${s.bp} basis points`];
   if (fin(s.chg5d) && s.chg5d !== 0) t[0] += `, ${s.chg5d > 0 ? 'steeper' : 'flatter'} by ${Math.abs(s.chg5d)} over the week`;
   t[0] += '.';
@@ -160,14 +179,14 @@ export function biasDayText(days) {
   if (days.some(d => d.desk || d.v1)) {
     const sc = k => { const a = days.filter(d => d[k]); return { n: a.length, w: a.filter(d => d[k].verdict === 'with').length, x: a.filter(d => d[k].verdict === 'against').length }; }, D = sc('desk'), V = sc('v1');
     const t = ['The calls against the day, from seven this morning.'];
-    if (D.n) t.push(`The desk run: ${numWord(D.w)} of ${numWord(D.n)} went the called way, ${numWord(D.x)} against.`);
-    if (V.n) t.push(`Bias Engine V1: ${numWord(V.w)} of ${numWord(V.n)} the called way, ${numWord(V.x)} against.`);
+    if (D.n) t.push(`The desk run: ${ofWord(D.w)} of ${numWord(D.n)} went the called way, ${noneWord(D.x)} against.`);
+    if (V.n) t.push(`Bias Engine V1: ${ofWord(V.w)} of ${numWord(V.n)} the called way, ${noneWord(V.x)} against.`);
     const big = [...days].sort((x, y) => Math.abs(y.moveU ?? 0) - Math.abs(x.moveU ?? 0))[0];
     if (big && big.moveU != null) t.push(`The biggest mover of them, ${say(big.key)}, ${big.last >= big.open ? 'rose' : 'fell'} ${Math.abs(big.moveU).toFixed(1)} times its usual move.`);
     return t.join(' ');
   }
   const w = days.filter(d => d.verdict === 'with'), a = days.filter(d => d.verdict === 'against'), f = days.filter(d => d.verdict === 'flat');
-  const t = [`The bias engine against the day, from seven this morning. Of ${numWord(days.length)} calls, ${numWord(w.length)} went the called way, ${numWord(a.length)} went against it${f.length ? `, and ${numWord(f.length)} barely moved` : ''}.`];
+  const t = [`The bias engine against the day, from seven this morning. Of ${numWord(days.length)} calls, ${noneWord(w.length)} went the called way, ${noneWord(a.length)} went against it${f.length ? `, and ${numWord(f.length)} barely moved` : ''}.`];
   const best = [...w].sort((x, y) => Math.abs(y.moveU ?? 0) - Math.abs(x.moveU ?? 0))[0], worst = [...a].sort((x, y) => Math.abs(y.moveU ?? 0) - Math.abs(x.moveU ?? 0))[0];
   const u = d => (d.moveU != null ? `${Math.abs(d.moveU).toFixed(1)} times its usual move` : `${Math.abs(d.movePct).toFixed(2)} percent`);
   if (best) t.push(`Best: ${say(best.key)}, called ${best.dir === 'up' ? 'higher' : 'lower'}, ${best.dir === 'up' ? 'rose' : 'fell'} ${u(best)}.`);
@@ -220,7 +239,7 @@ registerShowScene({
 registerShowScene({
   id: 'curve', after: 'yields',
   async prepare(api) { return ok(api.jf('/api/rates-board')); },
-  build(inp, rb) { const text = curveText(rb); if (!text) return null; const s = rb.slopes.find(x => x.k === '2s10s'); return { title: 'The Treasury curve', view: 'globe', cam: { region: 'world' }, text, figure: { value: `${s.bp} bp`, label: '2s10s' }, panel: panel('curve', 'THE CURVE', 'US Treasury yields and slopes', curveHtml(rb), el => { const cv = el.querySelector('[data-draw="curve"]'); if (cv) drawCurve(cv, rb); }) }; },
+  build(inp, rb) { const text = curveText(rb, +(inp?.now ?? Date.now())); if (!text) return null; const s = rb.slopes.find(x => x.k === '2s10s'); return { title: 'The Treasury curve', view: 'globe', cam: { region: 'world' }, text, figure: { value: `${s.bp} bp`, label: '2s10s' }, panel: panel('curve', 'THE CURVE', 'US Treasury yields and slopes', curveHtml(rb), el => { const cv = el.querySelector('[data-draw="curve"]'); if (cv) drawCurve(cv, rb); }) }; },
 });
 registerShowScene({
   id: 'biasboard', after: 'ahead',

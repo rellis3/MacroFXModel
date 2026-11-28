@@ -125,21 +125,46 @@ function finishLane(meta, policy, steps, ghost, extra) {
     movedBp: has && gh.at(-1) != null ? r1(total - gh.at(-1)) : null, ...extra };
 }
 
+/** A rung further than this from today's policy rate, inside the horizon, is treated as a bad print (no G10 bank's year-ahead pricing has been that far out). */
+export const SANE_BP = 150;
+const ymNow = now => { const d = new Date(now); return d.getUTCFullYear() * 100 + d.getUTCMonth() + 1; };
+const ymPrev = ym => (ym % 100 === 1 ? ym - 100 + 11 : ym - 1);
+/**
+ * The sanity guard on one bank's futures strip (Helix review, 27 Nov 2026): drops a rung that has EXPIRED (a monthly contract whose month ended before last month, which is
+ * kept as the anchor for the next meeting; a three-month contract whose reference period has ended) or that implies more than SANE_BP from today's policy rate. Returns
+ * { bank (a copy with the kept rungs, or the bank unchanged when nothing drops), dropped: [{ local, why }] } so the view can log them. Pure.
+ */
+export function saneRungs(bank, policy, now = Date.now()) {
+  if (!Array.isArray(bank?.rungs) || !bank.rungs.length) return { bank, dropped: [] };
+  const ym = ymNow(now), t0 = todayIso(now), keep = [], dropped = [];
+  for (const r of bank.rungs) {
+    const m = +String(r?.month ?? '').slice(0, 6), v = num(r?.rate), exp = /^\d{8}$/.test(String(r?.expiry)) ? `${String(r.expiry).slice(0, 4)}-${String(r.expiry).slice(4, 6)}-${String(r.expiry).slice(6, 8)}` : null;
+    const expired = bank.kind === '1m' ? m > 0 && m < ymPrev(ym) : (exp ? exp < t0 : m > 0 && m < ym);
+    const far = fin(policy) && fin(v) && Math.abs(v - policy) * 100 > SANE_BP;
+    if (expired || far) dropped.push({ local: r?.local ?? String(m), why: expired ? 'expired' : `implies ${Math.round((v - policy) * 100)}bp, past +-${SANE_BP}bp` }); else keep.push(r);
+  }
+  return { bank: dropped.length ? { ...bank, rungs: keep } : bank, dropped };
+}
+
 /**
  * Every bank's lane.
  *   cbx  /api/cb-expectations    fed  /api/fed-path    boe  /api/cb-path/boe    calendars { fomc, ecb, boe, boj, snb, boc, rba, rbnz } (arrays of {date})
  * -> { lanes (sorted most easing first), missing: [{ ccy, bank, why }], asOf, horizonDays, scaleBp, capped }
  */
 export function buildLanes({ cbx = null, fed = null, boe = null, calendars = {}, now = Date.now(), horizonDays = HORIZON_DAYS } = {}) {
-  const lanes = [], missing = [], t0 = todayIso(now);
+  const lanes = [], missing = [], dropped = [], t0 = todayIso(now);
   const pol = c => { const p = num(cbx?.policy?.[c]?.rate ?? cbx?.policy?.[c]); return fin(p) ? p : num(cbx?.banks?.[c]?.policy); };
   for (const meta of BANKS) {
-    const c = meta.ccy, dates = windowDates(calendars[meta.cal], now, horizonDays), b = cbx?.banks?.[c];
+    const c = meta.ccy, dates = windowDates(calendars[meta.cal], now, horizonDays), sane = saneRungs(cbx?.banks?.[c], pol(c), now), b = sane.bank;
+    for (const d of sane.dropped) dropped.push({ ccy: c, ...d });
     let lane = null, why = null;
     try {
       // the Fed: the per-meeting ZQ path
       if (!lane && c === 'USD' && Array.isArray(fed?.zq?.meetings) && fed.zq.meetings.length) {
         const rows = fed.zq.meetings.filter(r => String(r?.meeting) > t0 && fin(num(r?.rAfter)) && fin(num(r?.moveBp))).slice(0, MAX_MEETINGS);
+        // the sanity guard: a meeting whose path sits more than SANE_BP from today's rate is a bad print, not pricing; it and every meeting after it are dropped and logged
+        const bad = rows.findIndex(r => Math.abs(num(r.rAfter) - num(rows[0].rBefore)) * 100 > SANE_BP);
+        if (bad >= 0) { for (const r of rows.slice(bad)) dropped.push({ ccy: c, local: `ZQ ${r.meeting}`, why: `implies ${Math.round((num(r.rAfter) - num(rows[0].rBefore)) * 100)}bp, past +-${SANE_BP}bp` }); rows.length = bad; }
         if (rows.length) {
           const base = num(rows[0].rBefore), g = fed.zq.ago?.[28] ?? fed.zq.ago?.['28'] ?? fed.zq.weekAgo ?? null, gl = (fed.zq.ago?.[28] ?? fed.zq.ago?.['28']) ? '4 weeks ago' : g ? '1 week ago' : null;
           const ghost = g?.meetings?.length ? g.meetings.filter(r => fin(num(r?.rAfter))).map(r => ({ date: r.meeting, cumBp: r1((num(r.rAfter) - base) * 100) })) : null;
@@ -181,7 +206,7 @@ export function buildLanes({ cbx = null, fed = null, boe = null, calendars = {},
   }
   lanes.sort((a, b) => a.totalBp - b.totalBp || a.ccy.localeCompare(b.ccy));
   const sc = scaleOf(lanes);
-  return { lanes, missing, asOf: cbx?.asOf ?? fed?.zq?.asOf ?? boe?.asOf ?? null, horizonDays, scaleBp: sc.scaleBp, capped: sc.capped };
+  return { lanes, missing, dropped, asOf: cbx?.asOf ?? fed?.zq?.asOf ?? boe?.asOf ?? null, horizonDays, scaleBp: sc.scaleBp, capped: sc.capped };
 }
 
 /** The vertical scale: the biggest |cumBp| (path or ghost) across lanes, floored at 25bp and capped at 200bp; values beyond the cap are clamped and MARKED. */

@@ -25,7 +25,7 @@ import { registerShowScene } from './showCore.js';
 import { glView, orbitPos, ease } from './jarvisGL.js';
 import { marketSizes } from './jarvisMarkets.js';
 import { placeLabels } from './fxHoloCore.js';
-import { netBriefFigure, netBriefParts, netScriptParts } from './netCore.js';
+import { netBriefFigure, netBriefParts, netScriptParts, netClaims } from './netCore.js';
 import { buildNet, pickLinks, partners, CLUSTERS, DEFAULT_THR, MAX_LINKS, WINDOWS, scrubSteps, makeScan, scanSome, stepState, pairPath, swingPair, dayMoves, netScript, showActs, showAct, actNodes, nodeRadius, FULL_AT } from './netCore.js';
 const nameOf = (net, id) => { const n = marketName(id, { short: true }); return n === id ? (net.labels[id] ?? id) : n; };
 
@@ -578,7 +578,7 @@ registerShowScene({
     const live = Object.keys(S.live ?? {}).length >= 6, yday = hr < 12 || !live, end = yday ? net.dates.findLastIndex(d => d < new Date(inp?.now ?? Date.now()).toISOString().slice(0, 10)) : -1;
     const moves = yday ? (end > 0 ? dayMoves(net.R, net.ids, end) : {}) : S.live, brief = netBriefParts(net, moves, yday ? 'yesterday' : 'today');
     const parts = inp?.guide ? netScriptParts(net) : brief, text = parts?.map(x => x.text).join(' ');
-    return text ? { sync: true, guide,
+    return text ? { sync: true, guide, claims: inp?.guide ? [] : netClaims(net),
       title: 'The correlation network', figure: inp?.guide ? (ch && Math.abs(ch.delta) >= 0.15 ? { value: `${fmt(ch.then)} → ${fmt(ch.now)}`, label: `${nameOf(net, ch.a)} vs ${nameOf(net, ch.b)}, 3 months` } : undefined) : (netBriefFigure(net, moves, yday ? 'yesterday' : 'today', k => nameOf(net, k)) ?? undefined), view: 'net', cam: null, text,
       enter: api => { S.showP = 0; S.showAt = Date.now(); S.play = false; S.cam = null; S.acts = showActs(net, parts); if (S.w !== net.window) setW(net.window); goStep(last()); if (api?.st) { api.st.sel = null; Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); } },
       motion: (api, p) => { S.showP = clamp(p, 0, 1); S.showAt = Date.now(); },

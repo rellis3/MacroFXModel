@@ -5,12 +5,12 @@
 export const SECTIONS = [
   // ONE morning programme: the BROADCAST (it names itself morning / afternoon / evening by the clock). The old SHOW director is an engine only (ENGINE_TOOLS), kept for the NEWSLETTER's own scenes.
   { id: 'watch', label: 'WATCH', hint: 'Sit back and let Helix talk you through it', home: ['tool', 'broadcast'], items: [
-    ['tool', 'today', 'TODAY'], ['tool', 'broadcast', 'MORNING SHOW'], ['tool', 'news', 'NEWSLETTER'], ['tool', 'film', 'REPLAY'], ['tool', 'media', 'MEDIA'] ] },
+    ['tool', 'today', 'TODAY'], ['tool', 'broadcast', 'MORNING SHOW'], ['tool', 'news', 'NEWSLETTER'], ['tool', 'film', 'REPLAY'], ['tool', 'diary', 'DIARY'], ['tool', 'media', 'MEDIA'] ] },
   { id: 'markets', label: 'MARKETS', hint: 'What every market is doing today', home: ['view', 'candles'], items: [
     ['view', 'candles', 'MARKET BOARD'], ['view', 'session', 'CHART'], ['view', 'wx', 'WEATHER'], ['view', 'globe', 'WORLD MAP'], ['view', 'ahead', 'DAY AHEAD'], ['view', 'dayso', 'THE DAY SO FAR'], ['view', 'rangeused', 'RANGE USED'], ['view', 'net', 'LINKS'], ['view', 'bubbles', 'BUBBLES'],
     ['tool', 'radar', 'UNUSUAL MOVES'], ['tool', 'markets', 'RANKED LIST'] ] },
   { id: 'macro', label: 'MACRO', hint: 'How the big pieces connect', home: ['view', 'reactor'], items: [
-    ['view', 'reactor', 'CHAIN REACTOR'], ['view', 'chainfly', 'CHAIN FLY'], ['view', 'orbit', 'CHAIN ORBIT'], ['view', 'yields', 'YIELD CURVE'], ['view', 'g10', 'G10 RATES'], ['view', 'moneyglobe', 'MONEY GLOBE'], ['view', 'cycle', 'WORLD CYCLE'], ['view', 'surprise', 'DATA SURPRISES'], ['view', 'shockwave', 'RELEASE SHOCKWAVE'], ['view', 'cbpaths', 'RATE PATHS'], ['view', 'ccy', 'CURRENCIES'], ['view', 'fxgrid', 'FX MATRIX'], ['view', 'vol', 'VOLATILITY'], ['view', 'ivsurf', 'VOL SURFACE'], ['view', 'skyline', 'CHAIN CITY'],
+    ['view', 'reactor', 'CHAIN REACTOR'], ['view', 'chainfly', 'CHAIN FLY'], ['view', 'orbit', 'CHAIN ORBIT'], ['view', 'yields', 'YIELD CURVE'], ['view', 'g10', 'G10 RATES'], ['view', 'moneyglobe', 'MONEY GLOBE'], ['view', 'cycle', 'WORLD CYCLE'], ['view', 'surprise', 'DATA SURPRISES'], ['view', 'shockwave', 'RELEASE SHOCKWAVE'], ['view', 'cbpaths', 'RATE PATHS'], ['view', 'ccy', 'CURRENCIES'], ['view', 'fxgrid', 'FX MATRIX'], ['view', 'vol', 'VOLATILITY'], ['view', 'ivsurf', 'VOL SURFACE'], ['view', 'skew', 'OPTIONS SKEW'], ['view', 'skyline', 'CHAIN CITY'],
     ['tool', 'brief', 'CHAIN READ'] ] },
   { id: 'pos', label: 'POSITIONING', hint: 'Who holds what, and what the desk thinks', home: ['view', 'gpillar'], items: [
     ['view', 'gpillar', 'GAMMA PILLAR'], ['view', 'gterrain', 'GAMMA TERRAIN'], ['view', 'cot', 'POSITIONING TERRAIN'], ['view', 'gamma', 'GAMMA FLY'], ['view', 'flipmap', 'FLIP MAP'], ['view', 'book', 'DESK CALLS'], ['tool', 'precedent', 'PAST RELEASES'] ] },

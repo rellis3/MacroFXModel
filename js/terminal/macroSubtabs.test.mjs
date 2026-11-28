@@ -105,7 +105,7 @@ test('pills: a tablist with the active one selected and keyboard stepping that w
 
 test('feeds a section still needs, and block lookup by short id', () => {
   assert.deepEqual(missingFeeds('rates', {}), SUB_FEEDS.rates);
-  assert.deepEqual(missingFeeds('rates', { 'rates-board': {}, 'curve-board': { ok: false } }), ['term-premium', 'rates-extra', 'cb-path/boe']);
+  assert.deepEqual(missingFeeds('rates', { 'rates-board': {}, 'curve-board': { ok: false } }), ['term-premium', 'rates-extra', 'cb-path/boe', 'real-yields']);
   assert.deepEqual(missingFeeds('credit', { 'funding-read': null }).includes('funding-read?spark=0'), false, 'a failed feed (null) is landed, not missing');
   assert.equal(subOfBlock('fedyields'), 'rates');
   assert.equal(subOfBlock('panel.macro.gpr'), 'markets');

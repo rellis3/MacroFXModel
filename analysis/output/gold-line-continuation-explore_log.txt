@@ -1,0 +1,207 @@
+A. VWAP STRETCH AT THE FILL vs THE FADE (system trades; z = entry distance from VWAP in sigma_v, + = stretched in the fade's favour)
+
+  fill_any IS:
+         n   mean   sum  target%  stop%  gross  same-min%
+zb                                                       
+1-1.5    7 -0.756  -5.3     14.3   85.7   -0.6       14.3
+1.5-2   30 -0.803 -24.1     13.3   80.0   -0.6       40.0
+2-2.5   52  0.231  12.0     17.3   69.2    0.4       59.6
+>2.5   244 -0.045 -11.0      9.0   70.5    0.2       57.0
+
+  fill_any OOS:
+                    n   mean    sum  target%  stop%  gross  same-min%
+zb                                                                   
+<0.5 (no target)    2  0.104    0.2      0.0   50.0    0.1       50.0
+0.5-1               4 -0.191   -0.8     50.0   50.0   -0.1       50.0
+1-1.5              23  0.058    1.3     43.5   47.8    0.1       43.5
+1.5-2              90 -0.119  -10.7     27.8   68.9   -0.0       32.2
+2-2.5             135  0.335   45.3     25.9   63.7    0.4       43.7
+>2.5              495  0.385  190.8     13.3   67.5    0.5       45.5
+
+  ignore_any IS:
+         n   mean   sum  target%  stop%  gross  same-min%
+zb                                                       
+1-1.5    8 -0.834  -6.7     12.5   87.5   -0.7        0.0
+1.5-2   32 -0.684 -21.9     15.6   75.0   -0.5        0.0
+2-2.5   39 -0.014  -0.6     12.8   71.8    0.2        0.0
+>2.5   181 -0.109 -19.7      9.4   65.7    0.1        0.0
+
+  ignore_any OOS:
+                    n   mean   sum  target%  stop%  gross  same-min%
+zb                                                                  
+<0.5 (no target)    1  1.260   1.3      0.0    0.0    1.3        0.0
+0.5-1               5 -0.072  -0.4     60.0   40.0   -0.0        0.0
+1-1.5              23 -0.281  -6.5     30.4   60.9   -0.2        0.0
+1.5-2              83 -0.068  -5.6     27.7   67.5    0.0        0.0
+2-2.5             113  0.119  13.5     23.9   67.3    0.2        0.0
+>2.5              395  0.045  17.7     10.1   69.6    0.2        0.0
+
+
+B. CONTINUATION AT JORDAN'S 8 LINES (first poke per line per session). R = gross R of a 1-stop continuation trade (+1 through / -1 back, pessimistic), so mean R = 2 x win% - 1. Fake = 20 shuffles of the widths.
+
+  [real IS] all pokes: n 695, continuation mean R -0.021, net of costs -0.220
+    by poke candle closed beyond the line:
+                n   mean   sum
+      beyond                  
+      False   289 -0.000  -0.1
+      True    406 -0.036 -14.6
+    by day range used / forecast HL P50:
+                 n   mean   sum
+      usedb                    
+      50-75%     1  1.000   1.0
+      75-100%  230 -0.008  -1.9
+      >100%    464 -0.030 -13.8
+    by VWAP stretch (sigma_v) at the poke:
+               n   mean   sum
+      zb                     
+      <0.5     1  1.000   1.0
+      0.5-1    3  0.333   1.0
+      1-1.5   11  0.273   3.0
+      1.5-2   55  0.114   6.3
+      2-2.5  106  0.064   6.8
+      >2.5   519 -0.063 -32.8
+    by approach speed (last 15 min, in stops):
+                            n   mean   sum
+      spb                                 
+      toward VWAP / flat    6  0.333   2.0
+      0-1 stop            113 -0.015  -1.7
+      1-2 stops           139  0.101  14.0
+      >2 stops            437 -0.066 -29.0
+    by time of the poke (London):
+               n   mean   sum
+      hb                     
+      00-07   29 -0.310  -9.0
+      07-12  100 -0.120 -12.0
+      12-16  405  0.059  24.0
+      16-22  161 -0.110 -17.7
+    by side:
+               n   mean   sum
+      side                   
+      lower  374 -0.095 -35.6
+      upper  321  0.065  20.9
+    ACCEPTED 5 min (closed beyond, no retouch for 5 bars; decide at +5): n 113 of 406 closed-beyond, mean R -0.030, net -0.211; retouched within 5 bars: 293
+
+  [real OOS] all pokes: n 990, continuation mean R -0.061, net of costs -0.189
+    by poke candle closed beyond the line:
+                n   mean   sum
+      beyond                  
+      False   348 -0.089 -31.0
+      True    642 -0.046 -29.7
+    by day range used / forecast HL P50:
+                 n   mean   sum
+      usedb                    
+      75-100%  313 -0.070 -21.8
+      >100%    677 -0.057 -38.9
+    by VWAP stretch (sigma_v) at the poke:
+               n   mean   sum
+      zb                     
+      <0.5     7 -0.714  -5.0
+      0.5-1    5 -0.600  -3.0
+      1-1.5   15 -0.333  -5.0
+      1.5-2  109  0.011   1.3
+      2-2.5  145  0.053   7.7
+      >2.5   709 -0.080 -56.6
+    by approach speed (last 15 min, in stops):
+                            n   mean   sum
+      spb                                 
+      toward VWAP / flat    9 -0.047  -0.4
+      0-1 stop            192 -0.071 -13.7
+      1-2 stops           232 -0.169 -39.2
+      >2 stops            557 -0.013  -7.4
+    by time of the poke (London):
+               n   mean   sum
+      hb                     
+      00-07   72 -0.167 -12.0
+      07-12  128 -0.172 -22.0
+      12-16  481  0.030  14.3
+      16-22  309 -0.133 -41.0
+    by side:
+               n   mean   sum
+      side                   
+      lower  473 -0.101 -47.7
+      upper  517 -0.025 -13.0
+    ACCEPTED 5 min (closed beyond, no retouch for 5 bars; decide at +5): n 157 of 642 closed-beyond, mean R +0.127, net +0.015; retouched within 5 bars: 484
+
+  [fake IS] all pokes: n 17000, continuation mean R -0.066, net of costs -0.264
+    by poke candle closed beyond the line:
+                 n   mean    sum
+      beyond                    
+      False   7483 -0.034 -257.3
+      True    9517 -0.091 -862.7
+    by day range used / forecast HL P50:
+                   n   mean     sum
+      usedb                        
+      50-75%      17  0.429     7.3
+      75-100%   4464 -0.021   -95.0
+      >100%    12518 -0.082 -1031.3
+    by VWAP stretch (sigma_v) at the poke:
+                 n   mean    sum
+      zb                        
+      <0.5     260 -0.157  -40.9
+      0.5-1    265  0.117   31.0
+      1-1.5    974 -0.070  -68.3
+      1.5-2   2054 -0.033  -67.7
+      2-2.5   2664 -0.131 -349.7
+      >2.5   10783 -0.058 -624.5
+    by approach speed (last 15 min, in stops):
+                              n   mean     sum
+      spb                                     
+      toward VWAP / flat    118 -0.142   -16.7
+      0-1 stop             2232 -0.024   -52.8
+      1-2 stops            3441  0.051   175.9
+      >2 stops            11209 -0.109 -1226.4
+    by time of the poke (London):
+                n   mean    sum
+      hb                       
+      00-07  1644 -0.168 -276.0
+      07-12  2993 -0.144 -432.2
+      12-16  8716  0.012  108.0
+      16-22  3647 -0.143 -519.8
+    by side:
+                n   mean     sum
+      side                      
+      lower  9075 -0.128 -1160.5
+      upper  7925  0.005    40.4
+    ACCEPTED 5 min (closed beyond, no retouch for 5 bars; decide at +5): n 2278 of 9517 closed-beyond, mean R -0.010, net -0.189; retouched within 5 bars: 7225
+
+  [fake OOS] all pokes: n 22616, continuation mean R -0.051, net of costs -0.164
+    by poke candle closed beyond the line:
+                  n   mean    sum
+      beyond                     
+      False    8497 -0.027 -226.0
+      True    14119 -0.065 -917.7
+    by day range used / forecast HL P50:
+                   n   mean     sum
+      usedb                        
+      50-75%       2  0.000     0.0
+      75-100%   5782 -0.023  -131.6
+      >100%    16832 -0.060 -1012.1
+    by VWAP stretch (sigma_v) at the poke:
+                 n   mean     sum
+      zb                         
+      <0.5     288 -0.476  -137.2
+      0.5-1    209 -0.139   -29.0
+      1-1.5   1079 -0.065   -69.6
+      1.5-2   2917  0.105   307.1
+      2-2.5   3964 -0.025  -100.6
+      >2.5   14159 -0.079 -1114.3
+    by approach speed (last 15 min, in stops):
+                              n   mean    sum
+      spb                                    
+      toward VWAP / flat    113 -0.445  -50.3
+      0-1 stop             3811 -0.020  -74.8
+      1-2 stops            5653 -0.024 -138.2
+      >2 stops            13039 -0.068 -880.4
+    by time of the poke (London):
+                 n   mean    sum
+      hb                        
+      00-07   3062 -0.122 -374.0
+      07-12   3300 -0.098 -323.9
+      12-16  10005 -0.026 -260.6
+      16-22   6249 -0.030 -185.2
+    by side:
+                 n   mean    sum
+      side                      
+      lower  10910 -0.078 -854.0
+      upper  11706 -0.025 -289.7
+    ACCEPTED 5 min (closed beyond, no retouch for 5 bars; decide at +5): n 3316 of 14119 closed-beyond, mean R -0.016, net -0.120; retouched within 5 bars: 10784
