@@ -1,0 +1,2505 @@
+{
+ "generatedAt": "2026-11-28T09:28:33.267Z",
+ "honest": {
+  "vote": {
+   "eurusd": {
+    "split": "2022-09-16",
+    "voted": 2833,
+    "filled": 2759,
+    "skipped": {
+     "unfilled": 74
+    },
+    "nAtProdMargin": 1398,
+    "meanRAtProdMargin": -0.051117596566523586
+   },
+   "gold": {
+    "split": "2022-09-21",
+    "voted": 2841,
+    "filled": 2814,
+    "skipped": {
+     "unfilled": 27
+    },
+    "nAtProdMargin": 1525,
+    "meanRAtProdMargin": -0.01873796721311472
+   },
+   "gbpusd": {
+    "split": "2022-09-26",
+    "voted": 2863,
+    "filled": 2817,
+    "skipped": {
+     "unfilled": 46
+    },
+    "nAtProdMargin": 1692,
+    "meanRAtProdMargin": -0.08165289598108738
+   },
+   "usdjpy": {
+    "split": "2022-08-17",
+    "voted": 2815,
+    "filled": 2791,
+    "skipped": {
+     "unfilled": 24
+    },
+    "nAtProdMargin": 1675,
+    "meanRAtProdMargin": -0.032718985074626866
+   },
+   "audusd": {
+    "split": "2022-09-13",
+    "voted": 2839,
+    "filled": 2761,
+    "skipped": {
+     "unfilled": 78
+    },
+    "nAtProdMargin": 1467,
+    "meanRAtProdMargin": -0.09493926380368092
+   },
+   "nzdusd": {
+    "split": "2022-09-02",
+    "voted": 3024,
+    "filled": 2923,
+    "skipped": {
+     "unfilled": 101
+    },
+    "nAtProdMargin": 1755,
+    "meanRAtProdMargin": -0.10196290598290604
+   },
+   "usdcad": {
+    "split": "2022-09-13",
+    "voted": 3080,
+    "filled": 2986,
+    "skipped": {
+     "unfilled": 94
+    },
+    "nAtProdMargin": 1570,
+    "meanRAtProdMargin": -0.06293292993630566
+   },
+   "usdchf": {
+    "split": "2022-09-28",
+    "voted": 3118,
+    "filled": 3040,
+    "skipped": {
+     "unfilled": 78
+    },
+    "nAtProdMargin": 1728,
+    "meanRAtProdMargin": -0.08492563657407402
+   },
+   "eurjpy": {
+    "split": "2022-09-12",
+    "voted": 2703,
+    "filled": 2641,
+    "skipped": {
+     "unfilled": 62
+    },
+    "nAtProdMargin": 1520,
+    "meanRAtProdMargin": -0.0756684868421053
+   },
+   "eurgbp": {
+    "split": "2022-09-28",
+    "voted": 2968,
+    "filled": 2815,
+    "skipped": {
+     "unfilled": 153
+    },
+    "nAtProdMargin": 1961,
+    "meanRAtProdMargin": -0.13163085160632315
+   },
+   "euraud": {
+    "split": "2022-09-30",
+    "voted": 3178,
+    "filled": 3068,
+    "skipped": {
+     "unfilled": 110
+    },
+    "nAtProdMargin": 1865,
+    "meanRAtProdMargin": -0.11607908847184994
+   },
+   "eurcad": {
+    "split": "2022-08-11",
+    "voted": 3053,
+    "filled": 2953,
+    "skipped": {
+     "unfilled": 100
+    },
+    "nAtProdMargin": 1778,
+    "meanRAtProdMargin": -0.05805179977502813
+   },
+   "eurchf": {
+    "split": "2022-09-13",
+    "voted": 3187,
+    "filled": 3044,
+    "skipped": {
+     "unfilled": 143
+    },
+    "nAtProdMargin": 1901,
+    "meanRAtProdMargin": -0.1369155707522357
+   },
+   "gbpjpy": {
+    "split": "2022-09-29",
+    "voted": 2886,
+    "filled": 2820,
+    "skipped": {
+     "unfilled": 66
+    },
+    "nAtProdMargin": 1365,
+    "meanRAtProdMargin": -0.0301418315018315
+   },
+   "gbpaud": {
+    "split": "2022-10-26",
+    "voted": 3219,
+    "filled": 3081,
+    "skipped": {
+     "unfilled": 138
+    },
+    "nAtProdMargin": 1753,
+    "meanRAtProdMargin": -0.10583057615516246
+   },
+   "gbpchf": {
+    "split": "2022-09-22",
+    "voted": 3454,
+    "filled": 3234,
+    "skipped": {
+     "unfilled": 220
+    },
+    "nAtProdMargin": 2038,
+    "meanRAtProdMargin": -0.1801810598626105
+   },
+   "audjpy": {
+    "split": "2022-08-22",
+    "voted": 2604,
+    "filled": 2539,
+    "skipped": {
+     "unfilled": 65
+    },
+    "nAtProdMargin": 1474,
+    "meanRAtProdMargin": -0.09639816824966081
+   },
+   "audcad": {
+    "split": "2022-09-21",
+    "voted": 2950,
+    "filled": 2817,
+    "skipped": {
+     "unfilled": 133
+    },
+    "nAtProdMargin": 1673,
+    "meanRAtProdMargin": -0.1382226539151224
+   },
+   "cadjpy": {
+    "split": "2022-09-13",
+    "voted": 2545,
+    "filled": 2468,
+    "skipped": {
+     "unfilled": 77
+    },
+    "nAtProdMargin": 1327,
+    "meanRAtProdMargin": -0.0708887716654107
+   },
+   "chfjpy": {
+    "split": "2022-09-05",
+    "voted": 2805,
+    "filled": 2704,
+    "skipped": {
+     "unfilled": 101
+    },
+    "nAtProdMargin": 1614,
+    "meanRAtProdMargin": -0.09712428748451041
+   },
+   "nzdjpy": {
+    "split": "2022-08-10",
+    "voted": 3111,
+    "filled": 3002,
+    "skipped": {
+     "unfilled": 109
+    },
+    "nAtProdMargin": 1411,
+    "meanRAtProdMargin": -0.13723685329553487
+   },
+   "nq": {
+    "split": "2022-11-15",
+    "voted": 2638,
+    "filled": 2632,
+    "skipped": {
+     "unfilled": 6
+    },
+    "nAtProdMargin": 1289,
+    "meanRAtProdMargin": -0.041533281613654036
+   },
+   "spx": {
+    "split": "2022-10-06",
+    "voted": 2660,
+    "filled": 2645,
+    "skipped": {
+     "unfilled": 15
+    },
+    "nAtProdMargin": 1406,
+    "meanRAtProdMargin": -0.014790113798008478
+   },
+   "dow": {
+    "split": "2022-10-13",
+    "voted": 2565,
+    "filled": 2554,
+    "skipped": {
+     "unfilled": 11
+    },
+    "nAtProdMargin": 1274,
+    "meanRAtProdMargin": -0.03186295133437998
+   },
+   "us2000": {
+    "split": "2022-09-28",
+    "voted": 2515,
+    "filled": 2495,
+    "skipped": {
+     "unfilled": 20
+    },
+    "nAtProdMargin": 1086,
+    "meanRAtProdMargin": -0.03447062615101292
+   },
+   "de30": {
+    "split": "2022-10-04",
+    "voted": 2755,
+    "filled": 2727,
+    "skipped": {
+     "unfilled": 28
+    },
+    "nAtProdMargin": 1643,
+    "meanRAtProdMargin": -0.04661326841144245
+   },
+   "uk100": {
+    "split": "2022-08-03",
+    "voted": 2647,
+    "filled": 2598,
+    "skipped": {
+     "unfilled": 49
+    },
+    "nAtProdMargin": 1575,
+    "meanRAtProdMargin": -0.05379193650793653
+   }
+  },
+  "asia": {
+   "eurusd": {
+    "split": "2022-08-04",
+    "voted": 4265,
+    "filled": 3986,
+    "skipped": {
+     "unfilled": 279
+    },
+    "nAtProdMargin": 76,
+    "meanRAtProdMargin": -0.06290789473684213
+   },
+   "gold": {
+    "split": "2022-06-01",
+    "voted": 3450,
+    "filled": 3363,
+    "skipped": {
+     "unfilled": 87
+    },
+    "nAtProdMargin": 63,
+    "meanRAtProdMargin": -0.018252380952380954
+   },
+   "gbpusd": {
+    "split": "2022-05-09",
+    "voted": 8069,
+    "filled": 7625,
+    "skipped": {
+     "unfilled": 444
+    },
+    "nAtProdMargin": 5,
+    "meanRAtProdMargin": -0.76162
+   },
+   "usdjpy": {
+    "split": "2022-10-07",
+    "voted": 3161,
+    "filled": 3019,
+    "skipped": {
+     "unfilled": 142
+    },
+    "nAtProdMargin": 171,
+    "meanRAtProdMargin": -0.1169590643274854
+   },
+   "audusd": {
+    "split": "2022-10-20",
+    "voted": 4068,
+    "filled": 3831,
+    "skipped": {
+     "unfilled": 237
+    },
+    "nAtProdMargin": 81,
+    "meanRAtProdMargin": -0.06691234567901233
+   },
+   "nzdusd": {
+    "split": "2022-09-06",
+    "voted": 6025,
+    "filled": 5752,
+    "skipped": {
+     "unfilled": 273
+    },
+    "nAtProdMargin": 283,
+    "meanRAtProdMargin": -0.3686540636042404
+   },
+   "usdcad": {
+    "split": "2022-09-05",
+    "voted": 7082,
+    "filled": 6605,
+    "skipped": {
+     "unfilled": 477
+    },
+    "nAtProdMargin": 72,
+    "meanRAtProdMargin": -0.48307361111111113
+   },
+   "usdchf": {
+    "split": "2022-08-30",
+    "voted": 11407,
+    "filled": 10793,
+    "skipped": {
+     "unfilled": 614
+    },
+    "nAtProdMargin": 769,
+    "meanRAtProdMargin": -0.3209804941482444
+   },
+   "eurjpy": {
+    "split": "2022-08-23",
+    "voted": 7922,
+    "filled": 7666,
+    "skipped": {
+     "unfilled": 256
+    },
+    "nAtProdMargin": 102,
+    "meanRAtProdMargin": -0.29353725490196075
+   },
+   "eurgbp": {
+    "split": "2022-09-21",
+    "voted": 10356,
+    "filled": 8769,
+    "skipped": {
+     "unfilled": 1587
+    },
+    "nAtProdMargin": 460,
+    "meanRAtProdMargin": -0.616912391304348
+   },
+   "euraud": {
+    "split": "2022-06-28",
+    "voted": 7344,
+    "filled": 6910,
+    "skipped": {
+     "unfilled": 434
+    },
+    "nAtProdMargin": 505,
+    "meanRAtProdMargin": -0.2264847524752476
+   },
+   "eurcad": {
+    "split": "2022-10-06",
+    "voted": 11124,
+    "filled": 10282,
+    "skipped": {
+     "unfilled": 842
+    },
+    "nAtProdMargin": 390,
+    "meanRAtProdMargin": -0.3512487179487179
+   },
+   "eurchf": {
+    "split": "2022-10-06",
+    "voted": 14013,
+    "filled": 12778,
+    "skipped": {
+     "unfilled": 1235
+    },
+    "nAtProdMargin": 667,
+    "meanRAtProdMargin": -0.6242655172413791
+   },
+   "eurnzd": {
+    "split": "2022-05-18",
+    "voted": 7777,
+    "filled": 7085,
+    "skipped": {
+     "unfilled": 692
+    },
+    "nAtProdMargin": 341,
+    "meanRAtProdMargin": -0.4704938416422289
+   },
+   "gbpjpy": {
+    "split": "2022-02-11",
+    "voted": 6675,
+    "filled": 6208,
+    "skipped": {
+     "unfilled": 467
+    },
+    "nAtProdMargin": 47,
+    "meanRAtProdMargin": -0.1560127659574468
+   },
+   "gbpaud": {
+    "split": "2021-12-27",
+    "voted": 7932,
+    "filled": 7410,
+    "skipped": {
+     "unfilled": 522
+    },
+    "nAtProdMargin": 68,
+    "meanRAtProdMargin": -0.4617676470588236
+   },
+   "gbpcad": {
+    "split": "2022-09-09",
+    "voted": 9195,
+    "filled": 8302,
+    "skipped": {
+     "unfilled": 893
+    },
+    "nAtProdMargin": 180,
+    "meanRAtProdMargin": -0.4879894444444444
+   },
+   "gbpchf": {
+    "split": "2022-08-22",
+    "voted": 10910,
+    "filled": 9026,
+    "skipped": {
+     "unfilled": 1884
+    },
+    "nAtProdMargin": 212,
+    "meanRAtProdMargin": -0.5865080188679244
+   },
+   "gbpnzd": {
+    "split": "2021-12-09",
+    "voted": 6770,
+    "filled": 5779,
+    "skipped": {
+     "unfilled": 991
+    },
+    "nAtProdMargin": 264,
+    "meanRAtProdMargin": -0.5075768939393941
+   },
+   "audjpy": {
+    "split": "2022-10-12",
+    "voted": 4558,
+    "filled": 4250,
+    "skipped": {
+     "unfilled": 308
+    },
+    "nAtProdMargin": 115,
+    "meanRAtProdMargin": -0.17970434782608696
+   },
+   "audnzd": {
+    "split": "2022-07-12",
+    "voted": 6925,
+    "filled": 5958,
+    "skipped": {
+     "unfilled": 967
+    },
+    "nAtProdMargin": 783,
+    "meanRAtProdMargin": -0.6645045977011487
+   },
+   "audcad": {
+    "split": "2022-04-08",
+    "voted": 4557,
+    "filled": 3886,
+    "skipped": {
+     "unfilled": 671
+    },
+    "nAtProdMargin": 86,
+    "meanRAtProdMargin": -0.5764697674418605
+   },
+   "audchf": {
+    "split": "2022-07-21",
+    "voted": 6348,
+    "filled": 5726,
+    "skipped": {
+     "unfilled": 622
+    },
+    "nAtProdMargin": 295,
+    "meanRAtProdMargin": -0.4486376271186444
+   },
+   "cadjpy": {
+    "split": "2022-06-16",
+    "voted": 5660,
+    "filled": 5284,
+    "skipped": {
+     "unfilled": 376
+    },
+    "nAtProdMargin": 187,
+    "meanRAtProdMargin": -0.4861160427807486
+   },
+   "chfjpy": {
+    "split": "2022-06-16",
+    "voted": 4673,
+    "filled": 4016,
+    "skipped": {
+     "unfilled": 657
+    },
+    "nAtProdMargin": 26,
+    "meanRAtProdMargin": -0.818576923076923
+   },
+   "nzdjpy": {
+    "split": "2022-09-21",
+    "voted": 5887,
+    "filled": 5395,
+    "skipped": {
+     "unfilled": 492
+    },
+    "nAtProdMargin": 376,
+    "meanRAtProdMargin": -0.44168856382978733
+   },
+   "nq": {
+    "split": "2023-03-17",
+    "voted": 9148,
+    "filled": 9091,
+    "skipped": {
+     "unfilled": 57
+    },
+    "nAtProdMargin": 151,
+    "meanRAtProdMargin": -0.28674900662251657
+   },
+   "spx": {
+    "split": "2023-05-18",
+    "voted": 5744,
+    "filled": 5662,
+    "skipped": {
+     "unfilled": 82
+    },
+    "nAtProdMargin": 154,
+    "meanRAtProdMargin": -0.3111863636363638
+   },
+   "de30": {
+    "split": "2023-11-22",
+    "voted": 3923,
+    "filled": 3871,
+    "skipped": {
+     "unfilled": 52
+    },
+    "nAtProdMargin": 113,
+    "meanRAtProdMargin": -0.273324778761062
+   },
+   "uk100": {
+    "split": "2023-02-03",
+    "voted": 7170,
+    "filled": 6987,
+    "skipped": {
+     "unfilled": 183
+    },
+    "nAtProdMargin": 127,
+    "meanRAtProdMargin": -0.3598440944881889
+   },
+   "us2000": {
+    "split": "2023-03-20",
+    "voted": 9457,
+    "filled": 9356,
+    "skipped": {
+     "unfilled": 101
+    },
+    "nAtProdMargin": 60,
+    "meanRAtProdMargin": -0.24533166666666664
+   },
+   "dow": {
+    "split": "2023-09-29",
+    "voted": 5869,
+    "filled": 5777,
+    "skipped": {
+     "unfilled": 92
+    },
+    "nAtProdMargin": 84,
+    "meanRAtProdMargin": -0.117325
+   }
+  },
+  "monday": {
+   "eurusd": {
+    "split": "2022-03-29",
+    "voted": 1483,
+    "filled": 1469,
+    "skipped": {
+     "unfilled": 14
+    },
+    "nAtProdMargin": 25,
+    "meanRAtProdMargin": -0.09117199999999999
+   },
+   "gold": {
+    "split": "2022-11-01",
+    "voted": 642,
+    "filled": 638,
+    "skipped": {
+     "unfilled": 4
+    },
+    "nAtProdMargin": 37,
+    "meanRAtProdMargin": -0.22273243243243246
+   },
+   "gbpusd": {
+    "split": "2022-03-28",
+    "voted": 1483,
+    "filled": 1467,
+    "skipped": {
+     "unfilled": 16
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "usdjpy": {
+    "split": "2022-09-15",
+    "voted": 1437,
+    "filled": 1433,
+    "skipped": {
+     "unfilled": 4
+    },
+    "nAtProdMargin": 28,
+    "meanRAtProdMargin": -0.1152357142857143
+   },
+   "audusd": {
+    "split": "2022-06-27",
+    "voted": 628,
+    "filled": 618,
+    "skipped": {
+     "unfilled": 10
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "nzdusd": {
+    "split": "2022-04-18",
+    "voted": 1071,
+    "filled": 1070,
+    "skipped": {
+     "unfilled": 1
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "usdcad": {
+    "split": "2022-09-15",
+    "voted": 975,
+    "filled": 972,
+    "skipped": {
+     "unfilled": 3
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "usdchf": {
+    "split": "2022-06-07",
+    "voted": 1279,
+    "filled": 1256,
+    "skipped": {
+     "unfilled": 23
+    },
+    "nAtProdMargin": 67,
+    "meanRAtProdMargin": -0.1355149253731343
+   },
+   "eurjpy": {
+    "split": "2022-06-23",
+    "voted": 977,
+    "filled": 973,
+    "skipped": {
+     "unfilled": 4
+    },
+    "nAtProdMargin": 19,
+    "meanRAtProdMargin": -0.37463684210526316
+   },
+   "eurgbp": {
+    "split": "2022-06-22",
+    "voted": 1327,
+    "filled": 1282,
+    "skipped": {
+     "unfilled": 45
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "euraud": {
+    "split": "2022-06-09",
+    "voted": 1182,
+    "filled": 1168,
+    "skipped": {
+     "unfilled": 14
+    },
+    "nAtProdMargin": 106,
+    "meanRAtProdMargin": -0.32533584905660384
+   },
+   "eurcad": {
+    "split": "2022-06-21",
+    "voted": 1275,
+    "filled": 1265,
+    "skipped": {
+     "unfilled": 10
+    },
+    "nAtProdMargin": 34,
+    "meanRAtProdMargin": -0.22490882352941177
+   },
+   "eurchf": {
+    "split": "2022-07-07",
+    "voted": 1669,
+    "filled": 1633,
+    "skipped": {
+     "unfilled": 36
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "eurnzd": {
+    "split": "2022-07-05",
+    "voted": 1683,
+    "filled": 1643,
+    "skipped": {
+     "unfilled": 40
+    },
+    "nAtProdMargin": 66,
+    "meanRAtProdMargin": -0.198119696969697
+   },
+   "gbpjpy": {
+    "split": "2022-08-23",
+    "voted": 1480,
+    "filled": 1462,
+    "skipped": {
+     "unfilled": 18
+    },
+    "nAtProdMargin": 72,
+    "meanRAtProdMargin": -0.021633333333333345
+   },
+   "gbpaud": {
+    "split": "2022-09-12",
+    "voted": 1185,
+    "filled": 1170,
+    "skipped": {
+     "unfilled": 15
+    },
+    "nAtProdMargin": 31,
+    "meanRAtProdMargin": -0.357358064516129
+   },
+   "gbpcad": {
+    "split": "2022-10-17",
+    "voted": 1300,
+    "filled": 1266,
+    "skipped": {
+     "unfilled": 34
+    },
+    "nAtProdMargin": 23,
+    "meanRAtProdMargin": -0.6857260869565218
+   },
+   "gbpchf": {
+    "split": "2022-09-06",
+    "voted": 1896,
+    "filled": 1858,
+    "skipped": {
+     "unfilled": 38
+    },
+    "nAtProdMargin": 25,
+    "meanRAtProdMargin": -0.636988
+   },
+   "gbpnzd": {
+    "split": "2022-07-29",
+    "voted": 1727,
+    "filled": 1685,
+    "skipped": {
+     "unfilled": 42
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "audjpy": {
+    "split": "2022-05-24",
+    "voted": 809,
+    "filled": 804,
+    "skipped": {
+     "unfilled": 5
+    },
+    "nAtProdMargin": 46,
+    "meanRAtProdMargin": -0.5586869565217392
+   },
+   "audnzd": {
+    "split": "2022-10-31",
+    "voted": 1520,
+    "filled": 1484,
+    "skipped": {
+     "unfilled": 36
+    },
+    "nAtProdMargin": 31,
+    "meanRAtProdMargin": -1.0871129032258067
+   },
+   "audcad": {
+    "split": "2022-04-13",
+    "voted": 2178,
+    "filled": 2140,
+    "skipped": {
+     "unfilled": 38
+    },
+    "nAtProdMargin": 279,
+    "meanRAtProdMargin": -0.17386810035842296
+   },
+   "audchf": {
+    "split": "2022-09-13",
+    "voted": 1500,
+    "filled": 1487,
+    "skipped": {
+     "unfilled": 13
+    },
+    "nAtProdMargin": 94,
+    "meanRAtProdMargin": -0.3862265957446807
+   },
+   "cadjpy": {
+    "split": "2022-09-23",
+    "voted": 1304,
+    "filled": 1287,
+    "skipped": {
+     "unfilled": 17
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "chfjpy": {
+    "split": "2022-08-08",
+    "voted": 2135,
+    "filled": 2104,
+    "skipped": {
+     "unfilled": 31
+    },
+    "nAtProdMargin": 102,
+    "meanRAtProdMargin": -0.22484607843137253
+   },
+   "nzdjpy": {
+    "split": "2022-06-29",
+    "voted": 1887,
+    "filled": 1856,
+    "skipped": {
+     "unfilled": 31
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "nq": {
+    "split": "2022-12-14",
+    "voted": 1248,
+    "filled": 1241,
+    "skipped": {
+     "unfilled": 7
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "spx": {
+    "split": "2022-11-30",
+    "voted": 1708,
+    "filled": 1706,
+    "skipped": {
+     "unfilled": 2
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "de30": {
+    "split": "2022-09-28",
+    "voted": 261,
+    "filled": 261,
+    "skipped": {},
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "uk100": {
+    "split": "2022-12-14",
+    "voted": 842,
+    "filled": 835,
+    "skipped": {
+     "unfilled": 7
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "us2000": {
+    "split": "2022-11-07",
+    "voted": 1285,
+    "filled": 1283,
+    "skipped": {
+     "unfilled": 2
+    },
+    "nAtProdMargin": 63,
+    "meanRAtProdMargin": -0.14634444444444442
+   },
+   "dow": {
+    "split": "2022-10-18",
+    "voted": 1517,
+    "filled": 1515,
+    "skipped": {
+     "unfilled": 2
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   }
+  }
+ },
+ "retest": {
+  "vote": {
+   "eurusd": {
+    "split": "2022-09-16",
+    "voted": 2833,
+    "filled": 2505,
+    "skipped": {
+     "notArmed": 198,
+     "cancelled": 108,
+     "unfilled": 22
+    },
+    "nAtProdMargin": 1257,
+    "meanRAtProdMargin": -0.04664152744630069
+   },
+   "gold": {
+    "split": "2022-09-21",
+    "voted": 2841,
+    "filled": 2548,
+    "skipped": {
+     "cancelled": 104,
+     "notArmed": 147,
+     "unfilled": 42
+    },
+    "nAtProdMargin": 1372,
+    "meanRAtProdMargin": 0.0026566326530612755
+   },
+   "gbpusd": {
+    "split": "2022-09-26",
+    "voted": 2863,
+    "filled": 2578,
+    "skipped": {
+     "cancelled": 123,
+     "notArmed": 138,
+     "unfilled": 24
+    },
+    "nAtProdMargin": 1530,
+    "meanRAtProdMargin": -0.06816405228758167
+   },
+   "usdjpy": {
+    "split": "2022-08-17",
+    "voted": 2815,
+    "filled": 2518,
+    "skipped": {
+     "unfilled": 41,
+     "cancelled": 114,
+     "notArmed": 142
+    },
+    "nAtProdMargin": 1493,
+    "meanRAtProdMargin": -0.032412123241794995
+   },
+   "audusd": {
+    "split": "2022-09-13",
+    "voted": 2839,
+    "filled": 2463,
+    "skipped": {
+     "cancelled": 166,
+     "notArmed": 183,
+     "unfilled": 27
+    },
+    "nAtProdMargin": 1286,
+    "meanRAtProdMargin": -0.08963561430793149
+   },
+   "nzdusd": {
+    "split": "2022-09-02",
+    "voted": 3024,
+    "filled": 2690,
+    "skipped": {
+     "notArmed": 186,
+     "cancelled": 129,
+     "unfilled": 19
+    },
+    "nAtProdMargin": 1605,
+    "meanRAtProdMargin": -0.10090498442367597
+   },
+   "usdcad": {
+    "split": "2022-09-13",
+    "voted": 3080,
+    "filled": 2746,
+    "skipped": {
+     "cancelled": 129,
+     "notArmed": 173,
+     "unfilled": 32
+    },
+    "nAtProdMargin": 1444,
+    "meanRAtProdMargin": -0.06734425207756227
+   },
+   "usdchf": {
+    "split": "2022-09-28",
+    "voted": 3118,
+    "filled": 2898,
+    "skipped": {
+     "cancelled": 84,
+     "notArmed": 124,
+     "unfilled": 12
+    },
+    "nAtProdMargin": 1652,
+    "meanRAtProdMargin": -0.07656707021791763
+   },
+   "eurjpy": {
+    "split": "2022-09-12",
+    "voted": 2703,
+    "filled": 2434,
+    "skipped": {
+     "cancelled": 80,
+     "notArmed": 156,
+     "unfilled": 33
+    },
+    "nAtProdMargin": 1375,
+    "meanRAtProdMargin": -0.07565832727272732
+   },
+   "eurgbp": {
+    "split": "2022-09-28",
+    "voted": 2968,
+    "filled": 2731,
+    "skipped": {
+     "cancelled": 59,
+     "notArmed": 165,
+     "unfilled": 13
+    },
+    "nAtProdMargin": 1913,
+    "meanRAtProdMargin": -0.14387130162049136
+   },
+   "euraud": {
+    "split": "2022-09-30",
+    "voted": 3178,
+    "filled": 2894,
+    "skipped": {
+     "notArmed": 184,
+     "cancelled": 86,
+     "unfilled": 14
+    },
+    "nAtProdMargin": 1755,
+    "meanRAtProdMargin": -0.13140723646723643
+   },
+   "eurcad": {
+    "split": "2022-08-11",
+    "voted": 3053,
+    "filled": 2803,
+    "skipped": {
+     "notArmed": 153,
+     "unfilled": 23,
+     "cancelled": 74
+    },
+    "nAtProdMargin": 1704,
+    "meanRAtProdMargin": -0.06856320422535218
+   },
+   "eurchf": {
+    "split": "2022-09-13",
+    "voted": 3187,
+    "filled": 2969,
+    "skipped": {
+     "cancelled": 49,
+     "unfilled": 14,
+     "notArmed": 155
+    },
+    "nAtProdMargin": 1869,
+    "meanRAtProdMargin": -0.15864638844301784
+   },
+   "gbpjpy": {
+    "split": "2022-09-29",
+    "voted": 2886,
+    "filled": 2617,
+    "skipped": {
+     "unfilled": 20,
+     "notArmed": 162,
+     "cancelled": 87
+    },
+    "nAtProdMargin": 1249,
+    "meanRAtProdMargin": -0.02951985588470771
+   },
+   "gbpaud": {
+    "split": "2022-10-26",
+    "voted": 3219,
+    "filled": 2987,
+    "skipped": {
+     "cancelled": 61,
+     "notArmed": 157,
+     "unfilled": 14
+    },
+    "nAtProdMargin": 1691,
+    "meanRAtProdMargin": -0.11691153163808386
+   },
+   "gbpchf": {
+    "split": "2022-09-22",
+    "voted": 3454,
+    "filled": 3203,
+    "skipped": {
+     "notArmed": 181,
+     "cancelled": 65,
+     "unfilled": 5
+    },
+    "nAtProdMargin": 2041,
+    "meanRAtProdMargin": -0.23543826555609979
+   },
+   "audjpy": {
+    "split": "2022-08-22",
+    "voted": 2604,
+    "filled": 2324,
+    "skipped": {
+     "notArmed": 177,
+     "cancelled": 88,
+     "unfilled": 15
+    },
+    "nAtProdMargin": 1343,
+    "meanRAtProdMargin": -0.10981764705882355
+   },
+   "audcad": {
+    "split": "2022-09-21",
+    "voted": 2950,
+    "filled": 2724,
+    "skipped": {
+     "cancelled": 65,
+     "notArmed": 154,
+     "unfilled": 7
+    },
+    "nAtProdMargin": 1632,
+    "meanRAtProdMargin": -0.15144693627450964
+   },
+   "cadjpy": {
+    "split": "2022-09-13",
+    "voted": 2545,
+    "filled": 2317,
+    "skipped": {
+     "unfilled": 22,
+     "notArmed": 137,
+     "cancelled": 69
+    },
+    "nAtProdMargin": 1238,
+    "meanRAtProdMargin": -0.06780379644588048
+   },
+   "chfjpy": {
+    "split": "2022-09-05",
+    "voted": 2805,
+    "filled": 2567,
+    "skipped": {
+     "unfilled": 19,
+     "cancelled": 72,
+     "notArmed": 147
+    },
+    "nAtProdMargin": 1529,
+    "meanRAtProdMargin": -0.1165777632439502
+   },
+   "nzdjpy": {
+    "split": "2022-08-10",
+    "voted": 3111,
+    "filled": 2877,
+    "skipped": {
+     "cancelled": 71,
+     "notArmed": 140,
+     "unfilled": 23
+    },
+    "nAtProdMargin": 1332,
+    "meanRAtProdMargin": -0.15391133633633625
+   },
+   "nq": {
+    "split": "2022-11-15",
+    "voted": 2638,
+    "filled": 2315,
+    "skipped": {
+     "notArmed": 142,
+     "cancelled": 132,
+     "unfilled": 49
+    },
+    "nAtProdMargin": 1120,
+    "meanRAtProdMargin": -0.03967044642857147
+   },
+   "spx": {
+    "split": "2022-10-06",
+    "voted": 2660,
+    "filled": 2331,
+    "skipped": {
+     "notArmed": 139,
+     "cancelled": 141,
+     "unfilled": 49
+    },
+    "nAtProdMargin": 1244,
+    "meanRAtProdMargin": -0.010511575562700944
+   },
+   "dow": {
+    "split": "2022-10-13",
+    "voted": 2565,
+    "filled": 2220,
+    "skipped": {
+     "cancelled": 117,
+     "unfilled": 43,
+     "notArmed": 185
+    },
+    "nAtProdMargin": 1093,
+    "meanRAtProdMargin": -0.04083394327538892
+   },
+   "us2000": {
+    "split": "2022-09-28",
+    "voted": 2515,
+    "filled": 2196,
+    "skipped": {
+     "cancelled": 126,
+     "unfilled": 48,
+     "notArmed": 145
+    },
+    "nAtProdMargin": 902,
+    "meanRAtProdMargin": -0.03463470066518845
+   },
+   "de30": {
+    "split": "2022-10-04",
+    "voted": 2755,
+    "filled": 2396,
+    "skipped": {
+     "notArmed": 175,
+     "unfilled": 62,
+     "cancelled": 122
+    },
+    "nAtProdMargin": 1384,
+    "meanRAtProdMargin": -0.03807630057803456
+   },
+   "uk100": {
+    "split": "2022-08-03",
+    "voted": 2647,
+    "filled": 2365,
+    "skipped": {
+     "notArmed": 149,
+     "cancelled": 81,
+     "unfilled": 52
+    },
+    "nAtProdMargin": 1411,
+    "meanRAtProdMargin": -0.052805953224663436
+   }
+  },
+  "asia": {
+   "eurusd": {
+    "split": "2022-08-04",
+    "voted": 4265,
+    "filled": 3906,
+    "skipped": {
+     "notArmed": 196,
+     "cancelled": 137,
+     "unfilled": 26
+    },
+    "nAtProdMargin": 76,
+    "meanRAtProdMargin": -0.06290789473684213
+   },
+   "gold": {
+    "split": "2022-06-01",
+    "voted": 3450,
+    "filled": 3119,
+    "skipped": {
+     "cancelled": 135,
+     "notArmed": 158,
+     "unfilled": 38
+    },
+    "nAtProdMargin": 61,
+    "meanRAtProdMargin": -0.040759016393442635
+   },
+   "gbpusd": {
+    "split": "2022-05-09",
+    "voted": 8069,
+    "filled": 7583,
+    "skipped": {
+     "notArmed": 245,
+     "cancelled": 221,
+     "unfilled": 20
+    },
+    "nAtProdMargin": 5,
+    "meanRAtProdMargin": -1.1135
+   },
+   "usdjpy": {
+    "split": "2022-10-07",
+    "voted": 3161,
+    "filled": 2834,
+    "skipped": {
+     "notArmed": 174,
+     "cancelled": 117,
+     "unfilled": 36
+    },
+    "nAtProdMargin": 158,
+    "meanRAtProdMargin": -0.07343987341772155
+   },
+   "audusd": {
+    "split": "2022-10-20",
+    "voted": 4068,
+    "filled": 3680,
+    "skipped": {
+     "notArmed": 229,
+     "cancelled": 129,
+     "unfilled": 30
+    },
+    "nAtProdMargin": 79,
+    "meanRAtProdMargin": -0.1464848101265823
+   },
+   "nzdusd": {
+    "split": "2022-09-06",
+    "voted": 6025,
+    "filled": 5621,
+    "skipped": {
+     "notArmed": 205,
+     "cancelled": 172,
+     "unfilled": 27
+    },
+    "nAtProdMargin": 273,
+    "meanRAtProdMargin": -0.47314175824175836
+   },
+   "usdcad": {
+    "split": "2022-09-05",
+    "voted": 7082,
+    "filled": 6595,
+    "skipped": {
+     "cancelled": 209,
+     "notArmed": 250,
+     "unfilled": 28
+    },
+    "nAtProdMargin": 76,
+    "meanRAtProdMargin": -0.6547263157894736
+   },
+   "usdchf": {
+    "split": "2022-08-30",
+    "voted": 11407,
+    "filled": 10966,
+    "skipped": {
+     "cancelled": 238,
+     "notArmed": 189,
+     "unfilled": 14
+    },
+    "nAtProdMargin": 807,
+    "meanRAtProdMargin": -0.4363750929368028
+   },
+   "eurjpy": {
+    "split": "2022-08-23",
+    "voted": 7922,
+    "filled": 7621,
+    "skipped": {
+     "notArmed": 188,
+     "cancelled": 90,
+     "unfilled": 23
+    },
+    "nAtProdMargin": 99,
+    "meanRAtProdMargin": -0.3529575757575756
+   },
+   "eurgbp": {
+    "split": "2022-09-21",
+    "voted": 10356,
+    "filled": 9668,
+    "skipped": {
+     "notArmed": 289,
+     "cancelled": 385,
+     "unfilled": 14
+    },
+    "nAtProdMargin": 573,
+    "meanRAtProdMargin": -1.1115645724258278
+   },
+   "euraud": {
+    "split": "2022-06-28",
+    "voted": 7344,
+    "filled": 6924,
+    "skipped": {
+     "notArmed": 265,
+     "cancelled": 134,
+     "unfilled": 21
+    },
+    "nAtProdMargin": 513,
+    "meanRAtProdMargin": -0.39271851851851886
+   },
+   "eurcad": {
+    "split": "2022-10-06",
+    "voted": 11124,
+    "filled": 10522,
+    "skipped": {
+     "notArmed": 269,
+     "cancelled": 296,
+     "unfilled": 37
+    },
+    "nAtProdMargin": 408,
+    "meanRAtProdMargin": -0.4635240196078434
+   },
+   "eurchf": {
+    "split": "2022-10-06",
+    "voted": 14013,
+    "filled": 13200,
+    "skipped": {
+     "cancelled": 507,
+     "notArmed": 294,
+     "unfilled": 12
+    },
+    "nAtProdMargin": 759,
+    "meanRAtProdMargin": -1.2042728590250324
+   },
+   "eurnzd": {
+    "split": "2022-05-18",
+    "voted": 7777,
+    "filled": 7409,
+    "skipped": {
+     "cancelled": 108,
+     "notArmed": 251,
+     "unfilled": 9
+    },
+    "nAtProdMargin": 341,
+    "meanRAtProdMargin": -0.4704938416422289
+   },
+   "gbpjpy": {
+    "split": "2022-02-11",
+    "voted": 6675,
+    "filled": 6278,
+    "skipped": {
+     "notArmed": 236,
+     "cancelled": 132,
+     "unfilled": 29
+    },
+    "nAtProdMargin": 55,
+    "meanRAtProdMargin": -0.3896836363636363
+   },
+   "gbpaud": {
+    "split": "2021-12-27",
+    "voted": 7932,
+    "filled": 7576,
+    "skipped": {
+     "cancelled": 97,
+     "notArmed": 239,
+     "unfilled": 20
+    },
+    "nAtProdMargin": 78,
+    "meanRAtProdMargin": -0.6430884615384617
+   },
+   "gbpcad": {
+    "split": "2022-09-09",
+    "voted": 9195,
+    "filled": 8796,
+    "skipped": {
+     "cancelled": 171,
+     "notArmed": 199,
+     "unfilled": 29
+    },
+    "nAtProdMargin": 191,
+    "meanRAtProdMargin": -0.7916848167539268
+   },
+   "gbpchf": {
+    "split": "2022-08-22",
+    "voted": 10910,
+    "filled": 10271,
+    "skipped": {
+     "cancelled": 393,
+     "notArmed": 237,
+     "unfilled": 9
+    },
+    "nAtProdMargin": 252,
+    "meanRAtProdMargin": -1.2256103174603175
+   },
+   "gbpnzd": {
+    "split": "2021-12-09",
+    "voted": 6770,
+    "filled": 6355,
+    "skipped": {
+     "notArmed": 246,
+     "cancelled": 151,
+     "unfilled": 18
+    },
+    "nAtProdMargin": 291,
+    "meanRAtProdMargin": -0.7237824742268043
+   },
+   "audjpy": {
+    "split": "2022-10-12",
+    "voted": 4558,
+    "filled": 4182,
+    "skipped": {
+     "cancelled": 121,
+     "notArmed": 240,
+     "unfilled": 15
+    },
+    "nAtProdMargin": 115,
+    "meanRAtProdMargin": -0.23175826086956514
+   },
+   "audnzd": {
+    "split": "2022-07-12",
+    "voted": 6925,
+    "filled": 6414,
+    "skipped": {
+     "cancelled": 239,
+     "notArmed": 253,
+     "unfilled": 19
+    },
+    "nAtProdMargin": 942,
+    "meanRAtProdMargin": -1.2853411889596589
+   },
+   "audcad": {
+    "split": "2022-04-08",
+    "voted": 4557,
+    "filled": 4256,
+    "skipped": {
+     "cancelled": 67,
+     "unfilled": 15,
+     "notArmed": 219
+    },
+    "nAtProdMargin": 107,
+    "meanRAtProdMargin": -0.9944140186915889
+   },
+   "audchf": {
+    "split": "2022-07-21",
+    "voted": 6348,
+    "filled": 6111,
+    "skipped": {
+     "notArmed": 173,
+     "unfilled": 16,
+     "cancelled": 48
+    },
+    "nAtProdMargin": 342,
+    "meanRAtProdMargin": -0.6955195906432745
+   },
+   "cadjpy": {
+    "split": "2022-06-16",
+    "voted": 5660,
+    "filled": 5274,
+    "skipped": {
+     "cancelled": 186,
+     "notArmed": 187,
+     "unfilled": 13
+    },
+    "nAtProdMargin": 177,
+    "meanRAtProdMargin": -0.6449180790960455
+   },
+   "chfjpy": {
+    "split": "2022-06-16",
+    "voted": 4673,
+    "filled": 4304,
+    "skipped": {
+     "cancelled": 150,
+     "notArmed": 194,
+     "unfilled": 25
+    },
+    "nAtProdMargin": 40,
+    "meanRAtProdMargin": -0.9659325000000003
+   },
+   "nzdjpy": {
+    "split": "2022-09-21",
+    "voted": 5887,
+    "filled": 5410,
+    "skipped": {
+     "cancelled": 199,
+     "notArmed": 250,
+     "unfilled": 28
+    },
+    "nAtProdMargin": 419,
+    "meanRAtProdMargin": -0.6745293556085924
+   },
+   "nq": {
+    "split": "2023-03-17",
+    "voted": 9148,
+    "filled": 8497,
+    "skipped": {
+     "cancelled": 490,
+     "notArmed": 135,
+     "unfilled": 26
+    },
+    "nAtProdMargin": 143,
+    "meanRAtProdMargin": -0.2732594405594405
+   },
+   "spx": {
+    "split": "2023-05-18",
+    "voted": 5744,
+    "filled": 4852,
+    "skipped": {
+     "cancelled": 673,
+     "notArmed": 168,
+     "unfilled": 51
+    },
+    "nAtProdMargin": 115,
+    "meanRAtProdMargin": -0.30835652173913053
+   },
+   "de30": {
+    "split": "2023-11-22",
+    "voted": 3923,
+    "filled": 3581,
+    "skipped": {
+     "cancelled": 222,
+     "notArmed": 109,
+     "unfilled": 11
+    },
+    "nAtProdMargin": 103,
+    "meanRAtProdMargin": -0.23595145631067962
+   },
+   "uk100": {
+    "split": "2023-02-03",
+    "voted": 7170,
+    "filled": 6700,
+    "skipped": {
+     "cancelled": 262,
+     "notArmed": 169,
+     "unfilled": 39
+    },
+    "nAtProdMargin": 126,
+    "meanRAtProdMargin": -0.3877603174603174
+   },
+   "us2000": {
+    "split": "2023-03-20",
+    "voted": 9457,
+    "filled": 8675,
+    "skipped": {
+     "cancelled": 581,
+     "notArmed": 166,
+     "unfilled": 35
+    },
+    "nAtProdMargin": 60,
+    "meanRAtProdMargin": -0.24533166666666664
+   },
+   "dow": {
+    "split": "2023-09-29",
+    "voted": 5869,
+    "filled": 5038,
+    "skipped": {
+     "unfilled": 44,
+     "cancelled": 596,
+     "notArmed": 191
+    },
+    "nAtProdMargin": 81,
+    "meanRAtProdMargin": -0.1291037037037037
+   }
+  },
+  "monday": {
+   "eurusd": {
+    "split": "2022-03-29",
+    "voted": 1483,
+    "filled": 1393,
+    "skipped": {
+     "cancelled": 64,
+     "notArmed": 22,
+     "unfilled": 4
+    },
+    "nAtProdMargin": 25,
+    "meanRAtProdMargin": -0.09117199999999999
+   },
+   "gold": {
+    "split": "2022-11-01",
+    "voted": 642,
+    "filled": 574,
+    "skipped": {
+     "cancelled": 47,
+     "notArmed": 19,
+     "unfilled": 2
+    },
+    "nAtProdMargin": 30,
+    "meanRAtProdMargin": -0.15217000000000003
+   },
+   "gbpusd": {
+    "split": "2022-03-28",
+    "voted": 1483,
+    "filled": 1386,
+    "skipped": {
+     "cancelled": 76,
+     "notArmed": 21
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "usdjpy": {
+    "split": "2022-09-15",
+    "voted": 1437,
+    "filled": 1341,
+    "skipped": {
+     "cancelled": 72,
+     "notArmed": 19,
+     "unfilled": 5
+    },
+    "nAtProdMargin": 27,
+    "meanRAtProdMargin": -0.14166666666666666
+   },
+   "audusd": {
+    "split": "2022-06-27",
+    "voted": 628,
+    "filled": 567,
+    "skipped": {
+     "cancelled": 47,
+     "notArmed": 14
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "nzdusd": {
+    "split": "2022-04-18",
+    "voted": 1071,
+    "filled": 1036,
+    "skipped": {
+     "cancelled": 32,
+     "notArmed": 3
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "usdcad": {
+    "split": "2022-09-15",
+    "voted": 975,
+    "filled": 947,
+    "skipped": {
+     "cancelled": 21,
+     "notArmed": 5,
+     "unfilled": 2
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "usdchf": {
+    "split": "2022-06-07",
+    "voted": 1279,
+    "filled": 1205,
+    "skipped": {
+     "notArmed": 31,
+     "cancelled": 43
+    },
+    "nAtProdMargin": 59,
+    "meanRAtProdMargin": -0.09536101694915254
+   },
+   "eurjpy": {
+    "split": "2022-06-23",
+    "voted": 977,
+    "filled": 923,
+    "skipped": {
+     "cancelled": 40,
+     "notArmed": 13,
+     "unfilled": 1
+    },
+    "nAtProdMargin": 19,
+    "meanRAtProdMargin": -0.37463684210526316
+   },
+   "eurgbp": {
+    "split": "2022-06-22",
+    "voted": 1327,
+    "filled": 1246,
+    "skipped": {
+     "cancelled": 51,
+     "notArmed": 25,
+     "unfilled": 5
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "euraud": {
+    "split": "2022-06-09",
+    "voted": 1182,
+    "filled": 1082,
+    "skipped": {
+     "cancelled": 56,
+     "unfilled": 4,
+     "notArmed": 40
+    },
+    "nAtProdMargin": 104,
+    "meanRAtProdMargin": -0.3486557692307692
+   },
+   "eurcad": {
+    "split": "2022-06-21",
+    "voted": 1275,
+    "filled": 1221,
+    "skipped": {
+     "cancelled": 36,
+     "unfilled": 2,
+     "notArmed": 16
+    },
+    "nAtProdMargin": 32,
+    "meanRAtProdMargin": -0.2866718750000001
+   },
+   "eurchf": {
+    "split": "2022-07-07",
+    "voted": 1669,
+    "filled": 1604,
+    "skipped": {
+     "notArmed": 27,
+     "cancelled": 37,
+     "unfilled": 1
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "eurnzd": {
+    "split": "2022-07-05",
+    "voted": 1683,
+    "filled": 1587,
+    "skipped": {
+     "notArmed": 38,
+     "cancelled": 58
+    },
+    "nAtProdMargin": 62,
+    "meanRAtProdMargin": -0.2809483870967742
+   },
+   "gbpjpy": {
+    "split": "2022-08-23",
+    "voted": 1480,
+    "filled": 1378,
+    "skipped": {
+     "cancelled": 77,
+     "notArmed": 25
+    },
+    "nAtProdMargin": 65,
+    "meanRAtProdMargin": 0.0101153846153846
+   },
+   "gbpaud": {
+    "split": "2022-09-12",
+    "voted": 1185,
+    "filled": 1126,
+    "skipped": {
+     "notArmed": 16,
+     "cancelled": 42,
+     "unfilled": 1
+    },
+    "nAtProdMargin": 26,
+    "meanRAtProdMargin": -0.24011538461538462
+   },
+   "gbpcad": {
+    "split": "2022-10-17",
+    "voted": 1300,
+    "filled": 1227,
+    "skipped": {
+     "notArmed": 27,
+     "cancelled": 46
+    },
+    "nAtProdMargin": 21,
+    "meanRAtProdMargin": -0.7095190476190476
+   },
+   "gbpchf": {
+    "split": "2022-09-06",
+    "voted": 1896,
+    "filled": 1826,
+    "skipped": {
+     "notArmed": 28,
+     "cancelled": 41,
+     "unfilled": 1
+    },
+    "nAtProdMargin": 25,
+    "meanRAtProdMargin": -0.6420560000000001
+   },
+   "gbpnzd": {
+    "split": "2022-07-29",
+    "voted": 1727,
+    "filled": 1661,
+    "skipped": {
+     "cancelled": 48,
+     "notArmed": 18
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "audjpy": {
+    "split": "2022-05-24",
+    "voted": 809,
+    "filled": 791,
+    "skipped": {
+     "cancelled": 10,
+     "notArmed": 7,
+     "unfilled": 1
+    },
+    "nAtProdMargin": 43,
+    "meanRAtProdMargin": -0.5887976744186046
+   },
+   "audnzd": {
+    "split": "2022-10-31",
+    "voted": 1520,
+    "filled": 1468,
+    "skipped": {
+     "cancelled": 30,
+     "notArmed": 22
+    },
+    "nAtProdMargin": 32,
+    "meanRAtProdMargin": -0.8579218750000002
+   },
+   "audcad": {
+    "split": "2022-04-13",
+    "voted": 2178,
+    "filled": 2070,
+    "skipped": {
+     "cancelled": 75,
+     "notArmed": 30,
+     "unfilled": 3
+    },
+    "nAtProdMargin": 270,
+    "meanRAtProdMargin": -0.2102092592592593
+   },
+   "audchf": {
+    "split": "2022-09-13",
+    "voted": 1500,
+    "filled": 1472,
+    "skipped": {
+     "notArmed": 13,
+     "cancelled": 15
+    },
+    "nAtProdMargin": 94,
+    "meanRAtProdMargin": -0.3862265957446807
+   },
+   "cadjpy": {
+    "split": "2022-09-23",
+    "voted": 1304,
+    "filled": 1225,
+    "skipped": {
+     "notArmed": 27,
+     "cancelled": 51,
+     "unfilled": 1
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "chfjpy": {
+    "split": "2022-08-08",
+    "voted": 2135,
+    "filled": 2011,
+    "skipped": {
+     "cancelled": 84,
+     "notArmed": 38,
+     "unfilled": 2
+    },
+    "nAtProdMargin": 100,
+    "meanRAtProdMargin": -0.2587059999999999
+   },
+   "nzdjpy": {
+    "split": "2022-06-29",
+    "voted": 1887,
+    "filled": 1773,
+    "skipped": {
+     "notArmed": 34,
+     "cancelled": 80
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "nq": {
+    "split": "2022-12-14",
+    "voted": 1248,
+    "filled": 1146,
+    "skipped": {
+     "cancelled": 72,
+     "notArmed": 28,
+     "unfilled": 2
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "spx": {
+    "split": "2022-11-30",
+    "voted": 1708,
+    "filled": 1586,
+    "skipped": {
+     "cancelled": 112,
+     "notArmed": 9,
+     "unfilled": 1
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "de30": {
+    "split": "2022-09-28",
+    "voted": 261,
+    "filled": 223,
+    "skipped": {
+     "cancelled": 31,
+     "notArmed": 5,
+     "unfilled": 2
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "uk100": {
+    "split": "2022-12-14",
+    "voted": 842,
+    "filled": 789,
+    "skipped": {
+     "cancelled": 36,
+     "notArmed": 16,
+     "unfilled": 1
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "us2000": {
+    "split": "2022-11-07",
+    "voted": 1285,
+    "filled": 1204,
+    "skipped": {
+     "cancelled": 66,
+     "notArmed": 15
+    },
+    "nAtProdMargin": 63,
+    "meanRAtProdMargin": -0.14634444444444442
+   },
+   "dow": {
+    "split": "2022-10-18",
+    "voted": 1517,
+    "filled": 1361,
+    "skipped": {
+     "cancelled": 145,
+     "notArmed": 7,
+     "unfilled": 4
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   }
+  }
+ },
+ "gonogo": {
+  "vote": {
+   "eurusd": {
+    "split": "2022-08-12",
+    "voted": 2974,
+    "filled": 2892,
+    "skipped": {
+     "unfilled": 82
+    },
+    "nAtProdMargin": 1440,
+    "meanRAtProdMargin": -0.08982659722222232
+   },
+   "gbpusd": {
+    "split": "2022-09-16",
+    "voted": 3077,
+    "filled": 3006,
+    "skipped": {
+     "unfilled": 71
+    },
+    "nAtProdMargin": 1721,
+    "meanRAtProdMargin": -0.059771818710052375
+   },
+   "usdjpy": {
+    "split": "2022-06-17",
+    "voted": 2998,
+    "filled": 2970,
+    "skipped": {
+     "unfilled": 28
+    },
+    "nAtProdMargin": 1684,
+    "meanRAtProdMargin": -0.010491033254156798
+   },
+   "audusd": {
+    "split": "2022-10-13",
+    "voted": 3264,
+    "filled": 3186,
+    "skipped": {
+     "unfilled": 78
+    },
+    "nAtProdMargin": 1864,
+    "meanRAtProdMargin": -0.04254924892703865
+   },
+   "usdchf": {
+    "split": "2022-08-25",
+    "voted": 3296,
+    "filled": 3207,
+    "skipped": {
+     "unfilled": 89
+    },
+    "nAtProdMargin": 1871,
+    "meanRAtProdMargin": -0.09203276322822035
+   },
+   "euraud": {
+    "split": "2022-10-11",
+    "voted": 3239,
+    "filled": 3137,
+    "skipped": {
+     "unfilled": 102
+    },
+    "nAtProdMargin": 1901,
+    "meanRAtProdMargin": -0.11111783271962156
+   },
+   "eurchf": {
+    "split": "2022-09-28",
+    "voted": 3406,
+    "filled": 3262,
+    "skipped": {
+     "unfilled": 144
+    },
+    "nAtProdMargin": 1922,
+    "meanRAtProdMargin": -0.14068236212278865
+   },
+   "audjpy": {
+    "split": "2022-10-10",
+    "voted": 3160,
+    "filled": 3074,
+    "skipped": {
+     "unfilled": 86
+    },
+    "nAtProdMargin": 1721,
+    "meanRAtProdMargin": -0.08079163277164439
+   },
+   "cadjpy": {
+    "split": "2022-10-03",
+    "voted": 3097,
+    "filled": 3026,
+    "skipped": {
+     "unfilled": 71
+    },
+    "nAtProdMargin": 1750,
+    "meanRAtProdMargin": -0.0532263428571428
+   },
+   "chfjpy": {
+    "split": "2022-04-19",
+    "voted": 3116,
+    "filled": 2977,
+    "skipped": {
+     "unfilled": 139
+    },
+    "nAtProdMargin": 1580,
+    "meanRAtProdMargin": -0.058022911392405035
+   },
+   "gold": {
+    "split": "2022-11-21",
+    "voted": 3121,
+    "filled": 3091,
+    "skipped": {
+     "unfilled": 30
+    },
+    "nAtProdMargin": 1751,
+    "meanRAtProdMargin": -0.03648075385493999
+   },
+   "nq": {
+    "split": "2022-11-02",
+    "voted": 2811,
+    "filled": 2797,
+    "skipped": {
+     "unfilled": 14
+    },
+    "nAtProdMargin": 1455,
+    "meanRAtProdMargin": -0.039003230240549844
+   },
+   "spx": {
+    "split": "2022-10-28",
+    "voted": 3050,
+    "filled": 3041,
+    "skipped": {
+     "unfilled": 9
+    },
+    "nAtProdMargin": 1383,
+    "meanRAtProdMargin": 0.0072772957339117955
+   },
+   "dow": {
+    "split": "2022-09-27",
+    "voted": 2982,
+    "filled": 2970,
+    "skipped": {
+     "unfilled": 12
+    },
+    "nAtProdMargin": 1203,
+    "meanRAtProdMargin": -0.08792701579384854
+   },
+   "us2000": {
+    "split": "2022-10-03",
+    "voted": 2783,
+    "filled": 2761,
+    "skipped": {
+     "unfilled": 22
+    },
+    "nAtProdMargin": 1172,
+    "meanRAtProdMargin": -0.010375853242320794
+   },
+   "de30": {
+    "split": "2023-01-25",
+    "voted": 2972,
+    "filled": 2946,
+    "skipped": {
+     "unfilled": 26
+    },
+    "nAtProdMargin": 1555,
+    "meanRAtProdMargin": -0.032035627009646274
+   },
+   "uk100": {
+    "split": "2022-09-22",
+    "voted": 2819,
+    "filled": 2770,
+    "skipped": {
+     "unfilled": 49
+    },
+    "nAtProdMargin": 1507,
+    "meanRAtProdMargin": -0.039489183808891805
+   }
+  },
+  "asia": {
+   "eurusd": {
+    "split": "2022-08-04",
+    "voted": 4265,
+    "filled": 3986,
+    "skipped": {
+     "unfilled": 279
+    },
+    "nAtProdMargin": 76,
+    "meanRAtProdMargin": -0.06290789473684213
+   },
+   "gbpusd": {
+    "split": "2022-05-09",
+    "voted": 8069,
+    "filled": 7625,
+    "skipped": {
+     "unfilled": 444
+    },
+    "nAtProdMargin": 5,
+    "meanRAtProdMargin": -0.76162
+   },
+   "usdjpy": {
+    "split": "2022-10-07",
+    "voted": 3161,
+    "filled": 3019,
+    "skipped": {
+     "unfilled": 142
+    },
+    "nAtProdMargin": 171,
+    "meanRAtProdMargin": -0.1169590643274854
+   },
+   "audusd": {
+    "split": "2022-10-20",
+    "voted": 4068,
+    "filled": 3831,
+    "skipped": {
+     "unfilled": 237
+    },
+    "nAtProdMargin": 81,
+    "meanRAtProdMargin": -0.06691234567901233
+   },
+   "nzdusd": {
+    "split": "2022-09-06",
+    "voted": 6025,
+    "filled": 5752,
+    "skipped": {
+     "unfilled": 273
+    },
+    "nAtProdMargin": 283,
+    "meanRAtProdMargin": -0.3686540636042404
+   },
+   "usdcad": {
+    "split": "2022-09-05",
+    "voted": 7082,
+    "filled": 6605,
+    "skipped": {
+     "unfilled": 477
+    },
+    "nAtProdMargin": 72,
+    "meanRAtProdMargin": -0.48307361111111113
+   },
+   "usdchf": {
+    "split": "2022-08-30",
+    "voted": 11407,
+    "filled": 10793,
+    "skipped": {
+     "unfilled": 614
+    },
+    "nAtProdMargin": 769,
+    "meanRAtProdMargin": -0.3209804941482444
+   },
+   "eurgbp": {
+    "split": "2022-09-21",
+    "voted": 10356,
+    "filled": 8769,
+    "skipped": {
+     "unfilled": 1587
+    },
+    "nAtProdMargin": 460,
+    "meanRAtProdMargin": -0.616912391304348
+   },
+   "euraud": {
+    "split": "2022-06-28",
+    "voted": 7344,
+    "filled": 6910,
+    "skipped": {
+     "unfilled": 434
+    },
+    "nAtProdMargin": 505,
+    "meanRAtProdMargin": -0.2264847524752476
+   },
+   "gbpaud": {
+    "split": "2021-12-27",
+    "voted": 7932,
+    "filled": 7410,
+    "skipped": {
+     "unfilled": 522
+    },
+    "nAtProdMargin": 68,
+    "meanRAtProdMargin": -0.4617676470588236
+   },
+   "audjpy": {
+    "split": "2022-10-12",
+    "voted": 4558,
+    "filled": 4250,
+    "skipped": {
+     "unfilled": 308
+    },
+    "nAtProdMargin": 115,
+    "meanRAtProdMargin": -0.17970434782608696
+   },
+   "audnzd": {
+    "split": "2022-07-12",
+    "voted": 6925,
+    "filled": 5958,
+    "skipped": {
+     "unfilled": 967
+    },
+    "nAtProdMargin": 783,
+    "meanRAtProdMargin": -0.6645045977011487
+   },
+   "audcad": {
+    "split": "2022-04-08",
+    "voted": 4557,
+    "filled": 3886,
+    "skipped": {
+     "unfilled": 671
+    },
+    "nAtProdMargin": 86,
+    "meanRAtProdMargin": -0.5764697674418605
+   },
+   "cadjpy": {
+    "split": "2022-06-16",
+    "voted": 5660,
+    "filled": 5284,
+    "skipped": {
+     "unfilled": 376
+    },
+    "nAtProdMargin": 187,
+    "meanRAtProdMargin": -0.4861160427807486
+   },
+   "nzdjpy": {
+    "split": "2022-09-21",
+    "voted": 5887,
+    "filled": 5395,
+    "skipped": {
+     "unfilled": 492
+    },
+    "nAtProdMargin": 376,
+    "meanRAtProdMargin": -0.44168856382978733
+   },
+   "gold": {
+    "split": "2022-06-01",
+    "voted": 3450,
+    "filled": 3363,
+    "skipped": {
+     "unfilled": 87
+    },
+    "nAtProdMargin": 63,
+    "meanRAtProdMargin": -0.018252380952380954
+   }
+  },
+  "monday": {
+   "eurusd": {
+    "split": "2022-03-29",
+    "voted": 1483,
+    "filled": 1469,
+    "skipped": {
+     "unfilled": 14
+    },
+    "nAtProdMargin": 25,
+    "meanRAtProdMargin": -0.09117199999999999
+   },
+   "gbpusd": {
+    "split": "2022-03-28",
+    "voted": 1483,
+    "filled": 1467,
+    "skipped": {
+     "unfilled": 16
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "usdjpy": {
+    "split": "2022-09-15",
+    "voted": 1437,
+    "filled": 1433,
+    "skipped": {
+     "unfilled": 4
+    },
+    "nAtProdMargin": 28,
+    "meanRAtProdMargin": -0.1152357142857143
+   },
+   "audusd": {
+    "split": "2022-06-27",
+    "voted": 628,
+    "filled": 618,
+    "skipped": {
+     "unfilled": 10
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "nzdusd": {
+    "split": "2022-04-18",
+    "voted": 1071,
+    "filled": 1070,
+    "skipped": {
+     "unfilled": 1
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "usdcad": {
+    "split": "2022-09-15",
+    "voted": 975,
+    "filled": 972,
+    "skipped": {
+     "unfilled": 3
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "usdchf": {
+    "split": "2022-06-07",
+    "voted": 1279,
+    "filled": 1256,
+    "skipped": {
+     "unfilled": 23
+    },
+    "nAtProdMargin": 67,
+    "meanRAtProdMargin": -0.1355149253731343
+   },
+   "eurgbp": {
+    "split": "2022-06-22",
+    "voted": 1327,
+    "filled": 1282,
+    "skipped": {
+     "unfilled": 45
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "euraud": {
+    "split": "2022-06-09",
+    "voted": 1182,
+    "filled": 1168,
+    "skipped": {
+     "unfilled": 14
+    },
+    "nAtProdMargin": 106,
+    "meanRAtProdMargin": -0.32533584905660384
+   },
+   "gbpaud": {
+    "split": "2022-09-12",
+    "voted": 1185,
+    "filled": 1170,
+    "skipped": {
+     "unfilled": 15
+    },
+    "nAtProdMargin": 31,
+    "meanRAtProdMargin": -0.357358064516129
+   },
+   "audjpy": {
+    "split": "2022-05-24",
+    "voted": 809,
+    "filled": 804,
+    "skipped": {
+     "unfilled": 5
+    },
+    "nAtProdMargin": 46,
+    "meanRAtProdMargin": -0.5586869565217392
+   },
+   "audnzd": {
+    "split": "2022-10-31",
+    "voted": 1520,
+    "filled": 1484,
+    "skipped": {
+     "unfilled": 36
+    },
+    "nAtProdMargin": 31,
+    "meanRAtProdMargin": -1.0871129032258067
+   },
+   "audcad": {
+    "split": "2022-04-13",
+    "voted": 2178,
+    "filled": 2140,
+    "skipped": {
+     "unfilled": 38
+    },
+    "nAtProdMargin": 279,
+    "meanRAtProdMargin": -0.17386810035842296
+   },
+   "cadjpy": {
+    "split": "2022-09-23",
+    "voted": 1304,
+    "filled": 1287,
+    "skipped": {
+     "unfilled": 17
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "nzdjpy": {
+    "split": "2022-06-29",
+    "voted": 1887,
+    "filled": 1856,
+    "skipped": {
+     "unfilled": 31
+    },
+    "nAtProdMargin": 0,
+    "meanRAtProdMargin": null
+   },
+   "gold": {
+    "split": "2022-11-01",
+    "voted": 642,
+    "filled": 638,
+    "skipped": {
+     "unfilled": 4
+    },
+    "nAtProdMargin": 37,
+    "meanRAtProdMargin": -0.22273243243243246
+   }
+  }
+ }
+}
