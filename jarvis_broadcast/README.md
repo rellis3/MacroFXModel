@@ -192,6 +192,7 @@ YouTube quota: each upload costs about 1,600 of the 10,000 daily units, captions
 - `youtube_upload.py`: the upload (resumable, retries on Google 5xx errors).
 - `run_daily.bat`: what Task Scheduler runs.
 - `helix_notify.py`: tells the server after an upload (the server sends the Telegram note). `special_check.py`: the release-special launcher.
+- `backfill_media.py`: one-off, puts the uploads from before the server's published list (out/run.log, out/*/meta.json, optionally the uploads playlist with `--youtube`) into the MEDIA section (`POST /api/helix/broadcasts/backfill`, no Telegram). Run `--dry-run` first; sending needs KV_WRITE_SECRET (or push_secret.txt) set on both sides. Tests: `test_backfill_media.py`.
 - `run_weekly.bat`, `run_special_check.bat`, `run_upload_retry.bat`, `setup_tasks.ps1`: the extra programmes' launchers and their task setup.
 - Git-ignored: `.profile/`, `out/`, `client_secret.json`, `token.json`. The job keeps the last 7 days of MP4s and deletes the frames once encoded.
 

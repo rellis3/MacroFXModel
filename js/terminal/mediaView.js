@@ -31,14 +31,14 @@ const CSS = `
 .mx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:12px}
 .mx-card{background:var(--bg1,#0c1124);border:1px solid var(--line,#1f2950);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
 .mx-card.on{grid-column:1/-1;border-color:var(--mxa)}
-.mx-media{position:relative;aspect-ratio:16/9;background:#000;display:block;width:100%;border:0;padding:0;cursor:pointer}
+.mx-media{position:relative;aspect-ratio:16/9;background:rgba(0,0,0,1);display:block;width:100%;border:0;padding:0;cursor:pointer}
 .mx-media img{width:100%;height:100%;object-fit:cover;display:block;opacity:.9}
 .mx-media:hover img{opacity:1}
 .mx-media iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .mx-card.on .mx-media{max-width:960px;margin:0 auto}
-.mx-play{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:color-mix(in srgb,#000 55%,transparent);border:1px solid color-mix(in srgb,#fff 55%,transparent);display:grid;place-items:center}
+.mx-play{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(0,0,0,.55);border:1px solid rgba(0,0,0,.2);box-shadow:inset 0 0 0 1px #fff;display:grid;place-items:center}
 .mx-play::before{content:"";margin-left:4px;border-left:14px solid #fff;border-top:9px solid transparent;border-bottom:9px solid transparent}
-.mx-len{position:absolute;right:6px;bottom:6px;background:color-mix(in srgb,#000 75%,transparent);color:#fff;font:600 11px/1 var(--mono,monospace);padding:3px 5px;border-radius:4px}
+.mx-len{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.75);color:#fff;font:600 11px/1 var(--mono,monospace);padding:3px 5px;border-radius:4px}
 .mx-badge{display:inline-block;font:600 10px/1 var(--mono,monospace);letter-spacing:.12em;padding:3px 6px;border-radius:4px;border:1px solid var(--line2,#2c3866);color:var(--tx2,#a9b0d0)}
 .mx-badge.morning{color:var(--gold,#e8b85a);border-color:color-mix(in srgb,var(--gold,#e8b85a) 50%,transparent)}
 .mx-badge.evening{color:var(--pur2,#b4a9ff);border-color:color-mix(in srgb,var(--pur2,#b4a9ff) 50%,transparent)}
@@ -106,10 +106,10 @@ export function mount(root, opts = {}) {
 
   function videosHtml() {
     const list = filterItems(S.videos, ui), days = groupByDay(list, year);
-    const cards = days.map(d => `<div class="mx-day">${esc(d.label)}</div><div class="mx-grid">${d.items.map(v => `<div class="mx-card" data-card="${esc(v.id)}">
+    const cards = days.map(d => `<div class="mx-day">${esc(d.label)}</div><div class="mx-grid">${d.items.map(v => { const url = esc(watchUrl(v.id, v.format)); return `<div class="mx-card" data-card="${esc(v.id)}">
         <button class="mx-media" data-play="${esc(v.id)}" aria-label="Play ${esc(v.title)}"><img loading="lazy" alt="" src="${esc(thumbUrl(v.id))}"><span class="mx-play"></span>${v.seconds ? `<span class="mx-len">${esc(clock(v.seconds))}</span>` : ''}</button>
         <div class="mx-body"><div class="mx-t">${esc(v.title)}</div>
-        <div class="mx-meta"><span class="mx-badge ${esc(v.part)}">${esc(PART_LABEL[v.part] ?? v.part)}</span><span>${esc(londonTime(v.at))}</span><a href="${esc(watchUrl(v.id, v.format))}" target="_blank" rel="noopener noreferrer">Open on YouTube ↗</a></div></div></div>`).join('')}</div>`).join('');
+        <div class="mx-meta"><span class="mx-badge ${esc(v.part)}">${esc(PART_LABEL[v.part] ?? v.part)}</span><span>${esc(londonTime(v.at))}</span><a href="${url}" target="_blank" rel="noopener noreferrer">Open on YouTube ↗</a></div></div></div>`; }).join('')}</div>`).join('');
     return `${filtersHtml(S.videos)}<div class="mx-n">${list.length} of ${S.videos.length} video${S.videos.length === 1 ? '' : 's'} · unlisted on YouTube, shown only to you</div>
       ${cards || `<div class="mx-empty">${S.videos.length ? 'No video matches these filters.' : 'No videos yet. They appear here as the laptop uploads them; earlier ones come in with jarvis_broadcast/backfill_media.py.'}</div>`}`;
   }

@@ -20,6 +20,7 @@ const ALLOW = [
   ['js/terminal/terrainPanel.js', '#f0b04a'],
   ['js/terminal/terrainPanel.js', '#090e13'],   // the canvas background
   ['js/terminal/corrView.js', '#e0a458'],       // the OIL series in the correlation lines: a categorical series colour, not a palette colour
+  ['js/terminal/mediaView.js', '#fff'],      // the play mark and the length over a video thumbnail: white on a dark photo in every theme
 ];
 const NEUTRAL_RGB = new Set(['0,0,0']);        // black shadows
 
