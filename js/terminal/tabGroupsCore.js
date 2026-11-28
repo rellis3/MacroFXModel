@@ -10,7 +10,7 @@ export const GROUPS = [
   { id: 'chain', label: 'Chain & read', tabs: ['today', 'read'] },
   { id: 'rels', label: 'Correlations', tabs: ['corr', 'insight'] },
   { id: 'record', label: 'Time & record', tabs: ['replay', 'charts', 'ana'] },
-  { id: 'tools', label: 'Tools', tabs: ['bprocess', 'workspace', 'infomap'] },
+  { id: 'tools', label: 'Tools', tabs: ['bprocess', 'workspace', 'infomap', 'media'] },
 ];
 
 /** The group id a tab belongs to, or null. */

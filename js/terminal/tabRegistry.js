@@ -68,6 +68,7 @@ export const SURFACES = [
   mk('tab.news', 'tab', 'News', 'Tabs', null, 'the wire with its reads'),
   mk('tab.corr', 'tab', 'Correlations & hedges', 'Tabs', null, 'matrix, rolling, factors and regimes; the hedge finder is a separate switch'),
   mk('tab.infomap', 'tab', 'Info map', 'Tabs', I, 'the owner\'s inventory of the repo\'s data'),
+  mk('tab.media', 'tab', 'Media (H.E.L.I.X. videos and podcast)', 'Tabs', I, 'every H.E.L.I.X. video by day (played in place) and the podcast with a player; the videos are unlisted and the feed is private, so it is the owner\'s own: GET /api/helix/media is owner only and stays refused for the desk login even if this is switched on'),
   // ── navigation links out to other pages (locked hidden: they would bounce a desk login to the main login) ──
   mk('nav.research-tab', 'nav', 'Research link (tab bar)', 'Links', C, 'research.html: expensive paid model work'),
   mk('nav.research', 'nav', 'Research (top bar)', 'Links', C, 'research.html: expensive paid model work'),

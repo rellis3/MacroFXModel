@@ -216,6 +216,8 @@ export const FULL_EXCLUDED = [
   { path: 'helix/record', why: 'owner-only: the Helix daily record itself, written once per broadcast run to R2 helix/days/<date>.json' },
   { path: 'helix/roll-health', why: 'a reader of rates-legs/_health.json in R2, which the IBKR roll job rewrites; the file is the record' },
   { path: 'helix/stress', why: 'rebuilt from the stored 15-minute bars in R2 (archive/i15_MOVE, archive/i15_DXY)' },
+  { path: 'helix/media', why: 'owner-only list of the H.E.L.I.X. videos and podcast episodes (the Media tab); the archive itself is the record, in R2 helix/media/videos.json and helix/podcast/index.json' },
+  { path: 'helix/broadcasts', why: 'owner-only: the last published broadcasts, already kept in KV helix_published_v1; the Media tab reads the fuller R2 archive' },
 ];
 /** Feeds that carry trade levels or the owner's own record: stored in FULL for the owner, removed from a desk viewer's copy. */
 export const OWNER_ONLY_FEEDS = ['trade-watch', 'pair-select', 'desk-alerts', 'desk-score/record', 'desk-quality'];
