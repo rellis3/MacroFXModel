@@ -165,7 +165,17 @@ a limit). Whether the index should *replace* σ (ladder-v2 already raced that).
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-28 — PRE-RESULTS (control run seen; no scored cell computed)
+The registered planted control (index = exp(0.5·log(R_1/B) + N(0, 1)), bar ratio < 0.97) came back 0.981
+[0.973, 0.991] on WTI C 1d. A sweep of the plant's noise on the same pipeline (scratch diagnostic) gave ratios
+0.016 / 0.785 / 0.925 / 0.984 at noise sd 0 / 0.25 / 0.5 / 1.0: the pipeline recovers the signal and degrades
+monotonically; the 0.97 bar was mis-set for a plant that is only ~0.2 correlated with the outcome. The planted control
+is now noise sd 0.25 with bar ratio < 0.90 and CI upper < 1. The known-zero control is unchanged and passed
+(0.998 [0.993, 1.003]). Also recorded: a CONSTANT index (lvl = −log B only) gives 0.9987, i.e. the Lin layer can refit
+B's own elasticity by ~0.1%; the circular-shift placebo carries the same channel, so the placebo gate already nets it
+out. Also recorded: the ≥ 500-train-row rule drops test year 2018 for the C tracks (train 2016-17 is < 500 rows with
+every input), so C-track cells run 2019 → 2026-08. The sigma rebuild reproduces the stored ladder-v2 test frame
+exactly (max relative error 0).
 
 ---
 
