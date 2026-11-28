@@ -4,22 +4,22 @@
 bank a verdict in the Evidence Book, then regenerate. Forecaster Portfolio Lesson 02 §05: a programme that records only
 its successes cannot correct for how hard it searched.*
 
-Generated 2026-11-27.
+Generated 2026-11-28.
 
 ## The count
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **646** |
+| claims tested (validated + null + underpowered) | **649** |
 | validated | 201 |
-| null | 257 |
+| null | 260 |
 | underpowered | 188 |
 | context (base rates, descriptions: not counted as tests) | 87 |
-| pre-registrations with no banked verdict (below) | 91 |
+| pre-registrations with no banked verdict (below) | 92 |
 
-**What the count says (Lesson 02 §05).** If none of the 646 claims were real, tests at the usual 5% size would still pass
-about **32.3** of them by luck. 201 passed, so most passes are unlikely to be luck alone, but
-**roughly 32 of the 201 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 649 claims were real, tests at the usual 5% size would still pass
+about **32.5** of them by luck. 201 passed, so most passes are unlikely to be luck alone, but
+**roughly 33 of the 201 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -760,6 +760,10 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-27 | gold-rolling-mae-trade | volatility | null | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |
 | 2026-11-27 | gold-rolling-mae-window | volatility | context | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |
 | 2026-11-27 | rolling-mae-window-nq-eur | volatility | context | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |
+| 2026-11-28 | g10-2y-gap-l20h20 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
+| 2026-11-28 | g10-2y-gap-l20h5 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
+| 2026-11-28 | g10-2y-gap-l5h20 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
+| 2026-11-28 | g10-2y-gap-l5h5 | macro | underpowered | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -807,6 +811,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/FLOW_COLUMNS_PREREG.md`: Flow and positioning columns at the vol lines — pre-registration
 - `forge/FUTURES_COST_RESCORE_PREREG.md`: Futures-cost re-score of the line-touch fade (registered 2026-10-11, before the re-score is computed)
 - `forge/FUTURES_VOL_PREREG.md`: Futures volatility forecast — does intraday futures data beat the incumbent HAR? (shadow study)
+- `forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md`: gold-line-system-jordan: the gold line system on Jordan's lines only (HL projections and Close±, P75/P90)
 - `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score
 - `forge/HEDGING_PLAN_OI_PREREG.md`: HEDGING PLAN, OI-LEVEL VERSION: do orders on the OI map's own levels do better than orders on the forecast lin
 - `forge/HEDGING_STATE_FORWARD_PREREG.md`: hedging-state-forward — On the full Cboe book, does the dealer-hedging state at the open tell us how the day b

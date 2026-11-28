@@ -1,0 +1,48 @@
+{
+ "g10-2y-gap-l20h5": {
+  "planted_ic_target": 0.048,
+  "planted": {
+   "mean": 0.0429,
+   "se": 0.0049,
+   "ci95": [
+    0.0327,
+    0.0522
+   ],
+   "t": 8.66,
+   "p_pos": 0.0,
+   "p_neg": 1.0,
+   "days": 5416
+  },
+  "shuffle_mean": -0.0001,
+  "shuffle_sd": 0.0049,
+  "pass_planted": true,
+  "pass_shuffle": true,
+  "signal_days": 5416,
+  "first": "2005-01-03",
+  "last": "2026-08-13",
+  "mean_n_ccy": 8.28
+ },
+ "g10-2y-gap-l20h20": {
+  "planted_ic_target": 0.048,
+  "planted": {
+   "mean": 0.0446,
+   "se": 0.0048,
+   "ci95": [
+    0.0347,
+    0.0533
+   ],
+   "t": 9.24,
+   "p_pos": 0.0,
+   "p_neg": 1.0,
+   "days": 5401
+  },
+  "shuffle_mean": -0.0003,
+  "shuffle_sd": 0.0048,
+  "pass_planted": true,
+  "pass_shuffle": true,
+  "signal_days": 5401,
+  "first": "2005-01-03",
+  "last": "2026-07-23",
+  "mean_n_ccy": 8.28
+ }
+}
