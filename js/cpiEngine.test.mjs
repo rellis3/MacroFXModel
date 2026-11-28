@@ -1,6 +1,6 @@
 // Synthetic tests for cpiEngine.js. No network.
 //   node js/cpiEngine.test.mjs
-import { CPI_UNIVERSE, toSeries, yoyPct, latestZScore, levelVsTargetScore, trendScore, cpiScore } from './cpiEngine.js';
+import { CPI_UNIVERSE, toSeries, yoyPct, latestZScore, levelVsTargetScore, trendScore, cpiScore, LIVE_CPI, liveCpiSeries } from './cpiEngine.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -148,6 +148,24 @@ console.log('[a discontinued source reports WHY, rather than going quiet]');
   // and the page keeps implying the print is merely late.
   const live = cpiScore({}, CPI_UNIVERSE.EUR);
   ok('a live currency with no data yet carries no discontinued marker', live.discontinued === undefined);
+}
+
+// ── live CPI from the calendar's prints (owner decision 2026-11-28) ──
+{
+  const ms = (y, m) => Date.UTC(y, m - 1, 15, 7);
+  const rows = [];
+  for (let i = 0; i < 9; i++) rows.push({ country: 'AU', event: 'CPI y/y', ms: ms(2024, 4 + i), actual: `${(2.4 + i * 0.05).toFixed(1)}%` });
+  for (let i = 0; i < 5; i++) rows.push({ country: 'AU', event: 'Monthly CPI Indicator', ms: ms(2026, 7 + i), actual: `${(3.5 + i * 0.35).toFixed(2)}%` });
+  rows.push({ country: 'AU', event: 'CPI q/q', ms: ms(2026, 10), actual: '1.3%' }, { country: 'AU', event: 'CPI Index Number', ms: ms(2026, 10), actual: '103.64' });
+  rows.push({ country: 'AU', event: 'Monthly CPI Indicator', ms: ms(2026, 11) + 3600e3, actual: '4.90%' });   // a later print in the same month wins
+  const m = liveCpiSeries(rows, 'AUD');
+  ok('AUD: the two vendor names make one y/y series, one value per month, other AU CPI rows ignored', m && m.size === 14 && [...m.values()].at(-1) === 4.9);
+  const sc = cpiScore({ headline: m }, { ...CPI_UNIVERSE.AUD, headline: { isIndex: false }, live: LIVE_CPI.AUD });
+  ok('AUD scores from the live series and says so', sc.pressure != null && sc.pressure > 0 && sc.discontinued === undefined && /ABS monthly CPI indicator/.test(sc.source) && sc.replaces?.was === 'CPALTT01AUQ659N');
+  ok('without a live series the currency is still discontinued', cpiScore({}, CPI_UNIVERSE.AUD).discontinued?.was === 'CPALTT01AUQ659N');
+  ok('too few prints for the trend baseline: no live series', liveCpiSeries(rows.slice(0, 5), 'AUD') === null);
+  ok('CAD and NZD have no live CPI source configured (only m/m with a gap, only q/q that stopped)', !LIVE_CPI.CAD && !LIVE_CPI.NZD && liveCpiSeries(rows, 'CAD') === null);
+  ok('a value that is not a CPI y/y (an index level) is skipped', liveCpiSeries([...rows, { country: 'AU', event: 'CPI y/y', ms: ms(2026, 12), actual: '103.6' }], 'AUD').size === 14);
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

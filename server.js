@@ -175,7 +175,7 @@ import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness,
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
 import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE, UNEMPLOYMENT_UNIT_LABEL } from './js/laborMarketEngine.js';
-import { fetchCpiData, cpiScore, CPI_UNIVERSE } from './js/cpiEngine.js';
+import { fetchCpiData, cpiScore, CPI_UNIVERSE, LIVE_CPI, liveCpiSeries } from './js/cpiEngine.js';
 import { fetchGdpData, gdpScore, GDP_UNIVERSE } from './js/gdpEngine.js';
 import { fetchIsmData, ismScore, ISM_UNIVERSE } from './js/ismEngine.js';
 import { gprScore as _gprScore } from './js/gprEngine.js';
@@ -14295,10 +14295,15 @@ async function _buildCpiScores() {
   const fredKey = process.env.FRED_KEY;
   if (!fredKey) throw new Error('FRED_KEY not configured');
   const byCcy = {}, availability = {};
+  // GBP, AUD and JPY lost their FRED CPI in 2025; their headline y/y is printed live on the calendar and kept in the surprise store
+  // (js/cpiEngine.js LIVE_CPI, owner decision 2026-11-28). CAD and NZD stay discontinued: the store holds no usable headline y/y for them.
+  let stored = []; try { stored = await _readSurpriseStore(); } catch (e) { console.warn('[cpi] surprise store:', e.message); }
   await Promise.all(Object.keys(CPI_UNIVERSE).map(async ccy => {
     try {
       const { data, availability: avail } = await fetchCpiData(ccy, fredKey);
-      byCcy[ccy] = cpiScore(data, CPI_UNIVERSE[ccy]);
+      const live = CPI_UNIVERSE[ccy].discontinued && LIVE_CPI[ccy] ? liveCpiSeries(stored, ccy) : null;
+      if (live) { data.headline = live; avail.push({ factor: 'headline', series: LIVE_CPI[ccy].measure, n: live.size }); }
+      byCcy[ccy] = cpiScore(data, live ? { ...CPI_UNIVERSE[ccy], headline: { isIndex: false }, live: LIVE_CPI[ccy] } : CPI_UNIVERSE[ccy]);
       availability[ccy] = avail;
     } catch (e) {
       availability[ccy] = [{ error: e.message }];
