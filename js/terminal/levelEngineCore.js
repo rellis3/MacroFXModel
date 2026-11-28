@@ -188,6 +188,7 @@ export function levelCard({ sym, fc, bars, weekBars = null, nowMs, level, level2
     return x.eligible ? { ok: true, p: x.p, geo: x.geo, unit: sc.unit } : { ok: false, why: x.why };
   };
   const mX = m1(level);
+  if (!r.started) notes.push(todayLeft > 0 ? 'The London session of today has not started, so the session chance is its prior measured from the last price.' : 'The market is shut: the session chance is the prior of the next session measured from the last price, and "this week" is the week just ended.');
   const reachOut = { ROS: null, EOD: null, EOW: null, EOWnow: null };
   if (mX.ok) reachOut.ROS = { p: mX.p.end, by: { '30': mX.p['30'], '60': mX.p['60'], '120': mX.p['120'], '240': mX.p['240'] }, geometry: mX.geo.end, c: 'm1' };
   else if (r.alreadyTouched) reachOut.ROS = { p: 1, touched: true, c: 'm1' };

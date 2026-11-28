@@ -132,6 +132,8 @@ test('the card text: every number with its chip, the reaction NULL said plainly,
   assert.ok(!/\b(buy|sell|go long|go short|stop loss|take profit|bullish|bearish|entry)\b/i.test(text), 'no trade or direction wording');
   assert.ok(!/#[0-9a-f]{6}\b/i.test(h)); assert.ok(!/<1%|>99%/.test(h), 'the < and > of the edge cases are escaped');
   assert.ok(!cardHtml({ ok: false, error: '<img src=x>' }).includes('<img src=x>'));
+  assert.ok(!/&amp;(lt|gt);/.test(h), 'no double escaping');
+  const t = cardHtml(levelCard({ ...base, level: 1.1002 })); assert.match(t, /le-big">touched</, 'a touched level says touched in the headline');
   assert.equal(ladderLevels({ ...base, fc: { ladder: {} } }).length, 0);
 });
 

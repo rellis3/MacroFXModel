@@ -25,7 +25,7 @@ const why = key => `<p class="in-cap">${esc(COMPONENTS[key]?.note ?? '')}</p>`;
 
 function reachRows(c) {
   const R = c.reach, dd = c.drawdown.on, rows = [];
-  const row = (hz, label, x, extra = '') => rows.push(`<tr${c.horizon === hz ? ' class="le-on"' : ''}><th scope="row">${esc(label)}</th><td class="le-p">${x ? (x.touched ? 'touched' : pc(x.p)) : 'n/a'}</td><td>${x?.band ? `${Math.round(x.band.lo * 100)}-${Math.round(x.band.hi * 100)}%` : ''}</td>${dd ? `<td>${x?.drawdown ? pc(x.drawdown.p) : ''}</td>` : ''}<td>${x ? chip(x.c) : ''}${extra}</td></tr>`);
+  const row = (hz, label, x, extra = '') => rows.push(`<tr${c.horizon === hz ? ' class="le-on"' : ''}><th scope="row">${esc(label)}</th><td class="le-p">${x ? (x.touched ? 'touched' : pc(x.p)) : 'n/a'}</td><td>${x?.band && !x.touched ? `${Math.round(x.band.lo * 100)}-${Math.round(x.band.hi * 100)}%` : ''}</td>${dd ? `<td>${x?.drawdown && !x.touched ? pc(x.drawdown.p) : ''}</td>` : ''}<td>${x ? chip(x.c) : ''}${extra}</td></tr>`);
   row('ROS', 'From now to the 22:00 London close', R.ROS ? { ...R.ROS } : null, R.ROS?.by ? ` <i class="in-gr">30 min ${pc(R.ROS.by['30'])} · 1 h ${pc(R.ROS.by['60'])} · 2 h ${pc(R.ROS.by['120'])} · 4 h ${pc(R.ROS.by['240'])}</i>` : '');
   row('EOD', 'Today\'s session, from its open (the day\'s prior)', R.EOD ? { ...R.EOD, touched: c.alreadyTouched } : null, R.EOD?.tail ? ' <i class="in-gr">beyond p90: extrapolated</i>' : '');
   row('EOW', 'This week, from Monday\'s open', R.EOW ? { ...R.EOW, touched: R.EOW.alreadyTouched } : null, R.EOW ? ` <i class="in-gr">${esc(R.EOW.ladder)} weekly lines</i>` : '');
@@ -69,9 +69,9 @@ function afterHtml(c) {
 /** The full result for one card. Pure. */
 export function cardHtml(c) {
   if (!c?.ok) return `<div class="in-empty">${esc(c?.error ?? 'No answer.')}</div>`;
-  const dir = c.side === 'up' ? 'above' : 'below', h = c.reach[c.horizon], lead = h ? (c.horizon === 'EOD' && c.alreadyTouched) || (c.horizon === 'EOW' && h.alreadyTouched) ? 'touched' : pc(h.p) : 'n/a';
+  const dir = c.side === 'up' ? 'above' : 'below', h = c.reach[c.horizon], lead = h ? (h.touched || (c.horizon === 'EOD' && c.alreadyTouched) || (c.horizon === 'EOW' && h.alreadyTouched) ? 'touched' : pc(h.p)) : 'n/a';   // pc() returns HTML (&lt;1%)
   return `<p class="in-asof">${esc(c.sym)} at <b>${esc(px(c.price, c.sym))}</b> (last bar ${esc(utc(c.lastBarMs))}). ${esc(px(c.level, c.sym))} is <b>${Math.abs(c.distancePct).toFixed(2)}%</b> ${dir}${c.dSigma != null ? `, <b>${c.dSigma.toFixed(2)}</b> of the day's sigma` : ''}.</p>
-<div class="in-chance le-head"><span class="le-hl">${esc(HORIZON_LABEL[c.horizon])}</span><b class="le-big">${esc(lead)}</b>${h ? `<span class="le-chips">${chip(h.c)}</span>` : ''}</div>
+<div class="in-chance le-head"><span class="le-hl">${esc(HORIZON_LABEL[c.horizon])}</span><b class="le-big">${lead}</b>${h ? `<span class="le-chips">${chip(h.c)}</span>` : ''}</div>
 <div class="in-ggrid">
 <div class="in-gcard wide"><h3 class="in-h">Reach: does price touch it</h3>${reachRows(c)}${why('session')}${why('week')}${c.reach.ROS ? why('m1') : ''}${why('identity')}</div>
 <div class="in-gcard"><h3 class="in-h">Race: which level first</h3>${raceHtml(c)}</div>
