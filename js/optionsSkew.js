@@ -40,7 +40,7 @@ export function skewBoard(pull, hist = {}, now = Date.now()) {
     const fx = ['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'].includes(k);
     const lean = !m ? '' : Math.abs(m.rr25) < 0.15 ? 'balanced' : fx ? (m.rr25 > 0 ? `paying for ${k} strength` : `paying for ${k} weakness`) : m.rr25 > 0 ? 'paying for upside' : 'paying for downside';
     rows.push({ id: k, label: r.label ?? k, pair, sign: sgn, data: r.data ?? null, tenors: r.tenors, atm: m?.atm ?? null, rr: m?.rr25 ?? null, bf: m?.bf25 ?? null, pairRr: m ? r2(m.rr25 * sgn) : null,
-      slope, event: slope != null && slope >= 1 ? 'near-term vol bid: an event is priced' : null, rr5d: prev5 && m ? r2(m.rr25 - prev5.rr) : null, rrPct, lean, history: h.length, spark: h.slice(-60).map(x => x.rr) });
+      slope, event: slope != null && slope >= 1 ? 'near-term vol bid: an event is priced' : null, rr5d: prev5 && m ? r2(m.rr25 - prev5.rr) : null, rrPct, lean, history: h.length, spark: h.slice(-60).map(x => x.rr), bfSpark: h.slice(-60).map(x => x.bf ?? null) });   // bfSpark: beside spark, for the Helix SKEW view's BF percentile
   }
   const ageH = pull?.asOf ? +((now - Date.parse(pull.asOf)) / 3.6e6).toFixed(1) : null;
   return { ok: rows.length > 0, asOf: pull?.asOf ?? null, ageH, rows, errors: pull?.errors ?? {},

@@ -25,6 +25,7 @@ export const ALIASES = {
   chain: ['view', 'reactor'], reactor: ['view', 'reactor'], city: ['view', 'skyline'], orbit: ['view', 'orbit'], fly: ['view', 'chainfly'],
   gamma: ['view', 'gpillar'], pillar: ['view', 'gpillar'], terrain: ['view', 'gterrain'], flip: ['view', 'flipmap'], flips: ['view', 'flipmap'], cot: ['view', 'cot'], positioning: ['view', 'cot'],
   vol: ['view', 'vol'], volatility: ['view', 'vol'], surface: ['view', 'ivsurf'], volsurface: ['view', 'ivsurf'], currencies: ['view', 'ccy'], fx: ['view', 'fxgrid'], matrix: ['view', 'fxgrid'],
+  skew: ['view', 'skew'], riskreversal: ['view', 'skew'], butterfly: ['view', 'skew'],
   range: ['view', 'rangeused'], rangeused: ['view', 'rangeused'], implied: ['view', 'rangeused'], day: ['view', 'dayso'], daysofar: ['view', 'dayso'], ahead: ['view', 'ahead'], dayahead: ['view', 'ahead'],
   surprises: ['view', 'surprise'], shockwave: ['view', 'shockwave'], cycle: ['view', 'cycle'], money: ['view', 'moneyglobe'], calls: ['view', 'book'], book: ['view', 'book'],
   unusual: ['tool', 'radar'], radar: ['tool', 'radar'], ranked: ['tool', 'markets'], list: ['tool', 'markets'], read: ['tool', 'brief'], brief: ['tool', 'brief'], briefing: ['tool', 'brief'],

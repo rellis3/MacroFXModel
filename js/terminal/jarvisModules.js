@@ -20,6 +20,8 @@ export const MODULE_FILES = ['./jarvisModPrecedent.js', './jarvisModPapers.js', 
   // the hologram views (WebGL, js/terminal/jarvisGL.js); a file that is not there yet is simply skipped
   './jarvisViewReactor.js', './jarvisViewGammaPillar.js', './jarvisViewGammaTerrain.js', './jarvisViewVolSurface.js', './jarvisViewRatePaths.js', './jarvisViewFxMatrix.js', './jarvisViewDayAhead.js', './jarvisViewSurprise.js', './jarvisViewShockwave.js', './jarvisViewCot.js', './jarvisViewCycle.js', './jarvisViewMoneyGlobe.js', './jarvisViewBoard.js', './broadcastPanels.js', './jarvisModBroadcast.js',
   // the three description views added with the look-and-feel pass: every market's distance to its gamma flip, range used against the usual range, and the London day so far
-  './jarvisViewFlip.js', './jarvisViewRangeUsed.js', './jarvisViewDaySoFar.js'];
+  './jarvisViewFlip.js', './jarvisViewRangeUsed.js', './jarvisViewDaySoFar.js',
+  // desk layers (2026-11-28): each market's 25-delta risk reversal and butterfly against its last 20 prints
+  './jarvisViewSkew.js'];
 export const viewsOf = () => EXTRA.flatMap(m => (Array.isArray(m.views) ? m.views : []));
 export async function loadModules() { await Promise.all(MODULE_FILES.map(f => import(f).catch(() => null))); return EXTRA; }
