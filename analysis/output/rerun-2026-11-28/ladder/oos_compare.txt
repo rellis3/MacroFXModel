@@ -1,0 +1,6 @@
+mean_oos_combined_hl_pinball: live-fit 0.1342  refit 0.1330  refit better on 31/36
+mean_oos_exceed_hl_p50: live-fit 0.5006  refit 0.4996  refit better on 20/36
+mean_oos_exceed_hl_p75: live-fit 0.2499  refit 0.2474  refit better on 21/36
+live-fit last-fold OOS: n 36 hl p50 0.466 p75 0.235 p90 0.094 pinball 0.1281
+refit last-fold OOS: n 36 hl p50 0.467 p75 0.236 p90 0.095 pinball 0.1270
+pairs 36

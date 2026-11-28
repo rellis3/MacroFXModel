@@ -200,7 +200,7 @@ export const DESK_EVIDENCE = [
     id: 'cot-positioning-factor', domain: 'positioning', verdict: 'null', date: '2026-08-22',
     doc: 'MD files/COT_POSITIONING_FACTOR_TEST.md',
     claim: 'Speculative positioning, as a share of open interest and ranked against its own history, carries information about forward returns (two-sided: follow or fade)',
-    result: 'CFTC TFF + disaggregated, 8 instruments, 899 scored weeks each, 3,576 OOS rows 2018-2026. Pooled OOS rank-IC -0.0317 (~1.7 sigma), p=0.0936 against a p<0.05 bar: FAIL. Both OOS halves share the sign and 8/8 instruments qualified, so two of three checks passed and significance did not. Per instrument the spread is wide and the ends disagree: GBP -0.228, GOLD +0.117, and AUD +0.004 -- nothing. Two flaws found while reading the result (the block bootstrap resampled neighbouring INSTRUMENTS rather than consecutive weeks, and the 7 FX legs are largely one USD trade) BOTH flatter the signal, so the null is robust to them.',
+    result: 'CFTC TFF + disaggregated, 8 instruments, 899 scored weeks each, 3,576 OOS rows 2018-2026. Pooled OOS rank-IC -0.0317 (~1.7 sigma), p=0.0936 against a p<0.05 bar: FAIL. Both OOS halves share the sign and 8/8 instruments qualified, so two of three checks passed and significance did not. Per instrument the spread is wide and the ends disagree: GBP -0.228, GOLD +0.117, and AUD +0.004 -- nothing. Two flaws found while reading the result (the block bootstrap resampled neighbouring INSTRUMENTS rather than consecutive weeks, and the 7 FX legs are largely one USD trade) BOTH flatter the signal, so the null is robust to them. Harness reproduction re-run 2026-11-28 with the store\'s weekend rows dropped (DATA_SPEC §5 #9): OOS IC -0.058 [-0.121, +0.007], p 0.078 (was -0.057, p 0.066). Unchanged.',
     use: 'Never write that crowded positioning predicts which way a market goes: the one registered test says it does not, and it says so for AUD at +0.004 specifically. Positioning is a read on WHO HOLDS WHAT and therefore who has to act if they are wrong -- it is not a direction signal, and the companion result (crowded-bond-short-fomc) found crowded shorts into a scheduled event got PAID rather than squeezed. Show it as context next to a release; never as a lean.',
   },  {
     // Registered 2026-10-14, run 2026-10-22 with two PRE-RESULTS data amendments (M15 closes for M1, no
@@ -464,11 +464,11 @@ export const DESK_EVIDENCE = [
     use: 'The page\'s inverted-VIX finding leans toward a wider month but this harness can no longer show it: one cell clears zero by 0.001 on 10 firings. Lean on vix-inversion (86 inversions, its own study) for the range read; this entry is not an independent reproduction any more. Never which way.',
   },
   {
-    id: 'mv-dispersion-range', domain: 'volatility', verdict: 'validated', date: '2026-09-23', doc: 'MD files/OUTCOME_LOOP.md',
+    id: 'mv-dispersion-range', domain: 'volatility', verdict: 'underpowered', date: '2026-11-28', doc: 'MD files/OUTCOME_LOOP.md', also: ['analysis/output/rerun-2026-11-28/RESULTS.md'],
     instruments: ['SPX500', 'NQ'],
     claim: 'When the Market View flags a crowded market (high dispersion), the next month runs wider',
-    result: 'O1, pre-registered: +0.52 [0.37, 0.64] on SPX500 and +0.55 [0.37, 0.69] on NQ over 20 sessions, on 9 firings (8% of sessions). Holds in both halves (+0.73 early, +0.35 late). Reaches D1’s SECONDARY 20-day window by an independent path; D1’s headline weekly claim stays null and is not revived by this.',
-    use: 'A month, not a week, and range only. Nine firings on revised data earns a re-run and a forward test, not a trigger.',
+    result: 'Re-run 2026-11-28 after the event-bootstrap fix (DATA_SPEC §5 #14: the old resample had one start position at n <= 10, so its intervals had almost no width). Same prereg and seed, bundle cut at the lockbox: +0.48 [+0.007, +1.02] on SPX500 and +0.53 [-0.07, +1.06] on NQ over 20 sessions, on 8 firings. Neither half clears zero on its own (+0.73 [-0.14, +1.67] early, +0.24 [-0.19, +0.61] late). Cut at the original 2026-09-22 end, SPX is +0.48 [-0.002, +1.04]. The size matches the banked +0.52 / +0.55 on 9 firings, but the intervals roughly tripled, so the pass bar is not met. Banked validated 2026-09-23. Direction still none (63% up vs an 84% control).',
+    use: 'Not a validated range signal: 8 firings cannot separate a real widening from luck. Do not count it with the validated range signals. At most show it as a watch item, range only, never a direction. Re-open only on a forward record.',
   },
   {
     id: 'mv-creditstack-range', domain: 'macro', verdict: 'context', date: '2026-09-23', doc: 'MD files/OUTCOME_LOOP.md',
@@ -477,10 +477,10 @@ export const DESK_EVIDENCE = [
     use: 'Not enough to act on. Recorded so the next run has a number to beat.',
   },
   {
-    id: 'mv-dislocation-forward', domain: 'macro', verdict: 'null', date: '2026-09-23', doc: 'MD files/OUTCOME_LOOP.md',
+    id: 'mv-dislocation-forward', domain: 'macro', verdict: 'underpowered', date: '2026-11-28', doc: 'MD files/OUTCOME_LOOP.md', also: ['analysis/output/rerun-2026-11-28/RESULTS.md'],
     claim: 'When two markets that normally move together come apart, something follows',
-    result: 'O1, pre-registered: NULL. Range +0.01 [-0.11, 0.34] on SPX500, +0.12 [-0.11, 0.40] on NQ, on 17 firings. Direction 71% up against an 80% control — BELOW control. The two halves flip sign entirely (+0.29 early, -0.24 late), which is what noise looks like.',
-    use: 'The page’s existing wording was right and is now evidenced: a dislocation says which markets disagree today, and carries nothing about what happens next.',
+    result: 'Re-run 2026-11-28 after the event-bootstrap fix (DATA_SPEC §5 #14), same prereg and seed, cut at the lockbox: range +0.12 [-0.26, +0.59] on SPX500, +0.06 [-0.31, +0.44] on NQ, 17 firings. The halves still flip (+0.42 early, -0.16 late). Direction 71% up vs a 79% control. The corrected interval is too wide to rule out a dispersion-sized effect, so the verdict is underpowered, not null. Banked 2026-09-23 as: NULL. Range +0.01 [-0.11, 0.34] on SPX500, +0.12 [-0.11, 0.40] on NQ, on 17 firings. Direction 71% up against an 80% control — BELOW control. The two halves flip sign entirely (+0.29 early, -0.24 late), which is what noise looks like.',
+    use: 'Keep the page’s wording: a dislocation says which markets disagree today. Nothing here shows it says what happens next. Too few firings to rule that out, and the halves disagree.',
   },
   {
     id: 'mv-extreme-forward', domain: 'price', verdict: 'null', date: '2026-09-23', doc: 'MD files/OUTCOME_LOOP.md',
@@ -687,10 +687,11 @@ export const DESK_EVIDENCE = [
     use: 'After a wide Asia session, expect LESS of the day\'s range to be left for London, not more.',
   },
   {
-    id: 'yields-to-fx-direction', domain: 'macro', verdict: 'null', date: '2026-08-23', doc: 'memory: project_yield_asset_coupling',
+    id: 'yields-to-fx-direction', domain: 'macro', verdict: 'null', date: '2026-11-28', doc: 'analysis/output/rerun-2026-11-28/RESULTS.md', also: ['analysis/yield_asset_coupling.py', 'scripts/rerun-2026-11-28/yields_to_fx.py'],
+    instruments: ['EURUSD', 'USDJPY', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD', 'SPX500', 'NQ'],
     claim: 'Yield moves predict the direction of FX and indices',
-    result: 'Forward coupling null; the relationship is real only in the same bar.',
-    use: 'Never write that a yield move implies where a pair goes next.',
+    result: 'Exploratory, not pre-registered. Re-run 2026-11-28 after two fixes (DATA_SPEC §5 #18). Yahoo FX dates had been a day late every winter. The over-applied lag meant the original never scored the yield change through day t against the next day, even where the asset closes after the Treasury print. 18 assets, 6 drivers, 972 forward cells, sample to 2026-08-21. FX: 3 of 378 cells survive with the original lag and 8 of 378 with the per-asset lag, against about 19 expected by luck, so below chance. Same-bar coupling is real (USDJPY vs 10y +0.50). US indices, with the lead scored: a 1-day rise in the 2y goes with a weaker next day (SPX IC -0.037, NW t -3.0; NDX t -2.7). That comes from a ~1,000-cell family and is a question for a prereg, not a result. Banked 2026-08-23 from a memory note as: forward coupling null.',
+    use: 'Never write that a yield move implies where a pair goes next. For FX, same-bar coupling is real and forward coupling is below chance. The US-index next-day reading is exploratory only and never a signal.',
   },
   {
     id: 'news-asymmetry', domain: 'events', verdict: 'null', date: '2026-09-28', doc: 'MD files/NEWS_ASYMMETRY_PREREG.md',
@@ -1973,7 +1974,7 @@ export const DESK_EVIDENCE = [
     deflated: { from: 'validated', date: '2026-10-17', why: 'deflated Sharpe 0.1833 < 0.95 (N=3); harness re-run on point-in-time asofs does not clear its own bar (mean > 0 with interval above 0): OOS Sharpe -0.053, PF 0.935, p 0.8731; the banked result reproduces only under the engine\'s +2-day assumption on GS2 — a monthly average FRED first publishes a median 32 days after its date (forge/HARNESS_REGISTRY_ADDENDUM_A.md)' },
     instruments: ['USDJPY', 'GBPUSD', 'AUDUSD', 'USDCAD', 'USDCHF', 'EURUSD'],
     claim: 'The yield-spread book (reported validated on 2015+, since demoted) holds on 40 untouched years 1976-2014 rebuilt from free FRED data, configuration unchanged: an independent second test (Lesson 02)',
-    result: 'Banked 2026-10-07: PASS. 868 trades: +0.243% net per trade [+0.005, +0.464], win 55.1%, PF 1.28; positive in 4/4 decades and 6/6 pairs; daily flat-book Sharpe 0.39. Re-run 2026-10-17 on point-in-time data (2004-2014, US leg on GS2 vintages, foreign legs on the registered 45-day lag): Sharpe -0.05, PF 0.94, p 0.87, deflated Sharpe 0.18 (N=3). The same window under the original lags gives PF 1.26: the banked PF 1.28 was the lookahead.',
+    result: 'Banked 2026-10-07: PASS. 868 trades: +0.243% net per trade [+0.005, +0.464], win 55.1%, PF 1.28; positive in 4/4 decades and 6/6 pairs; daily flat-book Sharpe 0.39. Re-run 2026-10-17 on point-in-time data (2004-2014, US leg on GS2 vintages, foreign legs on the registered 45-day lag): Sharpe -0.05, PF 0.94, p 0.87, deflated Sharpe 0.18 (N=3). The same window under the original lags gives PF 1.26: the banked PF 1.28 was the lookahead. Re-run 2026-11-28 with the store\'s 2002-2013 weekend rows dropped (DATA_SPEC §5 #9): honest cell Sharpe +0.14, PF 1.11, p 0.64 (255 trades); original lags PF 1.43, p 0.15. Scale-only, verdict unchanged (analysis/output/rerun-2026-11-28/RESULTS.md).',
     use: 'No edge on honest data. Do not plan around a Sharpe of 0.4: the long-history result came from the same GS2 lookahead as the 2015+ result. The 1976+ FRED history remains usable as data, but yield-spread decisions made by the banked rule are not confirmed.',
   },
   {
@@ -2644,10 +2645,10 @@ export const DESK_EVIDENCE = [
     instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
   },
   {
-    id: 'residual-pca-cot', domain: 'positioning', verdict: 'underpowered', date: '2026-10-31', doc: 'forge/RESIDUAL_PCA_FAMILY_PREREG.md', also: ['analysis/output/residual-pca-family/RESULTS.md', 'education/residual_pca_currency_test/RESULTS.md'],
+    id: 'residual-pca-cot', domain: 'positioning', verdict: 'underpowered', date: '2026-11-28', doc: 'forge/RESIDUAL_PCA_FAMILY_PREREG.md', also: ['analysis/output/rerun-2026-11-28/RESULTS.md', 'analysis/output/residual-pca-family/RESULTS.md', 'education/residual_pca_currency_test/RESULTS.md'],
     claim: 'FX8 residual displacements stretched in the direction of an extreme speculative COT position (prior-only 3-year percentile >= 90 / <= 10, known from the release Friday) revert more than those with a neutral crowd.',
-    result: '2016-06 to 2026-08 (2,496 days; 2,119 aligned / 15,422 neutral obs): D +0.003 [-0.037, +0.042], IS -0.003, OOS +0.012; placebo +0.003 sd 0.021; underpowered by design (MDE 0.089 vs 0.05), though the interval already excludes +0.05. Crowd-aligned-only book net Sharpe IS -0.32, OOS -0.17.',
-    use: 'Do not use COT crowding to pick residual trades. No sign of extra reversion against a crowd.',
+    result: 'Re-run 2026-11-28 on the fixed crowd tags (DATA_SPEC §5 #16: JPY/CAD/CHF were read with the sign inverted), same prereg and seed: 2016-06 to 2026-08, 2,135 aligned / 15,422 neutral obs. D +0.044 (se 0.020, z 2.17, one-sided p 0.015), IS +0.030, OOS +0.057. Mean s in the aligned set is positive in both halves, and the counter-crowd mirror runs the other way. Tag-shift placebo +0.003 sd 0.019. No single currency passes BH q 0.10. It passes every candidate-gate check but stays underpowered by design (MDE 0.089 vs a 0.05 bar). Crowd-aligned-only book net Sharpe IS -0.38, OOS +0.35. The banked run on inverted tags read D +0.003.',
+    use: 'A candidate, not a result: displacements stretched with an extreme COT crowd may revert more. It earns a forward pre-registration (prereg §8) and nothing live. The old reading, no sign of extra reversion against a crowd, came from the inverted tags and no longer holds.',
     instruments: ['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF'],
   },
   {
@@ -5520,7 +5521,9 @@ const POWER = {
   'residual-pca-idx6':   { n: '2,540 signal days', note: 'MDE 0.037 vs bar 0.03 (underpowered by design, described)' },
   'residual-pca-news':   { n: '2,280 days, date-block bootstrap (21)', note: 'MDE 0.061 vs bar 0.05 (described); CI upper +0.034 below the bar' },
   'residual-pca-monthend': { n: '128 month-end days', note: 'MDE 0.129 vs bar 0.05 (underpowered by design)' },
-  'residual-pca-cot':    { n: '2,496 days, date-block bootstrap (21)', note: 'MDE 0.089 vs bar 0.05 (described); CI upper +0.042 below the bar' },
+  'residual-pca-cot':    { n: '2,496 days, 2,135 aligned / 15,422 neutral obs, date-block bootstrap (21)', note: 'MDE 0.089 vs bar 0.05 (described); re-run 2026-11-28 D +0.044 se 0.020, candidate gate passed' },
+  'mv-dispersion-range': { n: '8 de-clustered firings, 342 control sessions (2024-07 to 2026-07)', note: 'event arm resampled per firing; interval width about 1.0 against a +0.5 effect; neither half clears' },
+  'mv-dislocation-forward': { n: '17 de-clustered firings, 176 control sessions', note: 'interval [-0.26, +0.59] cannot rule out a dispersion-sized effect' },
   'fiscal-reaction-uk-size':      { n: '32 scheduled UK fiscal events 2010-2026 (iid over events)', note: 'MDE 1.48x on the net-move ratio; 1.19x [0.72, 1.76] spans it' },
   'fiscal-reaction-us-size':      { n: '75 refunding statements 2008-2026 (iid over events)', note: 'MDE 1.30x; 0.94x [0.72, 1.21] excludes it -- a real null' },
   'fiscal-reaction-uk-direction': { n: '13 events with an in-year gilt revision', note: 'below the registered 15-row floor; MDE rho ~0.55' },

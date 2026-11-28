@@ -1,12 +1,456 @@
-{ "id": "rerun-2026-11-28", "ranAt": "2026-11-28T07:53:00Z", "branch": "wf2/rerun-a", "lockbox": "2026-08-21",
-  "faults": ["DATA_SPEC#13", "DATA_SPEC#14", "faults-log 2026-11-01 FRED user-agent"],
+{
+ "id": "rerun-2026-11-28",
+ "note": "Two parallel re-run batches on 2026-11-28 (wf2/rerun-a, wf2/rerun-b) merged; each kept as written.",
+ "wf2/rerun-a": {
+  "id": "rerun-2026-11-28",
+  "ranAt": "2026-11-28T07:53:00Z",
+  "branch": "wf2/rerun-a",
+  "lockbox": "2026-08-21",
+  "faults": [
+   "DATA_SPEC#13",
+   "DATA_SPEC#14",
+   "faults-log 2026-11-01 FRED user-agent"
+  ],
   "studies": [
-    { "id": "yield-move-fx-range", "was": "null", "verdict": "underpowered", "seed": 20260927, "B": 1000, "doc": "MD files/YIELD_MOVE_FX_RANGE_PREREG.md", "out": "yield_move_fx_range.json" },
-    { "id": "nonus-yield-gap-range", "was": "null", "verdict": "context", "seed": 20260920, "B": 1000, "doc": "MD files/NONUS_YIELDS.md", "out": "nonus_yields.json" },
-    { "id": "nonus-yield-gap-direction", "was": "null", "verdict": "null", "seed": 20260920, "B": 1000, "doc": "MD files/NONUS_YIELDS.md", "out": "nonus_yields.json" },
-    { "id": "fear-gold", "was": "null", "verdict": "underpowered", "seed": 20260921, "B": 1000, "doc": "MD files/FOUR_GOLDS.md#G1", "out": "four_golds.json" },
-    { "id": "crack-blowout-range", "was": "null", "verdict": "underpowered", "seed": 20260921, "B": 1000, "doc": "MD files/CRACK_SPREAD.md", "out": "crack_spread.json" },
-    { "id": "dispersion-crowded-week", "was": "null", "verdict": "null", "seed": 20260923, "B": 1000, "doc": "MD files/DISPERSION.md#D1", "out": "dispersion.json" },
-    { "id": "dispersion-reset", "was": "validated", "verdict": "underpowered", "seed": 20260923, "B": 1000, "doc": "MD files/DISPERSION.md#D2", "out": "dispersion.json" },
-    { "id": "mv-vixterm-range", "was": "validated", "verdict": "underpowered", "seed": 20260923, "B": 1000, "doc": "MD files/OUTCOME_LOOP.md", "out": "outcome_loop.json" }
-  ] }
+   {
+    "id": "yield-move-fx-range",
+    "was": "null",
+    "verdict": "underpowered",
+    "seed": 20260927,
+    "B": 1000,
+    "doc": "MD files/YIELD_MOVE_FX_RANGE_PREREG.md",
+    "out": "yield_move_fx_range.json"
+   },
+   {
+    "id": "nonus-yield-gap-range",
+    "was": "null",
+    "verdict": "context",
+    "seed": 20260920,
+    "B": 1000,
+    "doc": "MD files/NONUS_YIELDS.md",
+    "out": "nonus_yields.json"
+   },
+   {
+    "id": "nonus-yield-gap-direction",
+    "was": "null",
+    "verdict": "null",
+    "seed": 20260920,
+    "B": 1000,
+    "doc": "MD files/NONUS_YIELDS.md",
+    "out": "nonus_yields.json"
+   },
+   {
+    "id": "fear-gold",
+    "was": "null",
+    "verdict": "underpowered",
+    "seed": 20260921,
+    "B": 1000,
+    "doc": "MD files/FOUR_GOLDS.md#G1",
+    "out": "four_golds.json"
+   },
+   {
+    "id": "crack-blowout-range",
+    "was": "null",
+    "verdict": "underpowered",
+    "seed": 20260921,
+    "B": 1000,
+    "doc": "MD files/CRACK_SPREAD.md",
+    "out": "crack_spread.json"
+   },
+   {
+    "id": "dispersion-crowded-week",
+    "was": "null",
+    "verdict": "null",
+    "seed": 20260923,
+    "B": 1000,
+    "doc": "MD files/DISPERSION.md#D1",
+    "out": "dispersion.json"
+   },
+   {
+    "id": "dispersion-reset",
+    "was": "validated",
+    "verdict": "underpowered",
+    "seed": 20260923,
+    "B": 1000,
+    "doc": "MD files/DISPERSION.md#D2",
+    "out": "dispersion.json"
+   },
+   {
+    "id": "mv-vixterm-range",
+    "was": "validated",
+    "verdict": "underpowered",
+    "seed": 20260923,
+    "B": 1000,
+    "doc": "MD files/OUTCOME_LOOP.md",
+    "out": "outcome_loop.json"
+   }
+  ]
+ },
+ "wf2/rerun-b": {
+  "date": "2026-11-28",
+  "branch": "wf2/rerun-b",
+  "studies": {
+   "mv-dispersion-range": {
+    "prereg": "MD files/OUTCOME_LOOP.md",
+    "seed": 20260923,
+    "fault": "DATA_SPEC 5 #14",
+    "old": "validated",
+    "verdict": "underpowered",
+    "lockbox_cut": {
+     "rawFirings": 54,
+     "daysFired": 54,
+     "baseRate": 0.078,
+     "firings": 8,
+     "control": 342,
+     "first": "2024-07-08",
+     "last": "2026-07-08",
+     "o1a_spx": {
+      "nA": 8,
+      "nB": 342,
+      "diff": 0.482,
+      "lo": 0.007,
+      "hi": 1.024
+     },
+     "o1a_nq": {
+      "nA": 8,
+      "nB": 342,
+      "diff": 0.53,
+      "lo": -0.07,
+      "hi": 1.062
+     },
+     "o1b_dir": {
+      "setup": {
+       "n": 8,
+       "k": 5,
+       "share": 0.625,
+       "lo": 0.306,
+       "hi": 0.863
+      },
+      "control": {
+       "n": 326,
+       "k": 274,
+       "share": 0.84,
+       "lo": 0.797,
+       "hi": 0.876
+      }
+     },
+     "o1d_halves": {
+      "splitAt": "2026-01-13",
+      "early": {
+       "nA": 4,
+       "nB": 342,
+       "diff": 0.726,
+       "lo": -0.138,
+       "hi": 1.672
+      },
+      "late": {
+       "nA": 4,
+       "nB": 342,
+       "diff": 0.238,
+       "lo": -0.187,
+       "hi": 0.612
+      }
+     },
+     "verdict": "something survives",
+     "o1c": {
+      "rangeReal": true,
+      "dirReal": false
+     }
+    },
+    "original_end": {
+     "rawFirings": 54,
+     "daysFired": 54,
+     "baseRate": 0.076,
+     "firings": 8,
+     "control": 352,
+     "first": "2024-07-08",
+     "last": "2026-07-08",
+     "o1a_spx": {
+      "nA": 8,
+      "nB": 352,
+      "diff": 0.482,
+      "lo": -0.002,
+      "hi": 1.04
+     },
+     "o1a_nq": {
+      "nA": 8,
+      "nB": 352,
+      "diff": 0.547,
+      "lo": -0.027,
+      "hi": 1.101
+     },
+     "o1b_dir": {
+      "setup": {
+       "n": 8,
+       "k": 5,
+       "share": 0.625,
+       "lo": 0.306,
+       "hi": 0.863
+      },
+      "control": {
+       "n": 336,
+       "k": 276,
+       "share": 0.821,
+       "lo": 0.777,
+       "hi": 0.859
+      }
+     },
+     "o1d_halves": {
+      "splitAt": "2026-01-13",
+      "early": {
+       "nA": 4,
+       "nB": 352,
+       "diff": 0.726,
+       "lo": -0.124,
+       "hi": 1.656
+      },
+      "late": {
+       "nA": 4,
+       "nB": 352,
+       "diff": 0.238,
+       "lo": -0.16,
+       "hi": 0.623
+      }
+     },
+     "verdict": "null — the hedge is correct",
+     "o1c": {
+      "rangeReal": false,
+      "dirReal": false
+     }
+    }
+   },
+   "mv-dislocation-forward": {
+    "prereg": "MD files/OUTCOME_LOOP.md",
+    "seed": 20260923,
+    "fault": "DATA_SPEC 5 #14",
+    "old": "null",
+    "verdict": "underpowered",
+    "lockbox_cut": {
+     "rawFirings": 148,
+     "daysFired": 114,
+     "baseRate": 0.165,
+     "firings": 17,
+     "control": 176,
+     "first": "2024-04-11",
+     "last": "2026-04-08",
+     "o1a_spx": {
+      "nA": 17,
+      "nB": 176,
+      "diff": 0.115,
+      "lo": -0.257,
+      "hi": 0.59
+     },
+     "o1a_nq": {
+      "nA": 17,
+      "nB": 176,
+      "diff": 0.061,
+      "lo": -0.312,
+      "hi": 0.438
+     },
+     "o1b_dir": {
+      "setup": {
+       "n": 17,
+       "k": 12,
+       "share": 0.706,
+       "lo": 0.469,
+       "hi": 0.867
+      },
+      "control": {
+       "n": 168,
+       "k": 133,
+       "share": 0.792,
+       "lo": 0.724,
+       "hi": 0.846
+      }
+     },
+     "o1d_halves": {
+      "splitAt": "2025-05-19",
+      "early": {
+       "nA": 8,
+       "nB": 176,
+       "diff": 0.422,
+       "lo": -0.177,
+       "hi": 1.301
+      },
+      "late": {
+       "nA": 9,
+       "nB": 176,
+       "diff": -0.158,
+       "lo": -0.442,
+       "hi": 0.111
+      }
+     },
+     "verdict": "null — the hedge is correct",
+     "o1c": {
+      "rangeReal": false,
+      "dirReal": false
+     }
+    },
+    "original_end": {
+     "rawFirings": 148,
+     "daysFired": 114,
+     "baseRate": 0.16,
+     "firings": 17,
+     "control": 198,
+     "first": "2024-04-11",
+     "last": "2026-04-08",
+     "o1a_spx": {
+      "nA": 17,
+      "nB": 198,
+      "diff": 0.141,
+      "lo": -0.216,
+      "hi": 0.658
+     },
+     "o1a_nq": {
+      "nA": 17,
+      "nB": 198,
+      "diff": 0.142,
+      "lo": -0.207,
+      "hi": 0.53
+     },
+     "o1b_dir": {
+      "setup": {
+       "n": 17,
+       "k": 12,
+       "share": 0.706,
+       "lo": 0.469,
+       "hi": 0.867
+      },
+      "control": {
+       "n": 190,
+       "k": 142,
+       "share": 0.747,
+       "lo": 0.681,
+       "hi": 0.804
+      }
+     },
+     "o1d_halves": {
+      "splitAt": "2025-05-19",
+      "early": {
+       "nA": 8,
+       "nB": 198,
+       "diff": 0.448,
+       "lo": -0.132,
+       "hi": 1.308
+      },
+      "late": {
+       "nA": 9,
+       "nB": 198,
+       "diff": -0.132,
+       "lo": -0.393,
+       "hi": 0.125
+      }
+     },
+     "verdict": "null — the hedge is correct",
+     "o1c": {
+      "rangeReal": false,
+      "dirReal": false
+     }
+    }
+   },
+   "residual-pca-cot": {
+    "prereg": "forge/RESIDUAL_PCA_FAMILY_PREREG.md",
+    "seed": 20261031,
+    "fault": "DATA_SPEC 5 #16",
+    "old": "underpowered",
+    "verdict": "underpowered",
+    "candidate": true,
+    "D_full": 0.0437,
+    "se_full": 0.0201,
+    "p_one_sided": 0.015,
+    "D_IS": 0.0302,
+    "D_OOS": 0.0568,
+    "placebo": {
+     "mean": 0.0029,
+     "sd": 0.0186,
+     "n": 200
+    }
+   },
+   "yields-to-fx-direction": {
+    "prereg": null,
+    "exploratory": true,
+    "seed": 7,
+    "fault": "DATA_SPEC 5 #18",
+    "old": "null",
+    "verdict": "null",
+    "lag1": {
+     "survivors": 82,
+     "fx": "3 / 378 cells (luck 18.9)"
+    },
+    "perasset": {
+     "survivors": 125,
+     "fx": "8 / 378 cells (luck 18.9)",
+     "index_us": "51 / 216 cells (luck 10.8)"
+    }
+   },
+   "ladder-event-multipliers": {
+    "fault": "DATA_SPEC 5 #15",
+    "verdict": null,
+    "note": "live parameters; refit side by side in ladder/, not shipped",
+    "pinball_old": 0.1342,
+    "pinball_new": 0.133,
+    "better_pairs": "31/36"
+   },
+   "harness-weekend-rows": {
+    "fault": "DATA_SPEC 5 #9",
+    "ledger": [
+     "ys-long-confirm",
+     "cot-positioning-factor"
+    ],
+    "verdict": "unchanged",
+    "store_drop": {
+     "px_d1_audusd": {
+      "rows_before": 7111,
+      "rows_after": 6348,
+      "dropped": 763
+     },
+     "px_d1_eurusd": {
+      "rows_before": 7172,
+      "rows_after": 6350,
+      "dropped": 822
+     },
+     "px_d1_gbpusd": {
+      "rows_before": 7148,
+      "rows_after": 6351,
+      "dropped": 797
+     },
+     "px_d1_nas100": {
+      "rows_before": 6131,
+      "rows_after": 6088,
+      "dropped": 43
+     },
+     "px_d1_nzdusd": {
+      "rows_before": 6989,
+      "rows_after": 6251,
+      "dropped": 738
+     },
+     "px_d1_spx500": {
+      "rows_before": 6133,
+      "rows_after": 6088,
+      "dropped": 45
+     },
+     "px_d1_usdcad": {
+      "rows_before": 7134,
+      "rows_after": 6347,
+      "dropped": 787
+     },
+     "px_d1_usdchf": {
+      "rows_before": 7155,
+      "rows_after": 6347,
+      "dropped": 808
+     },
+     "px_d1_usdjpy": {
+      "rows_before": 7172,
+      "rows_after": 6350,
+      "dropped": 822
+     },
+     "px_d1_xauusd": {
+      "rows_before": 5692,
+      "rows_after": 5331,
+      "dropped": 361
+     }
+    }
+   }
+  }
+ }
+}

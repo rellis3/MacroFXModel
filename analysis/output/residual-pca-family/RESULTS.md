@@ -103,3 +103,11 @@ T2's masked book is the only new field.
 - **Would reopen:** a forward record of the frozen FX8 (and, as a candidate, EUR-only) model; NOK with a synchronised
   17:00 ET history; a multi-day horizon under its own prereg (q1's t+2 placebo hinted at slow reversion), counted as
   a new trial (this line is now at 6).
+
+## Re-run 2026-11-28: T3 on fixed crowd tags (DATA_SPEC §5 #16)
+
+Same prereg and seed (20261031), fx8 + T3 only (`scripts/rerun-2026-11-28/residual_pca_cot.py`). D +0.0437 (se 0.020,
+z 2.17, one-sided p 0.015), IS +0.030, OOS +0.057. Mean s in A is positive in both halves and the mirror runs the other
+way. Placebo +0.003 sd 0.019. **The candidate gate passes**, and T3 is still banked `underpowered` by design. Under §8
+it goes to a forward pre-registration. The T3 numbers and the "T3 rules out a 0.05 improvement" reading above came from
+the inverted tags and are superseded (`analysis/output/rerun-2026-11-28/RESULTS.md`).

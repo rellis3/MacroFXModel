@@ -44,12 +44,12 @@ const wilson = (k, n) => { if (!n) return null; const p = k / n, z = 1.96, d = 1
 
 // ── the bundle ──────────────────────────────────────────────────────────────
 console.log('fetching the bundle...');
-const B = process.env.MV_BUNDLE_FILE ? JSON.parse(fs.readFileSync(process.env.MV_BUNDLE_FILE, 'utf8')) : await (await fetch(API)).json();
+const B = (process.env.MV_BUNDLE_FILE ?? process.env.MV_BUNDLE) ? JSON.parse(fs.readFileSync(process.env.MV_BUNDLE_FILE ?? process.env.MV_BUNDLE, 'utf8')) : await (await fetch(API)).json();
 if (!B?.ok) throw new Error(B?.error ?? 'no bundle');
 // Lockbox cut (re-run 2026-11-28, REPO_REVIEW_2026-10-31 / DATA_SPEC §5 #14 RE-RUN rows): the live
 // bundle runs to today, so sessions after the H-A holdout start (2026-08-21) are dropped before the
 // replay. Every series is index-aligned to B.dates, so one slice cuts them all. MV_TO overrides.
-const LOCKBOX_TO = process.env.MV_TO ?? '2026-08-21';
+const LOCKBOX_TO = process.env.MV_TO ?? process.env.MV_END ?? '2026-08-21'; // MV_END: rerun-b's name for the same cut
 {
   const keep = B.dates.findLastIndex(d => d <= LOCKBOX_TO) + 1;
   const cut = B.dates.length - keep;

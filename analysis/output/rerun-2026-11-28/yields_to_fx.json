@@ -1,0 +1,746 @@
+{
+ "rerun": "2026-11-28",
+ "end": "2026-08-21",
+ "seed": 7,
+ "lag1_fixed_dates": {
+  "label": "original lag 1 everywhere, fixed FX dates",
+  "contemp_median_absIC": 0.1749,
+  "fwd_median_absIC": 0.0153,
+  "fwd_cells": 972,
+  "survivors": 82,
+  "expected_by_luck": 48.6,
+  "survivors_fx": "3 / 378 cells (luck 18.9)",
+  "survivors_index_us": "16 / 216 cells (luck 10.8)",
+  "survivors_index_eu": "38 / 162 cells (luck 8.1)",
+  "survivors_index_asia": "0 / 54 cells (luck 2.7)",
+  "survivors_commod": "3 / 54 cells (luck 2.7)",
+  "survivors_bond": "22 / 108 cells (luck 5.4)",
+  "contemp_k5_USDJPY_y10": 0.502,
+  "contemp_k5_USDJPY_y2": 0.482,
+  "y2_k1_h1": {
+   "SPX": {
+    "ic": -0.0133,
+    "nw_t": 0.3,
+    "p_null": null,
+    "stable": 0
+   },
+   "NDX": {
+    "ic": -0.0138,
+    "nw_t": 0.59,
+    "p_null": null,
+    "stable": 0
+   },
+   "DJI": {
+    "ic": -0.0044,
+    "nw_t": 0.67,
+    "p_null": null,
+    "stable": 0
+   },
+   "RUT": {
+    "ic": 0.0035,
+    "nw_t": 1.45,
+    "p_null": null,
+    "stable": 0
+   },
+   "DAX": {
+    "ic": -0.0261,
+    "nw_t": -1.41,
+    "p_null": 0.051,
+    "stable": 0
+   },
+   "FTSE": {
+    "ic": -0.0348,
+    "nw_t": -2.03,
+    "p_null": 0.015,
+    "stable": 0
+   },
+   "STOXX": {
+    "ic": -0.0304,
+    "nw_t": -1.7,
+    "p_null": 0.032,
+    "stable": 1
+   },
+   "NIKKEI": {
+    "ic": 0.0144,
+    "nw_t": -0.14,
+    "p_null": null,
+    "stable": 0
+   },
+   "EURUSD": {
+    "ic": -0.0119,
+    "nw_t": 0.23,
+    "p_null": null,
+    "stable": 0
+   },
+   "USDJPY": {
+    "ic": 0.0024,
+    "nw_t": 1.46,
+    "p_null": null,
+    "stable": 0
+   },
+   "GBPUSD": {
+    "ic": 0.0162,
+    "nw_t": 1.68,
+    "p_null": null,
+    "stable": 0
+   },
+   "AUDUSD": {
+    "ic": 0.0001,
+    "nw_t": 1.66,
+    "p_null": null,
+    "stable": 0
+   },
+   "USDCAD": {
+    "ic": 0.0077,
+    "nw_t": -0.4,
+    "p_null": null,
+    "stable": 0
+   },
+   "USDCHF": {
+    "ic": 0.009,
+    "nw_t": -0.16,
+    "p_null": null,
+    "stable": 0
+   },
+   "NZDUSD": {
+    "ic": 0.0006,
+    "nw_t": 1.5,
+    "p_null": null,
+    "stable": 0
+   },
+   "GOLD": {
+    "ic": 0.0011,
+    "nw_t": -0.72,
+    "p_null": null,
+    "stable": 0
+   },
+   "TLT": {
+    "ic": 0.0298,
+    "nw_t": 1.93,
+    "p_null": 0.044,
+    "stable": 1
+   },
+   "IEF": {
+    "ic": 0.0421,
+    "nw_t": 1.72,
+    "p_null": 0.001,
+    "stable": 1
+   }
+  },
+  "top_survivors": [
+   {
+    "asset": "FTSE",
+    "driver": "y10",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4941,
+    "ic": -0.1402,
+    "nw_t": -1.8356,
+    "p_null": 0.001,
+    "ic_h1": -0.2409,
+    "ic_h2": -0.0243
+   },
+   {
+    "asset": "FTSE",
+    "driver": "y30",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4941,
+    "ic": -0.1257,
+    "nw_t": -1.5141,
+    "p_null": 0.004,
+    "ic_h1": -0.2166,
+    "ic_h2": -0.0224
+   },
+   {
+    "asset": "FTSE",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4941,
+    "ic": -0.1191,
+    "nw_t": -1.4509,
+    "p_null": 0.014,
+    "ic_h1": -0.1711,
+    "ic_h2": -0.0714
+   },
+   {
+    "asset": "DAX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4962,
+    "ic": -0.1122,
+    "nw_t": -0.984,
+    "p_null": 0.0245,
+    "ic_h1": -0.1011,
+    "ic_h2": -0.1283
+   },
+   {
+    "asset": "STOXX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4818,
+    "ic": -0.11,
+    "nw_t": -0.9106,
+    "p_null": 0.0215,
+    "ic_h1": -0.0849,
+    "ic_h2": -0.1557
+   },
+   {
+    "asset": "SPX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4920,
+    "ic": -0.0988,
+    "nw_t": -0.701,
+    "p_null": 0.0465,
+    "ic_h1": -0.1149,
+    "ic_h2": -0.0966
+   },
+   {
+    "asset": "STOXX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4834,
+    "ic": -0.0924,
+    "nw_t": -0.9254,
+    "p_null": 0.0,
+    "ic_h1": -0.0866,
+    "ic_h2": -0.1074
+   },
+   {
+    "asset": "STOXX",
+    "driver": "y10",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4834,
+    "ic": -0.0889,
+    "nw_t": -1.5981,
+    "p_null": 0.0005,
+    "ic_h1": -0.1174,
+    "ic_h2": -0.0583
+   },
+   {
+    "asset": "DAX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4978,
+    "ic": -0.0861,
+    "nw_t": -0.8311,
+    "p_null": 0.002,
+    "ic_h1": -0.0739,
+    "ic_h2": -0.1006
+   },
+   {
+    "asset": "STOXX",
+    "driver": "y10",
+    "lookback": 5,
+    "horizon": 21,
+    "n": 4834,
+    "ic": -0.0831,
+    "nw_t": -1.6189,
+    "p_null": 0.0035,
+    "ic_h1": -0.1107,
+    "ic_h2": -0.0564
+   },
+   {
+    "asset": "STOXX",
+    "driver": "y2",
+    "lookback": 5,
+    "horizon": 21,
+    "n": 4834,
+    "ic": -0.0805,
+    "nw_t": -1.1144,
+    "p_null": 0.005,
+    "ic_h1": -0.0611,
+    "ic_h2": -0.1117
+   },
+   {
+    "asset": "SPX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4936,
+    "ic": -0.0781,
+    "nw_t": -0.688,
+    "p_null": 0.0055,
+    "ic_h1": -0.0862,
+    "ic_h2": -0.075
+   },
+   {
+    "asset": "DJI",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4936,
+    "ic": -0.0757,
+    "nw_t": -0.6131,
+    "p_null": 0.0055,
+    "ic_h1": -0.0988,
+    "ic_h2": -0.0577
+   },
+   {
+    "asset": "DAX",
+    "driver": "y10",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4978,
+    "ic": -0.0749,
+    "nw_t": -1.1441,
+    "p_null": 0.003,
+    "ic_h1": -0.0993,
+    "ic_h2": -0.0484
+   },
+   {
+    "asset": "STOXX",
+    "driver": "y30",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4834,
+    "ic": -0.0748,
+    "nw_t": -1.4279,
+    "p_null": 0.0065,
+    "ic_h1": -0.1098,
+    "ic_h2": -0.0386
+   }
+  ],
+  "fx_survivors": [
+   {
+    "asset": "AUDUSD",
+    "driver": "y30",
+    "lookback": 5,
+    "horizon": 5,
+    "ic": -0.0469,
+    "nw_t": -1.5779,
+    "p_null": 0.0495,
+    "ic_h1": -0.0299,
+    "ic_h2": -0.0704
+   },
+   {
+    "asset": "AUDUSD",
+    "driver": "real10",
+    "lookback": 5,
+    "horizon": 5,
+    "ic": -0.0496,
+    "nw_t": -2.4252,
+    "p_null": 0.0495,
+    "ic_h1": -0.0382,
+    "ic_h2": -0.0653
+   },
+   {
+    "asset": "USDCHF",
+    "driver": "be10",
+    "lookback": 1,
+    "horizon": 1,
+    "ic": 0.0325,
+    "nw_t": 2.3828,
+    "p_null": 0.018,
+    "ic_h1": 0.0422,
+    "ic_h2": 0.0211
+   }
+  ]
+ },
+ "perasset_lag_fixed_dates": {
+  "label": "per-asset lag (0 after the print, 1 before), fixed FX dates",
+  "contemp_median_absIC": 0.1749,
+  "fwd_median_absIC": 0.0185,
+  "fwd_cells": 972,
+  "survivors": 125,
+  "expected_by_luck": 48.6,
+  "survivors_fx": "8 / 378 cells (luck 18.9)",
+  "survivors_index_us": "51 / 216 cells (luck 10.8)",
+  "survivors_index_eu": "37 / 162 cells (luck 8.1)",
+  "survivors_index_asia": "0 / 54 cells (luck 2.7)",
+  "survivors_commod": "3 / 54 cells (luck 2.7)",
+  "survivors_bond": "26 / 108 cells (luck 5.4)",
+  "contemp_k5_USDJPY_y10": 0.502,
+  "contemp_k5_USDJPY_y2": 0.482,
+  "y2_k1_h1": {
+   "SPX": {
+    "ic": -0.0365,
+    "nw_t": -3.01,
+    "p_null": 0.011,
+    "stable": 1
+   },
+   "NDX": {
+    "ic": -0.0312,
+    "nw_t": -2.71,
+    "p_null": 0.026,
+    "stable": 0
+   },
+   "DJI": {
+    "ic": -0.0404,
+    "nw_t": -3.16,
+    "p_null": 0.004,
+    "stable": 1
+   },
+   "RUT": {
+    "ic": -0.0292,
+    "nw_t": -2.81,
+    "p_null": 0.041,
+    "stable": 0
+   },
+   "DAX": {
+    "ic": -0.0261,
+    "nw_t": -1.41,
+    "p_null": 0.062,
+    "stable": 0
+   },
+   "FTSE": {
+    "ic": -0.0348,
+    "nw_t": -2.03,
+    "p_null": 0.012,
+    "stable": 0
+   },
+   "STOXX": {
+    "ic": -0.0304,
+    "nw_t": -1.7,
+    "p_null": 0.037,
+    "stable": 1
+   },
+   "NIKKEI": {
+    "ic": 0.0144,
+    "nw_t": -0.14,
+    "p_null": null,
+    "stable": 0
+   },
+   "EURUSD": {
+    "ic": -0.0083,
+    "nw_t": -2.08,
+    "p_null": null,
+    "stable": 0
+   },
+   "USDJPY": {
+    "ic": -0.0301,
+    "nw_t": -1.28,
+    "p_null": 0.031,
+    "stable": 1
+   },
+   "GBPUSD": {
+    "ic": -0.0019,
+    "nw_t": -1.07,
+    "p_null": null,
+    "stable": 0
+   },
+   "AUDUSD": {
+    "ic": -0.0124,
+    "nw_t": 0.51,
+    "p_null": null,
+    "stable": 0
+   },
+   "USDCAD": {
+    "ic": 0.004,
+    "nw_t": 0.29,
+    "p_null": null,
+    "stable": 0
+   },
+   "USDCHF": {
+    "ic": -0.0061,
+    "nw_t": 0.79,
+    "p_null": null,
+    "stable": 0
+   },
+   "NZDUSD": {
+    "ic": -0.009,
+    "nw_t": -0.06,
+    "p_null": null,
+    "stable": 0
+   },
+   "GOLD": {
+    "ic": 0.0011,
+    "nw_t": -0.72,
+    "p_null": null,
+    "stable": 0
+   },
+   "TLT": {
+    "ic": 0.0257,
+    "nw_t": 1.01,
+    "p_null": 0.086,
+    "stable": 0
+   },
+   "IEF": {
+    "ic": 0.0236,
+    "nw_t": 1.57,
+    "p_null": null,
+    "stable": 0
+   }
+  },
+  "top_survivors": [
+   {
+    "asset": "FTSE",
+    "driver": "y10",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4941,
+    "ic": -0.1402,
+    "nw_t": -1.8356,
+    "p_null": 0.0,
+    "ic_h1": -0.2409,
+    "ic_h2": -0.0243
+   },
+   {
+    "asset": "FTSE",
+    "driver": "y30",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4941,
+    "ic": -0.1257,
+    "nw_t": -1.5141,
+    "p_null": 0.0045,
+    "ic_h1": -0.2166,
+    "ic_h2": -0.0224
+   },
+   {
+    "asset": "FTSE",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4941,
+    "ic": -0.1191,
+    "nw_t": -1.4509,
+    "p_null": 0.015,
+    "ic_h1": -0.1711,
+    "ic_h2": -0.0714
+   },
+   {
+    "asset": "DAX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4962,
+    "ic": -0.1122,
+    "nw_t": -0.984,
+    "p_null": 0.0265,
+    "ic_h1": -0.1011,
+    "ic_h2": -0.1283
+   },
+   {
+    "asset": "STOXX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4818,
+    "ic": -0.11,
+    "nw_t": -0.9106,
+    "p_null": 0.022,
+    "ic_h1": -0.0849,
+    "ic_h2": -0.1557
+   },
+   {
+    "asset": "SPX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4921,
+    "ic": -0.1074,
+    "nw_t": -0.8893,
+    "p_null": 0.033,
+    "ic_h1": -0.1178,
+    "ic_h2": -0.1114
+   },
+   {
+    "asset": "NDX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 21,
+    "n": 4921,
+    "ic": -0.1011,
+    "nw_t": -0.9785,
+    "p_null": 0.043,
+    "ic_h1": -0.1111,
+    "ic_h2": -0.1033
+   },
+   {
+    "asset": "STOXX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4834,
+    "ic": -0.0924,
+    "nw_t": -0.9254,
+    "p_null": 0.0,
+    "ic_h1": -0.0866,
+    "ic_h2": -0.1074
+   },
+   {
+    "asset": "STOXX",
+    "driver": "y10",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4834,
+    "ic": -0.0889,
+    "nw_t": -1.5981,
+    "p_null": 0.0,
+    "ic_h1": -0.1174,
+    "ic_h2": -0.0583
+   },
+   {
+    "asset": "DAX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4978,
+    "ic": -0.0861,
+    "nw_t": -0.8311,
+    "p_null": 0.0005,
+    "ic_h1": -0.0739,
+    "ic_h2": -0.1006
+   },
+   {
+    "asset": "SPX",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4937,
+    "ic": -0.0846,
+    "nw_t": -0.8553,
+    "p_null": 0.002,
+    "ic_h1": -0.0803,
+    "ic_h2": -0.0949
+   },
+   {
+    "asset": "DJI",
+    "driver": "y2",
+    "lookback": 21,
+    "horizon": 5,
+    "n": 4937,
+    "ic": -0.0837,
+    "nw_t": -0.7585,
+    "p_null": 0.0,
+    "ic_h1": -0.0973,
+    "ic_h2": -0.0761
+   },
+   {
+    "asset": "STOXX",
+    "driver": "y10",
+    "lookback": 5,
+    "horizon": 21,
+    "n": 4834,
+    "ic": -0.0831,
+    "nw_t": -1.6189,
+    "p_null": 0.0035,
+    "ic_h1": -0.1107,
+    "ic_h2": -0.0564
+   },
+   {
+    "asset": "IEF",
+    "driver": "slope",
+    "lookback": 5,
+    "horizon": 5,
+    "n": 4953,
+    "ic": 0.0816,
+    "nw_t": 2.0841,
+    "p_null": 0.001,
+    "ic_h1": 0.1003,
+    "ic_h2": 0.057
+   },
+   {
+    "asset": "STOXX",
+    "driver": "y2",
+    "lookback": 5,
+    "horizon": 21,
+    "n": 4834,
+    "ic": -0.0805,
+    "nw_t": -1.1144,
+    "p_null": 0.0055,
+    "ic_h1": -0.0611,
+    "ic_h2": -0.1117
+   }
+  ],
+  "fx_survivors": [
+   {
+    "asset": "USDJPY",
+    "driver": "y2",
+    "lookback": 1,
+    "horizon": 1,
+    "ic": -0.0301,
+    "nw_t": -1.2831,
+    "p_null": 0.031,
+    "ic_h1": -0.0245,
+    "ic_h2": -0.0366
+   },
+   {
+    "asset": "GBPUSD",
+    "driver": "slope",
+    "lookback": 1,
+    "horizon": 1,
+    "ic": 0.0304,
+    "nw_t": 0.95,
+    "p_null": 0.038,
+    "ic_h1": 0.0275,
+    "ic_h2": 0.0332
+   },
+   {
+    "asset": "GBPUSD",
+    "driver": "be10",
+    "lookback": 1,
+    "horizon": 1,
+    "ic": 0.0318,
+    "nw_t": 0.3918,
+    "p_null": 0.0255,
+    "ic_h1": 0.0249,
+    "ic_h2": 0.038
+   },
+   {
+    "asset": "GBPUSD",
+    "driver": "be10",
+    "lookback": 5,
+    "horizon": 5,
+    "ic": 0.0504,
+    "nw_t": 1.6633,
+    "p_null": 0.0435,
+    "ic_h1": 0.0709,
+    "ic_h2": 0.025
+   },
+   {
+    "asset": "AUDUSD",
+    "driver": "be10",
+    "lookback": 1,
+    "horizon": 5,
+    "ic": 0.0374,
+    "nw_t": 0.4087,
+    "p_null": 0.0135,
+    "ic_h1": 0.0443,
+    "ic_h2": 0.0258
+   },
+   {
+    "asset": "USDCAD",
+    "driver": "real10",
+    "lookback": 1,
+    "horizon": 5,
+    "ic": 0.0302,
+    "nw_t": 0.3163,
+    "p_null": 0.0285,
+    "ic_h1": 0.0226,
+    "ic_h2": 0.0377
+   },
+   {
+    "asset": "NZDUSD",
+    "driver": "be10",
+    "lookback": 1,
+    "horizon": 1,
+    "ic": 0.0372,
+    "nw_t": 1.0231,
+    "p_null": 0.0065,
+    "ic_h1": 0.0414,
+    "ic_h2": 0.03
+   },
+   {
+    "asset": "NZDUSD",
+    "driver": "be10",
+    "lookback": 1,
+    "horizon": 5,
+    "ic": 0.0314,
+    "nw_t": 0.2566,
+    "p_null": 0.0285,
+    "ic_h1": 0.0353,
+    "ic_h2": 0.0247
+   }
+  ]
+ }
+}

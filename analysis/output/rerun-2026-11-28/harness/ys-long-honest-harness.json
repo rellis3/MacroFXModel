@@ -1,0 +1,411 @@
+{
+ "id": "ys-long-honest-harness",
+ "ranAt": "2026-11-28T08:36:24.414Z",
+ "doc": "forge/YS_LONG_CONFIRM_PREREG.md",
+ "claim": "The US-vs-foreign 2-year yield spread, z-scored, mean-reverts, and FX follows it",
+ "domain": "macro",
+ "spec": {
+  "universe": [
+   "eurusd",
+   "usdjpy",
+   "usdcad",
+   "audusd",
+   "usdchf",
+   "gbpusd"
+  ],
+  "horizonDays": 20,
+  "rebalance": "1d",
+  "sample": {
+   "from": "2003-01-01",
+   "to": "2014-12-31",
+   "isEnd": "2004-01-01"
+  },
+  "primary": "pnl",
+  "tuned": true,
+  "cells": [
+   "long-honestUS-forlag45-2-126",
+   "long-origlags-2-126"
+  ],
+  "entryHourUtc": 22
+ },
+ "fixed": {
+  "volTarget": 0.1,
+  "volSpan": 60,
+  "maxLeverage": 3,
+  "entryHourUtc": 22,
+  "closeAsofHour": "22:00:00Z",
+  "nBoot": 1000,
+  "seed": 2654435769,
+  "fdrQ": 0.1,
+  "pboSplits": 16,
+  "minIsYears": 2,
+  "warmupDays": 400,
+  "meanBlockDays": 20,
+  "meanBlockSteps": 20
+ },
+ "costs": {
+  "rule": "half of the measured 22:00 UTC spread per unit turnover (spread_profile feature); indices charged the worst measured FX pair",
+  "entryHourUtc": 22,
+  "measured": {
+   "eurusd": {
+    "spreadPriceUnits": 0.000086,
+    "pips": 0.86
+   },
+   "usdjpy": {
+    "spreadPriceUnits": 0.0187,
+    "pips": 1.87
+   },
+   "usdcad": {
+    "spreadPriceUnits": 0.000211,
+    "pips": 2.11
+   },
+   "audusd": {
+    "spreadPriceUnits": 0.000149,
+    "pips": 1.49
+   },
+   "usdchf": {
+    "spreadPriceUnits": 0.000178,
+    "pips": 1.78
+   },
+   "gbpusd": {
+    "spreadPriceUnits": 0.000156,
+    "pips": 1.56
+   }
+  },
+  "unmeasured": [],
+  "worstFx": {
+   "inst": "usdchf",
+   "roundTripBp": 1.94
+  }
+ },
+ "walkForward": {
+  "applied": false,
+  "reason": "no fitted parameters (spec.fit absent)"
+ },
+ "dependence": {
+  "ok": true,
+  "n": 6,
+  "rows": 3122,
+  "pc1Share": 0.552,
+  "effN": 2.74,
+  "eigenvalues": [
+   3.315,
+   1.262,
+   0.522,
+   0.434,
+   0.311,
+   0.156
+  ]
+ },
+ "fdr": {
+  "q": 0.1,
+  "m": 2,
+  "rejected": 0,
+  "threshold": 0
+ },
+ "pbo": {
+  "ok": true,
+  "pbo": 0.1179,
+  "nCombos": 12870,
+  "splits": 16,
+  "cells": 2,
+  "periods": 3126,
+  "meanLogit": 0.53
+ },
+ "cells": [
+  {
+   "key": "long-honestUS-forlag45-2-126",
+   "params": {
+    "entry": 2,
+    "window": 126,
+    "usLeg": "y2m_usd",
+    "forLag": 45
+   },
+   "ic": {
+    "oos": {
+     "ok": true,
+     "n": 17061,
+     "nClusters": 2845,
+     "meanBlock": 20,
+     "nBoot": 1000,
+     "obs": 0.04231,
+     "se": 0.04597,
+     "ci95": [
+      -0.04424,
+      0.132
+     ],
+     "pValue": 0.3576,
+     "method": "moving-block bootstrap of date clusters; percentile interval; two-sided p vs 0"
+    },
+    "brickRowBlocks": {
+     "ic": 0.0423,
+     "pValue": 0.031,
+     "meanBlockRows": 20
+    },
+    "is": -0.1703,
+    "oosHalves": {
+     "firstHalf": 0.0526,
+     "secondHalf": 0.0248,
+     "splitAt": "2009-06-15"
+    },
+    "nRowsOos": 17061,
+    "nDatesOos": 2845
+   },
+   "pnl": {
+    "sharpeOos": 0.138,
+    "sharpeIs": -0.647,
+    "sharpeAll": 0.062,
+    "sharpeGrossOos": 0.158,
+    "meanDailyOos": 0.00002,
+    "meanDailyOosCi95": [
+     -0.00006,
+     0.00011
+    ],
+    "pValueOos": 0.6414,
+    "tradesOos": 255,
+    "winOos": 0.486,
+    "pfOos": 1.107,
+    "meanTradeOosPct": 0.1098,
+    "maxDrawdownOosPct": 12.81,
+    "perYearOosPct": {
+     "2004": 0.415,
+     "2005": 0.624,
+     "2006": -1.263,
+     "2007": 5.633,
+     "2008": 0.854,
+     "2009": -2.25,
+     "2010": 2.019,
+     "2011": -0.485,
+     "2012": -3.37,
+     "2013": -1.996,
+     "2014": 5.196
+    },
+    "yearsPositiveOos": "6/11",
+    "costDragAnnBp": 6.96,
+    "carryAnnBp": -1.75,
+    "turnoverPerYear": 9.76,
+    "skewOos": 0.142,
+    "kurtOos": 9.489,
+    "nDaysOos": 2865,
+    "decisions": 18747,
+    "nullSignals": 0
+   },
+   "legs": {
+    "eurusd": {
+     "trades": 50,
+     "tradesOos": 44,
+     "winOos": 0.5,
+     "pfOos": 1.504,
+     "sharpeOos": 0.333,
+     "meanTradeOosPct": 0.467,
+     "icOos": 0.0667
+    },
+    "usdjpy": {
+     "trades": 43,
+     "tradesOos": 39,
+     "winOos": 0.462,
+     "pfOos": 1.09,
+     "sharpeOos": 0.053,
+     "meanTradeOosPct": 0.1017,
+     "icOos": 0.0818
+    },
+    "usdcad": {
+     "trades": 47,
+     "tradesOos": 42,
+     "winOos": 0.476,
+     "pfOos": 1.122,
+     "sharpeOos": 0.071,
+     "meanTradeOosPct": 0.1189,
+     "icOos": -0.0413
+    },
+    "audusd": {
+     "trades": 48,
+     "tradesOos": 42,
+     "winOos": 0.476,
+     "pfOos": 0.786,
+     "sharpeOos": -0.074,
+     "meanTradeOosPct": -0.2042,
+     "icOos": 0.034
+    },
+    "usdchf": {
+     "trades": 48,
+     "tradesOos": 43,
+     "winOos": 0.512,
+     "pfOos": 1.544,
+     "sharpeOos": 0.35,
+     "meanTradeOosPct": 0.4732,
+     "icOos": 0.1053
+    },
+    "gbpusd": {
+     "trades": 48,
+     "tradesOos": 45,
+     "winOos": 0.489,
+     "pfOos": 0.77,
+     "sharpeOos": -0.213,
+     "meanTradeOosPct": -0.2954,
+     "icOos": -0.0053
+    }
+   },
+   "primary": {
+    "kind": "pnl",
+    "pValue": 0.6414,
+    "passesFdr": false
+   },
+   "dsr": {
+    "dsr": 0.457,
+    "sr0": 0.01073,
+    "z": -0.108,
+    "nTrials": 3,
+    "varTrialSr": 0.00015822189055988053
+   }
+  },
+  {
+   "key": "long-origlags-2-126",
+   "params": {
+    "entry": 2,
+    "window": 126,
+    "usLeg": "y2m_usd",
+    "usLag": 2,
+    "forLag": 45
+   },
+   "ic": {
+    "oos": {
+     "ok": true,
+     "n": 17061,
+     "nClusters": 2845,
+     "meanBlock": 20,
+     "nBoot": 1000,
+     "obs": 0.01263,
+     "se": 0.04562,
+     "ci95": [
+      -0.07674,
+      0.10684
+     ],
+     "pValue": 0.7552,
+     "method": "moving-block bootstrap of date clusters; percentile interval; two-sided p vs 0"
+    },
+    "brickRowBlocks": {
+     "ic": 0.0126,
+     "pValue": 0.5175,
+     "meanBlockRows": 20
+    },
+    "is": -0.1544,
+    "oosHalves": {
+     "firstHalf": -0.0076,
+     "secondHalf": 0.0351,
+     "splitAt": "2009-06-15"
+    },
+    "nRowsOos": 17061,
+    "nDatesOos": 2845
+   },
+   "pnl": {
+    "sharpeOos": 0.421,
+    "sharpeIs": 1.322,
+    "sharpeAll": 0.496,
+    "sharpeGrossOos": 0.441,
+    "meanDailyOos": 0.00006,
+    "meanDailyOosCi95": [
+     -0.00002,
+     0.00015
+    ],
+    "pValueOos": 0.1499,
+    "tradesOos": 277,
+    "winOos": 0.567,
+    "pfOos": 1.429,
+    "meanTradeOosPct": 0.3641,
+    "maxDrawdownOosPct": 8.63,
+    "perYearOosPct": {
+     "2004": 2.084,
+     "2005": 1.867,
+     "2006": -0.362,
+     "2007": 5.061,
+     "2008": -3.51,
+     "2009": 3.594,
+     "2010": 2.871,
+     "2011": -2.917,
+     "2012": -2.531,
+     "2013": 0.954,
+     "2014": 10.353
+    },
+    "yearsPositiveOos": "7/11",
+    "costDragAnnBp": 7.41,
+    "carryAnnBp": -1.6,
+    "turnoverPerYear": 10.38,
+    "skewOos": 0.176,
+    "kurtOos": 10.86,
+    "nDaysOos": 2865,
+    "decisions": 18747,
+    "nullSignals": 0
+   },
+   "legs": {
+    "eurusd": {
+     "trades": 53,
+     "tradesOos": 50,
+     "winOos": 0.54,
+     "pfOos": 1.344,
+     "sharpeOos": 0.215,
+     "meanTradeOosPct": 0.2959,
+     "icOos": 0.0005
+    },
+    "usdjpy": {
+     "trades": 51,
+     "tradesOos": 46,
+     "winOos": 0.674,
+     "pfOos": 2.419,
+     "sharpeOos": 0.578,
+     "meanTradeOosPct": 0.8588,
+     "icOos": 0.0543
+    },
+    "usdcad": {
+     "trades": 48,
+     "tradesOos": 44,
+     "winOos": 0.545,
+     "pfOos": 1.235,
+     "sharpeOos": 0.155,
+     "meanTradeOosPct": 0.2423,
+     "icOos": -0.0081
+    },
+    "audusd": {
+     "trades": 52,
+     "tradesOos": 45,
+     "winOos": 0.489,
+     "pfOos": 0.999,
+     "sharpeOos": 0.054,
+     "meanTradeOosPct": -0.0006,
+     "icOos": 0.0345
+    },
+    "usdchf": {
+     "trades": 48,
+     "tradesOos": 45,
+     "winOos": 0.578,
+     "pfOos": 1.83,
+     "sharpeOos": 0.403,
+     "meanTradeOosPct": 0.5655,
+     "icOos": 0.0301
+    },
+    "gbpusd": {
+     "trades": 51,
+     "tradesOos": 47,
+     "winOos": 0.574,
+     "pfOos": 1.308,
+     "sharpeOos": 0.153,
+     "meanTradeOosPct": 0.2231,
+     "icOos": -0.0522
+    }
+   },
+   "primary": {
+    "kind": "pnl",
+    "pValue": 0.1499,
+    "passesFdr": false
+   },
+   "dsr": {
+    "dsr": 0.801,
+    "sr0": 0.01073,
+    "z": 0.845,
+    "nTrials": 3,
+    "varTrialSr": 0.00015822189055988053
+   }
+  }
+ ],
+ "notes": []
+}

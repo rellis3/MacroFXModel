@@ -10,6 +10,7 @@ Generated 2026-11-28.
 
 | | n |
 |---|---|
+<<<<<<< HEAD
 | claims tested (validated + null + underpowered) | **651** |
 | validated | 201 |
 | null | 260 |
@@ -20,6 +21,18 @@ Generated 2026-11-28.
 **What the count says (Lesson 02 §05).** If none of the 651 claims were real, tests at the usual 5% size would still pass
 about **32.6** of them by luck. 201 passed, so most passes are unlikely to be luck alone, but
 **roughly 33 of the 201 could be**. Which ones cannot be told from the backtest.
+=======
+| claims tested (validated + null + underpowered) | **650** |
+| validated | 200 |
+| null | 259 |
+| underpowered | 191 |
+| context (base rates, descriptions: not counted as tests) | 87 |
+| pre-registrations with no banked verdict (below) | 91 |
+
+**What the count says (Lesson 02 §05).** If none of the 650 claims were real, tests at the usual 5% size would still pass
+about **32.5** of them by luck. 200 passed, so most passes are unlikely to be luck alone, but
+**roughly 33 of the 200 could be**. Which ones cannot be told from the backtest.
+>>>>>>> origin/wf2/rerun-b
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -34,7 +47,6 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-08-20 | cb-tone-direction | events | null | MD files/CB_SENTIMENT_PRICE_TEST.md |
 | 2026-08-20 | post-fomc-usd-drift | events | validated | MD files/POST_FOMC_DRIFT_TEST.md |
 | 2026-08-22 | cot-positioning-factor | positioning | null | MD files/COT_POSITIONING_FACTOR_TEST.md |
-| 2026-08-23 | yields-to-fx-direction | macro | null | memory: project_yield_asset_coupling |
 | 2026-08-28 | swing-structure-vwap | price | context | MD files/VMC_TRIPLE_TF_FINDINGS.md · memory project_vmc_research_verdict |
 | 2026-08-30 | reversal-hour | price | validated | memory project_reversal_hour_window |
 | 2026-09-01 | vwap-extension-fade | price | null | MD files/GOLD_VWAP_FIXED_SIGMA_FINDINGS.md · memory project_vwap_extension_phase2 |
@@ -100,8 +112,6 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-23 | iv-regime-fade-follow | volatility | null | forge/IV_REGIME_FADE_FOLLOW_PREREG.md |
 | 2026-09-23 | iv-sizing-filter | volatility | null | forge/IV_SIZING_FILTER_PREREG.md |
 | 2026-09-23 | mv-creditstack-range | macro | context | MD files/OUTCOME_LOOP.md |
-| 2026-09-23 | mv-dislocation-forward | macro | null | MD files/OUTCOME_LOOP.md |
-| 2026-09-23 | mv-dispersion-range | volatility | validated | MD files/OUTCOME_LOOP.md |
 | 2026-09-23 | mv-extreme-forward | price | null | MD files/OUTCOME_LOOP.md |
 | 2026-09-23 | mv-vixterm-range | volatility | validated | MD files/OUTCOME_LOOP.md |
 | 2026-09-25 | dr-copper | macro | null | MD files/DR_COPPER_PREREG.md |
@@ -317,7 +327,6 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-31 | direction-bar | macro | context | forge/DIRECTION_BAR_PREREG.md |
 | 2026-10-31 | hedge-flow | volatility | null | oi_research_book/HEDGE_FLOW_PREREG.md |
 | 2026-10-31 | hedge-flow-side | volatility | underpowered | oi_research_book/HEDGE_FLOW_PREREG.md |
-| 2026-10-31 | residual-pca-cot | positioning | underpowered | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
 | 2026-10-31 | residual-pca-idx6 | price | underpowered | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
 | 2026-10-31 | residual-pca-monthend | events | underpowered | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
 | 2026-10-31 | residual-pca-news | events | underpowered | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
@@ -764,7 +773,14 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-28 | g10-2y-gap-l20h5 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
 | 2026-11-28 | g10-2y-gap-l5h20 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
 | 2026-11-28 | g10-2y-gap-l5h5 | macro | underpowered | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
+<<<<<<< HEAD
 | 2026-11-28 | gold-line-vwap-stretch-filter | volatility | underpowered | forge/GOLD_LINE_VWAP_STRETCH_FILTER_PREREG.md |
+=======
+| 2026-11-28 | mv-dislocation-forward | macro | underpowered | MD files/OUTCOME_LOOP.md |
+| 2026-11-28 | mv-dispersion-range | volatility | underpowered | MD files/OUTCOME_LOOP.md |
+| 2026-11-28 | residual-pca-cot | positioning | underpowered | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
+| 2026-11-28 | yields-to-fx-direction | macro | null | analysis/output/rerun-2026-11-28/RESULTS.md |
+>>>>>>> origin/wf2/rerun-b
 
 ## Pre-registered, but no banked verdict
 

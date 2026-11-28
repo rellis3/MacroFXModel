@@ -235,3 +235,13 @@ and the separate `vix-inversion` study (86 inversions) is untouched by this; thi
 reproduces it. Not addressed: the audit's "matched controls" note (a design question). The mv-dispersion-range,
 mv-creditstack-range, mv-dislocation-forward and mv-extreme-forward entries are not re-banked on this branch; their
 numbers are in the table for whoever closes those rows. Direction null everywhere, as pre-registered.
+## Re-run 2026-11-28 (event-bootstrap fix, DATA_SPEC §5 #14)
+
+Same prereg, same constants, seed 20260923. The event arm is now resampled per firing (`analysis/lib/eventBootstrap.mjs`)
+and the bundle is cut at the lockbox. Full numbers are in `analysis/output/rerun-2026-11-28/RESULTS.md`.
+
+- `dispersion`: +0.48 [+0.007, +1.02] SPX, +0.53 [-0.07, +1.06] NQ, on 8 firings. Neither half clears. The size is the
+  same as before but the intervals roughly tripled. **validated → underpowered.**
+- `dislocation`: +0.12 [-0.26, +0.59]. The halves still flip. **null → underpowered.**
+- `vixterm` (not re-banked here): SPX +0.34 [+0.001, +0.73], NQ null, neither half clears.
+- The banked "9-17 firings" intervals above came from the faulty resample and should not be quoted.
