@@ -392,7 +392,7 @@ import { buildDocument as _boeBuildDoc, mergeHistory as _boeMergeHist, snapOnOrB
 import { readEntry as _zipReadEntry, readRemoteEntry as _zipReadRemote } from './js/zipRead.js';
 import { releaseHistory as _relHistory } from './js/releaseHistory.js';   // the Calendar drill's past prints of one release (route /api/release-history)
 import { SHARED_KV as _SR_KV, SHARED_KINDS as _SR_KINDS, dayKey as _srDayKey, rollStore as _srRoll, readToday as _srReadToday, readLatest as _srReadLatest, putRead as _srPutRead, countCall as _srCountCall, callsToday as _srCallsToday, decideRead as _srDecide, createSingleFlight as _srCreateSingleFlight, normInst as _srNormInst, CHAIN_WINDOWS as _SR_CHAIN_WINDOWS } from './js/deskSharedReads.js';
-import { CB_BANKS as _CB_BOARD_BANKS, CB_HISTORY as _CB_BOARD_HISTORY, pastDates as _cbbPastDates, shapeBank as _cbbShape, boardPayload as _cbbPayload } from './js/terminal/cbBoardCore.js';
+import { CB_BANKS as _CB_BOARD_BANKS, CB_HISTORY as _CB_BOARD_HISTORY, pastDates as _cbbPastDates, shapeBank as _cbbShape, boardPayload as _cbbPayload, stanceOf as _cbbStance } from './js/terminal/cbBoardCore.js';
 import { buildRatesBoard as _buildRatesBoard } from './js/terminal/ratesBoardCore.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
@@ -9502,7 +9502,7 @@ app.get('/api/cog-chart/nq-rates', async (req, res) => {
       const r4 = x => (x == null || !Number.isFinite(x) ? null : +x.toFixed(4));
       const tail = rows.slice(-keep).map(o => ({ date: o.date, nq: o.nq, b2y: r4(10 * o.b2y), bslope: r4(10 * o.bslope), r2: r4(o.r2), z: r4(o.z), z20: r4(o.z20), implied20: r4(o.implied20), actual20: r4(o.actual20) }));
       _nqr.out.set(key, { ok: true, window: W, units: { b2y: '% NQ per +10 bp 2y', bslope: '% NQ per +10 bp steeper 10y-2y', implied20: '%', actual20: '%' }, latest: tail.at(-1), read: _nqrDescribe(rows.at(-1)), rows: tail,
-        source: `FRED ${fid}, DGS2, DGS10 (yields ~15:30 ET, US close 16:00 ET)`, note: 'Exploratory context, not a signal: the residual does not persist and the catch-up trade is banked NULL (rates_residual S1).', at: new Date().toISOString() });
+        source: `FRED ${fid}, DGS2, DGS10 (yields ~15:30 ET, US close 16:00 ET)`, note: 'Exploratory context, not a signal: the residual does not persist and the catch-up trade is banked NULL in the Evidence Book.', at: new Date().toISOString() });
     }
     res.set('Cache-Control', 'public, max-age=900'); res.json(_nqr.out.get(key));
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -15026,7 +15026,8 @@ async function _loadCbSentiment() {
       const raw = await kv.get(`${prefix}${latest.date}`);
       if (!raw) return;
       const p = JSON.parse(raw);
-      if (p.analysis?.hawkishScore != null) out[ccy] = { score: p.analysis.hawkishScore, meetingDate: latest.date, regime: p.analysis.regime };
+      // regime = the one threshold rule on the score (js/terminal/cbBoardCore.js stanceOf, the bias engine's 0.5); the reader's own word rides as aiRegime
+      if (p.analysis?.hawkishScore != null) out[ccy] = { score: p.analysis.hawkishScore, meetingDate: latest.date, regime: _cbbStance(p.analysis.hawkishScore), aiRegime: p.analysis.regime ?? null };
     } catch { /* omitted — currency scores on its remaining dims */ }
   }));
   return out;
@@ -22340,8 +22341,8 @@ async function computeRiskFlags() {
 
   const flags = [
     { key: 'vix_level', label: 'VIX elevated',
-      on: vix != null ? vix >= 25 : null, value: vix,
-      detail: vix != null ? `VIX ${vix.toFixed(1)} (flag ≥25)` : 'VIX unavailable' },
+      on: vix != null ? vix >= 25 : null, value: vix, asOf: fred.vix?.asOf ?? null,   // dated: other cards show a later Cboe close, so the reader can tell which day each number is
+      detail: vix != null ? `VIX ${vix.toFixed(1)}${fred.vix?.asOf ? ` (FRED close ${fred.vix.asOf})` : ''} (flag ≥25)` : 'VIX unavailable' },
     { key: 'vix_term', label: 'VIX curve backwardated',
       on: vt ? vt.ratio >= 1.0 : null,
       value: vt ? +vt.ratio.toFixed(3) : null, asOf: vt?.date ?? null, dayN: vt?.dayN ?? null,
@@ -22350,8 +22351,8 @@ async function computeRiskFlags() {
         : 'VIX3M (VXVCLS) unavailable' },
     { key: 'hy_speed', label: 'Credit widening fast',
       on: hyChg != null ? hyChg >= 0.25 : null,
-      value: hyChg != null ? +(hyChg * 100).toFixed(0) : null,
-      detail: hyChg != null ? `HY OAS ${hyChg >= 0 ? '+' : ''}${(hyChg * 100).toFixed(0)}bp / 5 obs (flag ≥+25bp)` : 'HY OAS history unavailable' },
+      value: hyChg != null ? +(hyChg * 100).toFixed(0) : null, asOf: Array.isArray(hyHist) ? hyHist.at(-1)?.date ?? null : null,
+      detail: hyChg != null ? `HY OAS ${hyChg >= 0 ? '+' : ''}${(hyChg * 100).toFixed(0)}bp over the last 5 daily prints${Array.isArray(hyHist) && hyHist.at(-1)?.date ? ` to ${hyHist.at(-1).date}` : ''} (flag ≥+25bp)` : 'HY OAS history unavailable' },
     { key: 'jpy_bid', label: 'JPY safe-haven bid',
       on: jpyChg != null ? jpyChg <= -1.5 : null,
       value: jpyChg != null ? +jpyChg.toFixed(2) : null,
@@ -30893,7 +30894,7 @@ async function _bev2Snapshot(issueMs) {
   const step = async (name, fn) => { try { await fn(); status[name] = status[name] ?? 'ok'; } catch (e) { status[name] = `error: ${e.message}`; } };
   const tail = (xs, n = 320) => (xs ?? []).filter(p => p && p.date < issueDate && Number.isFinite(p.value)).sort((a, b) => (a.date < b.date ? -1 : 1)).slice(-n);
   await Promise.all([
-    step('policyRates', async () => { const pr = await _policyRatesNow(); extra.policyRates = { fetchedAt: pr.fetchedAt ?? new Date().toISOString(), rates: Object.fromEntries(Object.entries(pr.rates ?? {}).map(([c, v]) => [c, { rate: v.rate, asOf: v.asOf ?? null, source: v.source ?? null }])) }; }),
+    step('policyRates', async () => { const pr = await _policyRatesNow(); extra.policyRates = { fetchedAt: pr.fetchedAt ?? new Date().toISOString(), rates: Object.fromEntries(Object.entries(pr.rates ?? {}).map(([c, v]) => [c, { rate: v.upper ?? v.rate, asOf: v.asOf ?? null, source: v.source ?? null }])) }; }),   // V2 is a registered, forward-scored engine: it keeps the Fed's upper bound it was specified on (the policy-rate table moved to the midpoint 2026-11-27); changing its input is an owner decision
     step('futures', async () => {
       const raw = await kv.get('cb_rate_futures_v1'); const p = raw ? JSON.parse(raw) : null, payload = p?.data ?? p;
       if (!payload?.banks) { status.futures = 'no futures pull'; return; }

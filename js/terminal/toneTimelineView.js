@@ -105,7 +105,11 @@ export function stripHtml(b, { beige = null, compact = false } = {}) {
   if (!b) return '';
   const tl = b.timeline ?? [];
   const svg = ribbonSvg(tl);
-  const cov = b.coverage ? `${b.coverage.read} of the last ${b.coverage.of} meetings have a stored read` : '';
+  const unit = b.id === 'beige' || b.beige ? 'releases' : 'meetings';   // the Beige Book is a report, not a meeting
+  const cov = b.coverage ? `${b.coverage.read} of the last ${b.coverage.of} ${unit} have a stored read` : '';
   if (!svg && b.status !== 'headline_only') return '';
-  return `<div class="tt-wrap">${svg ? `<div class="tt-head"><span class="lbl">Tone, last ${tl.length} meetings</span><span class="muted tt-cov">${esc(cov)}</span></div>${svg}` : ''}${frozenHtml(b)}${phrasesHtml(b)}${compact ? '' : themesHtml(b)}${beige ? beigeChipHtml(beige) : ''}<p class="tt-ctx">Context for tone and timing, not a direction signal: tone is priced in within 30 minutes (cb-tone-direction, tested, no next-day lean).</p></div>`;
+  const hist = `${svg ? `<div class="tt-head"><span class="lbl">Tone, last ${tl.length} ${unit}</span><span class="muted tt-cov">${esc(cov)}</span></div>${svg}` : ''}${phrasesHtml(b)}${compact ? '' : themesHtml(b)}`;
+  // the board (not the Currency modal) folds the history and the wording swaps away: four screens of statement cards were mostly this part
+  const fold = !compact && hist ? `<details class="tt-more"><summary class="muted" style="cursor:pointer;font-size:12px">Tone history, wording and weight changes</summary>${hist}</details>` : hist;
+  return `<div class="tt-wrap">${fold}${frozenHtml(b)}${beige ? beigeChipHtml(beige) : ''}<p class="tt-ctx">Context for tone and timing, not a direction signal: tone is priced in within 30 minutes (cb-tone-direction, tested, no next-day lean).</p></div>`;
 }

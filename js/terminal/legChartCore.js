@@ -11,7 +11,7 @@ import { TF_SEC, legOnChart, carryForward, legRaw, spreadRaw, changesOf } from '
 export const TFS = ['5m', '15m', '1h', '4h'];
 /** Lines on offer. kind 'spread' = EUR leg - USD leg (rates, bp, the C.OG indicator's logic); 'leg' = one leg. rolling names follow cog-chart.html. */
 export const PRESETS = [
-  { id: 'cog', label: 'C.OG line (SOFR minus Euribor, bp)', kind: 'spread', eur: 'I2', usd: 'SR3U6', asRate: true, invert: true, inBps: true },
+  { id: 'cog', label: 'SOFR minus Euribor futures spread (bp)', kind: 'spread', eur: 'I2', usd: 'SR3U6', asRate: true, invert: true, inBps: true },
   { id: 'us2y', label: 'US 2y yield', kind: 'leg', leg: 'Y_US2', asRate: false, invert: false, inBps: false },
   { id: 'us10y', label: 'US 10y yield', kind: 'leg', leg: 'Y_US10', asRate: false, invert: false, inBps: false },
   { id: 'us5y', label: 'US 5y yield', kind: 'leg', leg: 'Y_US5', asRate: false, invert: false, inBps: false },
@@ -22,7 +22,8 @@ export const PRESETS = [
   { id: 'de10', label: 'German 10y Bund yield', kind: 'leg', leg: 'Y_DE10', asRate: false, invert: false, inBps: false },
   { id: 'bundust', label: 'Bund minus UST 10y (bp)', kind: 'spread', eur: 'Y_DE10', usd: 'Y_US10', asRate: false, invert: false, inBps: true },
 ];
-export const DEFAULT_STATE = { asset: 'NAS100', tf: '15m', overlays: ['us2y'], active: 'us2y', maxLag: 48, win: 96 };
+// a macro tab opens on the main FX pair at an hourly view, not on Nasdaq 15m (owner review 2026-11-27); a saved choice still wins
+export const DEFAULT_STATE = { asset: 'EURUSD', tf: '1h', overlays: ['us2y'], active: 'us2y', maxLag: 48, win: 96 };
 
 /** One leg's prices on the chart's times (5m/15m legs; 1h/4h use the h1 history when held). Gaps carried forward like the indicator's fixnan; the leg's data end is respected. */
 export function legPrices(L, times, step, { src = 'close', carry = true } = {}) {
