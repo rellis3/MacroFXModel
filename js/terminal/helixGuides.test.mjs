@@ -52,7 +52,10 @@ test('description only: no guide gives a trade call or advice', () => {
 test('guideText reads as one paragraph; guideHtml escapes and links the evidence and the lesson', () => {
   const g = { id: 'x', kind: 'view', title: 'T<1>', shows: 'Shows a & b.', read: ['One.', 'Two.'], unusual: 'U.', notTell: 'Not this.', evidence: ['vix-inversion'], lesson: 'garch-volatility.html' };
   assert.equal(guideText(g), 'T<1>. Shows a & b. How to read it. One. Two. What is unusual. U. What it does not tell you. Not this.');
+  assert.ok(!guideHtml(g, esc).includes('href="/evidence.html'), 'a viewer sees the Evidence Book id as text, not a link to the main site');
+  globalThis.deskAccessState = { role: 'owner' };
   const h = guideHtml(g, esc);
+  delete globalThis.deskAccessState;
   assert.ok(h.includes('T&lt;1&gt;') && h.includes('a &amp; b') && h.includes('/evidence.html#ev-vix-inversion') && h.includes('/theory-lab/lessons/garch-volatility.html'));
   assert.ok(guideHtml(null, esc).includes('No guide'));
   assert.equal(guideText(null), '');

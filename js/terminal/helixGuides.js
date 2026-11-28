@@ -2,6 +2,7 @@
 // shapes), what counts as unusual on it, what it does NOT tell you (with the Evidence Book verdict ids from js/deskEvidence.js where one applies) and a related Theory Lab
 // lesson (theory-lab/lessons/<file>). Pure data plus small text helpers, no fetch and no model call: the HUD's EXPLAIN button and the ? help show it, and the existing voice can read it.
 // DESCRIPTION ONLY: nothing here is a forecast or a trade. Tested in helixGuides.test.mjs (every registered view and every nav item has a guide; every evidence id and lesson exists).
+import { ownerLink } from './links.js';        // a viewer never sees a link to the main site (links.test.mjs guard)
 export const HELIX_GUIDES = [
   {
     id: 'candles', kind: 'view', title: 'MARKET BOARD',
@@ -580,7 +581,7 @@ export function guideText(g) {
 export function guideHtml(g, esc, evidenceWord = id => id) {
   if (!g) return '<p>No guide has been written for this picture yet.</p>';
   const li = (g.read || []).map(x => '<li>' + esc(x) + '</li>').join('');
-  const ev = (g.evidence || []).length ? '<p class="jv-sub">EVIDENCE BOOK: ' + g.evidence.map(id => '<a href="/evidence.html#ev-' + esc(id) + '" target="_blank" rel="noopener">' + esc(evidenceWord(id)) + '</a>').join(' · ') + '</p>' : '';
+  const ev = (g.evidence || []).length ? '<p class="jv-sub">EVIDENCE BOOK: ' + g.evidence.map(id => ownerLink('/evidence.html#ev-' + id, esc(evidenceWord(id)), { target: '_blank' })).join(' · ') + '</p>' : '';
   const ls = g.lesson ? '<p class="jv-sub">THEORY LAB: <a href="' + esc(lessonHref(g)) + '" target="_blank" rel="noopener">' + esc(g.lesson.replace(/\.html$/, '').replace(/-/g, ' ')) + '</a></p>' : '';
   return '<h3>EXPLAIN · ' + esc(g.title) + '</h3><p>' + esc(g.shows) + '</p><h3>HOW TO READ IT</h3><ul>' + li + '</ul>'
     + (g.unusual ? '<h3>WHAT IS UNUSUAL</h3><p>' + esc(g.unusual) + '</p>' : '')
