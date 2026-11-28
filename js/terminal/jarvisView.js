@@ -452,16 +452,16 @@ export async function openJarvis(win = window, opts = {}) {
       p.innerHTML = `<h3>ALERTS · ONE INBOX</h3><p>Helix checks the live chain every two minutes while this tab is open, and the server's memory every ten; the server watcher keeps going with the tab shut and sends to your phone. Both use the same rules: one alert per event per six hours, at most twelve said aloud a day, and nothing aloud in quiet hours (it is still listed). It is awareness, never a trade.</p>
 <div class="jv-row"><button type="button" id="${ID}-wt" aria-pressed="${st.watch}">WATCHING ${st.watch ? 'ON' : 'OFF'}</button><button type="button" id="${ID}-qh" aria-pressed="${q}" title="Quiet hours: 22:00 to 07:00 London">QUIET HOURS ${q ? 'ON' : 'OFF'}</button><button type="button" id="${ID}-nt">DESKTOP NOTIFICATIONS</button><button type="button" id="${ID}-ws">WHILE YOU SLEPT</button></div><div id="${ID}-wsd"></div><div id="${ID}-inbox"><p class="jv-sub">Reading the server watcher and the desk alerts…</p></div>`;
       const box = p.querySelector(`#${ID}-inbox`), when = ms => new Date(ms).toLocaleString('en-GB', { timeZone: 'Europe/London', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-      const SRC = { tab: 'THIS TAB', phone: 'PHONE', server: 'SERVER', desk: 'DESK RULE' };
-      const paint = (w, d) => {
+      const SRC = { tab: 'THIS TAB', phone: 'PHONE', server: 'SERVER', desk: 'DESK RULE', qlike: 'QLIKE LEVEL' };
+      const paint = (w, d, ql) => {
         if (my !== R.alerts.n || st.mod !== 'alerts' || !box.isConnected) return;
-        const rows = mergeInbox({ tab: st.alerts, server: w?.lastAlerts ?? [], desk: d?.rules ?? [] });
+        const rows = mergeInbox({ tab: st.alerts, server: w?.lastAlerts ?? [], desk: d?.rules ?? [], qlike: ql?.log ?? [] });
         const hm = w?.lastCheck ? new Date(w.lastCheck).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) : null;
         box.innerHTML = `<p class="jv-sub">${w?.ok ? `Server watcher: last check ${esc(hm ?? 'not yet')}${w.enabled ? '' : ' (switched off)'}` : 'Server watcher: not answering.'} · desk rules: ${d?.ok ? `${(d.rules ?? []).length} set` : 'not answering'}</p>`
           + (rows.length ? rows.map(a => `<p><span class="jv-k ${a.level === 'warn' ? 'jv-broke' : 'jv-hold'}">${esc(when(a.at))}</span><span class="jv-k">${SRC[a.src] ?? a.src}</span>${esc(a.text)}</p>`).join('') : '<p>Nothing yet.</p>');
       };
       paint(null, null);
-      Promise.all([jf('/api/jarvis/watch').catch(() => null), jf('/api/desk-alert-rules').catch(() => null)]).then(([w, d]) => { st.inboxServer = w; paint(w, d); });
+      Promise.all([jf('/api/jarvis/watch').catch(() => null), jf('/api/desk-alert-rules').catch(() => null), jf('/api/qlike-alerts?n=20').catch(() => null)]).then(([w, d, ql]) => { st.inboxServer = w; paint(w, d, ql); });
       p.querySelector(`#${ID}-wt`).onclick = () => { setWatch(!st.watch); R.alerts(); };
       p.querySelector(`#${ID}-qh`).onclick = () => { st.quiet = !st.quiet; lsPut({ quiet: st.quiet }); R.alerts(); };
       p.querySelector(`#${ID}-nt`).onclick = async () => { try { const r = await win.Notification?.requestPermission?.(); say(r === 'granted' ? 'Desktop notifications are on.' : 'Notifications were not allowed.', true); } catch (e) { /* unsupported */ } };

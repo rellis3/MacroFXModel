@@ -1,6 +1,6 @@
 // node js/terminal/alertsView.test.mjs: the alerts form offers only choices the rules accept (the panel's DOM glue is not covered: see the report).
 import assert from 'node:assert/strict';
-import { fieldHtml } from './alertsView.js';
+import { fieldHtml, qlikeHtml } from './alertsView.js';
 import { KINDS, KIND_IDS, FEEDS, LIVE_INDICES, makeRule } from '../deskAlertRulesCore.js';
 import { INSTRUMENTS } from '../replayCore.js';
 let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
@@ -18,4 +18,9 @@ ok(!fieldHtml('range_used', ['market', 'text', '"><script>']).includes('<script>
 import fs from 'node:fs';
 const src = fs.readFileSync(new URL('./alertsView.js', import.meta.url), 'utf8');
 ok(/add: async b => \{ if \(!canEdit\(\)\)/.test(src), 'deskAlerts.add checks canEdit() first');
+// the automatic QLIKE level alerts list: nothing when the route is down, rows escaped, held rows say why, the rules and the evidence note shown
+ok(qlikeHtml(null) === '' && qlikeHtml({ ok: false }) === '', 'no QLIKE list without the route');
+{ const h = qlikeHtml({ ok: true, log: [{ market: 'EURUSD', text: 'EURUSD reached its upper QLIKE level (1.09120) <x>', send: false, held: 'quiet hours', at: '2026-11-30T06:00:00Z' }], rules: { lines: ['oh_p75'], markets: ['EURUSD'], once: 'once per level per session', quiet: '22:00-07:00 London', dailyCap: 20 }, sentToday: 0, note: 'not a signal (level-touch)' });
+  ok(h.includes('QLIKE level alerts') && h.includes('&lt;x&gt;') && h.includes('quiet hours') && h.includes('level-touch') && h.includes('at most 20 a day'), 'QLIKE rows, rules and note'); }
+ok(qlikeHtml({ ok: true, log: [] }).includes('No QLIKE level reached'), 'an empty QLIKE log says so');
 console.log(`alertsView: ${n} checks OK`);
