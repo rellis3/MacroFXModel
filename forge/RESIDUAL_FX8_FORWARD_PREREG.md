@@ -130,4 +130,20 @@ only interim decisions are R1 (any day) and R2 (once, at 12 months). This is tri
 
 ## Amendments
 
+### A1 — 2026-11-28 — PRE-RESULTS
+**Where the recorder runs, and which OANDA host.** The laptop task (run_record.bat, Task Scheduler) was never set up,
+so no forward row was recorded after the 2026-11-12 setup push. No forward P&L has been computed or read. From
+2026-11-28 the same `scripts/residual-fx8-forward/record.py` runs nightly on Railway (server.js `_rfx8Tick`, service
+`residualFx8Forward`, 22:40 London with a 23:40 retry). Nothing in §3 changes: same frozen model, the same `--check`
+reproduction gate before anything is recorded, same costs and financing rule, same kill rules and dates.
+Operational differences, fixed now:
+- **Storage:** record.csv, financing_log.csv and discrepancies.log are kept in KV between runs
+  (`residual_fx8_forward_record_csv_v1`, `..._finlog_csv_v1`, `..._disc_v1`), restored before and saved after each
+  run; a failed KV read aborts the run. The hash chain is unchanged.
+- **OANDA host:** the server's host (`_oandaBaseMe`: live unless OANDA_ENV=practice) instead of the practice host.
+  Candles were checked identical to the panel; financing rates are those of the server's account.
+- **Missed nights 2026-11-13 → the first Railway run:** caught up from the candles, as §3 already allows. No financing
+  rate was logged on those nights, so they use the first logged rates and are flagged `fin_stale`. They are part of the
+  record; F1/F2 are reported with and without them at the judgement date (descriptive split, not a new test).
+
 ## RESULTS
