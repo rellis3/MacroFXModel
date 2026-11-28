@@ -21,7 +21,7 @@ import json
 import re
 import sys
 from datetime import date, datetime, timedelta, timezone
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from urllib.parse import parse_qs, urlparse
 
 HERE = Path(__file__).resolve().parent
@@ -80,7 +80,7 @@ def load_metas(out_dir: Path) -> list[dict]:
         try:
             m = json.loads(f.read_text(encoding='utf-8'))
             if m.get('title') and m.get('part') and not f.parent.name.endswith('-dry'):
-                metas.append({'part': m['part'], 'title': str(m['title']), 'seconds': m.get('seconds'), 'mp4': Path(str(m.get('mp4', ''))).name})
+                metas.append({'part': m['part'], 'title': str(m['title']), 'seconds': m.get('seconds'), 'mp4': PureWindowsPath(str(m.get('mp4', ''))).name})   # the recorder writes Windows paths; PureWindowsPath splits on \ and / on any OS (Path does not on Linux CI)
         except (OSError, ValueError):
             continue
     return metas
