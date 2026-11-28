@@ -56,6 +56,7 @@ import { pineForCard, oandaOf } from '../deskBookPine.js';
 import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
 import * as RBV from './ratesBoardView.js';
+import * as RYV from './realYieldsView.js';   // the real-yield layer beside the nominal boards (/api/real-yields)
 import * as FYV from './fedPathYieldsView.js';
 import * as BOEV from './boePathView.js';
 import * as MacroSubs from './macroSubtabs.js';
@@ -975,6 +976,8 @@ globalThis.llGridHtml = LLV.gridHtml;
 // the Macro tab's Rates & policy board (desk-terminal.html enrichMacro): the curve, its slopes, the priced Fed path beside them
 globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp, gy, { esc, spk, sgn }); } catch (e) { console.warn('rates board', e); return ''; } };
 // ...and the Fed path against the yields (js/fedPathYieldsCore.js): the priced path, the 2Y / 2s10s / 10Y and the Atlanta window odds, same dates
+// the real-yield layer (js/terminal/realYieldsView.js): TIPS, breakevens and the AU indexed bond beside the nominal boards, behind a toggle
+globalThis.realYieldsHtml = ry => { try { return RYV.boardHtml(ry); } catch (e) { console.warn('real yields', e); return ''; } };
 globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
 globalThis.macroMoreBoard = (key, E, extra) => macroMoreBoard(key, E, extra);
 globalThis.macroSubs = MacroSubs;

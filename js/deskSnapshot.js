@@ -210,6 +210,7 @@ export const FULL_EXCLUDED = [
   { path: 'desk-run', why: 'about 275 KB; the morning book is already kept for good, one key a day (desk_run_<date>); CORE carries its ratings, convictions and exposure' },
   // Helix data routes (js/helixRoutes.js, 2026-11-27): each is rebuilt from R2 records or OANDA bars that are already stored, so a daily copy would repeat them
   // desk layers (2026-11-28): QLIKE level alerts and the real-yield layer
+  { path: 'real-yields', why: 'rebuilt hourly from the FRED chapter series (DFII5/DFII10/T5YIE/T10YIE/DGS5/DGS10) and the R2 archive series g10_yields AU_10Y / AU_10Y_REAL, which are the permanent record' },
   { path: 'qlike-alerts', why: 'the alert log is itself kept in KV (qlike_alerts_v1, capped) and every level it reports is on the stored QLIKE board (R2 qlike-lines/cfd/<session>.json)' },
   { path: 'real-yields', why: 'rebuilt on request from FRED (the /api/chapters series DFII5, DFII10, T5YIE, T10YIE, DGS5, DGS10) and the R2 archive series g10_yields/AU_10Y and AU_10Y_REAL, which are themselves the permanent record' },
   { path: 'g10-rates', why: 'rebuilt on request from the R2 archive series (archive/series/g10_yields, archive/series/fred), which are themselves the permanent record' },

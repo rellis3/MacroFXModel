@@ -133,6 +133,7 @@ import { fetchCiStatus, githubGetter } from './js/ciStatusCore.js';       // GET
 import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the Desk Terminal's newer Macro boards (credit & liquidity, curve, regime, releases, strength, vol)
 import { mountLadderV2Shadow } from './js/ladderV2ShadowRoutes.js';   // ladder-v2 shadow forecast + exhaustion exports (v3 page)
 import { mountQlikeAlerts as _mountQlikeAlerts } from './js/qlikeAlertRoutes.js';   // QLIKE level alerts (GET /api/qlike-alerts, service qlikeAlerts, tgMaster.qlikeLevels)
+import { mountRealYields as _mountRealYields } from './js/realYieldsRoutes.js';   // the real-yield layer beside the nominal curve (GET /api/real-yields)
 import { mountFuturesBars } from './js/futuresBarsRoutes.js';   // stored NT8 futures 1-min bars for the reversion page (R2 futures-bars/v1)
 import { mountReplay as _mountReplay } from './js/replayRoutes.js';                  // the Desk Terminal REPLAY (time machine, stage 1): a session as minutes, the option levels as known then, strength every 15 min (/api/replay/*)
 import { mountGhostWalk as _mountGhostWalk } from './js/ghostWalkRoutes.js';       // the ghost walk (preview): one market's days in units of the forecast median range, the OI levels in force, touches against a mirrored placebo (/api/replay/ghosts)
@@ -23081,6 +23082,9 @@ app.get('/api/chapters', async (_req, res) => {
     res.json({ ok: true, ..._chapters.data, at: new Date(_chapters.at).toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// GET /api/real-yields: the real-yield layer BESIDE the nominal curve (js/realYields.js, js/realYieldsRoutes.js; desk layers 2026-11-28).
+// Reads the chapter series above (unchanged) and the R2 archive's AU 10y nominal and indexed yields. The nominal calc is not touched.
+_mountRealYields(app, { chapters: async () => { if (Date.now() - _chapters.at > 12 * 3600_000 || !_chapters.data) await _refreshChapters(); return _chapters.data?.series ?? null; }, r2GetJSON: _r2GetJSON, r2Ok: () => _r2Ok() });
 
 // ── /api/drill-question — one reading question, from today's real board ─────
 // The drill exists and is the right shape: seven RECOGNITION skills, each generated
