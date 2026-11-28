@@ -523,6 +523,45 @@ export const HELIX_GUIDES = [
     lesson: 'research-pipeline-hypothesis-to-backtest.html',
   },
   {
+    id: 'skew', kind: 'view', title: 'OPTIONS SKEW',
+    shows: 'Each market’s 25-delta risk reversal and butterfly from the CME option settlements, with where today sits among its last 20 daily prints and how it changed over 1 and 5 prints.',
+    read: [
+      'The risk reversal is the implied vol of the 25-delta call minus the 25-delta put: above zero, upside protection costs more; below zero, downside protection costs more.',
+      'The butterfly is the average of the two wings minus the at-the-money vol: a higher butterfly means the tails are priced richer than the middle.',
+      'The percentile bar places today among the market’s last 20 prints (shown once at least 10 exist); the small figures are the 1- and 5-print changes in vol points.'
+    ],
+    unusual: 'A risk reversal or butterfly at the top or bottom of its last 20 prints, or a large 5-print change.',
+    notTell: 'Skew is what options cost, not where price goes. Fading extreme skew tested null, and reading positioning flow from risk reversals is underpowered.',
+    evidence: ['skew-fade', 'positioning-flow-rr'],
+    lesson: null
+  },
+  {
+    id: 'diary', kind: 'tool', title: 'DIARY',
+    shows: 'Helix’s own memory: every stored day, what each briefing said, which of its descriptive claims checked out by the close, and the rolling scorecard.',
+    read: [
+      'Pick a day to read that day’s script; each checkable sentence carries a mark from the evening score (held, did not hold, or could not be scored).',
+      'Search by word, market, release family or unusual days across the stored record.',
+      'The scorecard shows, for each kind of claim, how often it held, how many were scored, and a 95% interval.'
+    ],
+    unusual: 'A claim kind whose hit rate sits well below the rest, or a day where most claims did not hold.',
+    notTell: 'It scores Helix’s descriptions, not trades: a high score means the narration was accurate, not that anything was predictable.',
+    evidence: [],
+    lesson: null
+  },
+  {
+    id: 'media', kind: 'tool', title: 'MEDIA',
+    shows: 'Every published Helix video, grouped by day with its programme (morning, Short, evening, weekly, special), and the podcast episodes with a player.',
+    read: [
+      'Click a card to play the video in place, or open it on YouTube; the videos are unlisted.',
+      'Filter by programme, date or title words.',
+      'The podcast player keeps your place in each episode; copy the feed link into a podcast app to get new episodes on your phone.'
+    ],
+    unusual: 'A day with a missing programme: that recording failed or was skipped (the run log says why).',
+    notTell: 'The programmes describe markets; none of them is advice.',
+    evidence: [],
+    lesson: null
+  },
+  {
     id: 'alerts', kind: 'tool', title: 'ALERTS',
     shows: 'One inbox for every alert: this tab\'s watcher, the server watcher (which keeps going with the tab shut and sends to your phone) and the desk\'s own alert rules.',
     read: [
