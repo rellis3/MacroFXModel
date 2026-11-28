@@ -1,0 +1,116 @@
+{
+ "fx8_oanda": {
+  "audit": {
+   "rows": 2757,
+   "first": "2016-01-04",
+   "last": "2026-08-20"
+  },
+  "base_net": {
+   "trades": 265,
+   "share_days_in_position": 0.959,
+   "IS": {
+    "days": 1318,
+    "sharpe": 0.432,
+    "ann_ret_pct": 0.991,
+    "ann_vol_pct": 2.296,
+    "max_dd_pct": -3.14
+   },
+   "OOS": {
+    "days": 1318,
+    "sharpe": 0.378,
+    "ann_ret_pct": 0.841,
+    "ann_vol_pct": 2.228,
+    "max_dd_pct": -3.53
+   },
+   "full": {
+    "days": 2636,
+    "sharpe": 0.405,
+    "ann_ret_pct": 0.916,
+    "ann_vol_pct": 2.262,
+    "max_dd_pct": -3.53
+   }
+  },
+  "base_net_carry": {
+   "trades": 265,
+   "share_days_in_position": 0.959,
+   "IS": {
+    "days": 1318,
+    "sharpe": 0.425,
+    "ann_ret_pct": 0.976,
+    "ann_vol_pct": 2.296,
+    "max_dd_pct": -3.28
+   },
+   "OOS": {
+    "days": 1318,
+    "sharpe": 0.43,
+    "ann_ret_pct": 0.959,
+    "ann_vol_pct": 2.229,
+    "max_dd_pct": -3.33
+   },
+   "full": {
+    "days": 2636,
+    "sharpe": 0.428,
+    "ann_ret_pct": 0.968,
+    "ann_vol_pct": 2.263,
+    "max_dd_pct": -3.33
+   }
+  }
+ },
+ "g10_oanda": {
+  "audit": {
+   "rows": 2756,
+   "first": "2016-01-04",
+   "last": "2026-08-20"
+  },
+  "base_net": {
+   "trades": 328,
+   "share_days_in_position": 0.986,
+   "IS": {
+    "days": 1317,
+    "sharpe": 0.15,
+    "ann_ret_pct": 0.341,
+    "ann_vol_pct": 2.272,
+    "max_dd_pct": -3.39
+   },
+   "OOS": {
+    "days": 1318,
+    "sharpe": 0.149,
+    "ann_ret_pct": 0.308,
+    "ann_vol_pct": 2.058,
+    "max_dd_pct": -3.04
+   },
+   "full": {
+    "days": 2635,
+    "sharpe": 0.15,
+    "ann_ret_pct": 0.324,
+    "ann_vol_pct": 2.167,
+    "max_dd_pct": -3.39
+   }
+  },
+  "base_net_carry": {
+   "trades": 328,
+   "share_days_in_position": 0.986,
+   "IS": {
+    "days": 1317,
+    "sharpe": 0.146,
+    "ann_ret_pct": 0.331,
+    "ann_vol_pct": 2.272,
+    "max_dd_pct": -3.54
+   },
+   "OOS": {
+    "days": 1318,
+    "sharpe": 0.174,
+    "ann_ret_pct": 0.359,
+    "ann_vol_pct": 2.062,
+    "max_dd_pct": -2.96
+   },
+   "full": {
+    "days": 2635,
+    "sharpe": 0.159,
+    "ann_ret_pct": 0.345,
+    "ann_vol_pct": 2.169,
+    "max_dd_pct": -3.54
+   }
+  }
+ }
+}

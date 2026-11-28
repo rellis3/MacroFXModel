@@ -11,7 +11,11 @@ before anything is recorded.
   python scripts/residual-fx8-forward/record.py             # log financing, rebuild, append new days, write summary
   python scripts/residual-fx8-forward/record.py --push      # ... and POST the summary to KV residual_fx8_forward_v1
 
-Files (analysis/output/residual-fx8-forward/, gitignored: a live record rewritten by a laptop task):
+Where it runs (from 2026-11-28): nightly on Railway (server.js `_rfx8Tick`, service flag residualFx8Forward). The
+server restores record.csv / financing_log.csv / discrepancies.log from KV before each run, runs this script without
+--push, then saves the three files and summary.json back to KV. The laptop path (run_record.bat, --push) still works.
+
+Files (analysis/output/residual-fx8-forward/, gitignored: a live record rewritten each night):
   record.csv         one append-only row per forward day; each row carries sha256(previous row's hash + this row)
   financing_log.csv  OANDA long/short financing rate per pair, logged at each run (cannot be fetched later)
   discrepancies.log  a recorded row that the rebuild no longer reproduces (e.g. a revised candle); never auto-edited
@@ -185,7 +189,9 @@ def _env():
                     k = b
                 if a.strip() == "OANDA_ACCOUNT_ID" and not acct:
                     acct = b
-    return k, acct, "https://api-fxpractice.oanda.com"
+    # The laptop recorder used the practice host. On Railway the server passes its own host (live by default,
+    # _oandaBaseMe in server.js), because an OANDA key only works on the host of its own account type.
+    return k, acct, os.environ.get("RFX8_OANDA_HOST", "https://api-fxpractice.oanda.com")
 
 
 def _get(url, key):
