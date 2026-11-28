@@ -203,3 +203,14 @@ they fire is the next step, and it takes a year to say anything.
   `mv-extreme-forward` as null.
 - No Desk Watch trigger. Range-only claims with 9–17 firings on revised data earn
   a re-run, not an alert.
+
+## Re-run 2026-11-28 (event-bootstrap fix, DATA_SPEC §5 #14)
+
+Same prereg, same constants, seed 20260923. The event arm is now resampled per firing (`analysis/lib/eventBootstrap.mjs`)
+and the bundle is cut at the lockbox. Full numbers are in `analysis/output/rerun-2026-11-28/RESULTS.md`.
+
+- `dispersion`: +0.48 [+0.007, +1.02] SPX, +0.53 [-0.07, +1.06] NQ, on 8 firings. Neither half clears. The size is the
+  same as before but the intervals roughly tripled. **validated → underpowered.**
+- `dislocation`: +0.12 [-0.26, +0.59]. The halves still flip. **null → underpowered.**
+- `vixterm` (not re-banked here): SPX +0.34 [+0.001, +0.73], NQ null, neither half clears.
+- The banked "9-17 firings" intervals above came from the faulty resample and should not be quoted.
