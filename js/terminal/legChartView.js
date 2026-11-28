@@ -35,10 +35,10 @@ export async function mountLegChart(root = document) {
   let meta;
   try { meta = await jget('/api/cog-chart/meta'); } catch (e) { host.innerHTML = `<p class="muted">Chart data is not available: ${esc(e.message)}</p>`; return; }
   const assets = (meta.assets ?? []).map(a => a.key);
-  if (!assets.includes(st.asset)) st.asset = assets.includes('NAS100') ? 'NAS100' : assets[0];
+  if (!assets.includes(st.asset)) st.asset = assets.includes(DEFAULT_STATE.asset) ? DEFAULT_STATE.asset : assets[0];
   st.custom = { ...CUSTOM0, ...(st.custom ?? {}) };
   const legs = meta.legs ?? [], legKind = n => legs.find(l => l.name === n)?.kind ?? 'rate', legLabel = n => legs.find(l => l.name === n)?.label ?? n;
-  const customPreset = () => { const c = st.custom, o = { id: 'custom', asRate: c.asRate, invert: c.invert, inBps: c.inBps }; return c.b ? { ...o, label: `My line: ${c.a} − ${c.b}${c.invert ? ' (inverted)' : ''}`, kind: 'spread', eur: c.a, usd: c.b } : { ...o, label: `My line: ${c.a}${c.invert ? ' (inverted)' : ''}`, kind: 'leg', leg: c.a }; };
+  const customPreset = () => { const c = st.custom, o = { id: 'custom', asRate: c.asRate, invert: c.invert, inBps: c.inBps }; return c.b ? { ...o, label: `My line: ${legLabel(c.a)} minus ${legLabel(c.b)}${c.invert ? ', flipped' : ''}`, kind: 'spread', eur: c.a, usd: c.b } : { ...o, label: `My line: ${legLabel(c.a)}${c.invert ? ', flipped' : ''}`, kind: 'leg', leg: c.a }; };
   const P = id => (id === 'custom' ? customPreset() : PRESETS.find(p => p.id === id));
   st.overlays = (Array.isArray(st.overlays) ? st.overlays : []).filter(id => id === 'custom' || PRESETS.some(p => p.id === id));
   if (!st.overlays.length) st.overlays = [...DEFAULT_STATE.overlays];
@@ -57,7 +57,7 @@ export async function mountLegChart(root = document) {
   </div>
   <div class="lbl" style="margin-bottom:4px">Draw over the candles (click to add or remove)</div>
   <div class="lc-chips" id="${ID}-chips"></div>
-  <details class="lc-build" id="${ID}-build" style="margin-top:10px"><summary class="lbl" style="cursor:pointer">Build your own line: leg 1 minus leg 2, with invert (like the C.OG chart)</summary>
+  <details class="lc-build" id="${ID}-build" style="margin-top:10px"><summary class="lbl" style="cursor:pointer">Build your own line: leg 1 minus leg 2, with a flip</summary>
     <div class="lc-row" style="margin-top:8px">
       <label class="lbl">Leg 1 <select id="${ID}-la">${legOpts(st.custom.a)}</select></label>
       <label class="lbl">Leg 2 <select id="${ID}-lb"><option value="">(none: draw leg 1 alone)</option>${legOpts(st.custom.b)}</select></label>
@@ -187,7 +187,7 @@ export async function mountLegChart(root = document) {
     try {
       const j = await jget(`/api/cog-chart/nq-rates?asset=${st.asset}&w=120&days=750`);
       if (!j.ok) return;
-      box.innerHTML = `<div class="lbl" style="margin-top:14px">${esc(st.asset)} vs rates (daily): is it trading on rates right now?</div><div class="muted" style="font-size:13px;margin:4px 0">${esc(nqRead(j.read))}</div><div id="${ID}-nqc" style="height:150px"></div><p class="muted" style="font-size:12px">${esc(j.note ?? '')}</p>`;
+      box.innerHTML = `<div class="lbl" style="margin-top:14px">${esc(st.asset)} vs rates (daily): is it trading on rates right now?</div><div class="muted" style="font-size:13px;margin:4px 0">${esc(nqRead(j.read))}</div><div id="${ID}-nqc" style="height:150px"></div><p class="muted" style="font-size:12px">${esc(String(j.note ?? '').replace(/\s*\((?:[a-z0-9]+_[a-z0-9_]+)(?:\s+S\d+)?\)/gi, ''))}</p>`;
       const c = mk(box.querySelector(`#${ID}-nqc`)), s = c.addLineSeries({ color: tok('gold', 'orange'), lineWidth: 2, priceLineVisible: false });
       s.setData((j.rows ?? []).filter(r => r.z20 != null).map(r => ({ time: r.date, value: r.z20 })));
       c.timeScale().fitContent();

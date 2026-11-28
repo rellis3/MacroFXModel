@@ -1,7 +1,7 @@
 // Synthetic, no-network unit tests for the macro-change brick.
 //   node js/macroChange.test.mjs
 
-import { seriesDeltas, seriesCadenceDays, buildMacroChanges, formatMacroChanges, MACRO_CHANGE_SPEC, flowDp, formatFlowBn } from './macroChange.js';
+import { seriesDeltas, seriesCadenceDays, windowWiderThanLabel, buildMacroChanges, formatMacroChanges, MACRO_CHANGE_SPEC, flowDp, formatFlowBn } from './macroChange.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -114,6 +114,22 @@ ok('undated series fall back to positional windows', seriesDeltas(undated, [1])?
 // Rows carry the provenance downstream so the page and the AI prompt can show it.
 const provRows = buildMacroChanges({ us10y }, MACRO_CHANGE_SPEC, { windows: [1, 5, 20] }).rows;
 ok('rows expose refGapDays/cadenceDays', provRows[0].refGapDays != null && provRows[0].cadenceDays != null);
+
+// ── sessions on a daily series (review 2026-11-27) ──────────────────────────
+// A trader's 20D is twenty sessions, and Insight counts sessions; in calendar days a
+// "20d" was ~14 sessions. Weekday series now step back N prints; slower ones keep the
+// calendar rule (the monthly protection above still passes).
+const wk = []; for (let t = Date.parse('2026-09-01'); wk.length < 40; t += 864e5) { const d = new Date(t); if (d.getUTCDay() % 6) wk.push({ date: d.toISOString().slice(0, 10), value: 100 + wk.length }); }
+const ws = seriesDeltas(wk, [1, 5, 20]);
+ok('a weekday series is measured in sessions', ws.basis === 'sessions', ws.basis);
+ok('20D = 20 prints back, not 20 calendar days', ws.d[20] === 20 && ws.refDate[20] === wk[wk.length - 21].date, `${ws.d[20]} ${ws.refDate[20]}`);
+ok('5D = 5 prints back (a full week), 1D = the previous session', ws.d[5] === 5 && ws.d[1] === 1);
+ok('20 sessions span ~28 calendar days and are not flagged as wider than the label', ws.refGapDays[20] >= 26 && ws.refGapDays[20] <= 30 && !windowWiderThanLabel(20, ws.refGapDays[20], 'sessions'));
+ok('a monthly series still uses the calendar rule', md.basis === 'calendar');
+ok('calendar can still be forced', seriesDeltas(wk, [20], { basis: 'calendar' }).basis === 'calendar' && seriesDeltas(wk, [20], { basis: 'calendar' }).d[20] < 20);
+const holed = wk.slice(0, 10).concat(wk.slice(30));  // a three-week hole in a daily series
+ok('a data hole is refused, not relabelled', seriesDeltas(holed, [20]).d[20] === null);
+ok('a 1D over a long weekend (4 days) is not flagged; a 6-day reach is', !windowWiderThanLabel(1, 4, 'sessions') && windowWiderThanLabel(1, 6, 'sessions'));
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nAll macroChange tests passed');
 process.exit(failures ? 1 : 0);

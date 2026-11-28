@@ -125,6 +125,30 @@ export function drawSmile(cv, S) {
   cv.onmouseleave = hideTip;
   return vis;
 }
+/** The fallback when the Cboe chain does not load: the CME at-the-money term structure from the nightly capture (implied vol
+ *  against days to expiry), one dot per expiry. It is not a smile (CME gives one vol per expiry), and the label says so. */
+export function drawTerm(cv, pts, { label = '' } = {}) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), W = cv.clientWidth || 1000, H = cv.clientHeight || 320;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const P = (pts ?? []).filter(p => Number.isFinite(p[0]) && p[0] >= 0 && p[0] <= 400 && p[1] > 0).sort((a, b) => a[0] - b[0]);
+  if (P.length < 2) return 0;
+  const mono = '11px ui-monospace,"IBM Plex Mono",Consolas,monospace'; g.font = mono;
+  const PL = 54, PR = 20, PT = 26, PB = 30, pw = W - PL - PR, ph = H - PT - PB;
+  const xmax = Math.max(30, P.at(-1)[0]), [ylo, yhi] = niceRange(Math.min(...P.map(p => p[1])) * 0.92, Math.max(...P.map(p => p[1])) * 1.06);
+  const X = d => PL + Math.sqrt(d / xmax) * pw, Y = v => PT + (yhi - v) / (yhi - ylo) * ph;   // square-root time axis: the front expiries get room
+  g.fillStyle = '#0c1320'; g.fillRect(PL, PT, pw, ph);
+  const ys = niceStep((yhi - ylo) / 5); g.textBaseline = 'middle';
+  for (let v = Math.ceil(ylo / ys) * ys; v <= yhi + 1e-9; v += ys) { g.strokeStyle = 'rgba(255,255,255,.06)'; g.beginPath(); g.moveTo(PL, Y(v)); g.lineTo(PL + pw, Y(v)); g.stroke(); g.fillStyle = '#7f8a98'; g.textAlign = 'right'; g.fillText(v.toFixed(v % 1 ? 1 : 0) + '%', PL - 8, Y(v)); }
+  g.textBaseline = 'alphabetic'; g.textAlign = 'center';
+  for (const d of [1, 7, 30, 60, 90, 180, 365].filter(d => d <= xmax)) { g.strokeStyle = 'rgba(255,255,255,.04)'; g.beginPath(); g.moveTo(X(d), PT); g.lineTo(X(d), PT + ph); g.stroke(); g.fillStyle = '#7f8a98'; g.fillText(`${d}d`, X(d), H - 10); }
+  g.strokeStyle = '#8fa4c4'; g.lineWidth = 1.6; g.beginPath(); P.forEach((p, i) => (i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1])))); g.stroke();
+  g.fillStyle = '#d8dcf0'; P.forEach(p => { g.beginPath(); g.arc(X(p[0]), Y(p[1]), 2.6, 0, 7); g.fill(); });
+  g.textAlign = 'left'; g.fillStyle = '#8a95a3'; g.fillText(label || 'AT-THE-MONEY IMPLIED VOL BY DAYS TO EXPIRY (CME)', PL + 4, 16);
+  cv.onmousemove = ev => { const r = cv.getBoundingClientRect(), mx = ev.clientX - r.left; let b = null, bd = 1e9; for (const p of P) { const d = Math.abs(X(p[0]) - mx); if (d < bd) { bd = d; b = p; } } if (!b || bd > 14) return hideTipDefault(); showTipDefault(ev, `<b>${b[0]} days</b><br>at-the-money IV <b>${b[1].toFixed(2)}%</b>`); };
+  cv.onmouseleave = hideTipDefault;
+  return P.length;
+}
 function niceStep(raw) { const p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p; return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p; }
 function niceRange(lo, hi) { const s = niceStep((hi - lo) / 6); return [Math.max(0, Math.floor(lo / s) * s), Math.ceil(hi / s) * s]; }
 
@@ -135,7 +159,7 @@ export function smilePanelHtml() {
 <label class="muted" style="font-size:12px">Market <select data-sm="sym" style="${sty}">${SMILE_SYMS.map(s => `<option value="${s}">${{ SPX500_USD: 'SPX', NAS100_USD: 'NDX', US2000_USD: 'RUT' }[s]}</option>`).join('')}</select></label>
 <label class="muted" style="font-size:12px">Expiries <select data-sm="from" style="${sty}"></select> to <select data-sm="to" style="${sty}"></select></label>
 <span data-sm="presets" style="display:flex;flex-wrap:wrap;gap:5px">${PRESETS.map(([t], i) => `<button type="button" data-pi="${i}" style="cursor:pointer;${sty};border-radius:999px;padding:3px 10px;font-size:12px">${t}</button>`).join('')}</span></div>
-<div class="muted" style="font-size:12px;margin-bottom:6px">Hover reads the lines; a legend row opens that expiry alone. Dots are the out-of-the-money strikes (puts below spot, calls above); each line is a fit across them. Live Cboe chain, 15 minutes delayed. SPX, NDX and RUT only: CME books carry one vol per expiry, so they have no smile.</div>
+<div data-sm="desc" class="muted" style="font-size:12px;margin-bottom:6px">Hover reads the lines; a legend row opens that expiry alone. Dots are the out-of-the-money strikes (puts below spot, calls above); each line is a fit across them. Live Cboe chain, 15 minutes delayed. SPX, NDX and RUT only: CME books carry one vol per expiry, so they have no smile.</div>
 <canvas data-sm="cv" style="width:100%;height:520px;display:block;border-radius:8px;background:#090e13"></canvas>
 <div data-sm="leg" style="display:flex;flex-wrap:wrap;gap:4px 10px;font-size:11.5px;margin-top:8px;font-family:ui-monospace,Consolas,monospace"></div>
 <div data-sm="note" class="muted" style="font-size:12px;margin-top:6px"></div></div>`;
@@ -146,15 +170,19 @@ const showTipDefault = (ev, html) => { TIP ??= Object.assign(document.createElem
   TIP.innerHTML = html; TIP.style.display = 'block'; TIP.style.left = Math.min(innerWidth - TIP.offsetWidth - 10, ev.clientX + 16) + 'px'; TIP.style.top = Math.min(innerHeight - TIP.offsetHeight - 10, ev.clientY + 14) + 'px'; };
 const hideTipDefault = () => { if (TIP) TIP.style.display = 'none'; };
 
-export function mountSmile(root, { px, sym = 'NAS100_USD', showTip = showTipDefault, hideTip = hideTipDefault, fixed = false } = {}) {
+//   fallback(sym) (optional) -> { points: [[dte, iv %]], asOf } : the CME at-the-money term structure, drawn with a clear label
+//   when the Cboe chain does not load; with none (or no points) the canvas is collapsed to one plain line.
+export function mountSmile(root, { px, sym = 'NAS100_USD', showTip = showTipDefault, hideTip = hideTipDefault, fixed = false, fallback = null } = {}) {
   const q = k => root.querySelector(`[data-sm="${k}"]`), cv = q('cv'), selSym = q('sym'), selFrom = q('from'), selTo = q('to'), leg = q('leg'), note = q('note');
   // fixed: the page picks the market for every panel at once (the Desk Terminal's Options tab), so this panel shows no picker of its own
   if (fixed) { const l = selSym.closest('label'); if (l) l.style.display = 'none'; }
   const S = { sym, curves: [], hv: {}, from: 0, to: 1e9, solo: null, px: px || (v => v.toFixed(1)), showTip, hideTip }, my = { tok: 0 };
   const pxOf = v => Number.isFinite(v) ? (Math.abs(v) >= 1000 ? v.toFixed(0) : v.toFixed(1)) : '—';
   S.px = px || pxOf;
+  // the expiry pickers and the smile's own description only mean something when there is a smile
+  const ctl = on => { for (const n of [selFrom.closest('label'), q('presets'), q('desc')]) if (n) n.style.display = on ? '' : 'none'; };
   const redraw = () => {
-    if (!S.curves.length) { const g = cv.getContext('2d'); g.clearRect(0, 0, cv.width, cv.height); return; }
+    if (!S.curves.length) { if (S.term) { drawTerm(cv, S.term.points, S.term); return; } const g = cv.getContext('2d'); g.clearRect(0, 0, cv.width, cv.height); return; }
     const vis = drawSmile(cv, S), n = S.curves.length;
     leg.innerHTML = vis.map(c => { const i = S.curves.indexOf(c), on = S.solo === c.dte; return `<span data-d="${c.dte}" style="cursor:pointer;opacity:${S.solo != null && !on ? 0.4 : 1};${on ? 'text-decoration:underline;' : ''}"><span style="color:${colorFor(i, n)}">■</span> ${c.dte}d <span style="color:#7f8a98">${c.atm.toFixed(1)}%</span></span>`; }).join('');
     leg.querySelectorAll('[data-d]').forEach(el => el.onclick = () => { S.solo = S.solo === +el.dataset.d ? null : +el.dataset.d; redraw(); });
@@ -166,12 +194,23 @@ export function mountSmile(root, { px, sym = 'NAS100_USD', showTip = showTipDefa
     selFrom.value = f; selTo.value = t;
   };
   const load = async s => {
-    const tok = ++my.tok; S.sym = s; S.solo = null; selSym.value = s; note.textContent = 'loading the Cboe chain…'; S.curves = []; redraw();
+    const tok = ++my.tok; S.sym = s; S.solo = null; selSym.value = s; note.textContent = 'loading the Cboe chain…'; S.curves = []; S.term = null; cv.style.display = 'block'; cv.style.height = '520px'; ctl(true); redraw();
     try {
       const [ch, hv] = await Promise.all([loadChain(s), loadHV(s)]); if (tok !== my.tok) return;
       S.curves = ch.curves; S.hv = hv; fillSelects(); redraw();
       note.textContent = S.curves.length ? `${S.curves.length} expiries, spot ${S.px(ch.j.spot + (Number.isFinite(ch.j.cfdOffset) ? ch.j.cfdOffset : 0))} (CFD terms). Chain fetched ${new Date(ch.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.` : 'No expiries with enough strikes.';
-    } catch (e) { if (tok === my.tok) { note.textContent = `Cboe smile unavailable: ${e.message}`; } }
+    } catch (e) {
+      if (tok !== my.tok) return;
+      const why = /403/.test(e.message) ? 'Cboe refused the request for its options chain today' : `the Cboe chain did not load (${e.message})`;
+      const fb = (() => { try { return fallback?.(s) ?? null; } catch { return null; } })();
+      leg.innerHTML = ''; ctl(false);
+      if (fb?.points?.length >= 2) {
+        cv.style.height = '320px';
+        S.term = { points: fb.points, label: 'NO SMILE TODAY · CME AT-THE-MONEY IV BY DAYS TO EXPIRY' };
+        const n = drawTerm(cv, S.term.points, S.term);
+        note.textContent = `No IV smile: ${why}. Shown instead: the CME at-the-money implied vol for ${n} expiries from the nightly capture${fb.asOf ? ` (${fb.asOf})` : ''}. One vol per expiry, so this is the term structure, not a smile.`;
+      } else { cv.style.display = 'none'; note.textContent = `No IV smile: ${why}, and no CME term structure is stored for this market.`; }
+    }
   };
   selSym.onchange = () => load(selSym.value);
   const apply = () => { S.from = +selFrom.value; S.to = +selTo.value; if (S.from > S.to) [S.from, S.to] = [S.to, S.from]; S.solo = null; redraw(); };

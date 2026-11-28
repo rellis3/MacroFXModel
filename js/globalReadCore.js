@@ -345,8 +345,20 @@ export function instrumentCard(sym, { row, flags, dirSignals = [], tag, hmmRange
 // ── 9. Scenarios: persistence as the base case, measured base rates for the rest
 // persist: { macroMonthly (P quadrant persists a month), vixInvert5d (P first
 // inversion inside 5 sessions) }. Probabilities are only quoted where measured.
-export function scenarios({ envLabel, ax, persist = {}, eventsDue = [] }) {
+export function scenarios({ envLabel, ax, persist = {}, eventsDue = [], vixInvNow = null }) {
   const out = [];
+  // The base rates below are for a FIRST inversion from a normal curve. With the curve already inverted they answer a
+  // question nobody is asking ("no inversion within 5 sessions 91%" while VIX/VIX3M sat at 1.02), so the case says so.
+  if (vixInvNow) {
+    out.push({ name: 'Now: the VIX curve is already inverted', p: null,
+      pWhy: 'the measured base rate is for a FIRST inversion from a normal curve; one is already on, so it does not apply',
+      text: `${envLabel}. VIX is at or above VIX3M now: the stress case is the current state, not an alternative. The tested range effect (SPX +0.76, NQ +0.82, USDJPY +0.44, gold +0.43 ATR over the next 5 sessions) is a first-day finding; inversions usually last a session or two. Direction is not part of the finding.` });
+    out.push({ name: 'Next: the curve normalises', p: null, pWhy: 'not measured on this desk',
+      text: 'VIX back below VIX3M ends the inverted state; how long it lasts from here is not a tested base rate.' });
+    if (eventsDue.length) out.push(...scenarios({ envLabel, ax, persist, eventsDue }).filter(x => /^Event:/.test(x.name)));
+    if (persist.macroMonthly != null) out.push({ name: 'Slow: macro quadrant', p: r2(persist.macroMonthly), pWhy: 'historical monthly persistence of the current quadrant', text: 'quadrant is a monthly, lagging description; it sets context only' });
+    return out;
+  }
   const pBase = persist.vixInvert5d != null ? 1 - persist.vixInvert5d : null;
   out.push({ name: 'Base: no VIX inversion within 5 sessions', p: r2(pBase),
     pWhy: persist.vixInvert5d != null ? '1 − base rate of a first VIX inversion within 5 sessions' : 'not measured',
@@ -383,14 +395,25 @@ export function conviction(cards, dq) {
 // entry signal: level fades and follows at the lines are banked nulls on their
 // own (Evidence Book, "lines are waypoints, not walls"), so the plan says how to
 // treat the lines, not that the lines are an edge.
+/** True when a range view is the chosen lines with nothing on top: P(beyond p75) is then 25% by definition, not a reading. */
+export function isLinesDefault(rv) {
+  return !!rv && rv.lines === 'chosen' && Math.abs((rv.mult ?? 1) - 1) < 0.001 && !(rv.drivers ?? []).length;
+}
+
 export function tradePlan(card) {
   const b = card.behaviour?.label ?? 'unknown', p = card.range?.pAbove75, d = card.direction;
   const pct = p == null ? '?' : `${Math.round(p * 100)}%`;
   let stance, lines;
   if (b === 'expansion') { stance = 'FOLLOW BREAKS'; lines = `Wide day likely (beyond p75 ${pct} vs 25% normal). Breaks of p50/p75 tend to run to the next line: follow early, don't fade, trail behind the last line broken.`; }
   else if (/exhaustion|contained/.test(b)) { stance = 'TAKE PROFIT AT LINES'; lines = `Capped day likely (beyond p75 ${pct}). Expect price to stall before p75/p90: take profit at the line, don't chase breakouts. Reversal odds at the outer lines are still ~50/50, so this is not a fade signal.`; }
-  else if (b === 'unknown') { stance = 'NO READ'; lines = 'No IV÷σ row for this instrument today, so no range view.'; }
-  else { stance = 'NO EDGE AT LINES'; lines = `Normal day (beyond p75 ${pct}). A touch is close to a coin flip either way. Let the intraday rules decide: a fast start (≥ 0.6 ATR by 09:00 London) means a wider rest of day${/^(EURUSD|GOLD)$/.test(card.sym) ? '; this market reverts more in the 20–22 UTC hour' : ''}.`; }
+  else if (b === 'unknown') { stance = 'NO RANGE READ'; lines = 'No IV÷σ row for this instrument today, so no range view (a story lean, if any, is shown on the Day Read).'; }
+  else {
+    stance = 'NO EDGE AT LINES';
+    // with the CHOSEN lines nothing is multiplied on top (rangeView), so P(beyond p75) is 25% by how the p75 line is drawn:
+    // the day's size is in the line itself, and the 25% is a definition, not a reading
+    const byDef = isLinesDefault(card.range);
+    lines = `${byDef ? `Today's size is in the lines themselves (they already carry implied vol); beyond p75 is ${pct} by construction, not a call.` : `Normal day (beyond p75 ${pct}).`} A touch is close to a coin flip either way. Let the intraday rules decide: a fast start (≥ 0.6 ATR by 09:00 London) means a wider rest of day${/^(EURUSD|GOLD)$/.test(card.sym) ? '; this market reverts more in the 20–22 UTC hour' : ''}.`;
+  }
   const active = (d?.shown ?? []).filter(x => x.e > 0 && x.s !== 0);
   const dirLine = active.length && Math.abs(d.pUp - 0.5) >= 0.04
     ? `Tested bias ${d.pUp > 0.5 ? 'UP' : 'DOWN'} ${Math.round(Math.max(d.pUp, 1 - d.pUp) * 100)}% from ${active.map(x => x.label).join(' + ')} (${active.map(x => x.note).filter(Boolean).join('; ')}). Size by volatility; the view ends when its input switches off.`
@@ -443,7 +466,7 @@ export function buildGlobalRead(input) {
   const conv = conviction(cards, dq);
   const top = ranked.filter(r => r.clarity >= 0.2).slice(0, 3);
   const headline = `${envLabel}. ${top.length ? `Clearest: ${top.map(r => `${r.sym} ${r.stance.toLowerCase()}`).join(', ')}.` : 'No market stands out today.'} ${conv.direction < 10 ? 'No tested directional view is active.' : ''}`.trim();
-  return { headline, envLabel, axes: ax, scenarios: scenarios({ envLabel, ax, persist, eventsDue }), cards, ranked, currencies: currencyTier(currencies, cards),
+  return { headline, envLabel, axes: ax, scenarios: scenarios({ envLabel, ax, persist, eventsDue, vixInvNow: flags.vixInv ?? null }), cards, ranked, currencies: currencyTier(currencies, cards),
     conviction: conv, dataQuality: dq, context, invalidation, flags, meta, registry: REGISTRY };
 }
 

@@ -37,7 +37,7 @@ import * as CBV from './cbBoardView.js';
 import * as ACV from './autocorrView.js';
 import * as LLV from './leadLagView.js';
 import * as OPV from './optionsView.js';
-import { terrainHtml, mountTerrain, terrainKeys } from './terrainPanel.js';
+import { terrainHtml, mountTerrain, terrainKeys, terrainStore, bookLegs } from './terrainPanel.js';
 import { smilePanelHtml, mountSmile, SMILE_SYMS } from '../smileChart.js';
 import { mountPathChart } from './pathChart.js';
 import * as NV from './newsView.js';
@@ -55,6 +55,7 @@ import * as HDV from './humanDriversView.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
 import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
+import { isLinesDefault } from '../globalReadCore.js';
 import * as RBV from './ratesBoardView.js';
 import * as FYV from './fedPathYieldsView.js';
 import * as BOEV from './boePathView.js';
@@ -186,12 +187,12 @@ function drawChain() {
   const liveLine = win === 'live' ? `<div class="tt-note" style="margin-top:0">${C.live?.frozen ? `<span class="chip gold mkt-chip">market closed</span> The last session: ${h(new Date(C.live.window.from).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }))} to ${h(new Date(C.live.window.to).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }))} London (the close before the last one to the last close), because the FX week is shut. Those are the last prints, not a forecast. It goes live by itself at the reopen. Yields, the real yield, the Bund gap and the dollar are implied; a chip with no live price keeps its last print (dashed) and its links are not judged.` : C.live ? `Live since the last daily close (${h(new Date(C.live.refAt).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }))} London), refreshed every minute; last ${h(hm(Date.parse(C.live.asOf)))}. Yields, the real yield, the Bund gap and the dollar are implied; a chip with no live price keeps its last print (dashed) and its links are not judged.` : C.liveErr ? `Live feed: ${h(C.liveErr)}` : 'Fetching live prices…'}</div>` : '';
   // the Fed path against the yields (js/fedPathYieldsCore.js): one rule-built line for this window; nothing on Live (no per-meeting strip intraday)
   const fw = T.chain.fed?.ok && win !== 'live' ? T.chain.fed.windows.find(x => x.win === win) : null;
-  const fedLine = fw?.available && fw.sentence ? `<div class="tt-note" style="margin-top:0"><b>Fed path → 2Y</b> (priced, not a forecast): ${h(fw.sentence)} <span class="muted">Detail: Macro tab.</span></div>` : '';
+  const fedLine = fw?.available && fw.sentence ? `<div class="tt-note" style="margin-top:0"><b>Fed path → 2Y</b> (priced, not a forecast): ${h(fw.sentence)} <span class="muted">Measured over ${fw.span} calendar day${fw.span === 1 ? '' : 's'}${fw.agoAsOf ? ` (${h(fw.agoAsOf)} → ${h(T.chain.fed.asOf ?? '')})` : ''}, the futures archive's own span${win === 1 ? '' : `, not the ${win} sessions the chips use, so its 2Y move can differ from the chip`}. Detail: Macro tab.</span></div>` : '';
   const watch = T.cache['/api/desk-watch'] && T._watch ? T._watch : null;
   const brokenNow = watch ? watch.states.filter(t => t.id.startsWith('chain-') && t.firing).length : null;
   box.innerHTML = `<div class="tt-head"><span class="lbl">The chain, today</span><h2 style="flex-basis:100%">Energy → inflation → yields → real yields → the dollar → gold, commodity FX and bitcoin; fear → the yen and credit</h2><span class="r" style="margin-left:0">${pills}</span></div>
 <div class="tt-sum">${h(sum.headline)}</div>
-<div class="tt-counts"><span class="vchip hold">${sum.holding} holding</span><span class="vchip broke">${sum.broken} broken</span><span class="vchip">${sum.quiet + sum.unmeasured} quiet</span>${sum.notlive ? `<span class="vchip">${sum.notlive} not live</span>` : ''}${brokenNow != null && win === 20 ? `<span class="chip" title="The desk watch judges the 20-day chain every 15 minutes and alerts on a break">watch: ${brokenNow} broken</span>` : ''}<span class="chip">${CB.winWord(win)}</span></div>
+<div class="tt-counts"><span class="vchip hold">${sum.holding} holding</span><span class="vchip broke">${sum.broken} broken</span><span class="vchip">${sum.quiet + sum.unmeasured} quiet</span>${sum.notlive ? `<span class="vchip">${sum.notlive} not live</span>` : ''}${sum.assumed ? `<span class="vchip" title="Live, the real yield is the 10Y's implied move with breakevens held flat, so its links are not judged">${sum.assumed} assumed</span>` : ''}${brokenNow != null && win === 20 ? `<span class="chip" title="The desk watch judges the 20-day chain every 15 minutes and alerts on a break">watch: ${brokenNow} broken</span>` : ''}<span class="chip">${CB.winWord(win)}</span></div>
 ${liveLine}${fedLine}
 <div class="cg-wrap" id="tt-cg">${CB.chainSvg(links, { win, nodeSel: C.nodeSel, linkSel: C.linkSel, showQuiet: C.showQuiet })}</div>
 <div class="cg-legend"><span><i class="hold"></i>holding · flows the textbook way</span><span><i class="broke"></i>broken · both moved, the wrong way round</span><span><i class="quiet"></i>quiet · an end inside its noise floor, not judged · <u data-act="quiet" role="button" tabindex="0">${C.showQuiet ? 'hide' : 'show'}</u></span><span><i class="up"></i><i class="dn" style="margin-left:-4px"></i>chip ring = which way that thing moved · gold ring = the end of a broken link</span><span>hover for what it is · tap a chip or a link for the why · scrolls sideways on a phone</span></div>
@@ -199,7 +200,7 @@ ${C.linkSel ? linkCard(links.find(l => l.id === C.linkSel)) : ''}${C.nodeSel ? n
 ${readHtml(links, now.vals)}
 ${linksList(links)}
 ${CSV.breakingHtml(C.stats, h)}
-<p class="tt-note">It explains; it does not predict: yields → FX forward coupling is a banked null here, and none of these links is a validated forward signal. Floors are set for 20 days and scaled by √(days/20) on shorter windows (an assumption, not a test).</p>`;
+<p class="tt-note">It explains; it does not predict: yields → FX forward coupling is a banked null here, and none of these links is a validated forward signal. 5D and 20D count sessions (trading days) on a daily series, and each link compares both ends over the same dates. Floors are set for 20 sessions and scaled by √(sessions/20) on shorter windows (an assumption, not a test).</p>`;
 }
 
 function endTxt(e) { return e?.delta == null ? '—' : e.text; }
@@ -207,7 +208,7 @@ function onChainHover(ev) {
   const t = ev.target.closest?.('[data-node],[data-link]'); if (!t || !el('tt-cg')?.contains(t)) return tip(null);
   const now = chainNow(); if (!now) return;
   if (t.dataset.node) {
-    const k = t.dataset.node, n = CB.CHAIN_NODES[k], e = now.links.flatMap(l => [l.a, l.b]).find(x => x?.key === k);
+    const k = t.dataset.node, n = CB.CHAIN_NODES[k], e = now.links.flatMap(l => [l.a0 ?? l.a, l.b0 ?? l.b]).find(x => x?.key === k);
     return tip(ev, `<b>${h(n.label)}</b><br>${e?.delta != null ? `${h(e.text)} ${h(CB.overWord(T.chain.win))}${e.moved ? '' : ` · inside its noise floor (${h(e.floorText ?? '')})`}${e.basis === 'last-print' && T.chain.win === 'live' ? ' · last print, not live' : ''}<br>` : 'no data<br>'}<span class="muted">${h(n.what.slice(0, 220))}</span>`);
   }
   const l = now.links.find(x => x.id === t.dataset.link); if (!l) return tip(null);
@@ -221,11 +222,11 @@ function linkCard(l) {
     : l.verdict === 'broken' ? `<b style="color:var(--gold)">Broken.</b> ${h(l.a.label)} ${h(l.a.text)} ${arr(l.a.dir)} but ${h(l.b.label)} ${h(l.b.text)} ${arr(l.b.dir)}, the wrong way round. ${h(l.read ?? '')}`
       : l.verdict === 'quiet' ? `<b>Quiet, not judged.</b> ${h(l.punch || l.read || '')}. A link is judged only when both ends move past their floors (${h(l.a.floorText ?? '')} for ${h(A.label)}, ${h(l.b.floorText ?? '')} for ${h(B.label)}).`
         : `<b>${CB.VWORD[l.verdict]}.</b> ${h(l.read ?? '')}`;
-  return `<div class="cg-card"><button class="x" data-act="close">close ✕</button><b>${h(A.label)} → ${h(B.label)}</b> <span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span><br><b>The textbook:</b> ${h(l.textbook)}. They should move ${way}.<br><b>Why:</b> ${h(A.what)} <span class="muted">→</span> ${h(B.what)}<div style="margin-top:6px">${status}</div>${l.dateGapDays > 3 ? `<div class="muted" style="margin-top:4px">The two ends printed ${l.dateGapDays} days apart (${h(l.a.asOf)} vs ${h(l.b.asOf)}).</div>` : ''}${CSV.linkStatsHtml(T.chain.stats?.links?.[l.id], h)}</div>`;
+  return `<div class="cg-card"><button class="x" data-act="close">close ✕</button><b>${h(A.label)} → ${h(B.label)}</b> <span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span><br><b>The textbook:</b> ${h(l.textbook)}. They should move ${way}.<br><b>Why:</b> ${h(A.what)} <span class="muted">→</span> ${h(B.what)}<div style="margin-top:6px">${status}</div>${l.alignedTo ? `<div class="muted" style="margin-top:4px">Both ends measured to ${h(l.alignedTo)}, the last date both have printed (${h(l.a0?.label)} last printed ${h(l.a0?.asOf)}, ${h(l.b0?.label)} ${h(l.b0?.asOf)}), so the link compares the same days. The chips show each one's own latest move.</div>` : ''}${l.dateGapDays > 3 ? `<div class="muted" style="margin-top:4px">The two ends printed ${l.dateGapDays} days apart (${h(l.a.asOf)} vs ${h(l.b.asOf)}).</div>` : ''}${CSV.linkStatsHtml(T.chain.stats?.links?.[l.id], h)}</div>`;
 }
 function nodeCard(k, links) {
   const n = CB.CHAIN_NODES[k]; if (!n) return '';
-  const e = links.flatMap(l => [l.a, l.b]).find(x => x?.key === k), outs = links.filter(l => l.a?.key === k), ins = links.filter(l => l.b?.key === k);
+  const e = links.flatMap(l => [l.a0 ?? l.a, l.b0 ?? l.b]).find(x => x?.key === k), outs = links.filter(l => l.a?.key === k), ins = links.filter(l => l.b?.key === k);
   const ways = outs.length ? `<div style="margin-top:6px"><b>What it moves</b> (textbook): when it rises, ${outs.map(l => `${h(CB.CHAIN_NODES[l.b.key]?.label)} should go <b>${l.sign > 0 ? 'up' : 'down'}</b>`).join('; ')}.</div>` : '';
   const from = ins.length ? `<div><b>What moves it:</b> ${ins.map(l => `${h(CB.CHAIN_NODES[l.a.key]?.label)} (${l.sign > 0 ? 'same way' : 'opposite'})`).join(', ')}.</div>` : '';
   const today = [...ins, ...outs].map(l => `<div><span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span> <a href="#" data-act="link" data-id="${h(l.id)}">${h(l.short)}</a>${l.punch ? ` <span class="muted">${h(l.punch)}</span>` : ''}</div>`).join('');
@@ -234,13 +235,15 @@ function nodeCard(k, links) {
   return `<div class="cg-card"><button class="x" data-act="close">close ✕</button><b>${h(n.label)}</b>${e?.delta != null ? ` · ${h(e.text)} ${h(CB.overWord(T.chain.win))}${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${h(n.what)}${split}${ways}${from}<div style="margin-top:6px">${today || 'No link touches it today.'}</div></div>`;
 }
 function linksList(links) {
-  const row = l => `<div class="tt-link"><span><span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span></span><span class="ends"><a href="#" data-act="link" data-id="${h(l.id)}" style="color:var(--tx);text-decoration:none"><b>${h(l.short)}</b></a> · ${h(l.a.label)} <b class="${l.a.moved ? (l.a.dir === 'up' ? 'up' : 'dn') : ''}">${h(endTxt(l.a))}</b> → ${h(l.b.label)} <b class="${l.b.moved ? (l.b.dir === 'up' ? 'up' : 'dn') : ''}">${h(endTxt(l.b))}</b>${l.expected && l.b.moved && l.expected !== l.b.dir ? ` <span class="chip gold" style="font-size:9px">textbook said ${l.expected === 'up' ? '↑' : '↓'}</span>` : ''}</span>${l.punch ? `<span class="p">${h(l.punch)}</span>` : ''}</div>`;
+  const row = l => `<div class="tt-link"><span><span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span></span><span class="ends"><a href="#" data-act="link" data-id="${h(l.id)}" style="color:var(--tx);text-decoration:none"><b>${h(l.short)}</b></a> · ${h(l.a.label)} <b class="${l.a.moved ? (l.a.dir === 'up' ? 'up' : 'dn') : ''}">${h(endTxt(l.a))}</b> → ${h(l.b.label)} <b class="${l.b.moved ? (l.b.dir === 'up' ? 'up' : 'dn') : ''}">${h(endTxt(l.b))}</b>${l.alignedTo ? ` <span class="muted" style="font-size:10px">both to ${h(String(l.alignedTo).slice(5))}</span>` : ''}${l.expected && l.b.moved && l.expected !== l.b.dir ? ` <span class="chip gold" style="font-size:9px">textbook said ${l.expected === 'up' ? '↑' : '↓'}</span>` : ''}</span>${l.punch ? `<span class="p">${h(l.punch)}</span>` : ''}</div>`;
   const live = links.filter(l => l.verdict === 'broken' || l.verdict === 'holding').sort((a, b) => (a.verdict === 'broken' ? 0 : 1) - (b.verdict === 'broken' ? 0 : 1));
   const rest = links.filter(l => !(l.verdict === 'broken' || l.verdict === 'holding'));
   return `<div style="margin-top:14px">${live.map(row).join('') || '<div class="muted">No link has both ends moving on this window.</div>'}${rest.length ? `<details><summary>${rest.length} quiet or unmeasured links</summary>${rest.map(row).join('')}</details>` : ''}</div>`;
 }
 
 // the chain read: peeked for free on load; generated only on a click (a paid model call), as today.html does
+/** How old (minutes) a chain read may be before it is folded away as stale: about two days, half a day for the live snapshot. */
+export const CHAIN_READ_STALE_MIN = w => (w === 'live' ? 720 : 2 * 1440);
 function readHtml(links, vals) {
   const C = T.chain, w = C.win, st = (C.read[w] ??= { state: 'idle' });
   if (st.state === 'idle') { st.state = 'peek'; getJson(`/api/chain-read?window=${w}`).then(r => { C.read[w] = r?.ok ? { state: 'ready', data: r } : { state: 'none', data: r }; if (C.win === w) drawChain(); }); }
@@ -258,7 +261,14 @@ function readHtml(links, vals) {
   if (!r) return `<div class="tt-read">${head}<div class="muted" style="margin-top:6px">${st.state === 'peek' ? 'Looking for a cached read…' : st.state === 'loading' ? 'Reading the tape (usually under a minute). Everyone sees it once it is written.' : vs.state === 'generating' ? `A colleague is writing today's ${CB.winWord(w)} read now. It will appear here.` : st.state === 'error' ? `Could not build the read: ${h(st.err ?? '')}` : `No ${CB.winWord(w)} read has been written today. The board above is the measured chain; the button writes the trader's-voice explanation of it, over this window only.`}</div></div>`;
   const paras = String(r.read ?? '').split(/\n\s*\n|\n/).map(x => x.trim()).filter(Boolean);
   const stories = (r.stories ?? []).filter(x => x?.name && x.status !== 'absent');
-  const when = st.data.generatedAt ? new Date(st.data.generatedAt).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  const stale = age != null && age > CHAIN_READ_STALE_MIN(w);
+  const when = st.data.generatedAt ? new Date(st.data.generatedAt).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', ...(stale ? { day: 'numeric', month: 'short' } : {}), hour: '2-digit', minute: '2-digit' }) : '';
+  // a read older than its window can carry describes another market: it is folded away and says so, so it never sits under
+  // today's board as if it were the read of it
+  if (stale) {
+    const days = Math.round(age / 1440);
+    return `<div class="tt-read">${head}<details><summary><b>Stale read: written ${days} day${days === 1 ? '' : 's'} ago${when ? ` (${h(when)} London)` : ''}; the board above is today's.</b> <span class="muted">Its numbers are from then and can contradict the board. Open to see it anyway${vs.showGenerate ? ', or write today\'s with the button' : ''}.</span></summary>${r.hook ? `<div class="hook">“${h(r.hook)}”</div>` : ''}${paras.map(p => `<p>${h(p)}</p>`).join('')}</details></div>`;
+  }
   return `<div class="tt-read">${head}${r.hook ? `<div class="hook">“${h(r.hook)}”</div>` : ''}
 ${stories.length ? `<div class="tt-stories">${stories.map(x => `<span class="chip ${x.status === 'dominant' ? 'gold' : x.status === 'reloading' ? 'pur' : ''}" title="${h(`${x.legs ?? ''}${x.evidence ? ' — ' + x.evidence : ''}`)}">${h(x.name)} · ${h(x.status)}</span>`).join('')}</div>` : ''}
 ${paras.map(p => `<p>${h(p)}</p>`).join('')}
@@ -299,23 +309,32 @@ function onTodayClick(ev) {
 
 // ── Global Read (today.html "Global Read — full detail, every engine weighted by its evidence") ──
 const AXES = { risk: ['Risk appetite', 'risk-on', 'risk-off'], usd: ['Dollar', 'stronger', 'weaker'], rates: ['Rates', 'tightening', 'easing'], vol: ['Volatility', 'elevated', 'compressed'], credit: ['Credit', 'stress', 'easing'] };
-const stanceChip = s => { const t = String(s ?? ''); return `<span class="chip ${/fade/i.test(t) ? 'pur' : /follow|break/i.test(t) ? 'gold' : ''}" title="${h(t)}">${h(t || '—')}</span>`; };
+const stanceChip = s0 => { const s = s0 === 'NO READ' ? 'NO RANGE READ' : s0; const t = String(s ?? ''); return `<span class="chip ${/fade/i.test(t) ? 'pur' : /follow|break/i.test(t) ? 'gold' : ''}" title="${h(t)}">${h(t || '—')}</span>`; };
 const dirChip = d => { if (!d || d.pUp == null || Math.abs(d.pUp - 0.5) < 0.02) return '<span class="chip">no tested lean</span>'; const up = d.pUp > 0.5; return `<span class="chip ${up ? 'up' : 'dn'}" title="${h(d.label ?? '')}">${up ? '▲' : '▼'} ${Math.round(Math.max(d.pUp, 1 - d.pUp) * 100)}%</span>`; };
 function drawGR(g) {
   const box = el('tt-gr'); if (!box) return;
   if (!g?.cards) { box.innerHTML = `<div class="card muted">${h(g?.error ?? 'The Global Read is not available.')}</div>`; return; }
   const c = g.conviction ?? {}, dq = g.dataQuality ?? {}, probs = [...(dq.issues ?? []).map(i => `${i.problem}${i.where ? ` (${i.where})` : ''}`), ...(dq.feeds ?? []).map(f => `feed ${f.id}: ${f.state}`)];
   const tile = (l, v, s) => `<div class="tt-tile"><div class="lbl">${l}</div><div class="v">${v ?? 0}<small style="font-size:11px;color:var(--tx3)">/100</small></div><div class="s">${s}</div></div>`;
+  // every range card on the chosen lines with nothing on top: P(beyond p75) is 25% by construction, so a 0 here is a definition
+  const ranged = Object.values(g.cards).filter(k => k.range?.pAbove75 != null), allDef = ranged.length > 0 && ranged.every(k => isLinesDefault(k.range));
+  const rangeTile = allDef ? `<div class="tt-tile"><div class="lbl">Range conviction</div><div class="v">—</div><div class="s">every market's lines already carry today's vol; nothing is added on top, so there is no separate range call (the size is in the lines)</div></div>` : tile('Range conviction', c.range, 'how far today sits from a normal day');
+  const invNow = g.flags?.vixInv === true;
+  const scen = s => (invNow && /no VIX inversion/i.test(s.name)
+    ? `<div class="tt-row"><b>${h(s.name)}</b><span class="chip dn">does not apply</span><span class="muted" style="flex-basis:100%">The VIX curve is already inverted (VIX at or above VIX3M), so a base rate for a FIRST inversion within 5 sessions answers nothing today. ${h(s.text)}</span></div>`
+    : invNow && /stress transmits/i.test(s.name)
+      ? `<div class="tt-row"><b>Now: the VIX curve is inverted</b><span class="chip gold">current state</span><span class="muted" style="flex-basis:100%">${h(s.text)} The finding is for the first day of an inversion.</span></div>`
+      : `<div class="tt-row"><b>${h(s.name)}</b><span class="chip ${s.p != null ? 'gold' : ''}">${s.p != null ? pctTxt(s.p) : 'p not measured'}</span><span class="muted" style="flex-basis:100%">${h(s.text)}</span></div>`);
   const axes = Object.entries(g.axes ?? {}).map(([k, a]) => { const [name, pos, neg] = AXES[k] ?? [k, '+', '−']; const wd = Math.abs(a.score) < 0.15 ? 'neutral' : a.score > 0 ? pos : neg;
     return `<tr><td><b>${h(name)}</b></td><td class="n" style="color:${Math.abs(a.score) < 0.15 ? 'var(--tx2)' : 'var(--pur2)'}">${sg(a.score)} · ${h(wd)}</td><td class="n">${h(a.agree ?? '')}</td><td class="muted" style="font-size:12px">${h((a.inputs ?? []).map(i => i.text).join(' · '))}</td></tr>`; }).join('');
   const ccys = Object.values(g.currencies ?? {}).map(x => { const s = x.state ?? {};
     return `<tr class="tt-click" data-ccy2="${h(x.ccy)}" tabindex="0"><td><b>${FLAG[x.ccy] ?? ''} ${h(x.ccy)}</b></td><td class="n">${pctTxt(x.rangePressure)}</td><td>${h(x.directionView)}</td><td class="n ${dirCls(s.move20Pct)}">${s.move20Pct != null ? `${sg(s.move20Pct)}%` : '–'}</td><td class="n">${s.cb ? `${h(s.cb.regime)} ${s.cb.score}` : '–'}</td><td class="n">${s.cot ? `${ordinal(s.cot.specPct)}` : '–'}</td><td class="n">${s.realYield != null ? `${s.realYield}%` : '–'}</td><td class="n">${sg(s.spreadZ)}</td><td class="muted" style="font-size:12px">${h((x.notes ?? []).join(' · '))}</td></tr>`; }).join('');
   const pairs = (g.ranked ?? []).map(rk => { const k = g.cards[rk.sym]; if (!k) return '';
-    return `<tr class="tt-click" data-pair="${h(rk.sym)}" tabindex="0"><td><b>${h(nice(rk.sym))}</b></td><td>${stanceChip(k.plan?.stance)}</td><td class="n">${pctTxt(k.range?.pAbove75)}</td><td class="n">${k.range?.mult != null ? `×${k.range.mult}` : '—'}</td><td>${dirChip(k.direction)}</td><td class="muted" style="font-size:12px;min-width:220px">${h(k.plan?.lines ?? '')}</td></tr>`; }).join('');
+    return `<tr class="tt-click" data-pair="${h(rk.sym)}" tabindex="0"><td><b>${h(nice(rk.sym))}</b></td><td>${stanceChip(k.plan?.stance)}</td><td class="n"${isLinesDefault(k.range) ? ' title="The chosen lines already carry implied vol and nothing is added on top: 25% is how the p75 line is drawn, not a reading"' : ''}>${pctTxt(k.range?.pAbove75)}${isLinesDefault(k.range) ? ' <span class="muted">by def.</span>' : ''}</td><td class="n">${k.range?.mult != null ? `×${k.range.mult}` : '—'}</td><td>${dirChip(k.direction)}</td><td class="muted" style="font-size:12px;min-width:220px">${h(isLinesDefault(k.range) ? String(k.plan?.lines ?? '').replace(/^Normal day \(beyond p75 25%\)\./, 'The size is in the lines (they already carry implied vol); beyond p75 is 25% by construction, not a call.') : (k.plan?.lines ?? ''))}</td></tr>`; }).join('');
   box.innerHTML = `<div class="card glow"><div class="synth" style="font-style:normal;margin-top:0"><b>${h(g.headline)}</b>${g.meta?.asOf ? ` <span class="muted">· ${h(hm(Date.parse(g.meta.asOf)))} London · <a href="/api/global-read/record" target="_blank" rel="noopener">forward record →</a></span>` : ''}</div>
-<div class="tt-tiles">${tile('Range conviction', c.range, 'how far today sits from a normal day')}${tile('Direction conviction', c.direction, 'only tested inputs count')}${tile('Data quality', c.dataQuality, `${probs.length} problem${probs.length === 1 ? '' : 's'} flagged`)}</div>
+<div class="tt-tiles">${rangeTile}${tile('Direction conviction', c.direction, 'only tested inputs count')}${tile('Data quality', c.dataQuality, `${probs.length} problem${probs.length === 1 ? '' : 's'} flagged`)}</div>
 <div class="lbl" style="margin-top:12px">Global — the state</div><div class="scroll"><table><thead><tr><th>Axis</th><th>Reading</th><th>Agree</th><th>Made of</th></tr></thead><tbody>${axes}</tbody></table></div>
-${(g.scenarios ?? []).length ? `<div class="lbl" style="margin-top:14px">Scenarios</div>${g.scenarios.map(s => `<div class="tt-row"><b>${h(s.name)}</b><span class="chip ${s.p != null ? 'gold' : ''}">${s.p != null ? pctTxt(s.p) : 'p not measured'}</span><span class="muted" style="flex-basis:100%">${h(s.text)}</span></div>`).join('')}` : ''}
+${(g.scenarios ?? []).length ? `<div class="lbl" style="margin-top:14px">Scenarios</div>${g.scenarios.map(scen).join('')}` : ''}
 <div class="lbl" style="margin-top:14px">Currencies — pairs rolled up · tap for the currency card</div><div class="scroll"><table style="min-width:760px"><thead><tr><th>Ccy</th><th class="n">Range pressure</th><th>Direction</th><th class="n">20d</th><th class="n">CB</th><th class="n">COT</th><th class="n">Real 10Y</th><th class="n">2Y spread z</th><th>State</th></tr></thead><tbody>${ccys}</tbody></table></div>
 <div class="lbl" style="margin-top:14px">Pairs — ranked by clarity · tap for the pair page</div><div class="scroll"><table style="min-width:680px"><thead><tr><th>Market</th><th>Stance</th><th class="n" title="P(today's high-low beyond the ladder's p75); 25% is a normal day">Beyond p75</th><th class="n">Range ×</th><th>Direction</th><th>Plan</th></tr></thead><tbody>${pairs}</tbody></table></div>
 ${(g.invalidation ?? []).length ? `<div class="lbl" style="margin-top:14px">What would change this read</div>${g.invalidation.map(x => `<div class="tt-row">${h(x)}</div>`).join('')}` : ''}
@@ -327,16 +346,21 @@ const FAM = { 'macro-state': 'Macro', 'price-state': 'Trend', events: 'Events', 
 function drawDay(g) {
   const box = el('tt-day'); if (!box) return;
   if (!g?.cards) { box.innerHTML = '<div class="muted">No Global Read, so no Day Read.</div>'; return; }
-  const ch = g.meta?.chain, doms = (ch?.stories ?? []).filter(x => x.status === 'dominant').map(x => x.name);
+  // the chain read's hook and stories lead the Day Read only while the read is fresh: an 18-day-old "growth scare" is not today's thesis
+  const ch0 = g.meta?.chain, chStale = ch0?.ageMin != null && ch0.ageMin > CHAIN_READ_STALE_MIN(20), ch = chStale ? null : ch0, doms = (ch?.stories ?? []).filter(x => x.status === 'dominant').map(x => x.name);
   const rows = (g.ranked ?? []).map(rk => { const k = g.cards[rk.sym]; if (!k) return '';
     const st = k.direction?.story, pUp = st?.nLive ? st.pUp : 0.5, edge = Math.abs(pUp - 0.5);
     const lean = edge < 0.02 ? '<span class="fl mono">Two-way</span>' : `<span class="mono ${pUp > 0.5 ? 'up' : 'dn'}" title="${h(st?.label ?? '')}"><b>${pUp > 0.5 ? '▲ Up' : '▼ Down'}</b> ${Math.round(Math.max(pUp, 1 - pUp) * 100)}%</span>`;
-    const p75 = k.range?.pAbove75, day = p75 == null ? '' : p75 >= 0.32 ? '<span class="chip gold">Wide</span>' : p75 <= 0.18 ? '<span class="chip pur">Capped</span>' : '<span class="chip">Normal</span>';
+    // no range row: say so (a story lean can still show, which is why NZD read "Down" while the pairs table said no read);
+    // the chosen lines with nothing on top: the size is in the lines, the 25% is by construction
+    const p75 = k.range?.pAbove75, day = p75 == null ? '<span class="chip" title="No IV÷σ row for this market today, so no day-size read. The lean beside it is the story lean only.">no range read</span>'
+      : isLinesDefault(k.range) ? '<span class="chip" title="The chosen lines already carry implied vol and nothing is added on top, so P(beyond p75) is 25% by construction: the day\'s size is in the lines themselves (Pair tab).">In the lines</span>'
+        : p75 >= 0.32 ? '<span class="chip gold">Wide</span>' : p75 <= 0.18 ? '<span class="chip pur">Capped</span>' : '<span class="chip">Normal</span>';
     const fam = {}; for (const x of st?.reads ?? []) { const f = (fam[x.family] ??= { s: 0, notes: [] }); f.s += x.contrib ?? x.s * 0.05; f.notes.push(`${x.label}: ${x.note ?? ''}`); }
     const tot = Object.values(fam).reduce((a, f) => a + Math.abs(f.s), 0) || 1;
     const why = Object.entries(fam).filter(([, f]) => Math.abs(f.s) / tot >= 0.12).sort((a, b) => Math.abs(b[1].s) - Math.abs(a[1].s)).slice(0, 3).map(([k2, f]) => `<span class="${f.s > 0 ? 'up' : 'dn'}" title="${h(f.notes.join(' · '))}">${f.s > 0 ? '▲' : '▼'} ${h(FAM[k2] ?? k2)}</span>`).join('');
     return `<div class="tt-day tt-click" data-pair="${h(rk.sym)}" tabindex="0"><b>${h(nice(rk.sym))}</b>${lean}${day || '<span></span>'}<span class="why">${why}</span></div>`; }).join('');
-  box.innerHTML = `${ch?.hook ? `<div class="thesis" style="margin-top:0">“${h(ch.hook)}”</div>` : `<div class="thesis" style="margin-top:0">${h(g.headline ?? '')}</div>`}${doms.length ? `<div class="muted">The live stories: ${doms.map(h).join(' · ')}</div>` : ''}
+  box.innerHTML = `${ch?.hook ? `<div class="thesis" style="margin-top:0">“${h(ch.hook)}”</div>` : `<div class="thesis" style="margin-top:0">${h(g.headline ?? '')}</div>`}${doms.length ? `<div class="muted">The live stories: ${doms.map(h).join(' · ')}</div>` : chStale ? `<div class="muted">The last chain read was written ${Math.round(ch0.ageMin / 1440)} days ago, so its stories are not shown as today's.</div>` : ''}
 <div class="tt-day" style="font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tx3)"><span>Market</span><span>Story lean</span><span>Day size</span><span>Because</span></div>${rows}
 <p class="tt-note"><b>Day size</b> (wide / normal / capped, from P(range beyond p75)) is tested. <b>Up / down</b> is the story lean: every read that points a way, family-weighted, scored forward as a shadow; it is not validated.</p>`;
 }
@@ -352,7 +376,8 @@ ${(() => { const all = [...firing.map(t => row(t, 'firing')), ...chain.map(t => 
 <p class="tt-note">Telegram on change. Each condition carries this desk's verdict on it: ${ownerLink('evidence.html', 'the evidence book', { target: '_blank', suffix: ' →' })}</p>`;
 }
 function precVerdict(row) {
-  if (!row?.all?.enough) return ['too few days', ''];
+  // "enough" is judged on the INDEPENDENT count (overlapping 20-session windows): say so, with that count, beside the raw n
+  if (!row?.all?.enough) return [row?.all?.nEffective != null ? `too few independent (~${row.all.nEffective})` : 'too few days', ''];
   if (row.unstable) return ['did not hold up', 'gold'];
   const m = row.all.mean; if (m == null || Math.abs(m) < 0.05) return ['no clear tendency', ''];
   return [m > 0 ? 'drifted higher' : 'drifted lower', m > 0 ? 'up' : 'dn'];
@@ -363,12 +388,16 @@ function drawPrec(m) {
   if (!st?.ok || !now?.key) { box.innerHTML = `<div class="muted">${h(m?.error ?? 'No precedent study.')}</div>`; return; }
   const rows = (st.pairs ?? []).map(p => ({ p, row: st.regimes?.[now.key]?.[p]?.[20] })).filter(x => x.row);
   box.innerHTML = `<div style="font-size:13px">Today is <b>${h(now.describe)}</b>. That has happened on <b>${st.counts?.[now.key] ?? 0}</b> days since ${h(st.dates?.from ?? '')}.</div>
-${rows.map(({ p, row }) => { const [w, c] = precVerdict(row), a = row.all; return `<div class="tt-row tt-click" data-pair="${h(p)}" tabindex="0" title="${h(`n=${a.n} (~${a.nEffective ?? '?'} independent) · median ${a.median ?? '–'}% · earlier half ${row.is?.mean ?? '–'}%, later half ${row.oos?.mean ?? '–'}%`)}"><b style="min-width:64px">${h(nice(p))}</b><span class="chip ${c}">${h(w)}</span><span class="mono ${dirCls(a.mean)}">${a.mean != null ? `${sg(a.mean)}%` : '—'}</span><span class="w">${a.hitRate != null ? `${a.hitRate}% up · ` : ''}n=${a.n}${row.unstable ? ' ⚠' : ''}</span></div>`; }).join('') || '<div class="muted">No pair has enough history in this regime.</div>'}
-<p class="tt-note">A historical base rate over the 20 sessions after, not a forecast. ⚠ = the sign flipped between the two halves of history. Windows overlap, so no significance test is offered.</p>`;
+${rows.map(({ p, row }) => { const [w, c] = precVerdict(row), a = row.all; return `<div class="tt-row tt-click" data-pair="${h(p)}" tabindex="0" title="${h(`n=${a.n} (~${a.nEffective ?? '?'} independent) · median ${a.median ?? '–'}% · earlier half ${row.is?.mean ?? '–'}%, later half ${row.oos?.mean ?? '–'}%`)}"><b style="min-width:64px">${h(nice(p))}</b><span class="chip ${c}">${h(w)}</span><span class="mono ${dirCls(a.mean)}">${a.mean != null ? `${sg(a.mean)}%` : '—'}</span><span class="w">${a.hitRate != null ? `${a.hitRate}% up · ` : ''}n=${a.n}${a.nEffective != null ? ` (~${a.nEffective} independent)` : ''}${row.unstable ? ' ⚠' : ''}</span></div>`; }).join('') || '<div class="muted">No pair has enough history in this regime.</div>'}
+<p class="tt-note">A historical base rate over the 20 sessions after, not a forecast. ⚠ = the sign flipped between the two halves of history. Windows overlap, so n days hold only about n÷20 independent outcomes; "too few" is judged on that count. No significance test is offered.</p>`;
 }
 function drawTimeline() {
   const box = el('tt-tl'); if (!box || !T.chain.inputs || typeof D === 'undefined' || !D.ev) return;
-  const v20 = CB.chainVals(T.chain.inputs, 20), v5 = CB.chainVals(T.chain.inputs, 5), w = T._watch;
+  // "three weeks ago -> last week" is the 15 sessions that END five sessions ago, not the whole 20-session window (which is what it
+  // printed: the 20D chips' numbers): every series is cut at the date five sessions back and measured over 15 sessions from there
+  const sess = (T.chain.inputs.ohlc?.nq ?? []).map(p => p.date), cut = sess.at(-6) ?? null, from20 = sess.at(-21) ?? null, last = sess.at(-1) ?? null;
+  const v20 = cut ? CB.chainVals(trimInputs(T.chain.inputs, cut), 15) : {}, v5 = CB.chainVals(T.chain.inputs, 5), w = T._watch;
+  const md = d => (d ? new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '?');
   const bp = v => (v == null ? '?' : `${v >= 0 ? '+' : ''}${Math.round(v)}bp`);
   const rates = v => { const a = v.us2y?.delta, b = v.us10y?.delta; if (a == null && b == null) return 'No rates data.'; const big = Math.max(Math.abs(a ?? 0), Math.abs(b ?? 0)); return big < 8 ? `Rates went nowhere (2Y ${bp(a)}, 10Y ${bp(b)})` : `Rates ${(a ?? b) > 0 ? 'rose' : 'fell'}${big >= 25 ? ' hard' : ''} (2Y ${bp(a)}, 10Y ${bp(b)}), ${Math.abs(a ?? 0) > Math.abs(b ?? 0) ? 'the front end leading' : 'the long end leading'}`; };
   const dollar = v => (v.dxy?.delta == null ? '' : Math.abs(v.dxy.delta) < 0.4 ? '; the dollar barely moved' : `; the broad dollar ${v.dxy.delta > 0 ? 'up' : 'down'} ${Math.abs(v.dxy.delta).toFixed(1)}%`);
@@ -378,15 +407,14 @@ function drawTimeline() {
   const logLines = (a, b) => { const L = logIn(a, b), seen = new Set(), u = L.filter(e => !seen.has(e.id) && seen.add(e.id)); return u.length ? `<div><span class="lbl">watch</span> ${u.slice(0, 4).map(e => h(String(e.label).replace(/^Chain link broken: /, 'broke: ').replace(/^Setup watch · /, ''))).join(' · ')}${u.length > 4 ? ` +${u.length - 4}` : ''}</div>` : ''; };
   const G10 = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ']);
   // /api/events carries the rated forward rows too (review 2026-11-27): one copy of each release
-  const seenAhead = new Set();
-  const ahead = [...(D.ev ?? []), ...((T.cache['/api/calendar-ahead'] && T._calAhead) || [])].map(e => ({ ...e, ms: Number(e.ms ?? Date.parse(e.time)) })).filter(e => /high/i.test(e.impact ?? '') && G10.has(e.country) && Number.isFinite(e.ms)).filter(e => { const k = `${e.country}|${String(e.event).toLowerCase()}|${e.ms}`; return !seenAhead.has(k) && seenAhead.add(k); });
+  const ahead = CB.weekAheadRows(D.ev ?? [], (T.cache['/api/calendar-ahead'] && T._calAhead) || [], { now, days: 28, countries: G10 }).rows;
   const evIn = (a, b) => { const seen = new Set(); return ahead.filter(e => e.ms > now + a * dd && e.ms <= now + b * dd).sort((x, y) => x.ms - y.ms).filter(e => { const k = `${e.country}|${e.event}|${Math.round(e.ms / 36e5)}`; return !seen.has(k) && seen.add(k); }); };
   const evLines = L => (L.length ? L.slice(0, 5).map(e => `<div><span class="mono">${h(dayName(e.ms))}</span> ${h(e.country)} ${h(e.event)}</div>`).join('') + (L.length > 5 ? `<div class="muted">+${L.length - 5} more</div>` : '') : '<div class="muted">No high-impact release on the calendar yet.</div>');
   const chainNowN = (w?.states ?? []).filter(t => t.id.startsWith('chain-') && t.firing), firing = (w?.states ?? []).filter(t => t.firing && !t.id.startsWith('chain-'));
   const book = Object.entries(D.cards ?? {}).filter(([, c]) => (DIR[c.rating] ?? 0) !== 0).sort((a, b) => (b[1].size ?? 0) - (a[1].size ?? 0)).slice(0, 4);
   box.innerHTML = `<div class="tt-tl">
-<div class="col"><h4>Three weeks ago → last week</h4><div class="lead">${h(rates(v20) + dollar(v20))}.</div>${logLines(5, 21)}</div>
-<div class="col"><h4>This week</h4><div class="lead">${h(rates(v5) + dollar(v5) + fear(v5))}.</div>${logLines(0, 5)}</div>
+<div class="col"><h4>Three weeks ago → last week</h4><div class="muted" style="font-size:11px">20 to 5 sessions ago (${h(md(from20))} → ${h(md(cut))})</div><div class="lead">${h(rates(v20) + dollar(v20))}.</div>${logLines(5, 21)}</div>
+<div class="col"><h4>This week</h4><div class="muted" style="font-size:11px">the last 5 sessions (${h(md(cut))} → ${h(md(last))})</div><div class="lead">${h(rates(v5) + dollar(v5) + fear(v5))}.</div>${logLines(0, 5)}</div>
 <div class="col now"><h4>Today</h4><div class="lead">${chainNowN.length ? `${chainNowN.length} chain link${chainNowN.length === 1 ? '' : 's'} broken` : 'Nothing broken in the chain'}; ${firing.length ? `${firing.length} watch condition${firing.length === 1 ? '' : 's'} on` : 'no watch condition on'}.</div>${chainNowN.length ? `<div><span class="lbl">broken</span> ${chainNowN.map(t => h(String(t.label).replace('Chain link broken: ', ''))).join(' · ')}</div>` : ''}${book.length ? `<div><span class="lbl">book</span> ${book.map(([n, c]) => `<a href="#" data-pair="${h(n)}" class="${(DIR[c.rating] ?? 0) > 0 ? 'up' : 'dn'}" style="text-decoration:none">${h(n)} ${(DIR[c.rating] ?? 0) > 0 ? '▲' : '▼'}</a>`).join(' · ')}</div>` : ''}</div>
 <div class="col ahead"><h4>Next week</h4>${evLines(evIn(0, 7))}</div>
 <div class="col ahead"><h4>The month after</h4>${evLines(evIn(7, 28))}<div class="muted" style="margin-top:6px">Tested here: quiet stretches stay quiet and wild ones stay wild, more often than not.</div></div></div>
@@ -396,14 +424,16 @@ function drawWeek(ca, es) {
   const box = el('tt-week'); if (!box) return;
   T._calAhead = ca?.rows ?? [];
   const now = Date.now(), today = new Date().toISOString().slice(0, 10), hist = es?.series ?? {}, C = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
-  const ff = (D.ev ?? []).map(e => ({ ...e, ms: Number(e.ms ?? Date.parse(e.time)) })), ffLast = Math.max(0, ...ff.map(e => e.ms).filter(Number.isFinite));
-  const rows = [...ff, ...T._calAhead.filter(e => e.ms > ffLast)].filter(e => Number.isFinite(e.ms) && e.ms > now && e.ms <= now + 7 * 864e5 && /high/i.test(e.impact ?? '') && C.has(e.country) && new Date(e.ms).toISOString().slice(0, 10) !== today).sort((a, b) => a.ms - b.ms);
-  if (!rows.length) { box.innerHTML = '<div class="muted">No high-impact release left this week.</div>'; drawTimeline(); return; }
+  // one copy per release; a forward row counts only with ForexFactory's own rating (chainBoard.weekAheadRows)
+  const wk = CB.weekAheadRows(D.ev ?? [], T._calAhead, { now, days: 7, countries: C });
+  const rows = wk.rows.filter(e => new Date(e.ms).toISOString().slice(0, 10) !== today);
+  const droppedNote = wk.dropped ? ` ${wk.dropped} forward row${wk.dropped === 1 ? '' : 's'} from the Nasdaq list ${wk.dropped === 1 ? 'is' : 'are'} left out: ForexFactory does not rate ${wk.dropped === 1 ? 'it' : 'them'}, and a guessed rating is not shown.` : '';
+  if (!rows.length) { box.innerHTML = `<div class="muted">No high-impact release left this week.${h(droppedNote)}</div>`; drawTimeline(); return; }
   const byDay = {}; for (const e of rows) (byDay[dayName(e.ms)] ??= []).push(e);
   const past = e => { const p = hist[`${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}`] ?? []; if (!p.length) return '<span class="muted" style="font-size:11px">no history stored</span>';
     return `<span class="mono" title="${h(p.map(x => `${String(x.time ?? '').slice(0, 10)}: ${x.actual} vs ${x.estimate ?? '—'}`).join(' · '))}">${p.slice(0, 6).map(x => (x.beat === 'above' ? '<b class="up">▲</b>' : x.beat === 'below' ? '<b class="dn">▼</b>' : '<span class="muted">=</span>')).join(' ')}</span>`; };
   box.innerHTML = Object.entries(byDay).map(([d, es2]) => `<div class="lbl" style="margin:10px 0 2px">${h(d)}</div>${es2.map(e => `<div class="tt-row"><span class="mono" style="min-width:44px">${h(hm(e.ms))}</span><b style="min-width:26px">${h(e.country)}</b><span style="flex:1;min-width:140px">${h(e.event)}${e.estimate ? ` <span class="muted">est ${h(e.estimate)}</span>` : ''}</span>${past(e)}</div>`).join('')}`).join('')
-    + '<p class="tt-note">▲ above forecast · ▼ below · = in line, newest first. A run of beats or misses is the context that makes the next one readable; it is not a forecast of it.</p>';
+    + `<p class="tt-note">▲ above forecast · ▼ below · = in line, newest first. A run of beats or misses is the context that makes the next one readable; it is not a forecast of it.${h(droppedNote)}</p>`;
   drawTimeline();
 }
 
@@ -630,9 +660,13 @@ function pairRates(n, g) {
   const legs = PV.legsOf(n);
   if (!legs?.[0]) { const R = D.rates?.now ?? {}, ch = D.rates?.change20d ?? {}; box.innerHTML = `<div class="lbl">Rates</div><p class="muted">${h(nice(n))} has no currency pair of rates. The US curve it trades against:</p><div class="tt-kv">${['us2y', 'us10y', 'real'].filter(k => R[k]).map(k => `<b>${k}</b><span class="mono">${R[k].value}% ${ch[k] != null ? `<span class="${dirCls(ch[k])}">${sg(ch[k], 0)}bp / 20d</span>` : ''}</span>`).join('')}</div>`; return; }
   const gap = PV.rateGap(n, { rd: D.rd, ry: D.ry, policy: D.pr?.rates }), [a, b] = legs, ca = g?.currencies?.[a]?.state, cb = g?.currencies?.[b]?.state;
-  const row = (l, v, unit = 'pp', title = '') => `<b title="${h(title)}">${l}</b><span class="mono ${dirCls(v)}">${v == null ? '–' : `${sg(v)}${unit}`}</span>`;
+  // the page's bundle can carry a rate-diff answer from before the server had built it ("No rate differential data yet"): ask once more
+  if (!D.rd?.ok && !T.rdRetry) { T.rdRetry = true; J('/api/rate-diff').then(r => { if (r?.ok) { D.rd = r; if (T.pair === n) pairRates(n, g); } }); }
+  // a blank says why (review 2026-11-27: REAL 10Y, 10Y and USD 2Y z showed "–"): the feed did not load, or it has no row for a leg
+  const miss = (m, k, word) => { if (!m?.ok) return 'not loaded'; const L = [a, b].filter(x => m.byCcy?.[x]?.[k] == null); return L.length ? `no ${L.join('/')} ${word}` : '–'; };
+  const row = (l, v, unit = 'pp', title = '', why = '–') => `<b title="${h(title)}">${l}</b><span class="mono ${dirCls(v)}">${v == null ? `<span class="muted" style="font-family:var(--sans)">${h(why)}</span>` : `${sg(v)}${unit}`}</span>`;
   box.innerHTML = `<div class="lbl">Rates · ${a} minus ${b}</div>
-<div class="tt-kv" style="margin-top:8px">${row('Policy', gap.policy, 'pp', 'policy rates from each bank (/api/policy-rates)')}${row('Short leg', gap.short, 'pp', 'the rate-diff engine\'s short rates, monthly averages: US 2-year Treasury (GS2), UK Bank Rate, call money or 3-month interbank elsewhere (/api/rate-diff). Not a like-for-like 3-month gap.')}${row('Short-leg gap z', gap.shortZ, '', 'z of each leg against its own history, base minus quote')}${row('Real 10Y', gap.real, 'pp', '10Y minus CPI (/api/real-yield)')}${row('10Y', gap.y10)}${ca?.spreadZ != null || cb?.spreadZ != null ? `<b title="each leg's 2Y spread against USD, as a z-score (Global Read)">2Y spread z vs USD</b><span class="mono">${a} ${sg(ca?.spreadZ)} · ${b} ${b === 'USD' ? '0' : sg(cb?.spreadZ)}</span>` : ''}</div>
+<div class="tt-kv" style="margin-top:8px">${row('Policy', gap.policy, 'pp', 'policy rates from each bank (/api/policy-rates)')}${row('Short leg', gap.short, 'pp', 'the rate-diff engine\'s short rates, monthly averages: US 2-year Treasury (GS2), UK Bank Rate, call money or 3-month interbank elsewhere (/api/rate-diff). Not a like-for-like 3-month gap.', miss(D.rd, 'latestRate', 'short rate'))}${row('Short-leg gap z', gap.shortZ, '', 'z of each leg against its own history, base minus quote', miss(D.rd, 'z', 'short rate'))}${row('Real 10Y', gap.real, 'pp', '10Y minus CPI (/api/real-yield)', miss(D.ry, 'latestReal', 'real 10Y in the feed (it covers USD, EUR and CHF)'))}${row('10Y', gap.y10, 'pp', '10-year government yield (/api/real-yield)', miss(D.ry, 'latestY10', '10Y in the feed'))}${ca?.spreadZ != null || cb?.spreadZ != null ? `<b title="each leg's 2Y spread against USD, as a z-score (Global Read)">2Y spread z vs USD</b><span class="mono">${a} ${a === 'USD' ? 'is the base' : sg(ca?.spreadZ)} · ${b} ${b === 'USD' ? 'is the base' : sg(cb?.spreadZ)}</span>` : ''}</div>
 <div class="tt-kv" style="margin-top:10px">${[a, b].map(x => `<b>${x}</b><span>${pol(x) ? `policy ${pct(pol(x).rate)}` : ''}${D.sc?.cbSentiment?.[x] ? ` · ${h(D.sc.cbSentiment[x].regime.toLowerCase())} (${D.sc.cbSentiment[x].score})` : ''}${D.ry?.byCcy?.[x]?.latestReal != null ? ` · real ${D.ry.byCcy[x].latestReal}%` : ''}</span>`).join('')}</div>
 <p class="tt-note">The 2Y yield-spread sleeve is a tested null for direction on this desk; the gap is context.</p>`;
 }
@@ -652,7 +686,7 @@ async function pairPos(n) {
   const key = { EURUSD: 'EUR', GBPUSD: 'GBP', USDJPY: 'JPY', AUDUSD: 'AUD', USDCAD: 'CAD', USDCHF: 'CHF', NZDUSD: 'NZD', GOLD: 'GOLD', NQ: 'NQ', SPX500: 'SPX' }[n], S = hist?.series?.[key];
   box.innerHTML = `<div class="lbl">Positioning</div>
 ${ct ? `<div class="tt-row"><b>COT speculators</b><span class="chip ${ct.side === 'long' ? 'up' : ct.side === 'short' ? 'dn' : ''}">${h(ct.label ?? ct.zone ?? '–')}</span><span class="mono">${ordinal(ct.pct ?? '–')} pct · share ${sg(ct.share, 1)}%</span><span class="muted" style="flex-basis:100%">${h(ct.line ?? '')} <span class="chip" style="font-size:9px">${h(ct.verdict ?? '')}</span> · report ${h(ct.reportDate ?? '')}</span></div>${S ? `<div>${spk(S.specShare.map(Number), 300, 40, 'var(--pur2)')}<div class="muted" style="font-size:11px">speculators' net share, ${h(S.dates[0])} → ${h(S.dates.at(-1))}${['USDJPY', 'USDCAD', 'USDCHF'].includes(n) ? ` (the ${key} future: inverted against the pair)` : ''}</div></div>` : ''}` : '<div class="muted">No COT row for this market.</div>'}
-${cr ? `<div class="tt-row"><b>Retail (OANDA)</b><span style="flex:1;min-width:120px"><span class="gauge" style="display:flex"><i style="width:${cr.long}%;background:var(--up)"></i><i style="width:${100 - cr.long}%;background:var(--dn)"></i></span></span><span class="mono">${cr.long.toFixed(0)}% long${cr.d24 != null ? ` <span class="${dirCls(cr.d24)}">${sg(cr.d24, 1)}</span>` : ''}</span>${globalThis.dataAge?.bookChip(cr.at) ?? ''}</div>` : '<div class="muted">No retail book for this market.</div>'}
+${cr ? `<div class="tt-row"><b>Retail (OANDA)</b><span style="flex:1;min-width:120px"><span class="gauge" style="display:flex"><i style="width:${cr.long}%;background:var(--up)"></i><i style="width:${100 - cr.long}%;background:var(--dn)"></i></span></span><span class="mono">${cr.long.toFixed(0)}% long${cr.d24 != null ? ` <span class="${dirCls(cr.d24)}" title="change in the share long over the last 24 hours, percentage points">${sg(cr.d24, 1)}pp in 24 h</span>` : ''}</span>${globalThis.dataAge?.bookChip(cr.at) ?? ''}</div>` : '<div class="muted">No retail book for this market.</div>'}
 <p class="tt-note">Context, not a signal: the COT positioning factor tested null for direction here.</p>`;
 }
 function pairCarry(n, cv, sk) {
@@ -675,15 +709,19 @@ function pairPrec(n, m) {
   const st = m?.study, key = m?.now?.key, rows = [5, 20].map(hz => [hz, st?.regimes?.[key]?.[n]?.[hz]]).filter(([, r]) => r);
   const node = CHAIN_NODE_OF[n];
   const links = node && T.chain.inputs ? CB.chainLinks(T.chain.inputs, 20).filter(l => l.a?.key === node || l.b?.key === node) : [];
-  box.innerHTML = `<div class="lbl">Precedent · days like today</div>${rows.length ? `<div class="muted" style="margin:6px 0">${h(m.now.describe)}</div>${rows.map(([hz, r]) => { const [w, c] = precVerdict(r); return `<div class="tt-row"><b>${hz} sessions</b><span class="chip ${c}">${h(w)}</span><span class="mono ${dirCls(r.all.mean)}">${r.all.mean != null ? `${sg(r.all.mean)}%` : '–'}</span><span class="w">${r.all.hitRate ?? '–'}% up · n=${r.all.n}${r.unstable ? ' ⚠' : ''}</span></div>`; }).join('')}` : '<p class="muted">No precedent row for this market.</p>'}
+  box.innerHTML = `<div class="lbl">Precedent · days like today</div>${rows.length ? `<div class="muted" style="margin:6px 0">${h(m.now.describe)}</div>${rows.map(([hz, r]) => { const [w, c] = precVerdict(r); return `<div class="tt-row"><b>${hz} sessions</b><span class="chip ${c}">${h(w)}</span><span class="mono ${dirCls(r.all.mean)}">${r.all.mean != null ? `${sg(r.all.mean)}%` : '–'}</span><span class="w" title="${h(`${r.all.n} days like today, but ${hz}-session moves from days close together overlap: about ${Math.max(1, Math.floor((r.all.n ?? 0) / hz))} independent ${hz}-session spells`)}">${r.all.hitRate ?? '–'}% up · n=${r.all.n}${hz > 1 ? ` (≈${Math.max(1, Math.floor((r.all.n ?? 0) / hz))} independent)` : ''}${r.unstable ? ' ⚠' : ''}</span></div>`; }).join('')}` : '<p class="muted">No precedent row for this market.</p>'}
 <div class="lbl" style="margin-top:14px">On the chain · 20-day</div>${node ? (links.length ? links.map(l => `<div class="tt-row"><span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span><span style="flex:1;min-width:0">${h(l.short)} · ${h(l.a.label)} ${h(endTxt(l.a))} → ${h(l.b.label)} ${h(endTxt(l.b))}</span>${l.punch ? `<span class="muted" style="flex-basis:100%">${h(l.punch)}</span>` : ''}</div>`).join('') : '<p class="muted">Loading the chain…</p>') : '<p class="muted">Not a chip on the chain.</p>'}`;
 }
 function pairResearch(n, rp, pp) {
   const box = el('tt-p-res'); if (!box) return;
   const r = PV.researchFor(n, { library: rp?.library ?? [], papers: pp?.papers ?? [] });
+  // folded by default behind one line: proposals and papers are not results (review 2026-11-27: eight PROPOSED ideas and three papers filled Context)
+  const cnt = [r.proposals.length ? `${r.proposals.length} research idea${r.proposals.length === 1 ? '' : 's'} (${[...new Set(r.proposals.map(p => p.lifecycle?.stage ?? 'proposed'))].join(', ')})` : '', r.papers.length ? `${r.papers.length} paper${r.papers.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' and ');
   box.innerHTML = `<div class="lbl">Research that names ${h(PV.pairLabel(n))}</div>
+<details${cnt ? '' : ' open'}><summary class="muted" style="cursor:pointer">${cnt ? `${h(cnt)} name it: ideas and reading, not results` : 'Nothing in the research library names it'}</summary>
 ${r.proposals.length ? r.proposals.map(p => `<div class="tt-row"><span class="chip ${['passed', 'paper', 'live'].includes(p.lifecycle?.stage) ? 'up' : p.lifecycle?.stage === 'failed' ? 'dn' : 'pur'}">${h(p.lifecycle?.stage ?? 'proposed')}</span><b style="flex:1;min-width:0">${h(p.title)}</b><span class="w">${h(p.lens ?? '')}</span>${p.thesis ? `<span class="muted" style="flex-basis:100%">${h(String(p.thesis).slice(0, 200))}</span>` : ''}</div>`).join('') : '<div class="muted">No research pod proposal names it.</div>'}
 ${r.papers.length ? `<div class="lbl" style="margin-top:12px">Papers</div>${r.papers.map(p => `<div class="tt-row"><span class="w" style="margin-left:0">${h(p.year ?? '')}</span>${p.url ? `<a href="${h(p.url)}" target="_blank" rel="noopener" style="flex:1;min-width:0">${h(p.title)}</a>` : `<b style="flex:1;min-width:0">${h(p.title)}</b>`}${p.notes?.claim ? `<span class="muted" style="flex-basis:100%">${h(String(p.notes.claim).slice(0, 200))}</span>` : ''}</div>`).join('')}` : `<div class="muted" style="margin-top:8px">No paper in the library (${pp?.count ?? 0}) names it.</div>`}
+</details>
 <p class="tt-note">Proposals and papers, not results. <a href="research.html" data-surface="nav.research">The research pipeline →</a></p>`;
 }
 
@@ -702,7 +740,7 @@ async function renderChanged() {
   const prevB = prevRun?.ok ? (prevRun.debate?.currency?.view?.currencies ?? prevRun.head?.book?.currencies ?? {}) : {}, bar = (v, col) => `<i style="display:block;height:8px;border-radius:3px;width:${Math.abs(v) * 25}%;margin-left:${v >= 0 ? 50 : 50 - Math.abs(v) * 25}%;background:${col}"></i>`;
   const biasRows = CCYS.map(c => { const a = numOrNull(prevB[c]?.bias), b = numOrNull(D.ccy?.[c]?.bias); return `<b>${c}</b><span style="background:var(--bg3);border-radius:4px;position:relative" title="previous ${a ?? 'no ruling (no data)'}">${a == null ? '' : bar(a, 'rgba(var(--flatrgb),.6)')}</span><span style="background:var(--bg3);border-radius:4px" title="now ${b ?? 'no ruling (no data)'}">${b == null ? '' : bar(b, b > 0 ? 'var(--up)' : b < 0 ? 'var(--dn)' : 'var(--flat)')}</span>`; }).join('');
   root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">What changed</span><h2 style="flex-basis:100%">Since the previous book${r.prevDate ? ` (${h(r.prevDate)})` : ''}</h2></div>
-<div class="tt-counts"><span class="chip gold">${r.summary.book} in the book</span><span class="chip">${r.summary.stress} stress tiles</span><span class="chip pur">${r.summary.chain} chain links</span><span class="chip">book ${h(r.curDate ?? '–')}</span>${prevStress ? `<span class="chip">stress vs ${h(prevStress.date)}</span>` : ''}</div>
+<div class="tt-counts"><span class="chip gold">${r.summary.book} in the book</span><span class="chip">${r.summary.stress} stress tiles</span><span class="chip pur">${r.summary.chain} chain links</span><span class="chip">book ${h(r.curDate ?? '–')}</span>${prevStress ? `<span class="chip" title="World stress is compared with the last saved stress snapshot before today; the book with the previous book.">world stress vs ${h(prevStress.date)}${r.prevDate && prevStress.date !== r.prevDate ? ' (latest stress snapshot, not the previous book\'s day)' : ''}</span>` : ''}</div>
 ${!prevDate ? '<p class="muted">There is no earlier book to compare with.</p>' : !prevRun?.ok ? `<p class="muted">Could not load the ${h(prevDate)} book: ${h(prevRun?.error ?? '')}</p>` : ''}
 ${r.items.length ? (() => { const one = x => `<div class="tt-chg${x.kind === 'card' ? ' tt-click' : ''}"${x.kind === 'card' ? ` data-pair="${h(x.key)}" tabindex="0"` : x.kind === 'bias' ? ` data-ccy="${h(x.key)}" tabindex="0"` : ''}><span class="chip ${x.kind === 'chain' ? 'pur' : x.kind === 'stress' ? (x.dir > 0 ? 'dn' : 'up') : x.dir > 0 ? 'up' : x.dir < 0 ? 'dn' : 'gold'}">${KIND[x.kind] ?? x.kind}</span><span class="t"><b>${h(x.title)}</b></span><span class="tt-wbar" title="weight ${x.weight}"><i style="width:${(x.weight / maxW) * 100}%"></i></span><span class="d">${h(x.detail ?? '')}</span></div>`; return r.items.slice(0, 15).map(one).join('') + (r.items.length > 15 ? `<details><summary>${r.items.length - 15} smaller changes</summary>${r.items.slice(15).map(one).join('')}</details>` : ''); })() : '<p class="muted">Nothing moved between the two books.</p>'}
 <p class="tt-note">Ranked by how much it matters to the book: a flipped or new card weighs by its size, a currency bias by how far it moved (more if it changed sides), then world-stress tiles that changed colour${prevStress ? '' : ' (the first comparison appears once a snapshot from an earlier day exists: the server keeps the first look of each day)'}, then chain links that broke or came back in the desk watch since the previous book (more when they end on something the book holds). A reading order, not a model.</p></div>
@@ -750,8 +788,11 @@ const vchip = v => `<span class="chip ${VCH[v] ?? ''}">${h(v ?? '–')}</span>`;
 const pctS = v => (v == null ? '–' : `${Math.round(v * 100)}%`);
 async function drawThesisReality(box, date = null) {
   if (!box) return;
-  const r = await getJson(`/api/thesis-reality${date ? `?date=${date}` : ''}`);
+  const [r, sc] = await Promise.all([getJson(`/api/thesis-reality${date ? `?date=${date}` : ''}`), date ? null : getJson('/api/desk-score')]);
   const t = r?.tally, d = r?.day;
+  // scored days with no record yet say so, instead of the list just stopping (review 2026-11-27: the list ended at 24 Nov while 25 and 26 Nov were scored)
+  const lastTr = (r?.dates ?? []).at(-1), lastScored = sc?.score?.date ?? null;
+  const gapHtml = lastTr && lastScored && lastScored > lastTr ? `<p class="muted" style="font-size:12px;color:var(--gold)">Days scored after ${h(lastTr)} (up to ${h(lastScored)}) have no thesis-vs-reality record yet: the build after the evening score did not finish for them${r?.lastError?.date ? ` (last failure ${h(r.lastError.date)}: ${h(r.lastError.error)})` : ''}. The server catches them up on its next restart.</p>` : '';
   const tallyHtml = t?.days ? `<div class="tt-tiles" style="margin-top:8px">${[
     ['Strongest call right', t.strongest.n ? `${t.strongest.right}/${t.strongest.n}` : '–', 'finished in the realised top half'],
     ['Weakest call right', t.weakest.n ? `${t.weakest.right}/${t.weakest.n}` : '–', 'finished in the bottom half'],
@@ -767,7 +808,7 @@ async function drawThesisReality(box, date = null) {
   const cardRow = c => `<tr class="tt-click" data-pair="${h(c.inst)}" tabindex="0"><td class="mono"><b>${h(c.inst)}</b></td><td class="${c.dir > 0 ? 'up' : 'dn'}">${c.dir > 0 ? '▲' : '▼'} ${h(String(c.rating).replace('_', ' ').toLowerCase())}</td><td class="mono">${h(c.grade ? `${c.grade}` : '–')}</td><td class="n mono">${c.size}</td><td class="n mono ${dirCls(c.R)}">${c.R == null ? '–' : sg(c.R)}</td><td class="n mono ${dirCls(c.sizeR)}">${c.sizeR == null ? '–' : sg(c.sizeR, 3)}</td><td>${vchip(c.verdict)}</td><td title="${h(c.invalidation.text ?? '')}${c.invalidation.level != null ? ` · level ${c.invalidation.level}` : ' · no level parsed'}">${c.invalidation.level == null ? '<span class="muted">–</span>' : tick(c.invalidation.touched, c.invalidation.at)}</td><td>${tick(c.p50.reached, c.p50.at)}</td><td>${tick(c.p75.reached, c.p75.at)}</td></tr>`;
   const dates = (r.dates ?? []).slice().reverse();
   box.innerHTML = `<div class="ch"><span class="lbl">Morning thesis vs evening reality</span><span class="r">${dates.length > 1 ? `<select id="tt-tr-date" aria-label="day">${dates.map(x => `<option ${x === d.date ? 'selected' : ''}>${h(x)}</option>`).join('')}</select>` : `<span class="chip">${h(d.date)}</span>`}</span></div>
-<div class="muted" style="font-size:12px">${h(d.label)}. Book written ${h(lt2(d.bookAt))} London; ${d.counts ? 'a counted day' : 'not a counted day'}; day score ${d.dayScore == null ? '–' : sg(d.dayScore) + ' u'}. ${h(d.window)}.</div>
+${gapHtml}<div class="muted" style="font-size:12px">${h(d.label)}. Book written ${h(lt2(d.bookAt))} London; ${d.counts ? 'a counted day' : 'not a counted day'}; day score ${d.dayScore == null ? '–' : sg(d.dayScore) + ' u'}. ${h(d.window)}.</div>
 <div class="tt-grid2" style="margin-top:10px">
 <div><div class="lbl">The regime call</div><div class="tt-row"><b>${h(String(d.regime.tone ?? '–').replace('_', '-'))}</b><span class="muted">global ruling conviction ${h(d.regime.conviction ?? '–')}</span>${vchip(d.regime.verdict)}<span class="w">risk basket ${d.regime.realised == null ? '–' : sg(d.regime.realised) + ' u'} (${d.regime.basket} markets)</span></div>
 <div class="lbl" style="margin-top:10px">Strongest and weakest</div>
@@ -794,7 +835,7 @@ async function renderOptions() {
     root.dataset.built = '1';
     root.innerHTML = `<div class="card glow"><div class="tt-head"><span class="lbl">Options</span><h2 style="flex-basis:100%">What the options market is positioned for</h2></div>
 <p style="margin:4px 0 0">Price shows two dimensions: up and down. Options add a third, the <b>path</b>: every contract has a strike and an expiry, so the book shows at what price, by what date, the market is protected or speculating. Read it as positioning, one lens among several: every reading below carries what the Evidence Book found when it was tested.</p></div>
-<div class="card" id="opt-mkt-bar" style="position:sticky;top:0;z-index:5;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:10px"><label class="lbl" for="opt-mkt" style="margin:0">Market</label><select id="opt-mkt" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:4px 6px;font-size:14px;font-weight:600"></select><span class="muted" style="font-size:12px">Every chart on this tab shows this market. A chart that does not cover it says so. Data-source choices (CME, Cboe) stay on their own chart.</span></div>
+<div class="card" id="opt-mkt-bar" style="position:sticky;top:0;z-index:5;padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:10px"><label class="lbl" for="opt-mkt" style="margin:0">Market</label><select id="opt-mkt" style="background:var(--bg3);color:var(--tx);border:1px solid var(--line2);border-radius:5px;padding:4px 6px;font-size:14px;font-weight:600"></select><span class="muted" style="font-size:12px">Every chart on this tab shows this market. A chart that does not cover it says so. Data-source choices (CME, Cboe) stay on their own chart.</span><span id="opt-mkt-cov" style="flex-basis:100%;font-size:12px"></span></div>
 <div class="sfc" data-surface="panel.opt.terrain">${sec('The terrain', 'open interest, the IV smile or gamma by expiry, and the labelled levels on one price axis')}${terrainHtml()}</div>
 <div class="sfc" data-surface="panel.opt.smile">${sec('The IV smile', 'implied vol against strike, one curve per expiry, with the IV and realised-vol reference lines')}<div id="opt-smile-none" class="card muted" hidden></div><div id="opt-smile">${smilePanelHtml()}</div></div>
 <div class="sfc" data-surface="panel.opt.lines">${sec('Option lines', 'walls, max pain and gamma lines around the price')}<div id="opt-lad">${loading('option lines')}</div></div>
@@ -805,11 +846,19 @@ async function renderOptions() {
 <div class="sfc" data-surface="panel.opt.vix">${sec('Fear gauge', 'the VIX and its term structure')}<div id="opt-vix">${loading('the VIX')}</div></div>`;
   }
   const goPair = box => box?.querySelectorAll('[data-pair]').forEach(b => (b.onclick = () => openPair(b.dataset.pair)));
-  const [oi, hist, hs, sk, tKeys] = await Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary'), J('/api/options-skew'), terrainKeys(J)]);
+  const [oi, hist, hs, sk, tKeys, store] = await Promise.all([J('/api/oi-today'), J('/api/options-history'), J('/api/hedging-summary'), J('/api/options-skew'), terrainKeys(J), terrainStore(J)]);
   const rows = oi?.pairs ?? [];
+  // the stored books' expiries (contract code and open interest per DTE): the lines' expiry dates and the front expiry
+  const legsOf = pair => { try { return store?.[pair] ? bookLegs(store[pair]) : []; } catch { return []; } };
+  const fronts = Object.fromEntries(rows.map(r => [r.pair, OPV.frontOf(legsOf(r.pair), { pair: r.pair, capture: OPV.captureDateOf(store?.[r.pair] ?? r) })]));
   // one market for the whole tab (owner 2026-11-10: "I was looking at something which I thought was gold but turned out
-  // to be EURUSD"): the union of what any panel covers; each panel maps it to its own key and says when it has no book
-  const markets = OPV.optionMarkets(tKeys, rows.map(r => r.pair), OPV.PATH_MARKETS, SMILE_SYMS);
+  // to be EURUSD"): a market is listed only where at least one panel has data for it (GBP/JPY had none), and the bar says
+  // which panels cover it; each panel maps it to its own key and says when it has no book
+  const tIds = tKeys.map(OPV.idOf), lineIds = rows.map(r => OPV.idOf(r.pair));
+  const cov = OPV.marketCoverage({ terrain: tIds, smile: SMILE_SYMS.map(OPV.idOf), lines: lineIds, path: OPV.PATH_MARKETS.filter(id => tIds.includes(id)),
+    pc: rows.filter(r => Number.isFinite(r.pcRatio)).map(r => OPV.idOf(r.pair)), dealers: (hs?.markets ?? []).filter(m => m.state).map(m => OPV.idOf(m.pair)),
+    skew: (sk?.rows ?? []).map(r => OPV.SKEW_TO_ID[r.id] ?? OPV.idOf(r.pair)) });
+  const markets = OPV.optionMarkets([...cov.keys()]);
   const nameOf = id => OPV.NAME[id] ?? id;
   if (!T.optMkt) { try { T.optMkt = localStorage.getItem('deskOptMarket'); } catch { /* private window */ } }
   if (!markets.includes(T.optMkt)) T.optMkt = markets.includes('GOLD') ? 'GOLD' : markets[0];
@@ -820,6 +869,7 @@ async function renderOptions() {
   }
   const drawMarket = () => {
     const id = T.optMkt, name = nameOf(id);
+    const cv = el('opt-mkt-cov'); if (cv) cv.textContent = OPV.coverageLine(id, cov);
     // the terrain
     (T.terrain ??= {}).id = id;
     mountTerrain(root, J, T.terrain, { idOf: OPV.idOf, nameOf }).catch(e => console.warn('terrain', e));
@@ -828,18 +878,21 @@ async function renderOptions() {
     if (smBox && smNone) {
       smBox.hidden = !smSym; smNone.hidden = !!smSym;
       smNone.textContent = smSym ? '' : `No IV smile for ${name}. The smile needs a live Cboe chain with many strikes: S&P 500, Nasdaq 100 and Russell 2000 only. CME books carry one vol per expiry; the terrain above shows gamma by strike instead.`;
-      if (smSym) { if (!T.smile) { try { T.smile = mountSmile(smBox.querySelector('[data-sm="root"]'), { sym: smSym, fixed: true }); } catch (e) { console.warn('smile', e); } } else T.smile.setSym(smSym); }
+      if (smSym) { if (!T.smile) { try { T.smile = mountSmile(smBox.querySelector('[data-sm="root"]'), { sym: smSym, fixed: true,
+        // no Cboe chain: the CME at-the-money term structure from the same nightly capture, labelled as such
+        fallback: k => { const ts = store?.[k]?.ivTermStructure; return ts?.points?.length ? { points: ts.points.map(p => [p.dte, p.iv]), asOf: store[k].savedAt ?? null } : null; } }); } catch (e) { console.warn('smile', e); } } else T.smile.setSym(smSym); }
     }
     // option lines
     const lad = el('opt-lad'), row = rows.find(r => OPV.idOf(r.pair) === id);
-    if (lad) lad.innerHTML = row ? (OPV.ladderHtml(row) || `<div class="card muted">No option lines for ${h(name)}.</div>`) : `<div class="card muted">No CME option lines for ${h(name)} today. Option lines cover ${h(rows.map(r => nameOf(OPV.idOf(r.pair))).join(', ') || 'no market today')}.</div>`;
+    const dealer = (hs?.markets ?? []).find(m => OPV.idOf(m.pair) === id && m.state) ?? null;
+    if (lad) lad.innerHTML = row ? (OPV.ladderHtml(row, { legs: legsOf(row.pair), dealer }) || `<div class="card muted">No option lines for ${h(name)}.</div>`) : `<div class="card muted">No CME option lines for ${h(name)} today. Option lines cover ${h(rows.map(r => nameOf(OPV.idOf(r.pair))).join(', ') || 'no market today')}.</div>`;
     // the path
-    if (OPV.PATH_MARKETS.includes(id)) drawPath(id);
+    if (OPV.PATH_MARKETS.includes(id) && tIds.includes(id)) drawPath(id);
     else { const box = el('opt-path'); if (box) box.innerHTML = `<div class="ch"><span class="lbl">The path · ${h(name)}</span></div><p class="muted" style="margin:0">No path for ${h(name)}: the Swing Map covers ${h(OPV.PATH_MARKETS.map(nameOf).join(', '))}.</p>`; }
     // the all-market panels: mark the chosen market
     root.querySelectorAll('#opt-pos [data-pair], #opt-dl [data-pair]').forEach(b => { b.style.outline = b.dataset.pair === id ? '2px solid var(--pur2)' : ''; });
   };
-  const pos = el('opt-pos'); if (pos) { pos.innerHTML = OPV.positioningHtml(oi, hist); goPair(pos); }
+  const pos = el('opt-pos'); if (pos) { pos.innerHTML = OPV.positioningHtml(oi, hist, { fronts }); goPair(pos); }
   const dl = el('opt-dl'); if (dl) { dl.innerHTML = OPV.dealersHtml(hs) || '<div class="card muted">No dealer hedging read.</div>'; goPair(dl); }
   const skb = el('opt-skew'); if (skb && typeof E !== 'undefined' && E) { E['options-skew'] ??= sk; skb.innerHTML = globalThis.skewHtml?.() ?? ''; }
   const vx = el('opt-vix'); if (vx) vx.innerHTML = OPV.vixHtml(hist) || '<div class="card muted">No VIX series.</div>';
@@ -848,7 +901,8 @@ async function renderOptions() {
     box.innerHTML = loading(`the ${inst} path`);
     // the source (CME, the Cboe chain, or both) is kept for the session; a market without a Cboe book reads CME
     const src = OPV.pathSourceFor(inst, T.optSrc);
-    const sm = await J(`/api/swing-map?inst=${encodeURIComponent(inst)}${src !== 'cme' ? `&source=${src}` : ''}`);
+    // each expiry dated from its contract code, days counted from today, and today's expired books dropped (js/optionExpiry.js)
+    const sm = OPV.freshExpiries(await J(`/api/swing-map?inst=${encodeURIComponent(inst)}${src !== 'cme' ? `&source=${src}` : ''}`));
     if (T.optMkt !== inst) return;   // the market changed while this loaded
     let walk = null;
     const o = (T.optWalk ??= { ...OPV.WALK_OPTS_DEFAULT });   // the walk options (Swing Map's), kept for the session
@@ -873,10 +927,19 @@ const NEWS_EVERY_MS = 120_000;
 function newsFeed(force = false) {
   if (!force && NS.items && Date.now() - NS.at < NEWS_EVERY_MS - 5_000) return Promise.resolve(NS.items);
   return (NS.loading ??= getJson('/api/desk-news?hours=72&tier=3').then(r => {
-    if (r?.ok) { NS.items = r.items ?? []; NS.at = Date.now(); NS.updatedAt = r.updatedAt ?? null; NS.err = null; } else NS.err = r?.error ?? 'not available';
+    // the read cut to the currencies each title names, the markets capped at the book + 3, near-identical stories folded (newsView.tidyHeadline / dedupeNews)
+    if (r?.ok) { NS.items = newsTidyAll(r.items ?? []); NS.at = Date.now(); NS.updatedAt = r.updatedAt ?? null; NS.err = null; } else NS.err = r?.error ?? 'not available';
+    newsPrinted();
     return NS.items ?? [];
   }).finally(() => { NS.loading = null; }));
 }
+// the calendar's printed rows, so a headline about a print shows actual against consensus beside it (newsView.printFor); every 10 min at most
+function newsPrinted() {
+  if (Date.now() - (NS.printedAt ?? 0) < 10 * 60e3) return;
+  NS.printedAt = Date.now();
+  getJson('/api/calendar-feed').then(c => { NS.printed = c?.printed?.rows ?? null; if (T.tab === 'news') drawNews(); globalThis.repaintWireCard?.(); }).catch(() => {});
+}
+const newsTidyAll = items => { const bk = liveBook(); return NV.dedupeNews((items ?? []).map(x => NV.tidyHeadline(x, Object.keys(bk).length ? bk : null))); };
 const liveBook = () => Object.fromEntries(Object.entries(D?.cards ?? {}).filter(([, x]) => (DIR[x.rating] ?? 0) !== 0 && x.size > 0).map(([k, x]) => [k, x.rating]));
 function drawPairNews(box, n, c) {
   const live = c && (DIR[c.rating] ?? 0) !== 0 && c.size > 0 ? c.rating : null;
@@ -930,7 +993,7 @@ function drawNews(filters = false) {
   if (!NS.items) { if (NS.err) el('nt-list').innerHTML = `<p class="muted">The news wire is not available right now (${h(NS.err)}).</p>`; return; }
   const xs = NV.filterNews(NS.items, { tier: NS.tier, keys: NS.keys, onlyBook: NS.onlyBook, book: liveBook(), q: NS.q });
   el('nt-top').innerHTML = NV.topStripHtml(NS.items, now);
-  el('nt-list').innerHTML = NV.listHtml(xs, { now });
+  el('nt-list').innerHTML = NV.listHtml(xs, { now, printed: NS.printed });
   el('nt-n').textContent = `${xs.length} headline${xs.length === 1 ? '' : 's'}`;
   el('nt-upd').textContent = NS.updatedAt ? `wire ${new Date(NS.updatedAt).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' })} London · refreshes every 2 min` : '';
 }
@@ -945,7 +1008,7 @@ const RENDER = { today: renderToday, pair: renderPair, deep: renderDeep, changed
   // the Replay tab (the time machine): pick a London session and play it forward; the view loads on first use (js/terminal/replayView.js)
   replay: () => import('./replayView.js').then(V => V.mount(el('replay'))).catch(e => { el('replay').innerHTML = `<div class="card"><p class="muted">The Replay tab did not load: ${h(e.message)}</p></div>`; }),
   // the Bias process (plans/DESK_BIAS_PROCESS_SPEC.md "Desk Terminal"): cards, head to head, weekly review, the owner's FundaBias log (js/terminal/deskBiasProcessView.js)
-  bprocess: () => import('./deskBiasProcessView.js').then(V => V.mount(el('bprocess'), { getJson })).catch(e => { el('bprocess').innerHTML = `<div class="card"><p class="muted">The Bias process tab did not load: ${h(e.message)}</p></div>`; }),
+  bprocess: () => import('./deskBiasProcessView.js').then(V => V.mount(el('bprocess'), { getJson, book: () => D?.cards ?? null })).catch(e => { el('bprocess').innerHTML = `<div class="card"><p class="muted">The Bias process tab did not load: ${h(e.message)}</p></div>`; }),
   corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if ((t !== 'pair' && /pair=/.test(location.hash)) || (t !== 'deep' && /^#deep/.test(location.hash))) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
@@ -956,6 +1019,12 @@ globalThis.mountAnalyse = box => AAV.mount(box).catch(e => console.warn('analyse
 globalThis.openNewsTab = openNews;
 // the Assets cards' one-line latest headline (desk-terminal.html assetCard reads it; D.news is tier 1-2, 24 h)
 globalThis.newsLatestLine = (items, inst, rating) => NV.latestLine(items, inst, rating);
+// the Overview wire card (desk-terminal.html wireCard): the same tidied read, and the book line worked out from the arrows and the cards
+globalThis.newsTidyAll = newsTidyAll;
+globalThis.newsBookNote = NV.bookNoteHtml;
+globalThis.newsPrintChip = x => NV.printChip(NV.printFor(x, NS.printed));
+globalThis.newsMixedRead = NV.mixedRead;
+newsPrinted();
 function fromHash() {
   const go = backTarget({ hash: location.hash, tab: T.tab, from: T.tab === 'deep' ? T.deepFrom : T.pairFrom });
   if (go?.pair) { if (go.pair !== T.pair || T.tab !== 'pair') openPair(go.pair, { fromHistory: true }); }
@@ -989,4 +1058,6 @@ globalThis.liveEmCell = liveEmCell; globalThis.liveWiderChip = liveWiderChip;
 globalThis.ccyStrengthMount = () => { try { mountOverview(getJson); } catch (e) { console.warn('ccy strength', e); } };   // the newer Macro boards (js/terminal/moreBoards.js)
 globalThis.boePathHtml = doc => { try { return BOEV.boePathHtml(doc, { esc }); } catch (e) { console.warn('boe path', e); return ''; } };
 globalThis.fedYieldsHtml = (fp, rb, tp) => { try { return FYV.boardHtml(fp, rb, tp, { esc }); } catch (e) { console.warn('fed path yields', e); return ''; } };
+// a "source stale since" chip on the boards whose feed the Info map flags (js/terminal/staleChips.js), once the page has settled
+setTimeout(() => import('./staleChips.js').then(m => m.install(document, window)).catch(e => console.warn('stale chips', e)), 8000);
 dispatchEvent(new Event('terminalmodule'));   // every hook above now exists: the classic page repaints what it drew before they did (the Macro sections need macroSubs)

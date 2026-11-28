@@ -2793,8 +2793,9 @@ function renderMacroMoved() {
     // nearest prior print is materially older than its label says so, instead of a
     // holiday-week or slower-cadence comparison passing as "today's move" — the
     // failure that hid GS10's monthly cadence behind a "1d" label for months.
-    const spanOf = n => { const g = r.refGapDays?.[n]; return (g != null && g > n + 1) ? ` over ${g}d` : ''; };
-    const spanTag = n => spanOf(n) ? `<span class="mv-span" title="Nearest earlier print for this series is ${r.refGapDays[n]} days back, not ${n} — this change is measured over that window.">${esc0(spanOf(n).trim())}</span>` : '';
+    // a daily series counts SESSIONS (r.basis 'sessions': 20 sessions span ~28 calendar days), so only a span wider than that is flagged
+    const spanOf = n => { const g = r.refGapDays?.[n]; return (g != null && (r.basis === 'sessions' ? g > Math.ceil(n * 1.4) + 2 : g > n + 1)) ? ` over ${g}d` : ''; };
+    const spanTag = n => spanOf(n) ? `<span class="mv-span" title="Nearest earlier print for this series is ${r.refGapDays[n]} calendar days back, wider than ${n} ${r.basis === 'sessions' ? 'sessions' : 'days'} normally spans — this change is measured over that window.">${esc0(spanOf(n).trim())}</span>` : '';
     const naTitle = n => ` ${n}d unavailable at this series' print cadence${r.cadenceDays ? ` (~${r.cadenceDays}d)` : ''}.`;
     const winTxt = (v, n) => v == null ? naTitle(n) : ` ${n}d ${dTxt(v, flow)}${r.unit}${spanOf(n)}`;
     const title = `${r.label}: now ${lastFmt}.${winTxt(d1, 1)} ·${winTxt(d5, 5)} ·${winTxt(d20, 20)}${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;

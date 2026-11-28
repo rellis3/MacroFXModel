@@ -42,7 +42,7 @@ export const USES = {
 };
 export const FLAG_KINDS = { stale: 'Stale', blocked: 'Blocked', laptop: 'Laptop-dependent', retired: 'Retired', unverified: 'Unverified' };
 // terminal tab id (desk-terminal.html data-t) -> its label
-export const TAB_LABELS = { insight: 'Insight', overview: 'Overview', ccy: 'Currencies', assets: 'Assets', macro: 'Macro', pos: 'Positioning', cal: 'Calendar', ana: 'Analytics', charts: 'History', today: 'Chain', read: "Trader's read", pair: 'Pair', deep: 'Deep dive', changed: 'Changed', options: 'Options', news: 'News', corr: 'Correlations & hedges', replay: 'Replay' };
+export const TAB_LABELS = { insight: 'Insight', overview: 'Overview', ccy: 'Currencies', assets: 'Assets', macro: 'Macro', pos: 'Positioning', cal: 'Calendar', ana: 'Analytics', charts: 'Book & history', today: 'Chain', read: "Trader's read", pair: 'Pair', deep: 'Deep dive', changed: 'Changed', options: 'Options', news: 'News', corr: 'Correlations & hedges', replay: 'Replay' };
 // Last full re-trace of every family against the code (2026-11-17), and the date the "Added since" filter on the Info map tab counts from.
 export const INFO_MAP_REVIEWED = '2026-11-17';
 export const NEW_SINCE = '2026-11-13';

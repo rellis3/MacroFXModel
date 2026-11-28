@@ -48,8 +48,8 @@ export function boardHtml(m) {
 /** One light as a dot: red = on now, quiet = off, hatched = could not be read now. The title carries the Evidence Book words. */
 export function dotHtml(r) {
   const state = r.sum.now === 1 ? 'on' : r.sum.now === 0 ? 'off' : 'na';
-  const word = state === 'on' ? 'on now' : state === 'off' ? 'off now' : 'could not be read now';
-  return `<span class="rfs-dotitem" title="${esc(`${r.label}: ${word}. ${r.evidence.words}`)}"><i class="rfs-dot rfs-dot-${state}" aria-hidden="true"></i><span class="rfs-dl">${esc(r.label)} <span class="rfs-dst">${state === 'on' ? 'ON' : state === 'off' ? 'off' : 'n/a'}</span></span>${r.evidence.kind === 'range' ? '<span class="chip up rfs-chip" title="validated range finding: runs wider, never which way">range finding</span>' : ''}</span>`;
+  const word = state === 'on' ? 'on now' : state === 'off' ? 'off now' : r.ended ? `source ended. ${r.ended}` : 'could not be read now';
+  return `<span class="rfs-dotitem" title="${esc(`${r.label}: ${word}. ${r.evidence.words}`)}"><i class="rfs-dot rfs-dot-${state}" aria-hidden="true"></i><span class="rfs-dl">${esc(r.label)} <span class="rfs-dst">${state === 'on' ? 'ON' : state === 'off' ? 'off' : r.ended ? 'source ended' : 'n/a'}</span></span>${r.evidence.kind === 'range' ? '<span class="chip up rfs-chip" title="validated range finding: runs wider, never which way">range finding</span>' : ''}</span>`;
 }
 
 /** The slim card for the Today section of the Overview. Six empty ribbons say nothing, so: a flag that has been on at least once gets a ribbon; the quiet ones are dots in a
@@ -59,11 +59,12 @@ export function compactHtml(m) {
   if (!m.ok) return '';
   const everOn = m.rows.filter(r => r.sum.on > 0), quiet = m.rows.filter(r => !(r.sum.on > 0)), n = m.rows[0]?.series?.length ?? 0;
   const since = new Date(m.t0).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-  const summary = `${everOn.length} of ${m.rows.length} stress lights ${everOn.length === 1 ? 'has' : 'have'} been on since ${since}, ${n} hourly captures`;
+  // each count says what it counts (review 2026-11-27: "3 of 5 readable flags", "3 of 6 stress lights" and the world-stress "3 red" read as one number)
+  const summary = `Since ${since}, ${everOn.length} of the ${m.rows.length} risk flags ${everOn.length === 1 ? 'has' : 'have'} been on at some point (${n} hourly captures)`;
   const ribbons = everOn.map(r => `<div class="rfs-mini"><span class="rfs-ml">${esc(r.label)}</span>${ribbonSvg(r, m, { h: 10, id: `rfsm${++uid}` })}<span class="rfs-mn ${r.sum.now === 1 ? 'on' : ''}">${r.sum.now === 1 ? 'ON' : r.sum.now === 0 ? 'off' : 'n/a'}</span></div>`).join('');
   const dots = `<div class="rfs-dots">${(everOn.length ? quiet : m.rows).map(dotHtml).join('')}</div>`;
   const quietNote = everOn.length && quiet.length ? `<div class="rfs-note muted">Never on since ${esc(since)}:</div>` : '';
-  return `<div class="card rfs-compact" data-rfs-compact data-noexport data-surface="panel.risk.strip"><div class="ch"><span class="lbl">Risk flags over time</span><span class="r muted">${m.nowOn} of ${m.rows.filter(r => r.sum.now !== null).length} readable flags on now</span></div><p class="rfs-sum">${esc(summary)}.</p>${ribbons}${quietNote}${dots}</div>`;
+  return `<div class="card rfs-compact" data-rfs-compact data-noexport data-surface="panel.risk.strip"><div class="ch"><span class="lbl">Risk flags over time</span><span class="r muted">${(() => { const rd = m.rows.filter(r => r.sum.now !== null).length, un = m.rows.length - rd; return `on now: ${m.nowOn} of the ${m.rows.length} risk flags${un ? ` (${un} could not be read)` : ''}`; })()}</span></div><p class="rfs-sum">${esc(summary)}.</p>${ribbons}${quietNote}${dots}</div>`;
 }
 
 function ensureCss(doc) {

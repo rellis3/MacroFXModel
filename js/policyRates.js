@@ -4,7 +4,9 @@
  *
  * The rate-diff engine's `latestRate` is a 3-month interbank / short rate (the carry leg), not the policy rate. This
  * reads each bank's own published series instead:
- *   USD  FRED DFEDTARU                 Fed funds target range, upper bound (daily)
+ *   USD  FRED DFEDTARU + DFEDTARL      Fed funds target range (daily): `rate` is the MIDPOINT (3.75-4.00 -> 3.875, where the
+ *                                      effective rate trades), with `lower` / `upper` beside it. Before 2026-11-27 `rate` was the
+ *                                      upper bound, which put USD 12.5bp too high in every rate gap and carry figure.
  *   EUR  FRED ECBDFR                   ECB deposit facility rate (daily)
  *   GBP  BoE IADB IUDBEDR              Bank Rate (daily)
  *   CAD  Bank of Canada Valet V39079   target for the overnight rate (daily)
@@ -17,7 +19,7 @@
  * The parsers are pure and tested (js/policyRates.test.mjs); policyRates() takes the fetchers.
  */
 export const SOURCES = {
-  USD: { label: 'Fed funds target (upper)', fred: 'DFEDTARU' },
+  USD: { label: 'Fed funds target range, midpoint', fred: 'DFEDTARU', fredLower: 'DFEDTARL' },
   EUR: { label: 'ECB deposit rate', fred: 'ECBDFR' },
   GBP: { label: 'Bank Rate', fred: 'BOE_IUDBEDR' },
   CAD: { label: 'BoC overnight target', url: 'https://www.bankofcanada.ca/valet/observations/V39079/json?recent=5' },
@@ -67,7 +69,18 @@ export async function policyRates({ fred, getText, getJson, rbnz, now = new Date
   const put = (c, p, what) => { if (p && Number.isFinite(p.value)) rates[c] = { rate: p.value, asOf: p.date, source: `${SOURCES[c].label} · ${what}` }; else errors[c] = `${what}: no value`; };
   const job = async (c, fn, what) => { try { put(c, await fn(), what); } catch (e) { errors[c] = `${what}: ${e.message}`; } };
   await Promise.all([
-    ...['USD', 'EUR', 'GBP'].map(c => job(c, async () => latest(await fred(SOURCES[c].fred)), SOURCES[c].fred.replace('BOE_', 'BoE '))),
+    // USD: the target range. The midpoint is the rate (the effective rate trades there); the bounds ride along. A missing lower bound
+    // leaves the upper bound as the rate, said in the source, never guessed.
+    (async () => {
+      try {
+        const [hi, lo] = await Promise.all([fred(SOURCES.USD.fred).then(latest), fred(SOURCES.USD.fredLower).then(latest).catch(() => null)]);
+        if (!hi || !Number.isFinite(hi.value)) { errors.USD = 'DFEDTARU: no value'; return; }
+        if (lo && Number.isFinite(lo.value) && lo.date === hi.date && lo.value < hi.value) {
+          rates.USD = { rate: +((hi.value + lo.value) / 2).toFixed(3), lower: lo.value, upper: hi.value, asOf: hi.date, source: `${SOURCES.USD.label} · DFEDTARL-DFEDTARU` };
+        } else rates.USD = { rate: hi.value, upper: hi.value, asOf: hi.date, source: 'Fed funds target, upper bound (lower bound not read) · DFEDTARU' };
+      } catch (e) { errors.USD = `DFEDTARU: ${e.message}`; }
+    })(),
+    ...['EUR', 'GBP'].map(c => job(c, async () => latest(await fred(SOURCES[c].fred)), SOURCES[c].fred.replace('BOE_', 'BoE '))),
     job('CAD', async () => parseBoc(await getJson(SOURCES.CAD.url)), 'Bank of Canada Valet'),
     job('AUD', async () => parseRbaF1(await getText(SOURCES.AUD.url)), 'RBA table F1'),
     job('CHF', async () => parseSnb(await getText(SOURCES.CHF.url)), 'SNB data portal'),
@@ -75,4 +88,17 @@ export async function policyRates({ fred, getText, getJson, rbnz, now = new Date
     job('NZD', async () => { const r = await rbnz(); return Number.isFinite(r?.current?.rate) ? { date: r.current.date, value: r.current.rate } : null; }, 'RBNZ decisions'),
   ]);
   return { rates, errors };
+}
+
+/**
+ * Each bank's policy rate minus the Fed's, in basis points, worked out here so nothing downstream has to subtract. The analysts read
+ * /api/policy-rates through the Desk Pack and did the arithmetic themselves; on 2026-11-27 the ruling said "275bp spread to EUR" (Fed 4.00 -
+ * ECB 2.50 is 150; 275 was Fed - BoJ) and "227bp" for CAD (also 150). { CCY: bp } with USD omitted; {} without a Fed rate.
+ */
+export function spreadsToUsd(rates = {}) {
+  const usd = Number(rates?.USD?.rate);
+  if (!Number.isFinite(usd)) return {};
+  const out = {};
+  for (const [c, v] of Object.entries(rates)) { const r = Number(v?.rate); if (c !== 'USD' && Number.isFinite(r)) out[c] = Math.round((r - usd) * 100); }
+  return out;
 }

@@ -753,6 +753,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-27 | gold-line-system-base-eur | volatility | null | forge/GOLD_LINE_SYSTEM_BASE_PREREG.md |
 | 2026-11-27 | gold-line-system-base-mae | volatility | validated | forge/GOLD_LINE_SYSTEM_BASE_PREREG.md |
 | 2026-11-27 | gold-line-system-base-nq | volatility | underpowered | forge/GOLD_LINE_SYSTEM_BASE_PREREG.md |
+| 2026-11-27 | gold-line-system-jordan | volatility | underpowered | forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md |
 | 2026-11-27 | gold-line-target-stop | volatility | underpowered | forge/GOLD_LINE_TARGET_STOP_PREREG.md |
 | 2026-11-27 | gold-line-target-stop-wide | volatility | null | forge/GOLD_LINE_TARGET_STOP_PREREG.md |
 | 2026-11-27 | gold-rolling-mae-entry | volatility | underpowered | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |

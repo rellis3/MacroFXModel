@@ -4,6 +4,7 @@
 // (the series was discontinued, is too old, or has no feed) instead of showing a bare dash. Description only: the composite is not a signal (macro-as-signal
 // is a banked null, five times). Pure string builders: no fetch, no DOM. Colours are tokens only.
 import { FACTORS } from '../macroScorecardEngine.js';
+import { isStopped } from './macroEnginesCore.js';
 
 const E = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const fin = v => Number.isFinite(v);
@@ -54,7 +55,7 @@ export function stackHtml(row, sc, { compact = false } = {}) {
   const scale = Math.max(0.5, rightSum, leftSum);
   const seg = x => `<i class="msc-seg ${x.share > 0 ? 'p' : 'n'}" style="flex:${(Math.abs(x.share) / scale * 100).toFixed(2)} 0 0;opacity:${(0.55 + Math.min(0.45, Math.abs(x.score) * 0.45)).toFixed(2)}" title="${E(`${x.label} ${sg(x.score)} → ${sg(x.share)} of the composite`)}"><b>${compact ? '' : E(x.short)}</b></i>`;
   const track = `<div class="msc-track${compact ? ' mini' : ''}" role="img" aria-label="${E(`${r.ccy} composite ${sg(r.composite)} from ${r.scored} of ${r.total} factors`)}"><div class="msc-half l">${[...neg].reverse().map(seg).join('')}</div><span class="msc-mid"></span><div class="msc-half r">${pos.map(seg).join('')}</div></div>`;
-  if (compact) return `<div class="msc-line">${track}<span class="msc-cov">${coverageChip(r.scored)}</span></div>`;
+  if (compact) return `<div class="msc-line">${track}<span class="msc-cov"><span class="muted" style="font-size:10px;margin-right:4px">macro factors</span>${coverageChip(r.scored)}</span></div>`;
   const pills = r.states.map(x => x.score != null
     ? `<span class="msc-pill ${cls(x.score)}" title="${E(x.partial ? `${x.label}: ${x.have.length} of ${x.of} series. Missing: ${x.missing.map(m => m.why).join('; ')}` : `${x.label}: all ${x.of} series`)}"><span>${E(x.short)}</span><b class="mono">${sg(x.score)}</b>${x.partial ? '<em>partial</em>' : ''}</span>`
     : `<span class="msc-pill miss" title="${E(`${x.label} is not in the score. ${x.missing.map(m => m.why).join('; ')}`)}"><span>${E(x.short)}</span><b>missing</b></span>`).join('');
@@ -62,8 +63,20 @@ export function stackHtml(row, sc, { compact = false } = {}) {
   return `<div class="msc"><div class="msc-head"><span class="lbl">What the composite is made of</span><span class="mono ${cls(r.composite)}">${sg(r.composite)}</span>${coverageChip(r.scored)}</div>${track}<div class="msc-pills">${pills}</div>${why.length ? `<div class="muted msc-why">Left out: ${why.map(E).join(' · ')}.</div>` : ''}<div class="muted msc-note">The composite is the plain mean of the factors that have data, equal weights; it describes, it does not predict.</div></div>`;
 }
 
-/** The Macro-tab scorecard table: composite with its coverage chip, six factor cells, missing ones hatched and labelled. */
-export function scorecardHtml(sc, { flag = {} } = {}) {
+/** True when a missing factor is out because its source ended (a discontinued series), not because a reading is late: at least one of its series
+    was discontinued and none is merely past its age limit (the others have no series for this currency at all, e.g. PPI outside the US). */
+export const sourceEnded = (row, x, sc) => x.score == null && x.missing.some(m => sc?.discontinued?.[m.dim]?.[row.ccy]) && !x.missing.some(m => (row.stale ?? []).some(st => st.dim === m.dim));
+/** For an ended inflation source: the latest live CPI print the macro engines board holds (the surprise store), shown beside it, not scored. */
+export function liveCpiNote(ccy, board) {
+  const c = board?.cells?.[ccy]?.cpi;
+  if (!c || isStopped(c) || c.actual == null || !['surprise', 'prior', 'print'].includes(c.status)) return '';
+  const d = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' }).format(new Date(c.ms));
+  return `latest ${c.event} ${c.actual}${c.unit && !String(c.event).toLowerCase().includes(c.unit) ? ` ${c.unit}` : ''} (${d})`;
+}
+
+/** The Macro-tab scorecard table: composite with its coverage chip, six factor cells, missing ones hatched and labelled. A factor whose source
+    ended says "source ended" (not "missing"); for inflation the latest live CPI print is shown under it, as a description, not in the score. */
+export function scorecardHtml(sc, { flag = {}, board = null } = {}) {
   const ranked = sc?.ranked ?? [];
   if (!ranked.length) return '';
   const rows = ranked.map(r => rowStates(r, sc));
@@ -71,7 +84,8 @@ export function scorecardHtml(sc, { flag = {} } = {}) {
   const head = `<tr><th>Currency</th><th>Composite</th><th>Factors</th>${FACTOR_KEYS.map(k => `<th>${E(FACTORS[k].label)}</th>`).join('')}</tr>`;
   const body = rows.map(r => `<tr><td class="n">${flag[r.ccy] ?? ''} ${E(r.ccy)}</td><td class="n mono ${cls(r.composite)}">${sg(r.composite)}</td><td>${coverageChip(r.scored)}</td>${r.states.map(x => x.score != null
     ? `<td class="n mono ${cls(x.score)}" title="${E(x.partial ? `${x.have.length} of ${x.of} series. Missing: ${x.missing.map(m => m.why).join('; ')}` : `all ${x.of} series`)}">${sg(x.score)}${x.partial ? ' <span class="muted" title="partial">◐</span>' : ''}</td>`
-    : `<td class="n msc-missing" title="${E(x.missing.map(m => m.why).join('; '))}"><span>missing</span></td>`).join('')}</tr>`).join('');
+    : (() => { const ended = sourceEnded(r, x, sc), live = ended && x.key === 'inflation' ? liveCpiNote(r.ccy, board) : '';
+      return `<td class="n msc-missing" title="${E(x.missing.map(m => m.why).join('; ') + (live ? `. Not in the score: ${live}, from the release calendar.` : ''))}"><span>${ended ? 'source ended' : 'missing'}</span>${live ? `<div class="muted mono" style="font-size:10.5px;white-space:normal">${E(live)}</div>` : ''}</td>`; })()).join('')}</tr>`).join('');
   const legend = full < rows.length ? `<p class="muted" style="font-size:12px;margin:8px 0 0">${rows.length - full} of ${rows.length} currencies are scored on fewer than six factors. A hatched "missing" cell means no usable series (hover for which and why); ◐ means the factor rests on some, not all, of its series. A missing factor is left out of the composite, never counted as zero.</p>` : `<p class="muted" style="font-size:12px;margin:8px 0 0">All eight currencies have all six factors.</p>`;
   return `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Macro scorecard</span><span class="r muted">equal-weight composite of six factors; a factor with no data is left out, not zeroed</span></div><div class="scroll"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>${legend}</div>`;
 }

@@ -45,4 +45,17 @@ best 1% / 5%; the isolated-vs-stacked split (another same-side line within 0.5 s
 
 ## Amendments
 
-(none)
+- **A1, 2026-11-28, POST-HOC (primary results seen): entry-rule switches for the page, descriptive only.** Owner: add
+  Jordan's rules as a selectable option; with M1 bars a poke and a retouch inside the same candle can't be ordered,
+  so treat that touch as if it didn't happen (Jordan tracks the retouch with tick data). The primary and its verdict
+  are unchanged. Two switches, 4 combinations, all on the same 8 lines, target, stop, costs and gates:
+  - **Same-candle retouch.** *Fill* (primary): a line pokes on a bar; the bar fills only if it closes back through the
+    line. *Ignore*: a line counts as poked only if the poking bar closes beyond the line; a bar that pokes and closes
+    back through is ignored for that line (not armed, not spent, so it can arm later). The fill can then only come on
+    a later bar.
+  - **Chase.** *Any line* (primary): an armed order moves out to any more extreme same-side line that pokes. *Same line
+    (PDF)*: it moves out only to the same line's P90 (e.g. Close+ P75 → Close+ P90); a poke of another line while an
+    order is armed is spent and ignored.
+  - Each combination is reported with IS / OOS, the 90% CI, without the best 1%, and the same 100-shuffle fake-lines
+    placebo (the same permutations for all 4). Verdict words are not given to the variants; the primary stays as
+    banked. The backtest page gets an "Entry rules" selector with the 4 combinations.

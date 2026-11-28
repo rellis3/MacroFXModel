@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { rowStates, factorState, dimWhy, coverageChip, stackHtml, scorecardHtml, FACTOR_KEYS } from './scorecardView.js';
+import { rowStates, factorState, dimWhy, coverageChip, stackHtml, scorecardHtml, FACTOR_KEYS, sourceEnded, liveCpiNote } from './scorecardView.js';
 import { ribbonSvg, rowParts, stripHtml, miniHtml } from './ccyMacroStrip.js';
 
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('✓', name); };
@@ -47,6 +47,15 @@ t('the factor bar: positives right, negatives left, missing factors listed with 
   const c = stackHtml(CAD, SC); assert.ok(/msc-pill miss/.test(c) && /Left out: .*Inflation: CPI: series ended 2025-03/.test(c));
   assert.ok(/role="img"/.test(c) && /aria-label="CAD composite \+0\.42 from 4 of 6 factors"/.test(c));
   assert.ok(/msc-track mini/.test(stackHtml(CAD, SC, { compact: true })) && !/msc-pills/.test(stackHtml(CAD, SC, { compact: true })));
+});
+t('an inflation factor whose source ended says so, with the latest live CPI print beside it (not in the score)', () => {
+  const board = { cells: { CAD: { cpi: { status: 'surprise', event: 'CPI m/m', unit: 'm/m', actual: '0.2%', ms: Date.parse('2026-11-16T13:30:00Z'), ageDays: 11, cadence: 'monthly' } } } };
+  assert.ok(sourceEnded(CAD, factorState(CAD, 'inflation', SC), SC), 'CPI discontinued and no PPI series outside the US: the source ended');
+  assert.ok(!sourceEnded(CAD, factorState(CAD, 'demand', SC), SC), 'demand is merely missing');
+  assert.equal(liveCpiNote('CAD', board), 'latest CPI m/m 0.2% (16 Nov)');
+  assert.equal(liveCpiNote('CAD', { cells: { CAD: { cpi: { ...board.cells.CAD.cpi, ageDays: 600 } } } }), '', 'a print whose feed stopped is not offered as the latest');
+  const h = scorecardHtml(SC, { board });
+  assert.ok(/source ended/.test(h) && /latest CPI m\/m 0\.2% \(16 Nov\)/.test(h) && /missing/.test(h));
 });
 t('the six factor keys are the engine\'s', () => assert.deepEqual(FACTOR_KEYS, ['rates', 'inflation', 'growth', 'labour', 'demand', 'external']));
 

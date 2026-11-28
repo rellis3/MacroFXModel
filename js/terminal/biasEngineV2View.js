@@ -28,7 +28,7 @@ export function driversHtml(r) {
   const ds = [...(r.drivers ?? [])].sort((a, b) => Math.abs(b.contrib) - Math.abs(a.contrib));
   const max = Math.max(0.05, ...ds.map(x => Math.abs(x.contrib)));
   const bar = x => `<span class="bev2-bar ${x > 0 ? 'up' : 'dn'}" style="width:${Math.round(Math.abs(x) / max * 100)}%"></span>`;
-  const rows = ds.map(x => `<tr><th>${esc(x.leg ? `${x.leg} ` : '')}${esc(x.key)}${x.proxy ? ' <span class="chip">proxy</span>' : ''}</th><td class="muted">${esc(x.family)}</td><td class="n mono">${sgn(x.contrib, 3)}</td><td class="bev2-bw">${bar(x.contrib)}</td>
+  const rows = ds.map(x => `<tr><th title="${esc(x.key)}">${esc(x.leg ? `${x.leg} ` : '')}${esc(x.label ?? x.key)}${x.proxy ? ' <span class="chip">proxy</span>' : ''}</th><td class="muted">${esc(x.family)}</td><td class="n mono">${sgn(x.contrib, 3)}</td><td class="bev2-bw">${bar(x.contrib)}</td>
 <td class="n mono" title="freshness 0-1">${fin(x.f) ? x.f.toFixed(2) : '–'}</td><td class="muted">${esc(x.reading ?? '')}${x.components ? ` <span class="mono">(level ${sgn(x.components.level, 3)}, change ${sgn(x.components.change, 3)})</span>` : ''}</td></tr>`).join('');
   const miss = (r.missing ?? []).length ? `<p class="muted">Missing: ${(r.missing).map(x => `${esc(x.leg ? `${x.leg} ` : '')}${esc(x.key)} (${esc(x.why)})`).join('; ')}</p>` : '';
   const att = r.attribution ? `<table class="bev2-att"><thead><tr><th>Switch</th><th class="n">V1 + this alone</th><th class="n">V2 without it</th></tr></thead><tbody>${Object.entries(r.attribution).map(([k, a]) => `<tr><th>${esc(k)} ${esc(SWITCH_LABEL[k] ?? '')}</th><td class="n mono">${sgn(a.alone)}</td><td class="n mono">${sgn(a.without)}</td></tr>`).join('')}</tbody></table>` : '';
@@ -39,11 +39,11 @@ export function headHtml(P) {
   if (!P || P.empty) return `<p class="muted">${esc(P?.note ?? 'No V2 record yet.')}</p>`;
   const id = P.dataIdentity, gate = P.riskGate;
   return `<div class="bev2-head"><span class="chip ${P.phase === 'forward' ? 'pur' : 'gold'}">${P.phase === 'forward' ? 'official record' : 'technical trial'}</span>
-<span class="chip">spec ${esc(P.spec)}</span><span class="chip mono" title="the frozen configuration hash">${esc(String(P.configHash ?? '').slice(0, 10))}</span>
-<span class="chip ${id?.labelAgreement >= 0.95 ? 'up' : 'dn'}" title="V1's logic on the V2 snapshot against the production V1 issue">V1 replay agrees ${fin(id?.labelAgreement) ? `${Math.round(id.labelAgreement * 100)}%` : '?'}</span>
-<span class="chip ${gate?.pass ? 'up' : 'gold'}" title="${esc(gate?.note ?? '')}">risk gate ${gate?.pass ? 'passed (F4 on)' : 'failed (F4 off)'}</span>
-${P.riskFactor && fin(P.riskFactor.score) ? `<span class="chip" title="the one risk factor, shown as context${P.riskFactor.usedInScore ? '' : '; not used in the score'}">F ${sgn(P.riskFactor.score)}</span>` : ''}</div>
-<p class="muted">${esc(P.record?.note ?? '')} · ${esc(NOTE)}</p>`;
+<span class="chip" title="frozen specification ${esc(P.spec)}, configuration ${esc(String(P.configHash ?? '').slice(0, 10))}">frozen specification ${esc(P.spec)}</span>
+<span class="chip ${id?.labelAgreement >= 0.95 ? 'up' : 'dn'}" title="V1's logic run on the V2 inputs, against the production V1 issue: a check that both read the same data">${fin(id?.labelAgreement) ? (id.labelAgreement >= 0.995 ? 'same inputs as V1 (replay matches)' : `V1 replay matches ${Math.round(id.labelAgreement * 100)}%`) : 'V1 replay not checked'}</span>
+<span class="chip ${gate?.pass ? 'up' : 'gold'}" title="${esc(gate?.note ?? '')}">${gate?.pass ? 'one-risk-factor switch on (its test passed)' : 'one-risk-factor switch off (its test failed)'}</span>
+${P.riskFactor && fin(P.riskFactor.score) ? `<span class="chip" title="the one risk factor, shown as context${P.riskFactor.usedInScore ? '' : '; not used in the score'}">risk factor ${sgn(P.riskFactor.score)}${P.riskFactor.usedInScore ? '' : ', context only'}</span>` : ''}</div>
+<p class="muted">${P.date ? `Issue ${esc(P.date)}. ` : ''}${P.record?.officialDays != null ? `The forward record started ${esc(String(P.record.note ?? '').replace(/^official record from /, ''))} (${P.record.officialDays} official days so far). ` : `${esc(P.record?.note ?? '')} · `}${esc(NOTE)}</p>`;
 }
 export function tableHtml(P, { open = null, only = 'all' } = {}) {
   if (!P || P.empty || !P.markets?.length) return '';

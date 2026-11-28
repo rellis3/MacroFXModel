@@ -164,10 +164,10 @@ console.log('[windows - 1 / 5 / 20 day reads]');
   ok('links and ends carry their window', l1.window === 1 && l1.a.window === 1 && w20[0].window === 20);
   ok('non-20 holding read has no 20-day statistic as its own and no punch', !/\d+% of 20-day|tested here/i.test(l1.read) && l1.punch === '' && /20-day windows/.test(l1.read) && l1.evidence.length === 0);
   const wb = evaluateChain({ real: v(10), dxy: v(-1) }, CHAIN_LINKS, CHAIN_NODES, 5).find(l => l.id === 'real-dxy');
-  ok('non-20 broken read is the generic one, not the mechanism text', wb.verdict === 'broken' && !/risk-premium/.test(wb.read) && /5 days/.test(wb.read) && wb.punch === '');
+  ok('non-20 broken read is the generic one, not the mechanism text', wb.verdict === 'broken' && !/risk-premium/.test(wb.read) && /5 sessions/.test(wb.read) && wb.punch === '');
   ok('20d broken read still carries the mechanism', /risk-premium/.test(evaluateChain({ real: v(15), dxy: v(-1.5) }).find(l => l.id === 'real-dxy').read));
   ok('quiet text names the window', /over 1 day/.test(evaluateChain({ oil: v(0), bei: v(0) }, CHAIN_LINKS, CHAIN_NODES, 1).find(l => l.id === id).read));
-  ok('summary headline names the window', /over 5 days/.test(summariseChain(evaluateChain({}, CHAIN_LINKS, CHAIN_NODES, 5).map(l => ({ ...l, verdict: 'quiet' })), 5).headline));
+  ok('summary headline names the window', /over 5 sessions/.test(summariseChain(evaluateChain({}, CHAIN_LINKS, CHAIN_NODES, 5).map(l => ({ ...l, verdict: 'quiet' })), 5).headline));
   ok('nodeDelta honours the window', nodeDelta(series(80, 88), CHAIN_NODES.oil, 1).delta < nodeDelta(series(80, 88), CHAIN_NODES.oil, 5).delta);
 }
 
@@ -180,16 +180,24 @@ console.log('[live window - last completed close -> now]');
   ok('CHAIN_WINDOW_KEYS lists live first', JSON.stringify(CHAIN_WINDOW_KEYS) === '["live",1,5,20]');
   ok('live takes the 1-day floor', Math.abs(scaledFloor(CHAIN_NODES.bei, 'live') - scaledFloor(CHAIN_NODES.bei, 1)) < 1e-12);
   // both ends live: judged like any other window, with the generic read and no 20-day statistic
-  const hold = byId(L({ real: lv(-6, 'implied, breakevens assumed flat'), gold: lv(1.2) }), 'real-gold');
+  const hold = byId(L({ real: lv(-6, 'implied'), gold: lv(1.2) }), 'real-gold');
   ok('two live ends are judged: real yields down, gold up holds', hold.verdict === 'holding' && hold.window === 'live');
   ok('the live read names the window and quotes no 20-day statistic', /since the last close/.test(hold.read) && /no live test/.test(hold.read) && !/\d+% of 20-day/.test(hold.read) && hold.punch === '' && hold.evidence.length === 0, hold.read);
-  const brk = byId(L({ real: lv(-6, 'implied, breakevens assumed flat'), gold: lv(-1.2) }), 'real-gold');
+  const brk = byId(L({ real: lv(-6, 'implied'), gold: lv(-1.2) }), 'real-gold');
   ok('two live ends the wrong way round are broken', brk.verdict === 'broken' && /since the last close/.test(brk.read));
+  // a live real yield built from the 10Y with breakevens held flat is an assumption: nominal -> real holds by construction,
+  // and real -> anything is really 10Y -> anything, so none of those links is judged live (review 2026-11-27)
+  const asm = L({ us10y: lv(5, 'implied'), real: lv(5, 'implied, breakevens assumed flat'), gold: lv(1.2), nq: lv(1) });
+  ok('live: nominal -> real on an assumed real yield is ASSUMED, not holding', byId(asm, 'us10y-real').verdict === 'assumed' && /by construction/.test(byId(asm, 'us10y-real').read));
+  ok('live: real -> gold on an assumed real yield is not called broken', byId(asm, 'real-gold').verdict === 'assumed' && byId(asm, 'real-nq').verdict === 'assumed');
+  const asmSum = summariseChain(asm, 'live');
+  ok('live: assumed links are counted apart and named in the headline, not as broken', asmSum.assumed >= 3 && asmSum.broken === 0 && /assumed real yield/.test(asmSum.headline), asmSum.headline);
+  ok('the same values at 1D are judged (the rule is live-only)', byId(evaluateChain({ us10y: lv(10, 'implied'), real: lv(10, 'implied, breakevens assumed flat') }, CHAIN_LINKS, CHAIN_NODES, 1), 'us10y-real').verdict === 'holding');
   // the 3bp floor on implied bp nodes only
-  const small = byId(L({ real: lv(2, 'implied, breakevens assumed flat'), gold: lv(-1.2) }), 'real-gold');
+  const small = byId(L({ real: lv(2, 'implied'), gold: lv(-1.2) }), 'real-gold');
   ok('an implied 2bp move is under the 3bp floor, so quiet', small.verdict === 'quiet' && /^±3(\.0)?bp$/.test(small.a.floorText), small.a.floorText);
   ok('the same 2bp with no implied tag uses the scaled floor (1.8bp), so it counts', byId(L({ real: lv(2, 'live'), gold: lv(-1.2) }), 'real-gold').a.moved === true);
-  ok('an implied 4bp move clears the 3bp floor', byId(L({ real: lv(-4, 'implied, breakevens assumed flat'), gold: lv(1.2) }), 'real-gold').verdict === 'holding');
+  ok('an implied 4bp move clears the 3bp floor', byId(L({ real: lv(-4, 'implied'), gold: lv(1.2) }), 'real-gold').verdict === 'holding');
   ok('a market chip (pct) never gets the 3bp floor', !/bp$/.test(byId(L({ real: lv(-6, 'implied'), gold: lv(0.3) }), 'real-gold').b.floorText));
   // mixed basis: an end at its last print means NOT JUDGED, whatever it did
   const mixed = byId(L({ oil: lv(1.5), bei: pr(9) }), 'oil-bei');
@@ -201,7 +209,7 @@ console.log('[live window - last completed close -> now]');
   ok('ends carry basis and closed', ends.a.basis === 'live' && ends.b.basis === 'last-print' && ends.a.closed === false);
   ok('closed flag passes through', L({ gold: lv(0, 'live', { closed: true }), real: lv(-6, 'implied') }).find(l => l.id === 'real-gold').b.closed === true);
   // summary and prompt
-  const ls = L({ real: lv(-6, 'implied, breakevens assumed flat'), gold: lv(1.2), oil: lv(1.5), bei: pr(9) });
+  const ls = L({ real: lv(-6, 'implied'), gold: lv(1.2), oil: lv(1.5), bei: pr(9) });
   const sm = summariseChain(ls, 'live');
   ok('summary counts notlive and says so in the headline', sm.notlive >= 1 && /not judged/.test(sm.headline) && /holding/.test(sm.headline), sm.headline);
   const sq = summariseChain(L({ oil: lv(0), bei: lv(0) }), 'live');
@@ -244,6 +252,26 @@ console.log('[live window while the FX week is shut: the final session]');
   ok('frozen, the Live window is called the last session, not since the last close', /over the last session/.test(head()) && /in the last session\./.test(head()) && !/since the last close/.test(head()));
   setLiveFrozen(false);
   ok('and it goes back by itself', /since the last close/.test(head()));
+}
+
+console.log('[a link judges both ends over a common end date]');
+{
+  // weekday series: HY (FRED) ends Tue 24 Nov, the Nasdaq (OANDA) ends Thu 26 Nov (Thanksgiving)
+  const days = ['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20', '2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26'];
+  const hy = days.slice(0, 7).map((date, i) => ({ date, value: 3.00 + (i === 6 ? 0.30 : 0) }));      // +30bp on 24 Nov
+  const nq = days.map((date, i) => ({ date, value: i === 6 ? 99 : i === 7 ? 103 : i === 8 ? 104 : 100 }));   // -1% on 24 Nov, up after
+  const vals = { hy: nodeDelta(hy, CHAIN_NODES.hy, 1), nq: nodeDelta(nq, CHAIN_NODES.nq, 1) };
+  ok('each chip keeps its own last session', vals.hy.asOf === '2026-11-24' && vals.nq.asOf === '2026-11-26');
+  ok('the series rides along but never lands in JSON', Array.isArray(vals.nq.pts) && !('pts' in JSON.parse(JSON.stringify(vals.nq))));
+  const l = evaluateChain(vals, CHAIN_LINKS, CHAIN_NODES, 1).find(x => x.id === 'hy-nq');
+  ok('the link re-measures the later end to the earlier end date', l.alignedTo === '2026-11-24' && l.b.asOf === '2026-11-24' && Math.abs(l.b.delta - -1) < 1e-9, JSON.stringify(l.b));
+  ok('so HY wider with the Nasdaq lower on the same day holds (not the Thanksgiving artefact)', l.verdict === 'holding' && l.dateGapDays === 0);
+  ok('the chip end (a0/b0) is still the node\'s own last move', l.b0.asOf === '2026-11-26' && l.b0.delta > 0);
+  ok('the prompt says what date both ends were measured to', /both ends measured to 2026-11-24/.test(chainForPrompt([l], 1)));
+  const same = evaluateChain({ hy: nodeDelta(hy, CHAIN_NODES.hy, 1), nq: nodeDelta(nq.slice(0, 7), CHAIN_NODES.nq, 1) }, CHAIN_LINKS, CHAIN_NODES, 1).find(x => x.id === 'hy-nq');
+  ok('ends already on one date are left alone', same.alignedTo === null && same.verdict === 'holding');
+  const bare = evaluateChain({ real: { delta: 15, asOf: '2026-09-10' }, dxy: { delta: -1.5, asOf: '2026-09-04' } }).find(x => x.id === 'real-dxy');
+  ok('hand-built values with no series keep the old judged-with-a-gap-note behaviour', bare.alignedTo === null && bare.dateGapDays === 6);
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');

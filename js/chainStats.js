@@ -176,7 +176,11 @@ export function divergenceLine(d, from, to0) {
   if (!d || !fin(d.z)) return null;
   const to = { ...to0, label: lowerFirst(String(to0.label ?? '')) };
   const k = d.win, X = simplePct(d.fromMove, from.unit), Y = simplePct(d.toMove, to.unit), I = simplePct(d.implied, to.unit);
-  const days = `${k} day${k === 1 ? '' : 's'}`;
+  // the window is the last k daily changes BOTH series have: k sessions ending on the last date both printed, which is
+  // not always the chips' own last print (the broad dollar lags a week), so the dates are said when known
+  const md = x => { const t = Date.parse(`${String(x).slice(0, 10)}T00:00:00Z`); return Number.isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : null; };
+  const span = d.fromDate && d.toDate && md(d.fromDate) && md(d.toDate) ? ` (${md(d.fromDate)} → ${md(d.toDate)})` : '';
+  const days = `${k === 1 ? '1 day' : `${k} sessions`}${span}`;
   const tiny = Math.abs(Y) < 0.25 * Math.abs(I);
   let clause;
   if (Math.sign(Y) !== Math.sign(I) && !tiny) clause = `but ${to.label} ${moveVerb(Y, to.unit)} where the usual link implies ${signed(I, to.unit)}`;
@@ -202,10 +206,11 @@ export function linkStats(fromSeries, toSeries, from, to, sign = 1, o = STATS_DE
   const ll = leadLag(xs, ys, { maxLag: o.maxLag });
   const trend = trendWord(corrs[60]?.now, corrs[60]?.then, corrs[60]?.avg2y, sign, { delta: o.trendDelta });
   const div = {};
-  for (const w of o.divWindows) { const d = divergence(A.x, A.y, { win: w, fitDays: o.fitDays }); if (d) div[w] = { ...d, fromMove: r3(simplePct(d.fromMove, from.unit)), toMove: r3(simplePct(d.toMove, to.unit)), implied: r3(simplePct(d.implied, to.unit)), residSd: r3(d.residSd) }; }
+  const spanOf = w => ({ fromDate: A.dates[n - w - 1] ?? null, toDate: A.dates[n - 1] ?? null });   // the level dates the window runs between
+  for (const w of o.divWindows) { const d = divergence(A.x, A.y, { win: w, fitDays: o.fitDays }); if (d) div[w] = { ...d, ...spanOf(w), fromMove: r3(simplePct(d.fromMove, from.unit)), toMove: r3(simplePct(d.toMove, to.unit)), implied: r3(simplePct(d.implied, to.unit)), residSd: r3(d.residSd) }; }
   const headline = Object.values(div).filter(d => fin(d.z)).sort((a, b) => Math.abs(b.z) - Math.abs(a.z) || b.win - a.win)[0] ?? null;
   const raw = headline ? divergence(A.x, A.y, { win: headline.win, fitDays: o.fitDays }) : null;
-  const line = headline && Math.abs(headline.z) >= o.zLine ? divergenceLine(raw, from, to) : null;
+  const line = headline && Math.abs(headline.z) >= o.zLine ? divergenceLine(raw && { ...raw, ...spanOf(headline.win) }, from, to) : null;
   const textbookSign = fin(corrs[120]?.avg2y) ? (Math.sign(corrs[120].avg2y) === Math.sign(sign) ? 'holds on average' : 'reversed on average') : null;
   return { ok: true, asOf, n, corr: corrs, leadLag: { verdict: ll.verdict, text: ll.text, n: ll.n, band: ll.band, lag0: ll.lag0, best: ll.best, lags: ll.lags },
     trend: trend.word, trendDelta: trend.d, divergence: div, z: headline?.z ?? null, zWin: headline?.win ?? null, line, textbookSign };
@@ -228,7 +233,7 @@ export function buildChainStats({ series = {}, links = [], nodes = {}, o = STATS
     .sort((a, b) => (a[1].trend === 'breaking down' ? 0 : 1) - (b[1].trend === 'breaking down' ? 0 : 1) || (a[1].trendDelta ?? 0) - (b[1].trendDelta ?? 0))
     .map(([id, s]) => ({ id, short: s.short, trend: s.trend, corr60: s.corr[60]?.now, then60: s.corr[60]?.then, avg60: s.corr[60]?.avg2y, delta: s.trendDelta }));
   const divergences = ok.filter(([, s]) => fin(s.z) && Math.abs(s.z) >= o.zLine).sort((a, b) => Math.abs(b[1].z) - Math.abs(a[1].z))
-    .map(([id, s]) => ({ id, short: s.short, z: s.z, win: s.zWin, line: s.line, alert: Math.abs(s.z) >= o.zAlert }));
+    .map(([id, s]) => ({ id, short: s.short, z: s.z, win: s.zWin, line: s.line, alert: Math.abs(s.z) >= o.zAlert, fromDate: s.divergence?.[s.zWin]?.fromDate ?? null, toDate: s.divergence?.[s.zWin]?.toDate ?? null }));
   return { links: out, breaking, divergences, missing };
 }
 

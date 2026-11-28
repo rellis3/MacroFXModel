@@ -72,13 +72,21 @@ export function layerRows(card) {
   const evText = !ev.state ? `unknown${ev.why ? ` (${ev.why})` : ''}`
     : `${ev.state}${pend.length ? `: ${pend.slice(0, 2).join(', ')}${pend.length > 2 ? ` +${pend.length - 2}` : ''}` : ''}${later.length ? ` · later today: ${later.slice(0, 2).join(', ')}` : ''}`;
   const rgText = [rg.risk ? `risk-${rg.risk}${fin(rg.R) ? ` (${sgn(rg.R)})` : ''}` : 'risk n/a', rg.vol ? `vol ${rg.vol}${fin(rg.volPct1y) ? ` p${rg.volPct1y}` : ''}` : null, rg.smile ? `smile ${rg.smile}` : null].filter(Boolean).join(' · ');
-  const drv = (mc.drivers ?? []).slice(0, 2).map(d => `${d.leg ? `${d.leg} ` : ''}${d.label ?? d.key} ${sgn(d.contrib)}`);
-  const mcText = fin(mc.score) ? `${sgn(mc.score)}${drv.length ? ` · ${drv.join(', ')}` : ''}` : `n/a${mc.why ? ` (${mc.why})` : ''}`;
+  // the drivers that make the score lead; the strongest one against it follows, labelled (review 2026-11-27: AUDUSD −0.38 shown with an AUD-bullish driver first)
+  const dl = d => `${d.leg ? `${d.leg} ` : ''}${d.label ?? d.key} ${sgn(d.contrib)}`, ms = fin(mc.score) ? Math.sign(mc.score) : 0, ds = (mc.drivers ?? []).filter(d => fin(d.contrib));
+  const lead = ms ? ds.filter(d => Math.sign(d.contrib) === ms).slice(0, 2) : ds.slice(0, 2), vs = ms ? ds.filter(d => Math.sign(d.contrib) === -ms && Math.abs(d.contrib) >= 0.1).slice(0, 1) : [];
+  const mcText = fin(mc.score) ? `${sgn(mc.score)}${lead.length ? ` · ${lead.map(dl).join(', ')}` : ''}${vs.length ? ` · against: ${vs.map(dl).join(', ')}` : ''}` : `n/a${mc.why ? ` (${mc.why})` : ''}`;
   const tf = k => `${k.toUpperCase()} ${arrow(st[k])}`;
-  const sw = [st.swingHigh ? `swing H ${px(st.swingHigh.level)}` : null, st.swingLow ? `swing L ${px(st.swingLow.level)}` : null].filter(Boolean).join(' · ');
+  // each swing with its date, and "broken" when the price is already beyond it (review 2026-11-27: AUDUSD swing L 0.68544 from 6 Nov with the price at 0.667)
+  const day = d => { const t = Date.parse(`${String(d ?? '').slice(0, 10)}T12:00:00Z`); return Number.isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : ''; };
+  const swTxt = (k, s, beyond) => (s ? `swing ${k} ${px(s.level)}${s.date ? ` (${day(s.date)}${beyond ? ', broken' : ''})` : beyond ? ' (broken)' : ''}` : null);
+  const pr = fin(st.price) ? st.price : null;
+  const sw = [swTxt('H', st.swingHigh, pr != null && fin(st.swingHigh?.level) && pr > st.swingHigh.level), swTxt('L', st.swingLow, pr != null && fin(st.swingLow?.level) && pr < st.swingLow.level)].filter(Boolean).join(' · ');
   const bos = st.bos === 1 ? 'BOS up' : st.bos === -1 ? 'BOS down' : st.bos === 0 ? 'inside swings' : null;
   const stText = `${['w1', 'd1', 'h4'].map(tf).join(' ')}${sw ? ` · ${sw}` : ''}${bos ? ` · ${bos}` : ''}`;
-  const psText = ps.crowded ? `crowded ${ps.crowdedSide > 0 ? 'long' : ps.crowdedSide < 0 ? 'short' : 'both ways'}` : ps.readings ? 'not crowded' : `n/a${ps.why ? ` (${ps.why})` : ''}`;
+  // crowdedSide is the MARKET's side (+1 = its long side is crowded): USDCHF "crowded long" with CHF speculators short. Say whose side, and the reading.
+  const rd = (ps.readings ?? []).filter(x => /:/.test(String(x))).join('; ');
+  const psText = ps.crowded ? `crowded ${ps.crowdedSide > 0 ? 'long' : ps.crowdedSide < 0 ? 'short' : 'both ways'}${ps.crowdedSide && card?.market ? ` ${card.market}` : ''}${rd ? ` (${rd})` : ''}` : ps.readings ? 'not crowded' : `n/a${ps.why ? ` (${ps.why})` : ''}`;
   const rnText = fin(rn.p50Pct) ? `p50 ${f(rn.p50Pct)}% · p75 ${f(rn.p75Pct)}%${fin(rn.p50) ? ` (${px(rn.p50)} / ${px(rn.p75)})` : ''}${fin(rn.usedOfP50) ? ` · used ${pct(rn.usedOfP50)} of p50` : ''}` : `n/a${rn.why ? ` (${rn.why})` : ''}`;
   return [
     { key: 'event', label: 'Event', text: evText, side: null },
@@ -106,7 +114,7 @@ export function slotLabel(id, events = null) {
   if (id === 'morning') return 'Morning call';
   if (id === 'london-open') return 'London open';
   if (id === 'ny-open') return 'New York open';
-  if (id === 'review') return '21:00 review';
+  if (id === 'review') return 'Evening review';   // its time is printed beside it ("21:00 21:00 review" read twice)
   if (String(id).startsWith('post-event')) return events?.length ? `After ${events.map(e => `${e.country ?? ''} ${e.event}`.trim()).slice(0, 2).join(', ')}` : 'After the release';
   return String(id ?? '');
 }
@@ -133,15 +141,16 @@ export function scheduleHtml(rc) {
 }
 
 /** One market card in the FundaBias layout. The invalidation line is its own 'trade' surface. rc = this market's rechecks (optional). */
-export function cardHtml(card, rc = null) {
+export function cardHtml(card, rc = null, bookCard = null) {
   const c = card?.call ?? {}, sys = card?.system ?? {}, ai = card?.ai ?? null;
-  const reason = ai?.reason ?? (ai?.error ? `AI step failed (${ai.error}); the system call stands.` : sys.rule ? `Rules: ${sys.rule}` : '');
+  const reason = plainReason(ai?.reason ?? (ai?.error ? `AI step failed (${ai.error}); the system call stands.` : sys.rule ? `Rules: ${sys.rule}` : ''));
   const overrode = c.by === 'ai-override' && sys.dir;
   const inv = fin(c.invalidation) ? c.invalidation : null;
   const rows = layerRows(card).map(r => `<li data-k="${r.key}"><b>${esc(r.label)}</b><span class="${cls(r.side)}">${esc(r.text)}</span></li>`).join('');
   return `<div class="card bp-card" data-market="${esc(card?.market)}" data-group="${groupOf(card?.market)}">
 <div class="ch"><span class="lbl bp-mkt">${esc(card?.market)}</span><span class="r">${dirChip(c.dir, c.conviction)}</span></div>
 <div class="bp-by"><span class="chip ${c.by === 'ai-override' ? 'gold' : c.by?.startsWith('ai') ? 'pur' : ''}">by ${esc(byLabel(c.by))}</span>${overrode ? `<span class="muted bp-sys" title="${esc(sys.rule ?? '')}">system said ${esc(WORD[sys.dir] ?? sys.dir)}${fin(sys.conviction) ? ` ${sys.conviction}/5` : ''}</span>` : ''}</div>
+${bookCallHtml(c.dir, bookCard)}
 ${nowHtml(rc)}
 ${reason ? `<p class="bp-reason">${esc(reason)}</p>` : ''}
 <ul class="bp-layers">${rows}</ul>
@@ -149,8 +158,30 @@ ${timelineHtml(rc)}
 ${inv != null ? `<div class="bp-inv" data-surface="panel.bp.invalid">Invalidation <b class="mono">${esc(px(inv))}</b>${card?.invalidation?.basis ? ` <span class="muted">${esc(card.invalidation.basis)}</span>` : ''}</div>` : ''}
 </div>`;
 }
-/** The cards block: the filter pills, the sort, the grid. */
-export function cardsHtml(rec, { group = 'all', sort = 'conviction' } = {}, rcRec = null) {
+/**
+ * The model's reason with the pack's field names in plain words (review 2026-11-27: "scoreExTrend", "usedOfP50", "macro.side is null"
+ * on the cards). Text only: the reason itself is unchanged.
+ */
+const FIELD_WORDS = [[/\bmacro\.side is null\b/g, 'no macro side'], [/\bstructure\.side is null\b/g, 'no structure side'], [/\b(?:macro[.\s])?scoreExTrend\b/gi, 'macro score'],
+  [/\b(?:range[.\s])?usedOfP50\b/gi, 'share of the usual day range used'], [/\bengineStrength\b/g, 'engine strength'], [/\b(?:macro\.)?engineDir\b/g, 'engine direction'],
+  [/\s*\((?:positioning\.)?crowdedSide -?\d\)/g, ''], [/\b(?:positioning\.)?crowdedSide\b/g, 'crowded side'], [/\bstructure\.(w1|d1|h4)\b/g, (_, k) => k.toUpperCase()], [/\b(w1|d1|h4)\b/g, (_, k) => k.toUpperCase()],
+  [/\bevent\.laterToday\b/g, 'a release later today'], [/\bregime\.riskRole\b/g, 'its risk role'], [/\b(macro|structure|range|positioning|regime)\.side\b/g, '$1 side'], [/\bside (-?1)\b/g, (_, s) => (s === '1' ? 'side up' : 'side down')]];
+export function plainReason(t) { let s = String(t ?? ''); for (const [rx, w] of FIELD_WORDS) s = s.replace(rx, w); return s; }
+const DIRB = { STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 };
+/**
+ * The book's call on the same market beside the process card, so a disagreement is visible (review 2026-11-27: the process stood
+ * aside on USDCAD and USDCHF, the book's largest longs). bookCard = the terminal's card ({ rating, size }) or null.
+ */
+export function bookCallHtml(dir, bookCard) {
+  if (!bookCard?.rating) return '';
+  const b = DIRB[bookCard.rating] ?? 0, s = sideOf(dir), size = fin(+bookCard.size) && +bookCard.size > 0 ? ` ${+bookCard.size}` : '';
+  const live = b && size;
+  const word = !live ? 'flat' : `${b > 0 ? 'long' : 'short'}${size}`;
+  const gap = live && s !== b ? (s ? 'the process calls the other way' : 'the process stands aside') : live ? 'same side' : '';
+  return `<div class="bp-book"><span class="muted">Book</span> <span class="chip ${live ? (b > 0 ? 'up' : 'dn') : ''}">${esc(word)}</span>${gap ? ` <span class="${gap === 'same side' ? 'muted' : 'chip gold'}">${esc(gap)}</span>` : ''}</div>`;
+}
+/** The cards block: the filter pills, the sort, the grid. book = { MARKET: { rating, size } } (the desk's cards today), optional. */
+export function cardsHtml(rec, { group = 'all', sort = 'conviction', book = null } = {}, rcRec = null) {
   const cards = Object.values(rec?.markets ?? {});
   if (!cards.length) return '<p class="muted">No cards: the process has not issued yet.</p>';
   const shown = filterSort(cards, { group, sort });
@@ -158,13 +189,13 @@ export function cardsHtml(rec, { group = 'all', sort = 'conviction' } = {}, rcRe
     .map(([g, l]) => `<button type="button" class="bp-pill" data-group="${g}" aria-pressed="${g === group}">${l}</button>`).join('');
   return `<div class="bp-tools"><div class="bp-pills" role="group" aria-label="Filter markets">${pills}</div><label class="muted bp-sort">Sort <select data-bp="sort"><option value="conviction"${sort === 'conviction' ? ' selected' : ''}>by conviction</option><option value="market"${sort !== 'conviction' ? ' selected' : ''}>market order</option></select></label></div>
 ${scheduleHtml(rcRec)}
-<div class="bp-grid">${shown.map(c => cardHtml(c, rcRec?.markets?.[c.market] ?? null)).join('') || '<p class="muted">No market in this group.</p>'}</div>`;
+<div class="bp-grid">${shown.map(c => cardHtml(c, rcRec?.markets?.[c.market] ?? null, book?.[c.market] ?? null)).join('') || '<p class="muted">No market in this group.</p>'}</div>`;
 }
 export function headHtml(rec) {
   if (!rec) return '';
   const when = rec.live ? `live read · ${hhmm(rec.asOf)}` : `issue ${esc(rec.date)}${rec.issuedAt ? ` · ${hhmm(rec.issuedAt)}` : ''}`;
   const by = Object.values(rec.markets ?? {}).reduce((a, c) => ((a[c.call?.by ?? 'system'] = (a[c.call?.by ?? 'system'] ?? 0) + 1), a), {});
-  return `<div class="ch"><span class="lbl">Bias process · ${when}</span><span class="r">${rec.live ? '<span class="chip gold" title="computed now: the system call only, no AI step; not stored and not scored">live, rules only</span>' : ''}<span class="chip pur">${esc(rec.version ?? '')}</span>${Object.entries(by).map(([k, n]) => `<span class="chip">${esc(byLabel(k))} ${n}</span>`).join('')}</span></div>
+  return `<div class="ch"><span class="lbl">Bias process · ${when}</span><span class="r">${rec.live ? '<span class="chip gold" title="computed now: the system call only, no AI step; not stored and not scored">live, rules only</span>' : ''}<span class="chip pur">${esc(rec.version ?? '')}</span>${Object.entries(by).map(([k, n]) => `<span class="chip" title="${n} of ${Object.values(by).reduce((a, x) => a + x, 0)} markets: ${k === 'ai-accept' ? 'the AI kept the rules\' call' : k === 'ai-override' ? 'the AI changed the rules\' call' : 'the rules\' call stands'}">${esc(byLabel(k))}: ${n} of ${Object.values(by).reduce((a, x) => a + x, 0)}</span>`).join('')}</span></div>
 <p class="muted bp-note">${esc(rec.liveNote ?? NOTE)}</p>`;
 }
 
@@ -207,16 +238,27 @@ export function h2hRows(H, which = 'all') {
 export function h2hHtml(P, { which = 'all', nowMs = Date.now() } = {}) {
   if (!P || P.ok === false) return `<p class="muted">${esc(P?.error === 'owner only' ? 'The head to head is the process\'s scored record: owner only.' : `The head to head did not load${P?.error ? ` (${P.error})` : ''}.`)}</p>`;
   if (P.empty || !P.h2h) return `<p class="muted bp-empty">No record yet: the head to head starts with the first stored issue, ${esc(nextIssueDate(nowMs))} at 06:00 London. Forward only; nothing is back-issued.</p>`;
-  const H = P.h2h, J = judgement(H), rows = h2hRows(H, which);
+  const H = P.h2h, J = judgement(H), all = h2hRows(H, which), rows = all.filter(r => r.has), none = all.filter(r => !r.has);
   const o = H.override ?? {};
   const body = rows.map(r => `<tr${r.has ? '' : ' class="muted"'}><th>${esc(r.label)}</th><td class="n">${r.records}</td><td class="n">${r.calls}</td>
 <td class="n">${pct(r.hit)} <span class="muted">vs ${pct(r.b0)}</span></td><td class="n ${cls(r.excess)}">${sgn(r.excess)} ${ci(r.excessCi)}</td><td class="n">${pct(r.hitN07)}</td>
 <td class="n">${r.trades}</td><td class="n ${cls(r.meanR)}">${sgn(r.meanR)} ${ci(r.meanRCi)}</td><td class="n ${cls(r.totalR)}">${sgn(r.totalR, 1)}</td><td class="n">${pct(r.neutral)}</td><td class="bp-cal">${esc(r.calib)}</td></tr>`).join('');
-  return `<p class="bp-judge">${esc(J.text)}</p>
+  const same = sameRows(all, 'process-ai', 'process-system') ? `<p class="bp-ov"><b>The AI changed no call this period:</b> Process (AI) and Process (rules) are the same row in every column${o.n ? '' : ' (no override scored)'}.</p>` : '';
+  const empty = none.length ? `<p class="muted bp-foot">No record yet (left out of the table): ${esc(none.map(r => r.label).join(', '))}.</p>` : '';
+  return `<p class="bp-judge">${esc(J.text)}</p>${same}
 <div class="bp-tools"><div class="bp-pills" role="group" aria-label="Rows"><button type="button" class="bp-pill" data-which="all" aria-pressed="${which === 'all'}">All own rows</button><button type="button" class="bp-pill" data-which="shared" aria-pressed="${which === 'shared'}">Shared market-days</button></div></div>
 <div class="scroll"><table class="bp-h2h"><thead><tr><th>Competitor</th><th class="n">records</th><th class="n" title="non-Neutral calls">calls</th><th class="n" title="call time to 21:00 London, against the point-in-time base rate">hit to 21:00</th><th class="n" title="hit minus base rate, with a day-cluster bootstrap 95% interval">excess [95%]</th><th class="n" title="to 07:00 the next weekday">hit to 07:00</th><th class="n">trades</th><th class="n" title="the fixed trade rule, net of the bar spread">mean R net [95%]</th><th class="n">total R</th><th class="n">Neutral</th><th title="hit rate to 21:00 by conviction (n)">calibration</th></tr></thead><tbody>${body}</tbody></table></div>
+${empty}
 <p class="bp-ov"><b>Override record (process-ai):</b> ${o.n ? `${o.n} override${o.n === 1 ? '' : 's'}; the AI was better on ${o.aiBetter}, the rules on ${o.systemBetter}; mean (AI − rules) ${sgn(o.meanDiffSigma)} σ ${ci(o.diffCi)}.` : 'no override scored yet.'}</p>
 <p class="muted bp-foot">One fixed trade rule for everyone: enter at the call time; stop at the competitor's invalidation if it gave one, else 1 σ_day; exit on a flip or Neutral, at the stop or Friday 21:00; real spread. ${esc(H.note ?? '')}</p>`;
+}
+
+/** Two competitors' rows carry the same record in every column. */
+export function sameRows(rows, a, b) {
+  const x = rows.find(r => r.key === a), y = rows.find(r => r.key === b);
+  if (!x?.has || !y?.has) return false;
+  const strip = r => JSON.stringify({ ...r, key: null, label: null });
+  return strip(x) === strip(y);
 }
 
 // ── weekly review ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -255,6 +297,7 @@ export function weeklyReview(records, outcomes, { endDate, days = 7 } = {}) {
       const sys = sideOf(c.system?.dir);
       out.rows.push({ date: r.date, market, dir: c.call.dir, conviction: c.call.conviction ?? null, by: c.call.by ?? null, system: c.system?.dir ?? null, moveSign: m,
         wrongLayers: LAYER_SIDES.filter(([k]) => sides[k] === -m).map(([, l]) => l),
+        rightLayers: LAYER_SIDES.filter(([k]) => sides[k] === m).map(([, l]) => l),
         override: c.call.by === 'ai-override' ? (sys === m ? 'hurt' : sys === 0 ? 'hurt (rules were Neutral)' : 'same side as the rules') : null,
         eventAfter: evList(c.layers?.event?.laterToday) });
     }
@@ -269,7 +312,7 @@ export function reviewHtml(P, { nowMs = Date.now() } = {}) {
   const o = R.overrides ?? {};
   const head = `<p class="bp-judge">${esc(R.from)} to ${esc(R.to)}: ${R.calls} call${R.calls === 1 ? '' : 's'}, ${R.right} right, ${R.wrong} wrong${R.pending ? `, ${R.pending} not scored yet` : ''} (to 21:00 London). Overrides: ${o.n ? `${o.n}, helped ${o.helped}, hurt ${o.hurt}${o.same ? `, no difference ${o.same}` : ''}` : 'none scored'}.</p>`;
   if (!R.rows.length) return `${head}<p class="muted">No wrong calls this week.</p>`;
-  return `${head}<div class="scroll"><table class="bp-review"><thead><tr><th>Day</th><th>Market</th><th>Call</th><th>Moved</th><th>Layer that pointed the wrong way</th><th>Override</th><th>Event after the call</th></tr></thead><tbody>${R.rows.map(r => `<tr><td class="mono">${esc(r.date)}</td><th>${esc(r.market)}</th><td><span class="${cls(sideOf(r.dir))}">${esc(WORD[r.dir] ?? r.dir)}${fin(r.conviction) ? ` ${r.conviction}/5` : ''}</span> <span class="muted">${esc(byLabel(r.by))}</span></td><td class="${cls(r.moveSign)}">${r.moveSign > 0 ? 'up' : 'down'}</td><td>${r.wrongLayers.length ? esc(r.wrongLayers.join(', ')) : '<span class="muted">none: every layer with a side agreed with the call</span>'}</td><td>${r.override ? esc(r.override) : '<span class="muted">–</span>'}</td><td>${r.eventAfter.length ? esc(r.eventAfter.join(', ')) : '<span class="muted">none</span>'}</td></tr>`).join('')}</tbody></table></div>
+  return `${head}<div class="scroll"><table class="bp-review"><thead><tr><th>Day</th><th>Market</th><th>Call</th><th>Moved</th><th title="the layers that pointed the way the market moved, against the call: what the call overrode or outvoted">Layers that pointed the right way</th><th>Override</th><th>Event after the call</th></tr></thead><tbody>${R.rows.map(r => `<tr><td class="mono">${esc(r.date)}</td><th>${esc(r.market)}</th><td><span class="${cls(sideOf(r.dir))}">${esc(WORD[r.dir] ?? r.dir)}${fin(r.conviction) ? ` ${r.conviction}/5` : ''}</span> <span class="muted">${esc(byLabel(r.by))}</span></td><td class="${cls(r.moveSign)}">${r.moveSign > 0 ? 'up' : 'down'}</td><td>${(r.rightLayers ? (r.rightLayers.length ? `${esc(r.rightLayers.join(', '))}${r.wrongLayers?.length ? ` <span class="muted">(${r.wrongLayers.length} backed the call)</span>` : ''}` : '<span class="muted">none: every layer with a side backed the call</span>') : r.wrongLayers.length ? `<span class="muted">backed the call:</span> ${esc(r.wrongLayers.join(', '))}` : '<span class="muted">none: every layer with a side agreed with the call</span>')}</td><td>${r.override ? esc(r.override) : '<span class="muted">–</span>'}</td><td>${r.eventAfter.length ? esc(r.eventAfter.join(', ')) : '<span class="muted">none</span>'}</td></tr>`).join('')}</tbody></table></div>
 <p class="muted bp-foot">A rule changes only by a dated, versioned amendment (desk-bias-process-v2, ...); the old version keeps being scored for 20 days beside it.</p>`;
 }
 
@@ -320,6 +363,7 @@ export const CSS = `
 .bp-dots i.on{background:var(--pur2)}
 .bp-by{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 4px}
 .bp-sys{font-size:11.5px}
+.bp-book{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0 4px;font-size:12px}
 .bp-reason{font-size:12.5px;color:var(--tx2);margin:6px 0 8px;line-height:1.4}
 .bp-layers{list-style:none;margin:0;padding:0}
 .bp-layers li{display:grid;grid-template-columns:82px minmax(0,1fr);gap:8px;padding:3px 0;border-bottom:1px solid var(--line);font-size:12px}
@@ -348,7 +392,7 @@ export const CSS = `
  * Mount the tab into `root` (the <section id="bprocess">). ctx: { getJson(url) -> json, win, doc }. Idempotent: a second call refreshes the cards.
  * The h2h route is asked for only when one of its panels is on for this session; the FundaBias form only for the owner.
  */
-export function mount(root, { getJson, win = globalThis, doc = globalThis.document } = {}) {
+export function mount(root, { getJson, win = globalThis, doc = globalThis.document, book = () => null } = {}) {
   if (!root) return null;
   const on = id => (typeof win.deskSurfaceOn === 'function' ? win.deskSurfaceOn(id) : true);
   const owner = () => (typeof win.deskIsViewer === 'function' ? !win.deskIsViewer() : true) && doc?.documentElement?.dataset?.role !== 'viewer';
@@ -365,7 +409,7 @@ export function mount(root, { getJson, win = globalThis, doc = globalThis.docume
 <div class="card bp-sec" data-surface="panel.bp.fundabias"><div class="ch"><span class="lbl">FundaBias log</span><span class="r muted">owner only</span></div><div data-bp="fb"><p class="muted">Loading…</p></div></div>`;
   const q = k => root.querySelector(`[data-bp="${k}"]`);
   const save = () => { try { win.localStorage?.setItem('deskBp:v1', JSON.stringify({ group: S.group, sort: S.sort })); } catch { /* private window */ } };
-  const drawCards = () => { q('cards').innerHTML = S.rec?.ok === false ? `<p class="muted">${esc(S.rec.error === 'owner only' ? 'The bias process is a preview: switched off for this login.' : S.rec.error ?? 'Did not load.')}</p>` : cardsHtml(S.rec, S, S.live ? null : S.rc); q('head').innerHTML = S.rec?.ok === false ? '<div class="ch"><span class="lbl">Bias process</span></div>' : headHtml(S.rec); };
+  const drawCards = () => { q('cards').innerHTML = S.rec?.ok === false ? `<p class="muted">${esc(S.rec.error === 'owner only' ? 'The bias process is a preview: switched off for this login.' : S.rec.error ?? 'Did not load.')}</p>` : cardsHtml(S.rec, { ...S, book: S.date ? null : book() }, S.live ? null : S.rc); q('head').innerHTML = S.rec?.ok === false ? '<div class="ch"><span class="lbl">Bias process</span></div>' : headHtml(S.rec); };
   const drawH2h = () => { q('h2h').innerHTML = h2hHtml(S.h2h, { which: S.which }); q('review').innerHTML = reviewHtml(S.h2h); };
   const drawFb = () => { if (S.fb) q('fb').innerHTML = S.fb.ok === false ? `<p class="muted">${esc(S.fb.error ?? 'Did not load.')}</p>` : fbHtml(S.fb.markets, S.fb.rows, { msg: S.fbMsg }); };
   async function loadCards() {

@@ -54,10 +54,31 @@ export function stressOf(ws) {
   return { overall: String(ws.overall ?? ''), ok: c.ok, watch: c.watch, stress: c.stress, n: ws.tiles.length, worst };
 }
 
-/** The desk's own ranking (strongest first) and the price read's top and bottom (the 1D window, else 4H): { desk:{top,bottom}, price:{top,bottom,window,from} }. */
-export function strengthOf(ranking, strength) {
+const andList = xs => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
+/**
+ * The two ends of the desk's ranking, with ties said as ties (review 2026-11-27: "USD strongest, NZD weakest" while EUR, GBP, JPY, AUD, NZD and
+ * CAD all sat at -1 in the ruling). biases: { CCY: { bias } } (optional); without them the ranking's ends are used as they are.
+ * { top, bottom, topTied: [ccy], bottomTied: [ccy] } where top / bottom are the words to show ("USD", "EUR, GBP and JPY").
+ */
+export function deskEnds(ranking, biases = null) {
+  if (!Array.isArray(ranking) || ranking.length < 2) return null;
+  const b = c => Number(biases?.[c]?.bias), have = biases && ranking.every(c => fin(b(c)));
+  if (!have) return { top: ranking[0], bottom: ranking.at(-1), topTied: [ranking[0]], bottomTied: [ranking.at(-1)] };
+  const hi = Math.max(...ranking.map(b)), lo = Math.min(...ranking.map(b));
+  const topTied = ranking.filter(c => b(c) === hi), bottomTied = hi === lo ? [] : ranking.filter(c => b(c) === lo);
+  return { top: andList(topTied), bottom: andList(bottomTied), topTied, bottomTied };
+}
+/** The words for the ends: "USD strongest, NZD weakest" or "USD strongest; EUR, GBP and JPY tie as weakest". */
+export function endsText(e) {
+  if (!e) return '';
+  if (!e.bottomTied.length) return `${e.top} level: no currency ranked above another`;
+  const t = e.topTied.length > 1 ? `${e.top} tie as strongest` : `${e.top} strongest`, w = e.bottomTied.length > 1 ? `${e.bottom} tie as weakest` : `${e.bottom} weakest`;
+  return e.topTied.length > 1 || e.bottomTied.length > 1 ? `${t}; ${w}` : `${t}, ${w}`;
+}
+/** The desk's own ranking (strongest first) and the price read's top and bottom (the 1D window, else 4H): { desk:{top,bottom,...}, price:{top,bottom,window,from} }. */
+export function strengthOf(ranking, strength, biases = null) {
   const out = { desk: null, price: null };
-  if (Array.isArray(ranking) && ranking.length >= 2) out.desk = { top: ranking[0], bottom: ranking[ranking.length - 1] };
+  out.desk = deskEnds(ranking, biases);
   const hz = strength?.ok ? (strength.horizons?.['1D']?.available ? '1D' : strength.horizons?.['4H']?.available ? '4H' : null) : null;
   if (hz) {
     const rows = (strength.horizons[hz].scores ?? []).filter(s => CCYS.includes(s.ccy) && fin(s.score)).sort((a, b) => b.score - a.score);
@@ -89,13 +110,13 @@ export function freshness(run, dqText = '', now = Date.now()) {
 }
 
 /** The whole model from what the page holds. Every part is null when its feed is missing (the view then says "not available"). */
-export function buildGlance({ run = null, ws = null, ranking = null, strength = null, rank = null, expected = null, events = null, dqText = '', now = Date.now() } = {}) {
+export function buildGlance({ run = null, ws = null, ranking = null, biases = null, strength = null, rank = null, expected = null, events = null, dqText = '', now = Date.now() } = {}) {
   const ok = !!(run?.ok && run.head?.ok !== false);
   return {
     regime: ok ? regimeOf(run) : null,
     ruling: ok ? (run?.head?.book?.headline ? String(run.head.book.headline) : null) : null,
     stress: stressOf(ws),
-    strength: strengthOf(ok ? ranking : null, strength),
+    strength: strengthOf(ok ? ranking : null, strength, biases),
     unusual: unusualOf(rank, expected),
     next: nextRelease(events, now),
     fresh: freshness(ok ? run : null, dqText, now),
@@ -117,13 +138,13 @@ export function glanceHtml(m) {
   const s = m.strength;
   if (s?.price || s?.desk) {
     const price = s.price ? `<span class="fl-sub">price (${esc(s.price.window)}): <b class="up">${esc(s.price.top.ccy)}</b> ${s.price.top.score >= 0 ? '+' : ''}${s.price.top.score.toFixed(1)}σ · <b class="dn">${esc(s.price.bottom.ccy)}</b> ${s.price.bottom.score >= 0 ? '+' : ''}${s.price.bottom.score.toFixed(1)}σ</span>` : '';
-    const desk = s.desk ? `<span class="fl-sub">desk read: <b class="up">${esc(s.desk.top)}</b> strongest · <b class="dn">${esc(s.desk.bottom)}</b> weakest</span>` : '';
+    const desk = s.desk ? `<span class="fl-sub">desk read: ${s.desk.bottomTied?.length === 0 ? esc(endsText(s.desk)) : `<b class="up">${esc(s.desk.top)}</b> ${s.desk.topTied?.length > 1 ? 'tie as strongest' : 'strongest'} · <b class="dn">${esc(s.desk.bottom)}</b> ${s.desk.bottomTied?.length > 1 ? 'tie as weakest' : 'weakest'}`}</span>` : '';
     t.push(tile('Currency strength', `${price}${desk}`, { go: 'insight.fxmatrix', title: 'Two different measures: what price did (σ) and what the desk rules. Open the currency matrix for all eight' }));
   } else t.push(tile('Currency strength', na));
   t.push(tile('Most unusual', m.unusual ? `<b class="fl-med">${esc(m.unusual.label)}</b><span class="fl-sub">${esc(m.unusual.text)}</span>${m.unusual.count != null && m.unusual.expected != null ? `<span class="fl-sub">${esc(m.unusual.count)} readings hot, about ${esc(Math.round(m.unusual.expected))} by chance</span>` : ''}` : na, { go: 'insight.unusual', title: 'Ranked against its own history, not by size' }));
   t.push(tile('Next release', m.next ? `<b class="fl-med">${esc(m.next.country)} ${esc(m.next.event)}</b><span class="fl-sub">in ${esc(m.next.in)}</span>` : '<span class="fl-sub">no high-impact release in sight</span>', { go: 'tab.cal', title: 'The calendar, with what each release did before' }));
   return `<div class="fl-glance" data-surface="panel.ov.glance" role="region" aria-label="The market at a glance"><div class="fl-head"><span class="fl-title">At a glance</span>${m.fresh ? `<span class="fl-age">${esc(m.fresh)}</span>` : ''}</div>`
-    + (m.ruling ? `<p class="fl-ruling">${esc(m.ruling)}</p>` : '')
+    // the book's one-liner is not repeated here: "Today's book" prints it just below (review 2026-11-27: the same line twice in a row)
     + `<div class="fl-tiles">${t.join('')}</div><p class="fl-note">Context for the day, not a trade signal. Each tile opens the board behind it.</p></div>`;
 }
 

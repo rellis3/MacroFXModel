@@ -3,6 +3,7 @@
 // shown as a light and labelled so; a nearest-test link is marked as nearest, not identical. Pure helpers + a small mount. Theme tokens only (insight.css).
 import { DESK_EVIDENCE } from '../deskEvidence.js';
 import { esc } from './boardViz.js';
+import { flagEnded } from '../riskFlagStripCore.js';
 
 /** Which Evidence Book entries speak to which flag. `nearest` = the test is about a related but different measure, said on the card. */
 export const FLAG_EVIDENCE = {
@@ -32,11 +33,11 @@ export function flagRows(rf, evidence = DESK_EVIDENCE) {
   return { ok: true, rows, level: rf.level ?? null, active: rf.active ?? rows.filter(r => r.on === true).length, available: rf.available ?? rows.filter(r => r.on !== null).length, total: rf.total ?? rows.length, at: rf.computed_at ?? null };
 }
 
-const light = on => `<i class="in-light ${on === true ? 'on' : on === null ? 'na' : 'off'}" aria-hidden="true"></i><b class="in-ls">${on === true ? 'ON' : on === null ? 'NOT AVAILABLE' : 'off'}</b>`;
+const light = (on, ended = null) => `<i class="in-light ${on === true ? 'on' : on === null ? 'na' : 'off'}" aria-hidden="true"></i><b class="in-ls"${on === null && ended ? ` title="${esc(ended)}"` : ''}>${on === true ? 'ON' : on === null ? (ended ? 'SOURCE ENDED' : 'NOT AVAILABLE') : 'off'}</b>`;
 function cardHtml(r) {
   const ev = r.evidence.map(e => `<div class="in-ev"><span class="in-vd ${esc(e.verdict)}">${esc(e.word)}</span> <b>${esc(e.claim)}</b>${r.nearest ? ' <i class="in-gr">nearest test, not the same measure</i>' : ''}<p class="in-cap">${esc(e.result)}</p><p class="in-cap"><b>How to use it:</b> ${esc(e.use)}</p></div>`).join('')
     || '<p class="in-cap">No test of its own in the Evidence Book: this is a light, not a finding. It says where a market is today and nothing about what follows.</p>';
-  return `<div class="in-gcard${r.on === true ? ' in-hot' : ''}"><div class="in-gh"><span class="in-gl">${esc(r.label)}</span><span class="in-lt">${light(r.on)}</span></div><p class="in-cap">${esc(r.detail)}</p>${ev}</div>`;
+  return `<div class="in-gcard${r.on === true ? ' in-hot' : ''}"><div class="in-gh"><span class="in-gl">${esc(r.label)}</span><span class="in-lt">${light(r.on, flagEnded(r.key))}</span></div><p class="in-cap">${esc(r.detail)}${r.on === null && flagEnded(r.key) ? `${/[.!?]$/.test(String(r.detail ?? '').trim()) ? '' : '.'} ${esc(flagEnded(r.key))}.` : ''}</p>${ev}</div>`;
 }
 
 export function flagsHtml(m) {

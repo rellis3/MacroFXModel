@@ -19,7 +19,7 @@ const P = { ok: true, date: '2026-11-20', phase: 'trial', spec: '1.1', configHas
 test('the panel is an owner-only internal surface and states that it is a shadow, uncalibrated', () => {
   assert.equal(surfaceById('panel.macro.bev2')?.hidden, 'internal');
   const h = V.headHtml(P);
-  assert.match(h, /technical trial/); assert.match(h, /risk gate failed \(F4 off\)/); assert.match(h, /V1 replay agrees 100%/); assert.match(h, /uncalibrated/);
+  assert.match(h, /technical trial/); assert.match(h, /one-risk-factor switch off \(its test failed\)/); assert.match(h, /same inputs as V1 \(replay matches\)/); assert.doesNotMatch(h, /F4|spec 1|>[0-9a-f]{10}</); assert.match(h, /uncalibrated/);
   assert.match(V.headHtml({ empty: true, note: 'no V2 record yet' }), /no V2 record yet/);
 });
 

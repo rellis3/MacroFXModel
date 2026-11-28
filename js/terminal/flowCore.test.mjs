@@ -25,7 +25,7 @@ test('regime, stress, strength and the next release read the page data and say n
   assert.deepEqual([s.ok, s.watch, s.stress, s.n], [1, 1, 1, 3]);
   assert.equal(s.worst[0].label, 'Funding');
   const st = F.strengthOf(['USD', 'JPY', 'CHF'], { ok: true, horizons: { '1D': { available: true, from: 'x', scores: [{ ccy: 'USD', score: 0.7 }, { ccy: 'JPY', score: 2.1 }, { ccy: 'CHF', score: -1.4 }] } } });
-  assert.deepEqual(st.desk, { top: 'USD', bottom: 'CHF' });
+  assert.deepEqual(st.desk, { top: 'USD', bottom: 'CHF', topTied: ['USD'], bottomTied: ['CHF'] });
   assert.equal(st.price.top.ccy, 'JPY'); assert.equal(st.price.bottom.ccy, 'CHF'); assert.equal(st.price.window, '1D');
   const st2 = F.strengthOf(['USD', 'CHF'], { ok: true, horizons: { '1D': { available: false }, '4H': { available: true, scores: [{ ccy: 'USD', score: 1 }, { ccy: 'EUR', score: -1 }] } } });
   assert.equal(st2.price.window, '4H');
@@ -40,7 +40,11 @@ test('the glance block: every part escaped, a missing feed says not available, e
   const m = F.buildGlance({ run: { ok: true, head: { ok: true, book: { headline: 'A <b>bold</b> day', global: { tone: 'risk_on', conviction: 'high' } } }, date: '2026-11-16' }, ws: null, ranking: ['USD', 'NZD'], now: NOW, dqText: 'DATA 129/134' });
   const h = F.glanceHtml(m);
   assert.ok(h.includes('data-surface="panel.ov.glance"'));
-  assert.ok(!h.includes('<b>bold</b>') && h.includes('&lt;b&gt;bold&lt;/b&gt;'), 'stored text is escaped');
+  assert.ok(!h.includes('bold'), 'the book one-liner is not repeated in the glance (Today\'s book prints it)');
+  assert.ok(F.glanceHtml(F.buildGlance({ run: { ok: true, head: { ok: true, book: {} }, date: '2026-11-16' }, dqText: 'DATA <i>x</i>', now: NOW })).includes('&lt;i&gt;x&lt;/i&gt;'), 'stored text is escaped');
+  const tie = F.buildGlance({ run: { ok: true, head: { ok: true, book: {} } }, ranking: ['USD', 'CHF', 'EUR', 'GBP'], biases: { USD: { bias: 2 }, CHF: { bias: 0 }, EUR: { bias: -1 }, GBP: { bias: -1 } }, now: NOW });
+  assert.match(F.glanceHtml(tie), /<b class="dn">EUR and GBP<\/b> tie as weakest/, 'a tie is said as a tie (27 Nov: six currencies at -1)');
+  assert.equal(F.endsText(F.deskEnds(['USD', 'EUR'], { USD: { bias: 1 }, EUR: { bias: -1 } })), 'USD strongest, EUR weakest');
   assert.match(h, /World stress<\/span><span class="fl-na">not available/);
   assert.match(h, /Most unusual<\/span><span class="fl-na">not available/);
   assert.match(h, /no high-impact release in sight/);

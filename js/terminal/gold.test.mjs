@@ -54,3 +54,16 @@ test('tonnes held reach the ETF card: GLD with its changes, IAU read daily, the 
   assert.equal(f.state, 'empty'); assert.match(f.note, /Last try: SPDR HTTP 403/); assert.equal(f.tonnes.gld.tonnes, 1044.41); assert.equal(f.tonnes.deltas.gld[1], 3.71);
   assert.equal(etfFlows({ ok: true, series: [] }).tonnes, undefined, 'no tonnes block when none came');
 });
+
+// review 2026-11-27: the ETF change is measured on the funds' own as-of dates and checked against tonnes x price
+import { etfCheck } from './goldCore.js';
+test('etfCheck: a dollar change that does not square with tonnes held and the gold price is marked, one that does is not', () => {
+  const c = etfCheck({ 1: { raw: -4.58, flow: -5.5, from: '2026-11-24' }, 5: { raw: -7.8, flow: -0.2, from: '2026-11-18' } }, { 1: 0.02, 5: -1.2 }, { 1: 0.93, 5: -6.5 });
+  assert.equal(c[1].squares, false); assert.ok(Math.abs(c[1].expect - 0.95) < 0.05);
+  assert.equal(c[5].squares, true);
+  assert.equal(etfCheck({ 1: { raw: 1 } }, {}, {})[1].squares, null, 'no tonnes, no judgement');
+});
+test('etfFlows: the change runs between the funds\' own as-of dates, not the capture dates', () => {
+  const f = etfFlows({ ok: true, series: [{ date: '2026-11-25', asOf: '2026-11-24', value: 100 }, { date: '2026-11-26', asOf: '2026-11-25', value: 101 }] }, { '2026-11-24': 10, '2026-11-25': 10.1, '2026-11-26': 9 });
+  assert.equal(f.asOf, '2026-11-25'); assert.equal(f.deltas[1].from, '2026-11-24'); assert.ok(Math.abs(f.deltas[1].flow) < 1e-9, String(f.deltas[1].flow));
+});

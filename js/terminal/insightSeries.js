@@ -23,7 +23,8 @@ export const SERIES = [
   row('vix', 'VIX (S&P 500 implied vol)', 'vol', X, true, 'panel.macro.vol'), row('vix9d', 'VIX 9-day', 'vol', X, true, 'panel.macro.vol'), row('vix3m', 'VIX 3-month', 'vol', X, true, 'panel.macro.vol'),
   row('vix6m', 'VIX 6-month', 'vol', X, true, 'panel.macro.vol'), row('vvix', 'Volatility of VIX (VVIX)', 'vol', X, true, 'panel.macro.vol'), row('skew', 'SKEW (tail-risk price)', 'vol', X, true, 'panel.macro.skewhist'),
   row('vxn', 'Nasdaq implied vol (VXN)', 'vol', X, true, 'panel.macro.vol'), row('rvx', 'Russell 2000 implied vol (RVX)', 'vol', X, true, 'panel.macro.vol'),
-  row('cor1m', 'Implied correlation, 1 month', 'vol', X, true, 'panel.macro.vol'), row('cor3m', 'Implied correlation, 3 months', 'vol', X, true, 'panel.macro.vol'),
+  // implied correlation is an index in points that can sit near zero: a log change of it printed "+191.5%"; it moves in points
+  { ...row('cor1m', 'Implied correlation, 1 month', 'vol', R, true, 'panel.macro.vol'), moveUnit: 'pts' }, { ...row('cor3m', 'Implied correlation, 3 months', 'vol', R, true, 'panel.macro.vol'), moveUnit: 'pts' },
   row('vixeq', 'Single-stock implied vol (VIXEQ)', 'vol', X, true, 'panel.macro.vol'), row('ovx', 'Oil implied vol (OVX)', 'vol', X, true, 'panel.macro.vol'),
   row('gvz', 'Gold implied vol (GVZ)', 'vol', X, true, 'panel.macro.vol'), row('dspx', 'Dispersion index (DSPX)', 'vol', X, true, 'panel.macro.vol'),
   row('dxy', 'US dollar, broad (Fed, weekly release)', 'fx', X, true, null), row('dxyIce', 'US dollar index (DXY, daily)', 'fx', X, true, null),

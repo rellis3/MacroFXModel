@@ -154,15 +154,33 @@ export function cellOf(m, key) {
 }
 const cellTd = (m, key) => { const c = cellOf(m, key);
   return c.kind === 'used' ? `<td style="background:${heat(c.contrib)}" title="${esc(c.title)}">${sgn(c.contrib)}</td>` : `<td class="muted" title="${esc(c.title)}">${c.kind === 'missing' ? '·' : 'n/a'}</td>`; };
-function gridTable(rows, cols, rec) {
-  return `<div class="scroll"><table class="heat be-grid"><thead><tr><th></th>${cols.map(([, l]) => `<th style="text-align:center">${esc(l)}</th>`).join('')}<th style="text-align:center">Score</th><th style="text-align:center">Read</th><th style="text-align:center">Coverage</th></tr></thead><tbody>${rows.map(([name, m]) => `<tr><th>${esc(name)}</th>${cols.map(([k]) => cellTd(m, k)).join('')}<td style="background:${heat(m?.score, 1.2)}"><b>${sgn(m?.score)}</b></td><td>${engineChip(m, { prefix: 'Engine' }).replace('Engine: ', '') || '–'}</td><td class="${fin(m?.coverage) && m.coverage < 0.5 ? 'dn' : ''}">${pctTxt(m?.coverage)}</td></tr>`).join('')}</tbody></table></div>`;
+function gridTable(rows, cols, rec, { desk = null } = {}) {
+  // the oldest input each score used, in days before the issue (a 148-day-old data driver looks the same as today's in the cell colour), and, for the
+  // currencies, whether the desk book on the Currencies tab reads the other way
+  const old = m => { const o = oldestInput(m, rec?.asOf); return o ? `<td class="mono ${o.days > 45 ? 'dn' : o.days > 10 ? 'muted' : ''}" title="${esc(`${o.label}, as of ${o.asOf}`)}">${o.days}d</td>` : '<td class="muted">–</td>'; };
+  const book = name => { if (!desk) return ''; const s = deskSign({ bias: desk[name]?.bias }), m = rows.find(r => r[0] === name)?.[1];
+    return `<td>${s == null ? '<span class="muted">–</span>' : isSplit(m, s) ? `<span class="chip gold" title="the desk book on the Currencies tab reads ${s > 0 ? 'bullish' : s < 0 ? 'bearish' : 'neutral'}; the engine reads ${esc(engineLabel(m) ?? '–')}">book differs</span>` : '<span class="muted">same side</span>'}</td>`; };
+  return `<div class="scroll"><table class="heat be-grid"><thead><tr><th></th>${cols.map(([, l]) => `<th style="text-align:center">${esc(l)}</th>`).join('')}<th style="text-align:center">Score</th><th style="text-align:center">Read</th><th style="text-align:center">Coverage</th><th style="text-align:center" title="the oldest input the score used, in days before the issue">Oldest input</th>${desk ? '<th style="text-align:center" title="against the desk book on the Currencies tab">Desk book</th>' : ''}</tr></thead><tbody>${rows.map(([name, m]) => `<tr><th>${esc(name)}</th>${cols.map(([k]) => cellTd(m, k)).join('')}<td style="background:${heat(m?.score, 1.2)}"><b>${sgn(m?.score)}</b></td><td>${engineChip(m, { prefix: 'Engine' }).replace('Engine: ', '') || '–'}</td><td class="${fin(m?.coverage) && m.coverage < 0.5 ? 'dn' : ''}">${pctTxt(m?.coverage)}</td>${old(m)}${book(name)}</tr>`).join('')}</tbody></table></div>`;
+}
+/** The weights' keys in plain words (the engine's own keys are code names). */
+export const WEIGHT_LABEL = { policy: 'Policy path', rates: 'Rate differential', data: 'Data momentum', realYield: 'Real yield', risk: 'Risk role', commodity: 'Commodity link',
+  positioning: 'Positioning (COT)', trend: 'Price trend', usd: 'US dollar', fedPath: 'Fed path', ratesPath: 'ECB / BoE path', ccy: 'Own currency', globalData: 'Global data',
+  inventories: 'Inventories', vixLevel: 'VIX level', vixTerm: 'VIX curve (VIX / VIX3M)', credit: 'Credit spread change', spxTrend: 'S&P 500 trend' };
+const wLabel = k => WEIGHT_LABEL[k] ?? String(k).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+/** Days between a driver's as-of and the record's issue time (whole days), or null. */
+const ageDays = (asOf, ref) => { const a = Date.parse(String(asOf ?? '').length === 10 ? `${asOf}T23:59:00Z` : asOf), b = Date.parse(ref ?? ''); return Number.isFinite(a) && Number.isFinite(b) ? Math.max(0, Math.floor((b - a) / 864e5)) : null; };
+/** The oldest input a market's score used: { days, label, asOf } or null. */
+export function oldestInput(m, ref) {
+  let best = null;
+  for (const d of m?.drivers ?? []) { const n = ageDays(d.asOf, ref); if (n != null && (!best || n > best.days)) best = { days: n, label: d.label, asOf: day(d.asOf) }; }
+  return best;
 }
 const WEIGHT_SETS = () => [['Currencies', CCY_WEIGHTS], ['Gold, silver', GOLD_WEIGHTS], ['US indices', INDEX_WEIGHTS], ['DE30, UK100', EU_INDEX_WEIGHTS], ['Oil, copper', CMDTY_WEIGHTS], ['Risk score R', RISK_WEIGHTS]];
 export function weightsHtml() {
-  return `<div class="grid g3">${WEIGHT_SETS().map(([t, w]) => `<div class="be-w"><span class="lbl">${esc(t)}</span>${Object.entries(w).map(([k, v]) => `<div class="be-wr"><span>${esc(k)}</span><div class="bar"><i style="width:${Math.round(v * 400)}%;max-width:100%;background:var(--pur)"></i></div><span class="mono">${v.toFixed(2)}</span></div>`).join('')}</div>`).join('')}</div>`;
+  return `<div class="grid g3">${WEIGHT_SETS().map(([t, w]) => `<div class="be-w"><span class="lbl">${esc(t)}</span>${Object.entries(w).map(([k, v]) => `<div class="be-wr"><span title="${esc(k)}">${esc(wLabel(k))}</span><div class="bar"><i style="width:${Math.round(v * 400)}%;max-width:100%;background:var(--pur)"></i></div><span class="mono">${v.toFixed(2)}</span></div>`).join('')}</div>`).join('')}</div>`;
 }
 /** The whole Macro section. '' when there is no record. */
-export function macroSectionHtml(rec) {
+export function macroSectionHtml(rec, { desk = null } = {}) {
   if (!rec?.currencies) return '';
   const ccyRows = (rec.ranking?.length ? [...rec.ranking, ...CCYS.filter(c => !rec.ranking.includes(c))] : CCYS).map(c => [c, rec.currencies[c]]);
   const assets = ASSETS.filter(a => rec.markets?.[a]).map(a => [a, rec.markets[a]]);
@@ -171,8 +189,8 @@ export function macroSectionHtml(rec) {
   const R = rec.risk;
   return `<div class="card be-macro"><div class="ch"><span class="lbl">Bias engine · currencies × drivers</span><span class="r">${rec.live ? '<span class="chip" title="computed now, not stored and not scored">live read</span>' : rec.date ? `<span class="chip">issue ${esc(rec.date)}</span>` : ''}<span class="chip pur">weights ${esc(rec.weights ?? 'theory-v1')}</span>${rec.asOf ? `<span class="muted">as of ${esc(when(rec.asOf))}</span>` : ''}</span></div>
 <p class="muted" style="margin-top:0">Each cell is a driver's contribution to the currency's score (w·d, the weights renormalised over the drivers present): green pushes the currency up, red down. · is missing (dropped), n/a does not apply. Hover a cell for its reading.</p>
-${gridTable(ccyRows, CCY_COLS, rec)}
-${R ? `<div class="drv" style="margin-top:10px"><span class="lbl" style="align-self:center">Global risk R</span><span class="${cls(R.score)}">R ${sgn(R.score)} (risk-on +)</span><span>coverage ${pctTxt(R.coverage)}</span>${(R.drivers ?? []).map(d => `<span title="${esc(d.source ?? '')}">${esc(d.label)}: ${esc(d.reading ?? '')} → ${sgn(d.contrib)}</span>`).join('')}</div>` : ''}</div>
+${gridTable(ccyRows, CCY_COLS, rec, { desk })}
+${R ? `<div class="drv" style="margin-top:10px"><span class="lbl" style="align-self:center">Global risk R</span><span class="${cls(R.score)}">R ${sgn(R.score)} (risk-on +)</span><span>coverage ${pctTxt(R.coverage)}</span>${(R.drivers ?? []).map(d => `<span title="${esc(d.source ?? '')}">${esc(d.label)}: ${esc(d.reading ?? '')}${d.asOf ? ` (${esc(day(d.asOf))})` : ''} → ${sgn(d.contrib)}</span>`).join('')}</div>${(R.drivers ?? []).length && R.drivers.every(d => fin(d.d) && Math.abs(d.d) >= 2) ? `<p class="muted" style="font-size:12px;margin:6px 0 0">Every risk input is at its cap (each is clipped at ±2 before weighting), so R sits at its ${R.score < 0 ? 'floor' : 'ceiling'} of ${sgn(R.score)}: it says risk-off on all four counts, not how far past the cap they are.</p>` : ''}` : ''}${desk ? '<p class="muted" style="font-size:12px;margin:6px 0 0">Desk book: whether the desk\'s currency book on the Currencies tab is on the same side as the engine. The two are different reads (the book is the day\'s lean, the engine the slow checklist); a difference is shown, not resolved.</p>' : ''}</div>
 ${assets.length ? `<div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Bias engine · assets × drivers</span></div>${gridTable(assets, assetKeys.map(k => [k, ASSET_LBL[k] ?? k]), rec)}</div>` : ''}
 <div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Weights · ${esc(rec.weights ?? 'theory-v1')}</span><span class="r muted">theory weights, revised only from the forward record</span></div>${weightsHtml()}</div>
 <div class="card" style="margin-top:14px"><div class="ch"><span class="lbl">Gaps</span><span class="r muted">${(rec.gaps ?? []).length} missing input${(rec.gaps ?? []).length === 1 ? '' : 's'}, grouped by reason</span></div>${(rec.gaps ?? []).length ? `<ul class="be-gaps">${rec.gaps.map(g => `<li>${esc(g)}</li>`).join('')}</ul>` : '<p class="muted">No gaps: every driver had data.</p>'}${footnoteHtml(rec)}</div>`;

@@ -34,6 +34,22 @@
 //
 // Pure: values in, plain objects out. No fetch, no DOM.
 
+/**
+ * Which meetings sit on a thin (untraded) contract. volumeHint is ONE 15-minute bar's volume, so a quiet bar on a liquid front contract
+ * (2026-11-27, the US half day: the December contract showed 4 while January showed 50) is not a dead contract. A contract is thin when its
+ * bar volume is under 5 AND no later contract trades 5 or more: the point where the strip's liquidity runs out, not a quiet bar before it.
+ * Rows without a volumeHint keep the flag they carry. Pure; returns new rows.
+ */
+export const THIN_VOLUME = 5;
+export function thinFlags(rows) {
+  const rs = rows ?? [];
+  return rs.map((r, i) => {
+    if (!r || r.volumeHint == null) return r;
+    const liquidLater = rs.slice(i + 1).some(o => o?.volumeHint != null && o.volumeHint >= THIN_VOLUME);
+    return { ...r, thin: r.volumeHint < THIN_VOLUME && !liquidLater };
+  });
+}
+
 /** Days in a calendar month from 'YYYY-MM'. */
 export function daysInMonth(ym) {
   const [y, m] = ym.split('-').map(Number);
@@ -139,7 +155,7 @@ export function meetingProbabilities(contracts, meetings, { stepBp = 25 } = {}) 
     });
     rCurrent = rAfter;
   }
-  return { rows, anchored, stepBp, note: rows.length ? null : 'no meetings inside the contract months' };
+  return { rows: thinFlags(rows), anchored, stepBp, note: rows.length ? null : 'no meetings inside the contract months' };
 }
 
 /** Cumulative priced change from the anchor, in bp, after each meeting. */

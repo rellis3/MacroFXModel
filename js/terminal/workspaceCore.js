@@ -17,7 +17,19 @@ const HOME = { ov: 'overview', ccy: 'ccy', asset: 'assets', ana: 'ana', charts: 
 export const homeSection = id => HOME[String(id).split('.')[1]] ?? null;
 
 /** Every panel surface a tile may show: id -> its registry row. A panel with no home section is not a tile: the Insight boards (panel.insight.*) sit behind their own pills and draw only when their pill is open, and the saved-searches bar belongs to the News tab. */
-export const PANELS = new Map(SURFACES.filter(s => s.kind === 'panel' && HOME[s.id.split('.')[1]]).map(s => [s.id, s]));
+// A control is not a panel either: the Analytics section pills (panel.ana.pills) switch sections, they show nothing on their own (review 2026-11-27).
+export const NOT_A_TILE = /\.(pills|subtabs|nav|tabs)$/;
+export const PANELS = new Map(SURFACES.filter(s => s.kind === 'panel' && HOME[s.id.split('.')[1]] && !NOT_A_TILE.test(s.id)).map(s => [s.id, s]));
+// the label prefix each group already says ("Overview: the wire" under Overview reads "The wire")
+const GROUP_PREFIX = { Overview: ['Overview'], Analytics: ['Analytics'], History: ['History'], Changed: ['Changed'], Correlations: ['Correlations'], Macro: ['Macro'], Pair: ['Pair'], Replay: ['Replay'],
+  Currencies: ['Currency card'], Markets: ['Market card', 'Assets'], 'Deep dive': ['Market reference'] };
+/** A panel's name inside its group of the Add-a-panel list: the group's own prefix dropped, the first letter capitalised. */
+export function tileLabel(id) {
+  const row = PANELS.get(id); if (!row) return String(id);
+  const m = /^([^:]+):\s*(.+)$/.exec(row.label ?? '');
+  const rest = m && (GROUP_PREFIX[row.group] ?? []).includes(m[1]) ? m[2] : m && m[1] === 'Macro' ? m[2] : row.label;
+  return rest.charAt(0).toUpperCase() + rest.slice(1);
+}
 export const isPanel = id => PANELS.has(id);
 
 const int = (v, lo, hi, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
