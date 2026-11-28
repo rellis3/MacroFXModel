@@ -144,3 +144,10 @@ test('merge: a CME expiry dated one day late joins the Cboe book of the day befo
   assert.equal(out[0].parts.cme.expiry, '2026-11-10');
   assert.equal(out[1].parts.cme.expiry, '2026-11-11', 'an exact date wins; 12 Nov stays on its own');
 });
+
+test('swingExpiryRow: the date from the contract code, days to expiry from today (one rule for every market)', () => {
+  const v = { expiry: '2026-12-18', code: 'E3CZ6', n: 1, days: [{ date: '2026-11-27', dte: 20, totalOI: 6000, ladder: [[7300, 1, 2]] }] };
+  const row = P.swingExpiryRow('SPX500_USD', v, { today: '2026-11-27' });
+  assert.equal(row.expiry, '2026-12-16'); assert.equal(row.dte, 19);
+  assert.equal(P.swingExpiryRow('SPX500_USD', v).dte, 20, 'without today the capture DTE is kept');
+});

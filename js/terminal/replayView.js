@@ -10,6 +10,7 @@
 import * as R from '../replayCore.js';
 import { esc, fin } from './boardViz.js';
 import { replayHtml as beReplayHtml } from './biasEngineView.js';
+import { usMarketHoliday } from '../optionExpiry.js';
 
 const HOUR = 3600e3, MIN = 60e3;
 const tc = n => (typeof themeColor === 'function' ? themeColor(n) : getComputedStyle(document.documentElement).getPropertyValue('--' + n).trim());
@@ -22,9 +23,11 @@ const sgn = (v, d = 1) => (!fin(v) ? '–' : Number(Math.abs(v).toFixed(d)) === 
 const KIND_CLS = l => (l.kind === 'oi' ? `k-${l.type}` : l.kind === 'fc' ? 'k-fc' : 'k-open');
 
 /** Today's London date, and the most recent weekday session before it: where a first visit starts. */
+/** The last full session before today: weekends and US market holidays skipped (on 27 Nov 2026 it opened on Thanksgiving,
+ *  a session with no US cash market and thin prices everywhere). */
 export function defaultDate(now = Date.now()) {
   let d = R.prevDate(R.londonDate(now));
-  for (let i = 0; i < 4 && [0, 6].includes(new Date(`${d}T12:00:00Z`).getUTCDay()); i++) d = R.prevDate(d);
+  for (let i = 0; i < 6 && ([0, 6].includes(new Date(`${d}T12:00:00Z`).getUTCDay()) || usMarketHoliday(d)); i++) d = R.prevDate(d);
   return d;
 }
 /** The line colour token for a line, and whether it is drawn solid and glowing (the strong walls, max pain and the flips) or thin and dashed. */
@@ -101,10 +104,14 @@ export function mount(root) {
     const tok = ++S.token; stop();
     Object.assign(S, { inst, date, ts: ts ?? R.londonWall(date, 7, 0), loading: true, error: null, day: null, m1: [], agg: {}, lctx: null, touches: [], strength: null, snaps: [], pulses: [], shown: 0 });
     $('rp-inst').value = inst; $('rp-date').value = date; setMsg('Loading the session…', true); beDraw(null); sideDraw(); paint();
+    // the notable days are this market's: cleared now and filled as soon as they arrive, whether or not the day itself loads
+    // (they used to be drawn only after a successful day load, so a failed or slow one left the last market's list showing)
+    if (S.notable?.inst !== inst) { S.notable = null; const nb = $('rp-nb'); if (nb) nb.innerHTML = '<option value="">loading…</option>'; }
     // the engine's stored issue for that day (never back-issued: a day without one, or today's unstored live read, shows nothing); apart from the bars
     J(`/api/bias-engine?date=${date}&market=${inst}`).then(r => { if (tok === S.token) beDraw(r && !r.live && r.market ? r : null); }).catch(() => { if (tok === S.token) beDraw(null); });
     try {
       const metaP = J(`/api/replay/meta?inst=${inst}`).catch(() => null), nbP = J(`/api/replay/notable?inst=${inst}`).catch(() => null);
+      nbP.then(n => { if (S.inst === inst) { S.notable = n ? { ...n, inst } : null; notableDraw(); } });
       const day = await J(`/api/replay/day?inst=${inst}&date=${date}`);
       if (tok !== S.token) return;
       const win = day.win, m1 = day.bars;
@@ -120,7 +127,6 @@ export function mount(root) {
       setMsg(inWin.length ? '' : `No prices for ${day.label} on ${date} (the market was shut, or this market's history starts later).`);
       sideDraw(); paint();
       metaP.then(m => { if (tok === S.token) { S.meta = m; coverageDraw(); } });
-      nbP.then(n => { if (tok === S.token) { S.notable = n; notableDraw(); } });
       J(`/api/replay/strength?date=${date}`).then(s => { if (tok === S.token) { S.strength = s; sideDraw(); paint(); } }).catch(e => { if (tok === S.token) { S.strength = { error: e.message }; sideDraw(); } });
       J(`/api/desk-snapshots?from=${win.start}&to=${Math.min(win.end, Date.now())}&fields=desk&step=5&max=400`).then(r => { if (tok === S.token) { S.snaps = r.points ?? []; sideDraw(); } }).catch(() => { /* none stored then: the panel says so */ });
     } catch (e) { if (tok !== S.token) return; S.loading = false; S.error = e.message; setMsg(`The session did not load: ${e.message}`); sideDraw(); paint(); }
@@ -271,7 +277,11 @@ export function mount(root) {
     if (!S.strength) { box.innerHTML = '<p class="rp-none rp-load">Rebuilding strength from the bars of 28 pairs…</p>'; stRows = null; return; }
     const rk = R.ranked(M.strength, S.hz);
     if (!rk) { box.innerHTML = `<p class="rp-none">No ${esc(S.hz)} strength at this moment: ${M.strength ? 'too few pairs had prices for that window.' : 'the session has not started yet.'}</p>`; stRows = null; return; }
-    if (!stRows) { box.innerHTML = `<div class="rp-st" style="height:${rk.length * 26}px;position:relative">${rk.map(r => `<div class="rp-st-row" data-c="${r.ccy}" style="position:absolute;left:0;right:0;top:0"><b>${r.ccy}</b><div class="rp-st-t"><i class="rp-st-z"></i><i class="rp-st-b"></i></div><span class="rp-st-v mono"></span></div>`).join('')}</div><p class="muted" style="margin:8px 0 0;font-size:11.5px" id="rp-st-s"></p>`; stRows = {}; for (const el of box.querySelectorAll('.rp-st-row')) stRows[el.dataset.c] = el; }
+    // the rows slide while playing; when paused (or the set of currencies changes) they are rebuilt in rank order, so the list at
+    // rest is always in order (owner review 27 Nov 2026: out of order after a pause)
+    const set = rk.map(r => r.ccy).sort().join();
+    if (stRows && (!S.playing || stRows.__set !== set)) stRows = null;
+    if (!stRows) { box.innerHTML = `<div class="rp-st" style="height:${rk.length * 26}px;position:relative">${rk.map(r => `<div class="rp-st-row" data-c="${r.ccy}" style="position:absolute;left:0;right:0;top:0"><b>${r.ccy}</b><div class="rp-st-t"><i class="rp-st-z"></i><i class="rp-st-b"></i></div><span class="rp-st-v mono"></span></div>`).join('')}</div><p class="muted" style="margin:8px 0 0;font-size:11.5px" id="rp-st-s"></p>`; stRows = {}; for (const el of box.querySelectorAll('.rp-st-row')) stRows[el.dataset.c] = el; Object.defineProperty(stRows, '__set', { value: set }); }
     const max = Math.max(1.5, ...rk.map(r => Math.abs(r.score))) * 1.08;
     rk.forEach((r, i) => { const el = stRows[r.ccy]; if (!el) return; el.style.transform = `translateY(${i * 26}px)`; el.style.transition = noMotion ? 'none' : 'transform .35s ease';
       const b = el.querySelector('.rp-st-b'), pos = 50 + r.score / max * 50; b.style.left = `${Math.min(pos, 50)}%`; b.style.width = `${Math.abs(pos - 50)}%`; b.className = `rp-st-b ${r.score > 0.05 ? 'pos' : r.score < -0.05 ? 'neg' : ''}`;
@@ -290,8 +300,13 @@ export function mount(root) {
     if (!M.lines.length) { box.innerHTML = `<p class="rp-none">No levels yet at this moment: ${S.day?.oi?.error ? `the option store could not be read (${esc(S.day.oi.error)})` : !S.day?.oi?.pair ? 'this market has no option book in the capture' : 'no option capture had been saved yet'} and the session has not opened.</p>`; return; }
     const oiNote = !M.lines.some(l => l.kind === 'oi') ? `<p class="rp-none" style="margin-bottom:6px">No option levels at this moment: ${S.day?.oi?.error ? `the option store could not be read (${esc(S.day.oi.error)})` : !S.day?.oi?.pair ? 'this market has no option book in the capture' : 'no capture had been saved yet, or none within a week'}.</p>` : '';
     const I = R.INSTRUMENTS[S.inst];
+    // far option lines are real, not a basis error: an expiry's book is written over months, so it sits where price was then
+    // (EUR/USD's 4 Dec book was first seen centred on 1.1735 in September; its max pain was 1.139 with price at 1.094)
+    const far = p != null && M.lines.some(l => l.kind === 'oi' && Math.abs(l.price / p - 1) > 0.02);
+    const farNote = far ? '<p class="rp-none" style="margin:6px 0 0">Option lines more than 2% from the price are where that expiry\'s open interest really sits: the book was built while price was elsewhere. A put wall above the price (or a call wall below it) is in the money, not support or resistance.</p>' : '';
     box.innerHTML = oiNote + [...M.lines].sort((a, b) => b.price - a.price).map(l => { const d = p != null ? (l.price - p) : null, nearL = d != null && Math.abs(d) <= Math.abs(l.price) * 0.0006, k = M.counts[l.id] ?? 0;
-      return `<div class="rp-lv-row ${KIND_CLS(l)}${nearL ? ' near' : ''}"><i></i><span class="nm">${esc(l.label)}${l.tier === 'strong' ? ' · strong' : ''}${l.oi ? ` · OI ${l.oi.toLocaleString('en-GB')}` : ''}<small>${esc(lagLabel(l))}${k ? ` · touched ${k}×` : ''}</small></span><span class="px">${R.fmtPrice(S.inst, l.price)}<small>${d == null ? '' : `${d > 0 ? '+' : '−'}${(Math.abs(d) * I.mult).toLocaleString('en-GB', { maximumFractionDigits: I.mult > 1 ? 0 : 1 })} ${I.unit}`}</small></span></div>`; }).join('');
+      const itm = p != null && l.kind === 'oi' && ((l.type === 'put' && l.price > p) || (l.type === 'call' && l.price < p));
+      return `<div class="rp-lv-row ${KIND_CLS(l)}${nearL ? ' near' : ''}"><i></i><span class="nm">${esc(l.label)}${l.tier === 'strong' ? ' · strong' : ''}${itm ? ` · <span title="${l.type === 'put' ? 'puts above the price are in the money: not support' : 'calls below the price are in the money: not resistance'}">in the money</span>` : ''}${l.oi ? ` · OI ${l.oi.toLocaleString('en-GB')}` : ''}<small>${esc(lagLabel(l))}${k ? ` · touched ${k}×` : ''}</small></span><span class="px">${R.fmtPrice(S.inst, l.price)}<small>${d == null ? '' : `${d > 0 ? '+' : '−'}${(Math.abs(d) * I.mult).toLocaleString('en-GB', { maximumFractionDigits: I.mult > 1 ? 0 : 1 })} ${I.unit}`}</small></span></div>`; }).join('') + farNote;
   }
   function logDraw(M) {
     const ev = [...M.touches].reverse().slice(0, 40); $('rp-tn').textContent = M.touches.length ? `${M.touches.length}` : '';
@@ -312,11 +327,12 @@ export function mount(root) {
     const n = S.notable, sel = $('rp-nb');
     if (!n) { sel.innerHTML = '<option value="">not available</option>'; return; }
     const og = (label, items) => (items.length ? `<optgroup label="${esc(label)}">${items.join('')}</optgroup>` : '');
-    sel.innerHTML = `<option value="">choose a day…</option>${og('Biggest ranges (last 200 days)', n.ranges.map(r => `<option value="d|${r.date}">${r.date} · range ${r.rangePct}%${r.movePct ? `, closed ${sgn(r.movePct, 2)}%` : ''}</option>`))}${og('Tested the most option levels', n.tests.map(t => `<option value="d|${t.date}">${t.date} · ${t.levels} of ${t.of} levels inside the day's range</option>`))}${og('Recent releases (starts 30 min before)', n.releases.map(r => `<option value="r|${r.ms}">${esc(R.londonDate(r.ms))} ${esc(R.londonHM(r.ms))} · ${esc(r.country ?? '')} ${esc(r.event ?? '')}</option>`))}`;
+    const nm = R.INSTRUMENTS[n.inst ?? S.inst]?.label ?? n.inst ?? '';
+    sel.innerHTML = `<option value="">choose a ${esc(nm)} day…</option>${og(`${nm}: biggest ranges (last 200 days)`, n.ranges.map(r => `<option value="d|${r.date}">${r.date} · range ${r.rangePct}%${r.movePct ? `, closed ${sgn(r.movePct, 2)}%` : ''}</option>`))}${og(`${nm}: tested the most option levels`, n.tests.map(t => `<option value="d|${t.date}">${t.date} · ${t.levels} of ${t.of} levels inside the day's range</option>`))}${og('Recent releases (starts 30 min before)', n.releases.map(r => `<option value="r|${r.ms}">${esc(R.londonDate(r.ms))} ${esc(R.londonHM(r.ms))} · ${esc(r.country ?? '')} ${esc(r.event ?? '')}</option>`))}`;
   }
 
   // ── the clock ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  function stop() { S.playing = false; cancelAnimationFrame(S.raf); S.raf = 0; }
+  function stop() { S.playing = false; cancelAnimationFrame(S.raf); S.raf = 0; lastSideKey = ''; }
   function tick(nowMs) {
     if (!S.playing) return;
     const dt = Math.min(250, nowMs - (S.lastReal || nowMs)); S.lastReal = nowMs;

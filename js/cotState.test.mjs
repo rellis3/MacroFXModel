@@ -46,5 +46,12 @@ ok('cotStateFor: no row -> null', S.cotStateFor({ row: null }) === null);
   ok('ccyView: long USDCHF at the 91st percentile is SHORT the franc at the 9th, -15.6% of OI', v.ccySide === 'short' && v.ccyPct === 9 && v.ccyShare === -15.63 && /net SHORT the Swiss franc \(9th percentile/.test(v.ccyReads), JSON.stringify(v));
   ok('ccyView: rows already in currency terms get nothing extra', Object.keys(S.ccyView('EUR', { side: 'long', pct: 80 })).length === 0); }
 
+// next report: Friday for the Tuesday before, the Monday after in a federal-holiday week
+{ const a = S.nextCotRelease('2026-11-17'), b = S.nextCotRelease('2026-11-10'), c = S.nextCotRelease('2026-12-15');
+  ok('Thanksgiving week: the 24 Nov report is due Mon 30 Nov', a?.dataDate === '2026-11-24' && a.release === '2026-11-30' && a.delayed, JSON.stringify(a));
+  ok('an ordinary week: Friday', b?.release === '2026-11-20' && !b.delayed, JSON.stringify(b));
+  ok('Christmas Friday: Monday 28 Dec', c?.release === '2026-12-28' && c.delayed, JSON.stringify(c));
+  ok('no report date -> null', S.nextCotRelease(null) === null); }
+
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

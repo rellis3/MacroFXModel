@@ -145,5 +145,19 @@ console.log('[a weekend expiry date goes back to the Friday]');
   ok('a DTE that lands on Saturday files under the Friday', m.has('GOLD|2026-11-06') && !m.has('GOLD|2026-11-07'), [...m.keys()].join(' '));
 }
 
+console.log('[dates from the contract code; two contracts on one date are one book (27 Nov 2026)]');
+{ // QuikStrike's DTE is rounded: E3DZ6 (Thu 17 Dec) read 21 like the ESZ6 quarterly (Fri 18 Dec), so capture + DTE put both on
+  // 18 Dec and the quarterly, filed second, was dropped. EW3Z6 (the Friday weekly) shares the quarterly's date.
+  const RAW = ['\tESZ6', '7300\tESZ6', 'Strike\tE3DZ6', '21 DTE\tESZ6', '21 DTE\tEW3Z6', '22 DTE', 'C\tP\tC\tP\tC\tP',
+    '7200\t10\t20\t300\t400\t50\t60', '7300\t11\t21\t310\t410\t51\t61', '7400\t12\t22\t320\t420\t52\t62'].join('\n');
+  const snaps = expirySnapshotsFromRaw({ rawOI: RAW, futures: 7300, spot: 7300, basis: 0 }, { date: '2026-11-27' });
+  const byExp = Object.fromEntries(snaps.map(x => [x.expiry, x]));
+  ok('E3DZ6 dated Thursday 17 Dec from its code', byExp['2026-12-17']?.code === 'E3DZ6', JSON.stringify(snaps.map(x => [x.expiry, x.code])));
+  ok('the quarterly is kept on 18 Dec, summed with the EW3 Friday weekly', byExp['2026-12-18']?.code === 'ESZ6+EW3Z6'
+    && byExp['2026-12-18'].snap.ladder.find(r => r[0] === 7300)?.[1] === 310 + 51, JSON.stringify(byExp['2026-12-18']?.snap.ladder));
+  const m = new Map(); foldCaptureDays(m, [{ date: '2026-11-27', pairs: { SPX500_USD: { rawOI: RAW, futures: 7300, spot: 7300, basis: 0 } } }]);
+  ok('folding files both dates', m.has('SPX500_USD|2026-12-17') && m.has('SPX500_USD|2026-12-18'), [...m.keys()].join(' '));
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
 process.exit(fails ? 1 : 0);

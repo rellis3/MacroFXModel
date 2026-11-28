@@ -403,3 +403,54 @@ test('newsView.pairCard / latestLine / filtersHtml', () => {
   assert.match(f, /data-nt-book checked/); assert.match(f, /value="&quot;x&quot;"/); assert.match(f, /EURUSD/);
   for (const k of ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF', 'EQUITIES', 'GOLD', 'OIL']) assert.match(f, new RegExp(`data-nt-key="${k}"`));
 });
+
+// ── Options tab review (27 Nov 2026): expired books, merged rows, ITM walls, units, repeats and rolls, dealers, VIX ──
+test('option lines: today\'s expired book dropped, lines at one price merged, ITM walls named, dollars for gold', () => {
+  const row = { pair: 'XAU/USD', spot: 3652.3, savedAt: '27/11/2026, 06:45:31', levels: [
+    { price: 3873.5, type: 'call_wall', tier: 'strong', dte: 61, distPips: 2212 }, { price: 3873.5, type: 'oi_cluster', dte: 61, distPips: 2212 },
+    { price: 3573.5, type: 'call_wall', tier: 'strong', dte: 61, distPips: -788 }, { price: 3573.5, type: 'put_wall', dte: 61, distPips: -788 },
+    { price: 3673.5, type: 'call_wall', tier: 'strong', dte: 1, distPips: 212, touchPct: 52 }] };
+  const legs = [{ dte: 1, code: 'OG4X6', oi: 16000 }, { dte: 61, code: 'OGG7', oi: 154000 }];
+  const before = OPV.lineRows(row, { now: Date.parse('2026-11-27T12:00:00Z'), legs }), after = OPV.lineRows(row, { now: Date.parse('2026-11-27T19:00:00Z'), legs });
+  assert.equal(before.rows.length, 3); assert.equal(after.rows.length, 2, 'the 27 Nov weekly is gone after 12:30 Chicago'); assert.equal(after.gone, 1);
+  const g = after.rows.find(x => x.price === 3573.5);
+  assert.deepEqual(g.items.map(i => i.label), ['Call OI below price', 'Put wall']); assert.equal(g.items[0].dte, 60);
+  const html = OPV.ladderHtml(row, { now: Date.parse('2026-11-27T19:00:00Z'), legs });
+  assert.match(html, /\$ away/); assert.match(html, /\+\$221\.20/); assert.match(html, /\(ITM\)/); assert.match(html, /27 Nov\) stopped trading today/);
+  assert.equal(OPV.distUnit('SPX500_USD'), 'pts'); assert.equal(OPV.distUnit('EUR/USD'), 'pips');
+});
+test('calls against puts: a repeated (unsettled) day is dropped, a roll is flagged, the front is the nearest real book', () => {
+  const h = Array.from({ length: 30 }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, '0')}`, pc: 0.3 + i / 1000, calls: 300000 + i, puts: 100000 }));
+  h.push({ date: '2026-11-25', pc: 0.56, calls: 96000, puts: 54000 }, { date: '2026-11-26', pc: 0.5614, calls: 99858, puts: 56063 }, { date: '2026-11-27', pc: 0.5614, calls: 99858, puts: 56063 });
+  const st = OPV.pcStats(h);
+  assert.equal(st.n, 32, 'the repeat is not a reading'); assert.equal(st.repeat, true); assert.equal(st.roll?.date, '2026-11-25');
+  assert.equal(OPV.pcRead(st).word, 'after the roll: not comparable yet');
+  const card = OPV.gaugeCard({ pair: 'XAU/USD', pcRatio: 0.56 }, h, { front: { dte: 31, code: 'OGF7' } });
+  assert.match(card, /no new settlement since 26 Nov/); assert.match(card, /front 31d/);
+  const f = OPV.frontOf([{ dte: 1, code: 'OG4X6', oi: 16000 }, { dte: 8, code: 'OG1Z6', oi: 7500 }, { dte: 32, code: 'OGF7', oi: 150000 }, { dte: 61, code: 'OGG7', oi: 154000 }],
+    { now: Date.parse('2026-11-27T19:00:00Z'), pair: 'XAU/USD', capture: '2026-11-27' });
+  assert.equal(f.code, 'OGF7'); assert.equal(f.dte, 31);
+});
+test('dealer hedging: every market shown, the unread ones with why, advice only where validated', () => {
+  const hs = { ok: true, markets: [{ pair: 'SPX500_USD', name: 'S&P 500', error: 'Cboe _SPX 403' },
+    { pair: 'EUR_USD', name: 'EUR/USD', book: 'cme', asOf: Date.parse('2026-11-27T06:45:00Z'), state: 'speeds', switchPoint: 1.10716, switchDistPct: 1.25, flowUp1pct: 10000, flowDown1pct: -8777, lines: ['a', 'b', 'c', 'd', 'Taking profit at the Daily Plan lines makes sense'] }] };
+  const html = OPV.dealersHtml(hs, { now: Date.parse('2026-11-27T19:45:00Z') });
+  assert.match(html, /S&amp;P 500|S&P 500/); assert.match(html, /Cboe blocks/); assert.match(html, /VALIDATED · range only/); assert.match(html, />NULL</);
+  assert.doesNotMatch(html, /Taking profit/, 'not validated in FX'); assert.match(html, /book read 13h ago|book read 13 hours ago|book read/); assert.match(html, /1 of 2 markets read/);
+});
+test('VIX: holidays dropped, ratio on the last date both have', () => {
+  const h = { vix: { vix: [{ date: '2026-11-24', value: 26.36 }, { date: '2026-11-25', value: 28.29 }, { date: '2026-11-26', value: 26.8 }], vix3m: [{ date: '2026-11-24', value: 25.47 }, { date: '2026-11-25', value: 26.29 }] } };
+  const html = OPV.vixHtml(h);
+  assert.match(html, />28\.3</, 'the Thanksgiving print is gone'); assert.match(html, />1\.08</); assert.doesNotMatch(html, />1\.02</);
+});
+test('path: expiries dated from their codes, today\'s expired book dropped, days from today', () => {
+  const sm = { ok: true, oanda: 'SPX500_USD', expiries: [{ expiry: '2026-11-26', code: 'EW4X6', date: '2026-11-27', dte: 0 }, { expiry: '2026-12-01', code: 'EWX6', date: '2026-11-27', dte: 4 }, { expiry: '2026-12-18', code: 'E3CZ6', date: '2026-11-27', dte: 20 }] };
+  const f = OPV.freshExpiries(sm, { now: Date.parse('2026-11-27T22:00:00Z') });
+  assert.deepEqual(f.expiries.map(e => [e.expiry, e.dte]), [['2026-11-30', 3], ['2026-12-16', 19]]); assert.deepEqual(f.gone, ['2026-11-27']);
+});
+test('market picker: listed only with data, named, and the panels that cover it', () => {
+  const cov = OPV.marketCoverage({ terrain: ['CORN', 'GOLD'], lines: ['GOLD'], skew: [OPV.SKEW_TO_ID.ES] });
+  assert.deepEqual(OPV.optionMarkets([...cov.keys()]), ['GOLD', 'SPX500', 'CORN']);
+  assert.equal(OPV.NAME[OPV.idOf('CORN_USD')], 'Corn'); assert.equal(OPV.NAME[OPV.idOf('XPT/USD')], 'Platinum');
+  assert.match(OPV.coverageLine('CORN', cov), /Corn is covered by: terrain\. Not covered/);
+});
