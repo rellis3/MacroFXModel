@@ -139,4 +139,23 @@ percentile and tercile statistic; `analysis/output/fred-untested-range/power.jso
 
 ## Amendments
 
-*(none yet)*
+### A1 — 2026-11-28 — PRE-RESULTS
+Found while building, from signal-only checks (tercile shares of each causal percentile per period; no outcome joined):
+with a 756-day window, trending levels (the curve legs, NFCI, SOFR volume) sit almost entirely in one tercile for a whole
+period (NFCI `lvl`: 0 discovery sessions in the bottom tercile), so the cell cannot be scored. Changes: (1) trailing
+percentile window **252 grid days, minimum 126** (was 756/252); (2) **balance rule**: a unit×transform is scorable only if
+coverage ≥ 70% and the top and bottom terciles each hold ≥ 15% of sessions in **both** periods (unbalanced level cells are
+listed as not scorable, expected ~18 of 49 `lvl`, ~3 `mov`); (3) **staleness**: a value older than 10 days (daily series),
+21 (weekly) or 100 (monthly) is missing, not carried forward (EVZCLS after 2025-03 was being carried flat); (4) NaN p → 1 in
+BH/Holm. The §5 power table was re-run with the 252 window (`power.json`): MDE95 changes by ≤ 6 points; POOL held-out
+8.3–9.5%, EURUSD 8.2–8.4%, others 11–28%.
+
+### A2 — 2026-11-28 — PRE-RESULTS (one control cell seen, disclosed)
+The first positive control planted the effect on the real NFCI `lvl` signal, which printed that one raw cell (NFCI `lvl` ×
+POOL: discovery +5.7%, held-out −5.2%) before the main run. Nothing else was computed; the cell stays in the family under
+the same gates (it cannot pass: the sign flips). The same control showed the placebo-normal p is too liberal for persistent
+signals: of 200 pure-noise AR(1) signals, 11% gave p < 0.05 and 3.5% p < 0.01. Changes: (1) **calibrated p**: z = (est −
+placebo mean) / placebo SD is divided by c = SD of z over 300 pure-noise persistent signals (φ 0.95/0.99/0.998), per target
+and period (c ≥ 1), then p = erfc(|z|/c/√2); (2) **positive control** now plants +0.10 (log) on POOL in the top tercile of a
+pure-noise φ = 0.99 signal (3 replicates), in both periods, and checks the calibrated size on 60 fresh noise signals;
+(3) the graded MDE uses the same c. Gates, family, transforms and pass bar unchanged.
