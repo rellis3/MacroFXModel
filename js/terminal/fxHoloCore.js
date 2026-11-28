@@ -104,10 +104,16 @@ export function placeLabels(items, { tries = 2, pad = 2, W = Infinity, H = Infin
   return items;
 }
 
-/** The SHOW line: 2-3 plain sentences over the shortest window that moved. null when there is nothing to say. No forecast words. */
-export function fxgridScript(m) {
-  const key = shortestWindow(m), ws = windowState(m, key); if (!ws) return null;
-  const over = OVER[key] ?? `over the ${key} window`;
+/**
+ * The window the SHOW line reads: the shortest that moved, except in the evening or on a closed (anchored) market, where "the last hour" is a thin after-hours or pre-close
+ * hour (Helix evening 27 Nov 2026, a US half day), so the line reads the day when it has data. opts = { evening }.
+ */
+export const scriptWindow = (m, { evening = false } = {}) => ((evening || m?.closed) && m?.windows?.some(w => w.key === '1D' && w.available) ? '1D' : shortestWindow(m));
+const OVER_CLOSED = { '1H': 'in the last hour before the close', '4H': 'over the last four hours into the close', '1D': 'over the day, into the close', '1W': 'over the week, into the close' };
+/** The SHOW line: 2-3 plain sentences over the window scriptWindow picks. null when there is nothing to say. No forecast words. */
+export function fxgridScript(m, opts = {}) {
+  const key = scriptWindow(m, opts), ws = windowState(m, key); if (!ws) return null;
+  const over = (m.closed ? OVER_CLOSED[key] : opts.evening && key === '1D' ? 'over the day' : OVER[key]) ?? `over the ${key} window`;
   if (ws.flat || !ws.biggest) return `${cap1(over)}, the eight major currencies have barely moved against each other, so the matrix lies flat. This describes what has happened, not a forecast.`;
   const { a, b, v } = ws.biggest, name = c => SPOKEN[c] ?? c;
   const second = ws.order.filter(c => !ws.missing.includes(c))[1];

@@ -8,6 +8,7 @@
 import { spokenName, marketName } from './jarvisNames.js';
 import { readSeconds } from './showCore.js';
 import { holidayTag, londonParts } from './dayAheadCore.js';
+import { tuneHeadline } from './broadcastHeadline.js';
 
 const fin = v => typeof v === 'number' && Number.isFinite(v);
 const list = a => (a.length <= 1 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
@@ -19,6 +20,8 @@ const ORD = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'sevent
 const NUMW = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 /** A small whole number in words (up to twelve), else digits. */
 export const numWord = n => (Number.isInteger(n) && n >= 0 && n < NUMW.length ? NUMW[n] : String(n));
+/** A count that heads "of": "none" for zero ("none of the 51"), never "no of" (Helix evening 27 Nov 2026). */
+export const countWord = n => (n === 0 ? 'none' : numWord(n));
 const parts = d => { const o = {}; for (const p of new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d)) o[p.type] = p.value; return o; };
 /** The date three ways (London time): card "FRIDAY 20 NOVEMBER", spoken "Friday the twentieth of November", short "FRI 20 NOV", plus the London hour. */
 export function dateWords(now = new Date()) {
@@ -130,9 +133,28 @@ export function pickLead(inp = {}, n = 3) {
   const bd = inp.board;
   // a holiday or half day is said with the quiet start, so a thin board is read as the calendar (Helix review wave 1.10)
   let hol = ''; try { const h = holidayTag(+(inp.now ?? Date.now())); const c = h?.today.find(x => x.market === 'US stock market'); if (c) hol = ` Today is ${c.name.replace(/^Day after/, 'the day after')}, ${/early/.test(c.kind) ? 'a US half day' : 'a US holiday'}, so a thin board is the calendar, not a calm market.`; } catch (e) { hol = ''; }
+  if (!out.length && bd && bd.n && inp.pod === 'evening') out.push(eveningDay(inp, bd, hol));
   if (!out.length && bd && bd.n) out.push({ kind: 'quiet', score: 0, figure: `${bd.quiet} of ${bd.n}`, figLabel: 'markets barely moving', headline: 'A quiet start', sub: hol ? 'A US holiday session' : 'No market is far outside its usual move', tone: 'tx', say: `a quiet start. ${cap1(numWord(bd.quiet))} of the ${bd.n} markets are barely moving against their usual size.${fin(inp.todShare) && inp.todShare < 0.5 ? ` By this hour a usual day has done only about ${Math.round(inp.todShare * 100)} percent of its moving, so part of the quiet is the clock.` : ''}${hol}` });
   for (const x of out) x.text = cap1(x.say);
   return out;
+}
+/**
+ * The EVENING lead when no market the owner trades leads: the day described, never "a quiet start". Busy (three or more markets at 1.5 times their usual move, or half the
+ * board past its typical range) or quiet. "Little changed" (the close against the open) never contradicts "ran past its range" (high to low): both can be true of one market.
+ */
+function eveningDay(inp, bd, hol) {
+  const rows = (inp.rows ?? inp.movers ?? []).filter(r => r && fin(r.ratio)), n = bd.n;
+  const big = rows.filter(r => Math.abs(r.ratio) >= 1.5).length, sized = rows.filter(r => fin(r.range) && r.range > 0 && fin(r.hl)), over = sized.filter(r => r.hl > r.range).length;
+  const halfDay = /half day/.test(hol), holTxt = hol.replace(' Today is ', ' Today was ').replace(/, so a thin board is the calendar, not a calm market\.$/, '');
+  if (big >= 3 || (sized.length >= 4 && over / sized.length >= 0.5)) {
+    const t = ['a busy day beyond the headline.'];
+    if (big) t.push(`${cap1(numWord(big))} of the ${n} markets moved at least one and a half times their usual size${over ? `, and ${numWord(over)} of ${sized.length} travelled further than their typical range` : ''}.`);
+    else t.push(`${cap1(countWord(over))} of ${sized.length} markets travelled further than their typical range.`);
+    if (hol) t.push(`${holTxt.trim()}${halfDay ? ', and the board still moved' : ''}.`);
+    return { kind: 'quiet', score: 0, figure: big ? `${big} of ${n}` : `${over} of ${sized.length}`, figLabel: big ? 'markets past 1.5× usual' : 'markets past their typical range', headline: 'A busy day', sub: hol ? 'On a US holiday session' : 'Big moves beyond the headline', tone: 'tx', say: t.join(' ') };
+  }
+  return { kind: 'quiet', score: 0, figure: `${bd.quiet} of ${n}`, figLabel: 'markets little changed', headline: 'A quiet day', sub: hol ? 'A US holiday session' : 'No market far outside its usual move', tone: 'tx',
+    say: `a quiet day. ${cap1(countWord(bd.quiet))} of the ${n} markets finished little changed against their usual size.${hol ? hol.replace(' Today is ', ' Today was ').replace('so a thin board is the calendar', 'so the thin board was the calendar') : ''}` };
 }
 /** The lead's openers, rotated by the day of the year (form = doy % 3): the same date always gets the same words. */
 export const LEAD_OPENERS = [
@@ -177,6 +199,9 @@ export const BUILTIN = {
     const pc = v => pctWords(v);
     const t = [`This morning's typical ranges, against the day.`, ...top.map(x => `${cap1(spokenName(x.r.key))}: ${pc(x.r.range)} expected, ${pc(x.r.hl)} travelled.`)];
     t.push(over ? `${cap1(numWord(over))} of ${rows.length} markets ran past their typical range.` : `None of the ${rows.length} markets ran past its typical range.`);
+    // the base rate (Helix 27 Nov 2026): the typical range is the median day, so on an ordinary day about half the board runs past it
+    const share = over / rows.length;
+    t.push(`The typical range is the median day, so on an ordinary day about half of them would${share >= 0.65 ? '; today ran wide' : share <= 0.35 ? '; today ran narrow' : ''}.`);
     return { title: 'Morning range vs the day', view: 'vol', cam: null, text: t.join(' '), figure: { value: `${Math.round(top[0].u * 100)}%`, label: `${marketName(top[0].r.key, { short: true })} of the morning's range` } };
   },
   // the board's counts are in the Markets segue; the body names the movers, skipping any the lead has already covered (inp.leadKeys)
@@ -222,15 +247,15 @@ const isFx = k => /^[A-Z]{6}$/.test(k) && FX.has(k.slice(0, 3)) && FX.has(k.slic
  */
 export const SEGMENTS = [
   { id: 'markets', name: 'Markets', segue: 'Starting with the markets.', tiers: [['candles', 'wx']],
-    say: ({ inp }) => { const b = inp.board; return b?.n ? `Starting with the markets. Of ${b.n} on the board, ${b.up} ${isAre(b.up)} up, ${b.dn} down, ${b.quiet} barely moving.` : null; } },
+    say: ({ inp }) => { const b = inp.board; return b?.n ? `Starting with the markets. Of ${b.n} on the board, ${b.up} ${isAre(b.up)} up, ${b.dn} down, ${b.quiet} ${inp.pod === 'evening' ? 'little changed' : 'barely moving'}.` : null; } },
   { id: 'chain', name: 'The Chain', segue: 'The chain.', bodyless: true, tiers: [['reactor'], ['chainfly'], ['chain']],      // one line (owner, 24 Nov 2026): the counts, no body
     say: ({ inp, leadKinds }) => {
       const c = inp.chain; if (!c || !fin(c.holding) || !fin(c.broken)) return null;
       if (!c.broken) return `The chain is intact: all ${c.holding} judged links hold.`;
       return `The chain: ${c.holding} links holding, ${c.broken} broken.`;
     } },
-  { id: 'macro', name: 'The Macro', segue: 'The bigger picture.', tiers: [['moneyglobe', 'surprise', 'cycle']], say: ({ fig }) => (fig ? `The bigger picture: ${fig}.` : null) },
-  { id: 'rates', name: 'Rates', segue: 'Rates.', tiers: [['cbpaths', 'yields']], say: ({ fig }) => (fig ? `Rates. The headline number: ${fig}.` : null) },
+  { id: 'macro', name: 'The Macro', segue: 'The bigger picture.', tiers: [['moneyglobe', 'surprise', 'cycle']] },      // the figure stays on screen; a bare figure is not a sentence (Helix 27 Nov 2026)
+  { id: 'rates', name: 'Rates', segue: 'Rates.', tiers: [['cbpaths', 'yields']] },
   { id: 'ccy', name: 'Currencies', segue: 'Currencies.', tiers: [['fxgrid'], ['ccy']],
     say: ({ inp }) => {       // a count, not a name: the scene names the pairs itself
       const fx = (inp.rows ?? []).filter(r => r && isFx(r.key) && fin(r.ratio)); if (!fx.length) return null;
@@ -240,14 +265,13 @@ export const SEGMENTS = [
   { id: 'vol', name: 'Volatility', segue: 'Volatility.', words: 70, tiers: [['vol'], ['ivsurf']],
     say: ({ inp, fig }) => {
       const rows = (inp.rows ?? []).filter(r => r && fin(r.ratio)), big = rows.filter(r => Math.abs(r.ratio) >= 2).length;
-      return big ? `Over to volatility. ${cap1(numWord(big))} of ${rows.length} markets are moving at least twice their usual size.` : fig ? `Over to volatility: ${fig}.` : null;
+      return big ? `Over to volatility. ${cap1(numWord(big))} of ${rows.length} markets are moving at least twice their usual size.` : null;
     } },
-  { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', words: 70, tiers: [['gpillar', 'gterrain', 'cot'], ['gamma']], say: ({ fig }) => (fig ? `Positioning, and where the options sit: ${fig}.` : null) },
+  { id: 'pos', name: 'Positioning', segue: 'Positioning, and where the options sit.', words: 70, tiers: [['gpillar', 'gterrain', 'cot'], ['gamma']] },
   // THE WIDE programme's market-wide sections (25 Nov 2026; not in the phone Short): the tone and the news first, the bias after the outlook (morning) or the releases (evening)
   { id: 'tone', name: 'Market Tone', wide: true, keep: 2, segue: '', tiers: [['tone', 'wire'], ['wire']] },
   { id: 'deskview', name: "The Desk's View", wide: true, morning: true, segue: '', tiers: [['deskview']] },
   { id: 'bias', name: 'The Bias', wide: true, morning: true, segue: '', tiers: [['biasboard']] },
-  { id: 'biasday', name: 'The Bias Against the Day', wide: true, evening: true, segue: '', tiers: [['biasday']] },
   { id: 'curve', name: 'The Curve', wide: true, segue: '', tiers: [['curve']] },
   { id: 'stress', name: 'Stress & Positioning', wide: true, keep: 2, segue: '', tiers: [['stress', 'skew'], ['skew']] },
   { id: 'cross', name: 'Cross-Asset', wide: true, words: 75, segue: '', tiers: [['net']] },
@@ -268,8 +292,7 @@ export const GUIDE_TEXT = {
   tone: 'Market tone opens each brief: the tape of how far each market has moved against its usual day, the risk flags and the geopolitical risk index, and the currencies ranked strongest to weakest.',
   wire: 'The news wire: the top stories since the last brief, each with chips showing the markets it touched and which way, green for up and red for down.',
   deskview: "The desk's view: the headline from the morning desk run, where eleven analysts and a head of desk read the data, with its view on each currency from strongly against to strongly for, and the risks it is watching. It is untested and scored every night.",
-  biasboard: "The bias board: the morning's calls, market by market, long or short, grouped by asset class, with the reason behind each. The evening brief scores every one against what the market actually did.",
-  biasday: 'The bias, scored: each call from the morning against the day, on fifteen-minute candles from seven in the morning London time. A call is with the market, against it, or flat if the move was under a quarter of a usual day.',
+  biasboard: "The bias board: the morning's reading, market by market, positive or negative, grouped by asset class, with the main reason behind each. It is a reading of the data, untested.",
   candles: "The market board: every desk market's candle for the session so far, standing on a trading floor. Height is the move against that market's usual day, so a tall candle is a big day for that market, whatever its price.",
   wx: 'Market weather: one glass panel per asset class and per currency, each with a little weather scene driven by its move today. Calm skies are a quiet day; storms are big moves.',
   reactor: 'The chain reactor: the macro chain as a glowing ring, cut into themes like energy, rates and currencies. Each link is a relationship we expect to hold, say higher yields and a stronger dollar; it glows when it is holding today and breaks when it is not.',
@@ -323,11 +346,22 @@ export const HOOKS = [
   fig => `${cap1(fig)}. Hold that number.`,
 ];
 /**
+ * The headline's number as a spoken phrase for the opening hook: "gold, up 2.4 percent" when the headline names a market, else the number alone ("13 basis points").
+ * Never the figure's label glued on ("2.4 percent, the gold": Helix evening 27 Nov 2026).
+ */
+export function heroFig(head) {
+  const f = head?.figure; if (!f?.value) return null;
+  const v = speakFig({ value: f.value }); if (!v) return null;
+  if (!head.key) return v;
+  const dir = head.tone === 'up' ? 'up ' : head.tone === 'dn' ? 'down ' : '';
+  return `${spokenName(head.key)}, ${dir}${dir ? v.replace(/^minus /, '') : v}`;
+}
+/**
  * The opening line. Briefing: "Good morning. This is Helix, with the morning briefing for Friday the twentieth of November." The weekly recap and the release special say what they are.
  * With a headline figure, the line opens on it (HOOKS, by date). release = { name, ccy, hm } for the special.
  */
 export function openerLine({ date, part, programme = 'briefing', head = null, release = null, when = 'today' }) {
-  const g = greeting(date.hour), fig = head?.figure?.value ? speakFig(head.figure) : null;
+  const g = greeting(date.hour), fig = heroFig(head);
   const hook = fig && programme !== 'special' ? `${HOOKS[((date.doy ?? 0) % HOOKS.length + HOOKS.length) % HOOKS.length](fig, when)} ` : '';
   if (programme === 'weekly') return `${hook}${g}. This is Helix, with the weekly recap for the week to ${date.spoken}.`;
   if (programme === 'special') {
@@ -395,7 +429,7 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
   day.splice(day.findIndex(s => s.id === 'rates') + 1, 0, ...[w('curve')].filter(Boolean));      // wide: the Treasury curve straight after rates
   day.splice(day.findIndex(s => s.id === 'vol'), 0, ...[w('cross'), w('stress')].filter(Boolean));      // wide: cross-asset before volatility
   // morning: the outlook first; afternoon: the outlook last; evening: the day and its releases first, tomorrow last, no outlook (the day is done)
-  const order = guide ? [seg('tone'), seg('deskview'), seg('bias'), seg('biasday'), seg('ahead'), ...day, seg('day'), seg('releases'), seg('next')].filter(Boolean) : (pod === 'morning' ? [w('tone'), seg('ahead'), w('deskview'), w('bias'), ...day] : pod === 'evening' ? [w('tone'), seg('day'), seg('releases'), w('biasday'), ...day, seg('next')] : [w('tone'), ...day, seg('ahead')]).filter(Boolean);
+  const order = guide ? [seg('tone'), seg('deskview'), seg('bias'), seg('ahead'), ...day, seg('day'), seg('releases'), seg('next')].filter(Boolean) : (pod === 'morning' ? [w('tone'), seg('ahead'), w('deskview'), w('bias'), ...day] : pod === 'evening' ? [w('tone'), seg('day'), seg('releases'), ...day, seg('next')] : [w('tone'), ...day, seg('ahead')]).filter(Boolean);
   for (const s of order) {
     let scenes = [];
     for (const tier of s.tiers) { scenes = tier.map(sceneFor).filter(Boolean); if (scenes.length) break; }
@@ -404,10 +438,10 @@ export function planBroadcast(inp = {}, { hooks = [], have = null, mode = 'quick
     segs.push({ id: s.id, name: s.name, segue: s.segue, scenes });
   }
   const part = partOfDay(date.hour), when = part === 'morning' ? 'this morning' : part === 'afternoon' ? 'this afternoon' : 'tonight';
-  const head = !guide && inp.headline?.headline ? inp.headline : null;
-  let lead = guide ? [] : pickLead({ ...inp, headKeys: head?.keys ?? (head?.key ? [head.key] : []) }, short ? 2 : 3); if (lead.length === 3 && lead[2].score < 1.5) lead = lead.slice(0, 2);       // a weak third item is left out: two strong stories beat three
+  const head = !guide && inp.headline?.headline ? tuneHeadline(inp.headline, { rows: inp.rows ?? inp.movers ?? [] }) : null;
+  let lead = guide ? [] : pickLead({ ...inp, pod, headKeys: head?.keys ?? (head?.key ? [head.key] : []) }, short ? 2 : 3); if (lead.length === 3 && lead[2].score < 1.5) lead = lead.slice(0, 2);       // a weak third item is left out: two strong stories beat three
   const lines = leadLines(lead, when, date.doy % 3), leadKeys = lead.map(x => x.key).filter(Boolean);
-  const ctxInp = { ...inp, leadKeys };
+  const ctxInp = { ...inp, leadKeys, pod };
   const build = list => {
     const total = list.length + 1, items = [], said = new Set();          // + the sign-off
     for (const l of lines) for (const x of sentences(l)) said.add(norm(x));

@@ -221,7 +221,7 @@ export function pillarScript(P, key) {
   if (!P || !fin(P.spot)) return null; const who = spoken(key), s = [];
   if (P.flip != null) {
     const above = P.spot >= P.flip, long = P.longAt(P.spot);
-    s.push(`In ${who} options, spot is ${say(P.spot)}, ${pctOf(P.flip, P.spot)} ${above ? 'above' : 'below'} the gamma flip at ${say(P.flip)}, in the zone where dealers are modelled ${long ? 'long gamma, where moves have tended to be damped' : 'short gamma, where moves have tended to be amplified'}.`);
+    s.push(`In ${who} options, spot is ${say(P.spot)}, which is ${pctOf(P.flip, P.spot)} ${above ? 'above' : 'below'} the gamma flip at ${say(P.flip)}, in the zone where dealers are modelled ${long ? 'long gamma, where moves have tended to be damped' : 'short gamma, where moves have tended to be amplified'}.`);
   } else s.push(`In ${who} options, spot is ${say(P.spot)} and the book shows no gamma flip nearby.`);
   const w = []; if (P.callWall) w.push(`the biggest call wall is ${say(P.callWall.strike)}, ${pctOf(P.callWall.strike, P.spot)} ${P.callWall.strike >= P.spot ? 'above' : 'below'}`);
   if (P.putWall) w.push(`the biggest put wall is ${say(P.putWall.strike)}, ${pctOf(P.putWall.strike, P.spot)} ${P.putWall.strike >= P.spot ? 'above' : 'below'}`);
