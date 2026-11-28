@@ -1,0 +1,86 @@
+{
+ "USD": {
+  "first": "1976-06-01",
+  "last": "2026-10-07",
+  "obs": 12585,
+  "obs_since_2005": 5446,
+  "min": 0.09,
+  "max": 16.95,
+  "max_gap_days_since_2005": 4
+ },
+ "EUR": {
+  "first": "1997-08-07",
+  "last": "2026-11-27",
+  "obs": 7441,
+  "obs_since_2005": 5567,
+  "min": -1.02,
+  "max": 5.31,
+  "max_gap_days_since_2005": 6
+ },
+ "JPY": {
+  "first": "1974-09-24",
+  "last": "2026-10-30",
+  "obs": 12969,
+  "obs_since_2005": 5342,
+  "min": -0.372,
+  "max": 12.145,
+  "max_gap_days_since_2005": 11
+ },
+ "GBP": {
+  "first": "2000-01-04",
+  "last": "2026-10-30",
+  "obs": 6780,
+  "obs_since_2005": 5516,
+  "min": -0.142,
+  "max": 6.552,
+  "max_gap_days_since_2005": 5
+ },
+ "CAD": {
+  "first": "2001-01-02",
+  "last": "2026-11-26",
+  "obs": 6476,
+  "obs_since_2005": 5471,
+  "min": 0.15,
+  "max": 5.11,
+  "max_gap_days_since_2005": 5
+ },
+ "AUD": {
+  "first": "1995-01-03",
+  "last": "2026-11-25",
+  "obs": 7966,
+  "obs_since_2005": 5433,
+  "min": -0.001,
+  "max": 10.35,
+  "max_gap_days_since_2005": 108
+ },
+ "CHF": {
+  "first": "1988-01-04",
+  "last": "2025-07-31",
+  "obs": 7534,
+  "obs_since_2005": 5172,
+  "min": -1.163,
+  "max": 7.834,
+  "max_gap_days_since_2005": 6
+ },
+ "SEK": {
+  "first": "2000-01-03",
+  "last": "2026-11-26",
+  "obs": 6758,
+  "obs_since_2005": 5505,
+  "min": -0.887,
+  "max": 5.56,
+  "max_gap_days_since_2005": 6
+ },
+ "NOK": {
+  "first": "2019-01-02",
+  "last": "2026-11-26",
+  "obs": 1984,
+  "obs_since_2005": 1984,
+  "min": -0.057,
+  "max": 4.897,
+  "max_gap_days_since_2005": 7
+ },
+ "NZD": {
+  "status": "missing: rbnz.govt.nz refuses automated downloads here"
+ }
+}
