@@ -201,3 +201,5 @@ was rebuilt from raw data to the identical figure (+0.05479R, 936 trades). Omiss
 - **`line-system-backtest.html`** (the standard backtest page: trades, candles, % / R / $ CSVs) shows this version.
 - Next: forward record, tick-data fill check, then the lockbox once.
 
+
+- **2026-11-28:** continuation ideas are parked in `plans/GOLD_CONTINUATION_PARKED.md` (the owner wants the MFE-after-break analysis first, later). Focus is the fade.
