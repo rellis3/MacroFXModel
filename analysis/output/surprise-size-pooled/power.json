@@ -1,0 +1,102 @@
+{
+  "sd_zc_events": 0.8215,
+  "n_events_cont": 5941,
+  "cells": {
+    "fx_w30": {
+      "n_control": 2935,
+      "resid_sd": 0.4013,
+      "deff": 1.09,
+      "se_gamma": 0.00941,
+      "mde_gamma": 0.0349,
+      "mde_uplift_0.5_to_2": 0.0537
+    },
+    "fx_w120": {
+      "n_control": 2935,
+      "resid_sd": 0.3925,
+      "deff": 1.176,
+      "se_gamma": 0.00956,
+      "mde_gamma": 0.0354,
+      "mde_uplift_0.5_to_2": 0.0546
+    },
+    "fx_ros": {
+      "n_control": 2753,
+      "resid_sd": 0.3818,
+      "deff": 1.492,
+      "se_gamma": 0.01082,
+      "mde_gamma": 0.0401,
+      "mde_uplift_0.5_to_2": 0.062
+    },
+    "nq_w30": {
+      "n_control": 556,
+      "resid_sd": 0.404,
+      "deff": 1.026,
+      "se_gamma": 0.02113,
+      "mde_gamma": 0.0783,
+      "mde_uplift_0.5_to_2": 0.1246
+    },
+    "nq_w120": {
+      "n_control": 554,
+      "resid_sd": 0.4043,
+      "deff": 1.064,
+      "se_gamma": 0.02157,
+      "mde_gamma": 0.0799,
+      "mde_uplift_0.5_to_2": 0.1274
+    },
+    "nq_ros": {
+      "n_control": 505,
+      "resid_sd": 0.4056,
+      "deff": 1.259,
+      "se_gamma": 0.02466,
+      "mde_gamma": 0.0914,
+      "mde_uplift_0.5_to_2": 0.1469
+    },
+    "spx500_w30": {
+      "n_control": 503,
+      "resid_sd": 0.4192,
+      "deff": 1.029,
+      "se_gamma": 0.02308,
+      "mde_gamma": 0.0856,
+      "mde_uplift_0.5_to_2": 0.1369
+    },
+    "spx500_w120": {
+      "n_control": 503,
+      "resid_sd": 0.4152,
+      "deff": 1.089,
+      "se_gamma": 0.02351,
+      "mde_gamma": 0.0871,
+      "mde_uplift_0.5_to_2": 0.1396
+    },
+    "spx500_ros": {
+      "n_control": 461,
+      "resid_sd": 0.3941,
+      "deff": 1.195,
+      "se_gamma": 0.02442,
+      "mde_gamma": 0.0905,
+      "mde_uplift_0.5_to_2": 0.1454
+    },
+    "gold_w30": {
+      "n_control": 558,
+      "resid_sd": 0.4171,
+      "deff": 1.04,
+      "se_gamma": 0.02192,
+      "mde_gamma": 0.0812,
+      "mde_uplift_0.5_to_2": 0.1296
+    },
+    "gold_w120": {
+      "n_control": 559,
+      "resid_sd": 0.3976,
+      "deff": 1.124,
+      "se_gamma": 0.0217,
+      "mde_gamma": 0.0804,
+      "mde_uplift_0.5_to_2": 0.1282
+    },
+    "gold_ros": {
+      "n_control": 533,
+      "resid_sd": 0.3911,
+      "deff": 1.275,
+      "se_gamma": 0.02329,
+      "mde_gamma": 0.0863,
+      "mde_uplift_0.5_to_2": 0.1382
+    }
+  }
+}

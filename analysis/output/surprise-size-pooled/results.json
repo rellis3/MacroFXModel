@@ -1,0 +1,2409 @@
+{
+  "id": "surprise-size-pooled",
+  "ranAt": "2026-11-28T09:42:00Z",
+  "prereg": "forge/SURPRISE_SIZE_POOLED_PREREG.md",
+  "preregCommit": "fa02f432",
+  "branch": "wf2/surprise-pooled",
+  "seed": 20261128,
+  "B": 2000,
+  "bar_uplift": 0.075,
+  "primary": {
+    "fx_w30": {
+      "n": 5847,
+      "n_dates": 2044,
+      "gamma": 0.063,
+      "se_cr": 0.0089,
+      "ci95": [
+        0.0467,
+        0.0814
+      ],
+      "p_boot": 0.0005,
+      "t_cr": 7.05,
+      "uplift_0.5_to_2": 0.0991,
+      "uplift_ci": [
+        0.0725,
+        0.1299
+      ],
+      "controls": {
+        "lpre": 0.2173,
+        "ltod": 0.3382,
+        "log_base": 0.1927,
+        "log_evmult": 0.2956,
+        "conc": 0.2126
+      },
+      "r2_within_base": 0.1931,
+      "r2_within_with_z": 0.2036,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.0578,
+          "se": 0.0115,
+          "n": 3567
+        },
+        "h2_2021_2025": {
+          "gamma": 0.0682,
+          "se": 0.013,
+          "n": 2280
+        }
+      },
+      "placebo_week": {
+        "gamma": 0.008,
+        "se": 0.0092,
+        "n": 2935
+      },
+      "p_holm": 0.006,
+      "gates": {
+        "positive": 1.0,
+        "holm": true,
+        "material": true,
+        "both_halves": true,
+        "placebo": true
+      },
+      "pass": true,
+      "cell_verdict": "VALIDATED"
+    },
+    "fx_w120": {
+      "n": 5846,
+      "n_dates": 2044,
+      "gamma": 0.0282,
+      "se_cr": 0.0074,
+      "ci95": [
+        0.014,
+        0.0422
+      ],
+      "p_boot": 0.0005,
+      "t_cr": 3.79,
+      "uplift_0.5_to_2": 0.0432,
+      "uplift_ci": [
+        0.0212,
+        0.0654
+      ],
+      "controls": {
+        "lpre": 0.2182,
+        "ltod": 0.3214,
+        "log_base": 0.2664,
+        "log_evmult": 0.0121,
+        "conc": 0.1725
+      },
+      "r2_within_base": 0.247,
+      "r2_within_with_z": 0.2495,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.0324,
+          "se": 0.0098,
+          "n": 3567
+        },
+        "h2_2021_2025": {
+          "gamma": 0.0268,
+          "se": 0.0114,
+          "n": 2279
+        }
+      },
+      "placebo_week": {
+        "gamma": -0.0075,
+        "se": 0.0089,
+        "n": 2935
+      },
+      "p_holm": 0.006,
+      "gates": {
+        "positive": 1.0,
+        "holm": true,
+        "material": false,
+        "both_halves": true,
+        "placebo": true
+      },
+      "pass": false,
+      "cell_verdict": "CONTEXT"
+    },
+    "fx_ros": {
+      "n": 5632,
+      "n_dates": 2032,
+      "gamma": 0.0104,
+      "se_cr": 0.0069,
+      "ci95": [
+        -0.0027,
+        0.0237
+      ],
+      "p_boot": 0.122,
+      "t_cr": 1.52,
+      "uplift_0.5_to_2": 0.0158,
+      "uplift_ci": [
+        -0.0041,
+        0.0363
+      ],
+      "controls": {
+        "lpre": 0.1479,
+        "ltod": 0.3572,
+        "log_base": 0.292,
+        "log_evmult": 1.8898,
+        "conc": 0.0572
+      },
+      "r2_within_base": 0.2791,
+      "r2_within_with_z": 0.2795,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.0124,
+          "se": 0.0081,
+          "n": 3432
+        },
+        "h2_2021_2025": {
+          "gamma": 0.0138,
+          "se": 0.0136,
+          "n": 2200
+        }
+      },
+      "placebo_week": {
+        "gamma": 0.0107,
+        "se": 0.0095,
+        "n": 2753
+      },
+      "p_holm": 0.595,
+      "gates": {
+        "positive": 1.0,
+        "holm": false,
+        "material": false,
+        "both_halves": true,
+        "placebo": true
+      },
+      "pass": false,
+      "cell_verdict": "NULL"
+    },
+    "nq_w30": {
+      "n": 2490,
+      "n_dates": 1646,
+      "gamma": 0.0256,
+      "se_cr": 0.0119,
+      "ci95": [
+        0.0022,
+        0.0476
+      ],
+      "p_boot": 0.033,
+      "t_cr": 2.15,
+      "uplift_0.5_to_2": 0.0391,
+      "uplift_ci": [
+        0.0033,
+        0.0739
+      ],
+      "controls": {
+        "lpre": 0.4142,
+        "ltod": 0.3329,
+        "log_base": 0.2712,
+        "log_evmult": -0.1695,
+        "conc": 0.0
+      },
+      "r2_within_base": 0.5262,
+      "r2_within_with_z": 0.5272,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.0441,
+          "se": 0.0142,
+          "n": 1362
+        },
+        "h2_2021_2025": {
+          "gamma": 0.0497,
+          "se": 0.0193,
+          "n": 1128
+        }
+      },
+      "placebo_week": {
+        "gamma": -0.0094,
+        "se": 0.0225,
+        "n": 556
+      },
+      "p_holm": 0.198,
+      "gates": {
+        "positive": 1.0,
+        "holm": false,
+        "material": false,
+        "both_halves": true,
+        "placebo": true
+      },
+      "pass": false,
+      "cell_verdict": "NULL"
+    },
+    "nq_w120": {
+      "n": 2488,
+      "n_dates": 1644,
+      "gamma": 0.0152,
+      "se_cr": 0.0111,
+      "ci95": [
+        -0.0066,
+        0.0371
+      ],
+      "p_boot": 0.171,
+      "t_cr": 1.37,
+      "uplift_0.5_to_2": 0.0231,
+      "uplift_ci": [
+        -0.0098,
+        0.0572
+      ],
+      "controls": {
+        "lpre": 0.344,
+        "ltod": 0.1912,
+        "log_base": 0.347,
+        "log_evmult": -0.591,
+        "conc": 0.0
+      },
+      "r2_within_base": 0.4955,
+      "r2_within_with_z": 0.496,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.0288,
+          "se": 0.0146,
+          "n": 1362
+        },
+        "h2_2021_2025": {
+          "gamma": 0.008,
+          "se": 0.0178,
+          "n": 1126
+        }
+      },
+      "placebo_week": {
+        "gamma": -0.0208,
+        "se": 0.0195,
+        "n": 554
+      },
+      "p_holm": 0.595,
+      "gates": {
+        "positive": 1.0,
+        "holm": false,
+        "material": false,
+        "both_halves": true,
+        "placebo": true
+      },
+      "pass": false,
+      "cell_verdict": "NULL"
+    },
+    "nq_ros": {
+      "n": 2479,
+      "n_dates": 1638,
+      "gamma": 0.0092,
+      "se_cr": 0.0112,
+      "ci95": [
+        -0.0118,
+        0.0327
+      ],
+      "p_boot": 0.374,
+      "t_cr": 0.82,
+      "uplift_0.5_to_2": 0.0139,
+      "uplift_ci": [
+        -0.0175,
+        0.0503
+      ],
+      "controls": {
+        "lpre": 0.3151,
+        "ltod": 0.32,
+        "log_base": 0.3041,
+        "log_evmult": 1.4869,
+        "conc": 0.0
+      },
+      "r2_within_base": 0.485,
+      "r2_within_with_z": 0.4852,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.0184,
+          "se": 0.0147,
+          "n": 1359
+        },
+        "h2_2021_2025": {
+          "gamma": 0.0158,
+          "se": 0.0183,
+          "n": 1120
+        }
+      },
+      "placebo_week": {
+        "gamma": -0.0274,
+        "se": 0.0211,
+        "n": 505
+      },
+      "p_holm": 0.748,
+      "gates": {
+        "positive": 1.0,
+        "holm": false,
+        "material": false,
+        "both_halves": true,
+        "placebo": true
+      },
+      "pass": false,
+      "cell_verdict": "NULL"
+    },
+    "spx500_w30": {
+      "n": 2278,
+      "n_dates": 1563,
+      "gamma": 0.0318,
+      "se_cr": 0.014,
+      "ci95": [
+        0.0057,
+        0.058
+      ],
+      "p_boot": 0.019,
+      "t_cr": 2.27,
+      "uplift_0.5_to_2": 0.0488,
+      "uplift_ci": [
+        0.0086,
+        0.091
+      ],
+      "controls": {
+        "lpre": 0.4625,
+        "ltod": 0.2653,
+        "log_base": 0.2475,
+        "log_evmult": 0.1934,
+        "conc": 0.0
+      },
+      "r2_within_base": 0.4933,
+      "r2_within_with_z": 0.4948,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.057,
+          "se": 0.0175,
+          "n": 1150
+        },
+        "h2_2021_2025": {
+          "gamma": 0.0415,
+          "se": 0.0223,
+          "n": 1128
+        }
+      },
+      "placebo_week": {
+        "gamma": -0.0056,
+        "se": 0.0253,
+        "n": 503
+      },
+      "p_holm": 0.133,
+      "gates": {
+        "positive": 1.0,
+        "holm": false,
+        "material": false,
+        "both_halves": true,
+        "placebo": true
+      },
+      "pass": false,
+      "cell_verdict": "UNDERPOWERED"
+    },
+    "spx500_w120": {
+      "n": 2286,
+      "n_dates": 1563,
+      "gamma": 0.019,
+      "se_cr": 0.0121,
+      "ci95": [
+        -0.0047,
+        0.0443
+      ],
+      "p_boot": 0.119,
+      "t_cr": 1.57,
+      "uplift_0.5_to_2": 0.0289,
+      "uplift_ci": [
+        -0.007,
+        0.0687
+      ],
+      "controls": {
+        "lpre": 0.4263,
+        "ltod": 0.1657,
+        "log_base": 0.3099,
+        "log_evmult": -0.4018,
+        "conc": 0.0
+      },
+      "r2_within_base": 0.5108,
+      "r2_within_with_z": 0.5115,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.0364,
+          "se": 0.0166,
+          "n": 1160
+        },
+        "h2_2021_2025": {
+          "gamma": -0.0005,
+          "se": 0.0198,
+          "n": 1126
+        }
+      },
+      "placebo_week": {
+        "gamma": -0.012,
+        "se": 0.0235,
+        "n": 503
+      },
+      "p_holm": 0.595,
+      "gates": {
+        "positive": 1.0,
+        "holm": false,
+        "material": false,
+        "both_halves": false,
+        "placebo": true
+      },
+      "pass": false,
+      "cell_verdict": "NULL"
+    },
+    "spx500_ros": {
+      "n": 2250,
+      "n_dates": 1539,
+      "gamma": 0.0032,
+      "se_cr": 0.012,
+      "ci95": [
+        -0.02,
+        0.0253
+      ],
+      "p_boot": 0.79,
+      "t_cr": 0.27,
+      "uplift_0.5_to_2": 0.0049,
+      "uplift_ci": [
+        -0.0295,
+        0.0386
+      ],
+      "controls": {
+        "lpre": 0.3815,
+        "ltod": 0.2332,
+        "log_base": 0.2739,
+        "log_evmult": 0.7558,
+        "conc": 0.0
+      },
+      "r2_within_base": 0.456,
+      "r2_within_with_z": 0.456,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.0148,
+          "se": 0.0161,
+          "n": 1130
+        },
+        "h2_2021_2025": {
+          "gamma": -0.0009,
+          "se": 0.0192,
+          "n": 1120
+        }
+      },
+      "placebo_week": {
+        "gamma": -0.0334,
+        "se": 0.0217,
+        "n": 461
+      },
+      "p_holm": 0.79,
+      "gates": {
+        "positive": 1.0,
+        "holm": false,
+        "material": false,
+        "both_halves": false,
+        "placebo": true
+      },
+      "pass": false,
+      "cell_verdict": "NULL"
+    },
+    "gold_w30": {
+      "n": 2492,
+      "n_dates": 1647,
+      "gamma": 0.0572,
+      "se_cr": 0.0116,
+      "ci95": [
+        0.0361,
+        0.0798
+      ],
+      "p_boot": 0.0005,
+      "t_cr": 4.94,
+      "uplift_0.5_to_2": 0.0896,
+      "uplift_ci": [
+        0.0557,
+        0.1272
+      ],
+      "controls": {
+        "lpre": 0.2086,
+        "ltod": 0.3504,
+        "log_base": 0.2151,
+        "log_evmult": -0.1896,
+        "conc": 0.0
+      },
+      "r2_within_base": 0.2036,
+      "r2_within_with_z": 0.2127,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.0506,
+          "se": 0.0143,
+          "n": 1367
+        },
+        "h2_2021_2025": {
+          "gamma": 0.0805,
+          "se": 0.0204,
+          "n": 1125
+        }
+      },
+      "placebo_week": {
+        "gamma": -0.0021,
+        "se": 0.0209,
+        "n": 558
+      },
+      "p_holm": 0.006,
+      "gates": {
+        "positive": 1.0,
+        "holm": true,
+        "material": true,
+        "both_halves": true,
+        "placebo": true
+      },
+      "pass": true,
+      "cell_verdict": "VALIDATED"
+    },
+    "gold_w120": {
+      "n": 2493,
+      "n_dates": 1648,
+      "gamma": 0.0344,
+      "se_cr": 0.0117,
+      "ci95": [
+        0.0123,
+        0.0594
+      ],
+      "p_boot": 0.004,
+      "t_cr": 2.94,
+      "uplift_0.5_to_2": 0.0529,
+      "uplift_ci": [
+        0.0186,
+        0.0932
+      ],
+      "controls": {
+        "lpre": 0.1956,
+        "ltod": 0.4229,
+        "log_base": 0.2498,
+        "log_evmult": -0.2698,
+        "conc": 0.0
+      },
+      "r2_within_base": 0.2419,
+      "r2_within_with_z": 0.2452,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.0382,
+          "se": 0.0148,
+          "n": 1367
+        },
+        "h2_2021_2025": {
+          "gamma": 0.0407,
+          "se": 0.0185,
+          "n": 1126
+        }
+      },
+      "placebo_week": {
+        "gamma": -0.0019,
+        "se": 0.0216,
+        "n": 559
+      },
+      "p_holm": 0.036,
+      "gates": {
+        "positive": 1.0,
+        "holm": true,
+        "material": false,
+        "both_halves": true,
+        "placebo": true
+      },
+      "pass": false,
+      "cell_verdict": "CONTEXT"
+    },
+    "gold_ros": {
+      "n": 2491,
+      "n_dates": 1646,
+      "gamma": 0.0252,
+      "se_cr": 0.0107,
+      "ci95": [
+        0.0052,
+        0.0479
+      ],
+      "p_boot": 0.012,
+      "t_cr": 2.35,
+      "uplift_0.5_to_2": 0.0386,
+      "uplift_ci": [
+        0.0078,
+        0.0745
+      ],
+      "controls": {
+        "lpre": 0.1393,
+        "ltod": 0.2914,
+        "log_base": 0.3785,
+        "log_evmult": 1.9673,
+        "conc": 0.0
+      },
+      "r2_within_base": 0.2572,
+      "r2_within_with_z": 0.2589,
+      "halves": {
+        "h1_2016_2020": {
+          "gamma": 0.029,
+          "se": 0.0143,
+          "n": 1367
+        },
+        "h2_2021_2025": {
+          "gamma": 0.0329,
+          "se": 0.0171,
+          "n": 1124
+        }
+      },
+      "placebo_week": {
+        "gamma": -0.024,
+        "se": 0.024,
+        "n": 533
+      },
+      "p_holm": 0.096,
+      "gates": {
+        "positive": 1.0,
+        "holm": false,
+        "material": false,
+        "both_halves": true,
+        "placebo": true
+      },
+      "pass": false,
+      "cell_verdict": "NULL"
+    }
+  },
+  "disagg": {
+    "econ_AU_w30": {
+      "n": 468,
+      "gamma": 0.0823,
+      "se": 0.0328,
+      "p": 0.012084899743131317,
+      "q_bh": 0.06253,
+      "survives_bh": true
+    },
+    "econ_CA_w30": {
+      "n": 769,
+      "gamma": 0.0883,
+      "se": 0.0247,
+      "p": 0.0003470643308989274,
+      "q_bh": 0.00375,
+      "survives_bh": true
+    },
+    "econ_CH_w30": {
+      "n": 125,
+      "gamma": 0.1205,
+      "se": 0.0459,
+      "p": 0.008663830984716236,
+      "q_bh": 0.05426,
+      "survives_bh": true
+    },
+    "econ_EU_w30": {
+      "n": 976,
+      "gamma": 0.0339,
+      "se": 0.0171,
+      "p": 0.04709946432777601,
+      "q_bh": 0.16984,
+      "survives_bh": false
+    },
+    "econ_GB_w30": {
+      "n": 758,
+      "gamma": 0.0591,
+      "se": 0.0204,
+      "p": 0.003753495146394892,
+      "q_bh": 0.03436,
+      "survives_bh": true
+    },
+    "econ_JP_w30": {
+      "n": 84,
+      "gamma": 0.1077,
+      "se": 0.075,
+      "p": 0.15113392187509378,
+      "q_bh": 0.36704,
+      "survives_bh": false
+    },
+    "econ_NZ_w30": {
+      "n": 168,
+      "gamma": 0.0576,
+      "se": 0.0496,
+      "p": 0.24597648400349192,
+      "q_bh": 0.44458,
+      "survives_bh": false
+    },
+    "econ_US_w30": {
+      "n": 2499,
+      "gamma": 0.0615,
+      "se": 0.014,
+      "p": 1.082221026615926e-05,
+      "q_bh": 0.00032,
+      "survives_bh": true
+    },
+    "homogeneity_fx_w30": {
+      "wald": 7.828,
+      "df": 7,
+      "p": 0.3479645466855258
+    },
+    "tier_fx_high_w30": {
+      "n": 2945,
+      "gamma": 0.07,
+      "se": 0.013,
+      "p": 6.973666488718777e-08,
+      "q_bh": 1e-05,
+      "survives_bh": true
+    },
+    "tier_fx_medium_w30": {
+      "n": 2902,
+      "gamma": 0.047,
+      "se": 0.0106,
+      "p": 9.803383655526687e-06,
+      "q_bh": 0.00032,
+      "survives_bh": true
+    },
+    "family_fx_activity_w30": {
+      "n": 1268,
+      "gamma": 0.0843,
+      "se": 0.0186,
+      "p": 5.615278971582427e-06,
+      "q_bh": 0.00032,
+      "survives_bh": true
+    },
+    "family_fx_employment_w30": {
+      "n": 930,
+      "gamma": 0.0756,
+      "se": 0.0238,
+      "p": 0.0015310242271429075,
+      "q_bh": 0.01518,
+      "survives_bh": true
+    },
+    "family_fx_gdp_w30": {
+      "n": 356,
+      "gamma": 0.02,
+      "se": 0.0305,
+      "p": 0.5115861450282546,
+      "q_bh": 0.63415,
+      "survives_bh": false
+    },
+    "family_fx_inflation_w30": {
+      "n": 854,
+      "gamma": 0.0961,
+      "se": 0.0225,
+      "p": 1.9907146404207765e-05,
+      "q_bh": 0.00047,
+      "survives_bh": true
+    },
+    "family_fx_other_w30": {
+      "n": 719,
+      "gamma": 0.0275,
+      "se": 0.0172,
+      "p": 0.10902105860329159,
+      "q_bh": 0.28203,
+      "survives_bh": false
+    },
+    "family_fx_survey_w30": {
+      "n": 1720,
+      "gamma": 0.0444,
+      "se": 0.0157,
+      "p": 0.004660445699381732,
+      "q_bh": 0.03649,
+      "survives_bh": true
+    },
+    "tier_nq_high_w30": {
+      "n": 1375,
+      "gamma": 0.0291,
+      "se": 0.0172,
+      "p": 0.09098344019015858,
+      "q_bh": 0.27068,
+      "survives_bh": false
+    },
+    "tier_nq_medium_w30": {
+      "n": 1115,
+      "gamma": 0.0165,
+      "se": 0.0152,
+      "p": 0.27833344818197014,
+      "q_bh": 0.47317,
+      "survives_bh": false
+    },
+    "family_nq_activity_w30": {
+      "n": 537,
+      "gamma": 0.0266,
+      "se": 0.0241,
+      "p": 0.2703253060279609,
+      "q_bh": 0.46621,
+      "survives_bh": false
+    },
+    "family_nq_employment_w30": {
+      "n": 485,
+      "gamma": 0.0177,
+      "se": 0.0247,
+      "p": 0.47349274150214304,
+      "q_bh": 0.60878,
+      "survives_bh": false
+    },
+    "family_nq_gdp_w30": {
+      "n": 73,
+      "gamma": 0.0731,
+      "se": 0.0776,
+      "p": 0.3461725902113981,
+      "q_bh": 0.51493,
+      "survives_bh": false
+    },
+    "family_nq_inflation_w30": {
+      "n": 213,
+      "gamma": 0.1049,
+      "se": 0.0604,
+      "p": 0.08246210208000204,
+      "q_bh": 0.25824,
+      "survives_bh": false
+    },
+    "family_nq_other_w30": {
+      "n": 399,
+      "gamma": 0.0201,
+      "se": 0.0247,
+      "p": 0.41532509907595183,
+      "q_bh": 0.57656,
+      "survives_bh": false
+    },
+    "family_nq_survey_w30": {
+      "n": 783,
+      "gamma": 0.0088,
+      "se": 0.0194,
+      "p": 0.6506965041621773,
+      "q_bh": 0.74574,
+      "survives_bh": false
+    },
+    "tier_spx500_high_w30": {
+      "n": 1232,
+      "gamma": 0.0332,
+      "se": 0.0202,
+      "p": 0.09926171649252136,
+      "q_bh": 0.28124,
+      "survives_bh": false
+    },
+    "tier_spx500_medium_w30": {
+      "n": 1046,
+      "gamma": 0.0235,
+      "se": 0.0181,
+      "p": 0.19307954833179508,
+      "q_bh": 0.41553,
+      "survives_bh": false
+    },
+    "family_spx500_activity_w30": {
+      "n": 475,
+      "gamma": 0.048,
+      "se": 0.0282,
+      "p": 0.08800823819264814,
+      "q_bh": 0.26854,
+      "survives_bh": false
+    },
+    "family_spx500_employment_w30": {
+      "n": 422,
+      "gamma": 0.0237,
+      "se": 0.0319,
+      "p": 0.45698415599114384,
+      "q_bh": 0.60423,
+      "survives_bh": false
+    },
+    "family_spx500_gdp_w30": {
+      "n": 60,
+      "gamma": 0.0893,
+      "se": 0.117,
+      "p": 0.4454782542732114,
+      "q_bh": 0.59564,
+      "survives_bh": false
+    },
+    "family_spx500_inflation_w30": {
+      "n": 188,
+      "gamma": 0.0948,
+      "se": 0.065,
+      "p": 0.1448004836574146,
+      "q_bh": 0.35898,
+      "survives_bh": false
+    },
+    "family_spx500_other_w30": {
+      "n": 377,
+      "gamma": 0.0149,
+      "se": 0.0314,
+      "p": 0.6361651878948735,
+      "q_bh": 0.74219,
+      "survives_bh": false
+    },
+    "family_spx500_survey_w30": {
+      "n": 756,
+      "gamma": 0.0114,
+      "se": 0.0211,
+      "p": 0.5893985498795735,
+      "q_bh": 0.70354,
+      "survives_bh": false
+    },
+    "tier_gold_high_w30": {
+      "n": 1373,
+      "gamma": 0.0495,
+      "se": 0.0134,
+      "p": 0.00021602231958040008,
+      "q_bh": 0.00284,
+      "survives_bh": true
+    },
+    "tier_gold_medium_w30": {
+      "n": 1119,
+      "gamma": 0.0725,
+      "se": 0.0191,
+      "p": 0.0001463968580459607,
+      "q_bh": 0.00218,
+      "survives_bh": true
+    },
+    "family_gold_activity_w30": {
+      "n": 538,
+      "gamma": 0.0053,
+      "se": 0.0195,
+      "p": 0.7871850129641267,
+      "q_bh": 0.85159,
+      "survives_bh": false
+    },
+    "family_gold_employment_w30": {
+      "n": 483,
+      "gamma": 0.0708,
+      "se": 0.0193,
+      "p": 0.00023857247976710738,
+      "q_bh": 0.00284,
+      "survives_bh": true
+    },
+    "family_gold_gdp_w30": {
+      "n": 73,
+      "gamma": 0.1075,
+      "se": 0.0878,
+      "p": 0.22071569713329398,
+      "q_bh": 0.43775,
+      "survives_bh": false
+    },
+    "family_gold_inflation_w30": {
+      "n": 213,
+      "gamma": 0.1208,
+      "se": 0.0509,
+      "p": 0.017550774324792462,
+      "q_bh": 0.07735,
+      "survives_bh": true
+    },
+    "family_gold_other_w30": {
+      "n": 400,
+      "gamma": 0.0544,
+      "se": 0.0305,
+      "p": 0.07457604277846164,
+      "q_bh": 0.24652,
+      "survives_bh": false
+    },
+    "family_gold_survey_w30": {
+      "n": 785,
+      "gamma": 0.0875,
+      "se": 0.0228,
+      "p": 0.00012440373311184416,
+      "q_bh": 0.00211,
+      "survives_bh": true
+    },
+    "econ_AU_w120": {
+      "n": 468,
+      "gamma": 0.0447,
+      "se": 0.0281,
+      "p": 0.11174633535541689,
+      "q_bh": 0.28293,
+      "survives_bh": false
+    },
+    "econ_CA_w120": {
+      "n": 769,
+      "gamma": 0.0418,
+      "se": 0.0191,
+      "p": 0.028570536085388953,
+      "q_bh": 0.11333,
+      "survives_bh": false
+    },
+    "econ_CH_w120": {
+      "n": 125,
+      "gamma": 0.0958,
+      "se": 0.0447,
+      "p": 0.032155207454777734,
+      "q_bh": 0.12343,
+      "survives_bh": false
+    },
+    "econ_EU_w120": {
+      "n": 973,
+      "gamma": 0.0302,
+      "se": 0.0181,
+      "p": 0.09571214075900114,
+      "q_bh": 0.2778,
+      "survives_bh": false
+    },
+    "econ_GB_w120": {
+      "n": 758,
+      "gamma": 0.0119,
+      "se": 0.0149,
+      "p": 0.42348290951525125,
+      "q_bh": 0.57925,
+      "survives_bh": false
+    },
+    "econ_JP_w120": {
+      "n": 84,
+      "gamma": -0.058,
+      "se": 0.0709,
+      "p": 0.4134263759233088,
+      "q_bh": 0.57656,
+      "survives_bh": false
+    },
+    "econ_NZ_w120": {
+      "n": 170,
+      "gamma": 0.0071,
+      "se": 0.0519,
+      "p": 0.8907963647654977,
+      "q_bh": 0.92178,
+      "survives_bh": false
+    },
+    "econ_US_w120": {
+      "n": 2499,
+      "gamma": 0.0295,
+      "se": 0.0116,
+      "p": 0.010781705992486179,
+      "q_bh": 0.0611,
+      "survives_bh": true
+    },
+    "homogeneity_fx_w120": {
+      "wald": 7.546,
+      "df": 7,
+      "p": 0.37434483749729164
+    },
+    "tier_fx_high_w120": {
+      "n": 2945,
+      "gamma": 0.0267,
+      "se": 0.0106,
+      "p": 0.012076716888035577,
+      "q_bh": 0.06253,
+      "survives_bh": true
+    },
+    "tier_fx_medium_w120": {
+      "n": 2901,
+      "gamma": 0.0217,
+      "se": 0.0096,
+      "p": 0.0229014564710337,
+      "q_bh": 0.09719,
+      "survives_bh": true
+    },
+    "family_fx_activity_w120": {
+      "n": 1268,
+      "gamma": 0.042,
+      "se": 0.0147,
+      "p": 0.00424599146682314,
+      "q_bh": 0.03609,
+      "survives_bh": true
+    },
+    "family_fx_employment_w120": {
+      "n": 931,
+      "gamma": 0.0226,
+      "se": 0.0193,
+      "p": 0.2406784094394392,
+      "q_bh": 0.44458,
+      "survives_bh": false
+    },
+    "family_fx_gdp_w120": {
+      "n": 356,
+      "gamma": 0.0057,
+      "se": 0.0263,
+      "p": 0.8295488702880329,
+      "q_bh": 0.8814,
+      "survives_bh": false
+    },
+    "family_fx_inflation_w120": {
+      "n": 852,
+      "gamma": 0.0273,
+      "se": 0.0205,
+      "p": 0.18284804427085666,
+      "q_bh": 0.41055,
+      "survives_bh": false
+    },
+    "family_fx_other_w120": {
+      "n": 719,
+      "gamma": 0.025,
+      "se": 0.0178,
+      "p": 0.16040592092122674,
+      "q_bh": 0.38177,
+      "survives_bh": false
+    },
+    "family_fx_survey_w120": {
+      "n": 1720,
+      "gamma": 0.0304,
+      "se": 0.0134,
+      "p": 0.023685668137853,
+      "q_bh": 0.09719,
+      "survives_bh": true
+    },
+    "tier_nq_high_w120": {
+      "n": 1373,
+      "gamma": 0.0126,
+      "se": 0.0149,
+      "p": 0.3986086388978727,
+      "q_bh": 0.5715,
+      "survives_bh": false
+    },
+    "tier_nq_medium_w120": {
+      "n": 1115,
+      "gamma": 0.0126,
+      "se": 0.0177,
+      "p": 0.4757723094481605,
+      "q_bh": 0.60878,
+      "survives_bh": false
+    },
+    "family_nq_activity_w120": {
+      "n": 537,
+      "gamma": 0.0196,
+      "se": 0.0205,
+      "p": 0.33871414563510793,
+      "q_bh": 0.51021,
+      "survives_bh": false
+    },
+    "family_nq_employment_w120": {
+      "n": 483,
+      "gamma": 0.0039,
+      "se": 0.0238,
+      "p": 0.8684260484112944,
+      "q_bh": 0.90651,
+      "survives_bh": false
+    },
+    "family_nq_gdp_w120": {
+      "n": 73,
+      "gamma": 0.0516,
+      "se": 0.0601,
+      "p": 0.39081614347672033,
+      "q_bh": 0.56716,
+      "survives_bh": false
+    },
+    "family_nq_inflation_w120": {
+      "n": 213,
+      "gamma": 0.0751,
+      "se": 0.0383,
+      "p": 0.049937241008539246,
+      "q_bh": 0.17478,
+      "survives_bh": false
+    },
+    "family_nq_other_w120": {
+      "n": 399,
+      "gamma": 0.0296,
+      "se": 0.0294,
+      "p": 0.31442447417324426,
+      "q_bh": 0.49232,
+      "survives_bh": false
+    },
+    "family_nq_survey_w120": {
+      "n": 783,
+      "gamma": -0.0082,
+      "se": 0.0226,
+      "p": 0.717672943800963,
+      "q_bh": 0.79203,
+      "survives_bh": false
+    },
+    "tier_spx500_high_w120": {
+      "n": 1240,
+      "gamma": 0.0173,
+      "se": 0.0165,
+      "p": 0.2941754081768413,
+      "q_bh": 0.47321,
+      "survives_bh": false
+    },
+    "tier_spx500_medium_w120": {
+      "n": 1046,
+      "gamma": 0.0205,
+      "se": 0.0191,
+      "p": 0.2834398753350147,
+      "q_bh": 0.47321,
+      "survives_bh": false
+    },
+    "family_spx500_activity_w120": {
+      "n": 476,
+      "gamma": 0.027,
+      "se": 0.023,
+      "p": 0.24192056752570457,
+      "q_bh": 0.44458,
+      "survives_bh": false
+    },
+    "family_spx500_employment_w120": {
+      "n": 426,
+      "gamma": 0.0148,
+      "se": 0.0251,
+      "p": 0.5546730255892369,
+      "q_bh": 0.67353,
+      "survives_bh": false
+    },
+    "family_spx500_gdp_w120": {
+      "n": 60,
+      "gamma": 0.1154,
+      "se": 0.0708,
+      "p": 0.10295514565520936,
+      "q_bh": 0.28203,
+      "survives_bh": false
+    },
+    "family_spx500_inflation_w120": {
+      "n": 191,
+      "gamma": 0.0802,
+      "se": 0.0389,
+      "p": 0.039036824627059374,
+      "q_bh": 0.14517,
+      "survives_bh": false
+    },
+    "family_spx500_other_w120": {
+      "n": 377,
+      "gamma": 0.0023,
+      "se": 0.0328,
+      "p": 0.9436581332775864,
+      "q_bh": 0.95166,
+      "survives_bh": false
+    },
+    "family_spx500_survey_w120": {
+      "n": 756,
+      "gamma": -0.0066,
+      "se": 0.0239,
+      "p": 0.7810883875096524,
+      "q_bh": 0.85159,
+      "survives_bh": false
+    },
+    "tier_gold_high_w120": {
+      "n": 1374,
+      "gamma": 0.0191,
+      "se": 0.014,
+      "p": 0.17303708908898674,
+      "q_bh": 0.39599,
+      "survives_bh": false
+    },
+    "tier_gold_medium_w120": {
+      "n": 1119,
+      "gamma": 0.0535,
+      "se": 0.0192,
+      "p": 0.005314455354387793,
+      "q_bh": 0.0372,
+      "survives_bh": true
+    },
+    "family_gold_activity_w120": {
+      "n": 538,
+      "gamma": -0.0202,
+      "se": 0.0191,
+      "p": 0.2922150601875324,
+      "q_bh": 0.47321,
+      "survives_bh": false
+    },
+    "family_gold_employment_w120": {
+      "n": 483,
+      "gamma": 0.0281,
+      "se": 0.0218,
+      "p": 0.1969989939150878,
+      "q_bh": 0.41553,
+      "survives_bh": false
+    },
+    "family_gold_gdp_w120": {
+      "n": 73,
+      "gamma": 0.0764,
+      "se": 0.0973,
+      "p": 0.4320394153909657,
+      "q_bh": 0.58424,
+      "survives_bh": false
+    },
+    "family_gold_inflation_w120": {
+      "n": 214,
+      "gamma": 0.1055,
+      "se": 0.0402,
+      "p": 0.00862551227605124,
+      "q_bh": 0.05426,
+      "survives_bh": true
+    },
+    "family_gold_other_w120": {
+      "n": 400,
+      "gamma": 0.1097,
+      "se": 0.0267,
+      "p": 3.931718214889024e-05,
+      "q_bh": 0.00078,
+      "survives_bh": true
+    },
+    "family_gold_survey_w120": {
+      "n": 785,
+      "gamma": 0.0392,
+      "se": 0.0225,
+      "p": 0.08152468555792458,
+      "q_bh": 0.25824,
+      "survives_bh": false
+    },
+    "econ_AU_ros": {
+      "n": 467,
+      "gamma": 0.0279,
+      "se": 0.0218,
+      "p": 0.20009101377630323,
+      "q_bh": 0.41553,
+      "survives_bh": false
+    },
+    "econ_CA_ros": {
+      "n": 769,
+      "gamma": 0.0271,
+      "se": 0.0168,
+      "p": 0.10747963993343923,
+      "q_bh": 0.28203,
+      "survives_bh": false
+    },
+    "econ_CH_ros": {
+      "n": 125,
+      "gamma": 0.0432,
+      "se": 0.0371,
+      "p": 0.2441352861786834,
+      "q_bh": 0.44458,
+      "survives_bh": false
+    },
+    "econ_EU_ros": {
+      "n": 956,
+      "gamma": -0.0014,
+      "se": 0.0175,
+      "p": 0.9357556820056183,
+      "q_bh": 0.95166,
+      "survives_bh": false
+    },
+    "econ_GB_ros": {
+      "n": 758,
+      "gamma": -0.0115,
+      "se": 0.016,
+      "p": 0.4737942115896425,
+      "q_bh": 0.60878,
+      "survives_bh": false
+    },
+    "econ_JP_ros": {
+      "n": 57,
+      "gamma": 0.1381,
+      "se": 0.1394,
+      "p": 0.321903093739506,
+      "q_bh": 0.49749,
+      "survives_bh": false
+    },
+    "econ_NZ_ros": {
+      "n": 1,
+      "skipped": "n<40"
+    },
+    "econ_US_ros": {
+      "n": 2499,
+      "gamma": 0.0095,
+      "se": 0.0105,
+      "p": 0.3660333943856877,
+      "q_bh": 0.53775,
+      "survives_bh": false
+    },
+    "homogeneity_fx_ros": {
+      "wald": 6.806,
+      "df": 7,
+      "p": 0.44936229071569556
+    },
+    "tier_fx_high_ros": {
+      "n": 2818,
+      "gamma": 0.0061,
+      "se": 0.0091,
+      "p": 0.5013356504421371,
+      "q_bh": 0.63415,
+      "survives_bh": false
+    },
+    "tier_fx_medium_ros": {
+      "n": 2814,
+      "gamma": 0.0111,
+      "se": 0.0097,
+      "p": 0.25132405275164493,
+      "q_bh": 0.44458,
+      "survives_bh": false
+    },
+    "family_fx_activity_ros": {
+      "n": 1198,
+      "gamma": 0.0206,
+      "se": 0.0128,
+      "p": 0.10757075645000591,
+      "q_bh": 0.28203,
+      "survives_bh": false
+    },
+    "family_fx_employment_ros": {
+      "n": 897,
+      "gamma": -0.0158,
+      "se": 0.0152,
+      "p": 0.29824149338027484,
+      "q_bh": 0.47321,
+      "survives_bh": false
+    },
+    "family_fx_gdp_ros": {
+      "n": 315,
+      "gamma": 0.0282,
+      "se": 0.0244,
+      "p": 0.2477870812767915,
+      "q_bh": 0.44458,
+      "survives_bh": false
+    },
+    "family_fx_inflation_ros": {
+      "n": 785,
+      "gamma": 0.0153,
+      "se": 0.0232,
+      "p": 0.5098168628606925,
+      "q_bh": 0.63415,
+      "survives_bh": false
+    },
+    "family_fx_other_ros": {
+      "n": 719,
+      "gamma": 0.0216,
+      "se": 0.0175,
+      "p": 0.21597154812047625,
+      "q_bh": 0.4356,
+      "survives_bh": false
+    },
+    "family_fx_survey_ros": {
+      "n": 1718,
+      "gamma": 0.0147,
+      "se": 0.0129,
+      "p": 0.2540440594235247,
+      "q_bh": 0.44458,
+      "survives_bh": false
+    },
+    "tier_nq_high_ros": {
+      "n": 1365,
+      "gamma": 0.0076,
+      "se": 0.0142,
+      "p": 0.591209622715805,
+      "q_bh": 0.70354,
+      "survives_bh": false
+    },
+    "tier_nq_medium_ros": {
+      "n": 1114,
+      "gamma": 0.0196,
+      "se": 0.0188,
+      "p": 0.29736737351388776,
+      "q_bh": 0.47321,
+      "survives_bh": false
+    },
+    "family_nq_activity_ros": {
+      "n": 536,
+      "gamma": 0.0222,
+      "se": 0.017,
+      "p": 0.18932246191761637,
+      "q_bh": 0.41553,
+      "survives_bh": false
+    },
+    "family_nq_employment_ros": {
+      "n": 480,
+      "gamma": -0.0273,
+      "se": 0.0226,
+      "p": 0.22651140670237835,
+      "q_bh": 0.44188,
+      "survives_bh": false
+    },
+    "family_nq_gdp_ros": {
+      "n": 73,
+      "gamma": 0.0138,
+      "se": 0.0621,
+      "p": 0.824250677056739,
+      "q_bh": 0.8814,
+      "survives_bh": false
+    },
+    "family_nq_inflation_ros": {
+      "n": 213,
+      "gamma": 0.1113,
+      "se": 0.0396,
+      "p": 0.004905945953185498,
+      "q_bh": 0.03649,
+      "survives_bh": true
+    },
+    "family_nq_other_ros": {
+      "n": 399,
+      "gamma": 0.0115,
+      "se": 0.032,
+      "p": 0.7188165056120757,
+      "q_bh": 0.79203,
+      "survives_bh": false
+    },
+    "family_nq_survey_ros": {
+      "n": 778,
+      "gamma": -0.0004,
+      "se": 0.0239,
+      "p": 0.9857487293891254,
+      "q_bh": 0.98575,
+      "survives_bh": false
+    },
+    "tier_spx500_high_ros": {
+      "n": 1217,
+      "gamma": 0.0057,
+      "se": 0.0155,
+      "p": 0.7116905095873065,
+      "q_bh": 0.79203,
+      "survives_bh": false
+    },
+    "tier_spx500_medium_ros": {
+      "n": 1033,
+      "gamma": 0.0122,
+      "se": 0.0202,
+      "p": 0.5464999333670686,
+      "q_bh": 0.67045,
+      "survives_bh": false
+    },
+    "family_spx500_activity_ros": {
+      "n": 466,
+      "gamma": 0.0278,
+      "se": 0.0202,
+      "p": 0.1698100763131838,
+      "q_bh": 0.39599,
+      "survives_bh": false
+    },
+    "family_spx500_employment_ros": {
+      "n": 422,
+      "gamma": -0.0201,
+      "se": 0.0247,
+      "p": 0.41667604649318846,
+      "q_bh": 0.57656,
+      "survives_bh": false
+    },
+    "family_spx500_gdp_ros": {
+      "n": 60,
+      "gamma": 0.0297,
+      "se": 0.0657,
+      "p": 0.6517405058510899,
+      "q_bh": 0.74574,
+      "survives_bh": false
+    },
+    "family_spx500_inflation_ros": {
+      "n": 191,
+      "gamma": 0.074,
+      "se": 0.0409,
+      "p": 0.07051589783782286,
+      "q_bh": 0.23975,
+      "survives_bh": false
+    },
+    "family_spx500_other_ros": {
+      "n": 371,
+      "gamma": -0.0325,
+      "se": 0.0331,
+      "p": 0.3260990681275624,
+      "q_bh": 0.49751,
+      "survives_bh": false
+    },
+    "family_spx500_survey_ros": {
+      "n": 740,
+      "gamma": -0.0029,
+      "se": 0.0258,
+      "p": 0.9097686357739523,
+      "q_bh": 0.9333,
+      "survives_bh": false
+    },
+    "tier_gold_high_ros": {
+      "n": 1373,
+      "gamma": 0.017,
+      "se": 0.0134,
+      "p": 0.20252686525310226,
+      "q_bh": 0.41553,
+      "survives_bh": false
+    },
+    "tier_gold_medium_ros": {
+      "n": 1118,
+      "gamma": 0.0433,
+      "se": 0.0175,
+      "p": 0.013206492849239249,
+      "q_bh": 0.06548,
+      "survives_bh": true
+    },
+    "family_gold_activity_ros": {
+      "n": 537,
+      "gamma": -0.0032,
+      "se": 0.0168,
+      "p": 0.8489220000729196,
+      "q_bh": 0.894,
+      "survives_bh": false
+    },
+    "family_gold_employment_ros": {
+      "n": 483,
+      "gamma": -0.0085,
+      "se": 0.0198,
+      "p": 0.6688430626350819,
+      "q_bh": 0.75802,
+      "survives_bh": false
+    },
+    "family_gold_gdp_ros": {
+      "n": 73,
+      "gamma": 0.0411,
+      "se": 0.0831,
+      "p": 0.6208592976979466,
+      "q_bh": 0.73151,
+      "survives_bh": false
+    },
+    "family_gold_inflation_ros": {
+      "n": 214,
+      "gamma": 0.0991,
+      "se": 0.0386,
+      "p": 0.01031195563062104,
+      "q_bh": 0.0611,
+      "survives_bh": true
+    },
+    "family_gold_other_ros": {
+      "n": 400,
+      "gamma": 0.0618,
+      "se": 0.0258,
+      "p": 0.016717992897632872,
+      "q_bh": 0.07652,
+      "survives_bh": true
+    },
+    "family_gold_survey_ros": {
+      "n": 784,
+      "gamma": 0.0556,
+      "se": 0.0231,
+      "p": 0.015811769765035733,
+      "q_bh": 0.07526,
+      "survives_bh": true
+    }
+  },
+  "robust": {
+    "fx_w30": {
+      "zmean": [
+        0.0516,
+        0.0097
+      ],
+      "real_clock_only": [
+        0.0588,
+        0.0099,
+        4728
+      ],
+      "no_concurrent": [
+        0.061,
+        0.0091,
+        5407
+      ],
+      "big_ge_1.5_dummy": [
+        0.1147,
+        0.0172
+      ]
+    },
+    "fx_w120": {
+      "zmean": [
+        0.0231,
+        0.0081
+      ],
+      "real_clock_only": [
+        0.027,
+        0.0084,
+        4727
+      ],
+      "no_concurrent": [
+        0.0268,
+        0.0077,
+        5406
+      ],
+      "big_ge_1.5_dummy": [
+        0.051,
+        0.0155
+      ]
+    },
+    "fx_ros": {
+      "zmean": [
+        0.0103,
+        0.0076
+      ],
+      "real_clock_only": [
+        0.0077,
+        0.0078,
+        4533
+      ],
+      "no_concurrent": [
+        0.0087,
+        0.0071,
+        5192
+      ],
+      "big_ge_1.5_dummy": [
+        0.0135,
+        0.015
+      ]
+    },
+    "nq_w30": {
+      "zmean": [
+        0.0086,
+        0.0125
+      ],
+      "real_clock_only": [
+        0.0224,
+        0.0128,
+        1961
+      ],
+      "no_concurrent": [
+        0.0256,
+        0.0119,
+        2490
+      ],
+      "big_ge_1.5_dummy": [
+        0.037,
+        0.0251
+      ]
+    },
+    "nq_w120": {
+      "zmean": [
+        0.0073,
+        0.012
+      ],
+      "real_clock_only": [
+        0.0067,
+        0.0125,
+        1961
+      ],
+      "no_concurrent": [
+        0.0152,
+        0.0111,
+        2488
+      ],
+      "big_ge_1.5_dummy": [
+        0.0337,
+        0.0227
+      ]
+    },
+    "nq_ros": {
+      "zmean": [
+        0.002,
+        0.0123
+      ],
+      "real_clock_only": [
+        0.0057,
+        0.0125,
+        1953
+      ],
+      "no_concurrent": [
+        0.0092,
+        0.0112,
+        2479
+      ],
+      "big_ge_1.5_dummy": [
+        0.0028,
+        0.0239
+      ]
+    },
+    "spx500_w30": {
+      "zmean": [
+        0.0187,
+        0.0148
+      ],
+      "real_clock_only": [
+        0.0265,
+        0.0149,
+        1779
+      ],
+      "no_concurrent": [
+        0.0318,
+        0.014,
+        2278
+      ],
+      "big_ge_1.5_dummy": [
+        0.0386,
+        0.0288
+      ]
+    },
+    "spx500_w120": {
+      "zmean": [
+        0.0123,
+        0.0127
+      ],
+      "real_clock_only": [
+        0.0117,
+        0.0128,
+        1790
+      ],
+      "no_concurrent": [
+        0.019,
+        0.0121,
+        2286
+      ],
+      "big_ge_1.5_dummy": [
+        0.0192,
+        0.0243
+      ]
+    },
+    "spx500_ros": {
+      "zmean": [
+        -0.0042,
+        0.0129
+      ],
+      "real_clock_only": [
+        -0.0001,
+        0.0132,
+        1756
+      ],
+      "no_concurrent": [
+        0.0032,
+        0.012,
+        2250
+      ],
+      "big_ge_1.5_dummy": [
+        -0.0142,
+        0.0255
+      ]
+    },
+    "gold_w30": {
+      "zmean": [
+        0.0526,
+        0.013
+      ],
+      "real_clock_only": [
+        0.0588,
+        0.0139,
+        1964
+      ],
+      "no_concurrent": [
+        0.0572,
+        0.0116,
+        2492
+      ],
+      "big_ge_1.5_dummy": [
+        0.0886,
+        0.0246
+      ]
+    },
+    "gold_w120": {
+      "zmean": [
+        0.0362,
+        0.0131
+      ],
+      "real_clock_only": [
+        0.0469,
+        0.0138,
+        1965
+      ],
+      "no_concurrent": [
+        0.0344,
+        0.0117,
+        2493
+      ],
+      "big_ge_1.5_dummy": [
+        0.0768,
+        0.0234
+      ]
+    },
+    "gold_ros": {
+      "zmean": [
+        0.0337,
+        0.0121
+      ],
+      "real_clock_only": [
+        0.0348,
+        0.0132,
+        1963
+      ],
+      "no_concurrent": [
+        0.0252,
+        0.0107,
+        2491
+      ],
+      "big_ge_1.5_dummy": [
+        0.0607,
+        0.0231
+      ]
+    }
+  },
+  "placebo_week": {},
+  "permutation": {
+    "fx_w30": {
+      "mean": 0.00022,
+      "p97.5": 0.01606
+    },
+    "nq_w30": {
+      "mean": -0.00124,
+      "p97.5": 0.01991
+    },
+    "spx500_w30": {
+      "mean": 0.00085,
+      "p97.5": 0.02968
+    },
+    "gold_w30": {
+      "mean": 0.00033,
+      "p97.5": 0.02157
+    }
+  },
+  "positive_control": {
+    "fx_w30": {
+      "planted": 0.05,
+      "recovered": 0.058,
+      "zero_case": 0.008,
+      "se": 0.0092
+    },
+    "nq_w30": {
+      "planted": 0.05,
+      "recovered": 0.0406,
+      "zero_case": -0.0094,
+      "se": 0.0225
+    },
+    "spx500_w30": {
+      "planted": 0.05,
+      "recovered": 0.0444,
+      "zero_case": -0.0056,
+      "se": 0.0253
+    },
+    "gold_w30": {
+      "planted": 0.05,
+      "recovered": 0.0479,
+      "zero_case": -0.0021,
+      "se": 0.0209
+    }
+  },
+  "oos": {
+    "fx_w30": {
+      "base": 0.24949087055911226,
+      "with_z": 0.2461624221794668,
+      "n_test": 2146,
+      "mse_reduction_pct": 1.334
+    },
+    "fx_w120": {
+      "base": 0.17100474460013987,
+      "with_z": 0.1712392893354664,
+      "n_test": 2145,
+      "mse_reduction_pct": -0.137
+    },
+    "fx_ros": {
+      "base": 0.14472363959070572,
+      "with_z": 0.14485313600444769,
+      "n_test": 2066,
+      "mse_reduction_pct": -0.089
+    },
+    "nq_w30": {
+      "base": 0.3115411897314337,
+      "with_z": 0.3177427824614728,
+      "n_test": 1062,
+      "mse_reduction_pct": -1.991
+    },
+    "nq_w120": {
+      "base": 0.16289780242450413,
+      "with_z": 0.16465646731333286,
+      "n_test": 1060,
+      "mse_reduction_pct": -1.08
+    },
+    "nq_ros": {
+      "base": 0.17866416611013178,
+      "with_z": 0.1796252032645341,
+      "n_test": 1055,
+      "mse_reduction_pct": -0.538
+    },
+    "spx500_w30": {
+      "base": 0.33121955102370815,
+      "with_z": 0.33880214127634123,
+      "n_test": 1062,
+      "mse_reduction_pct": -2.289
+    },
+    "spx500_w120": {
+      "base": 0.18304306231908452,
+      "with_z": 0.18515135181199835,
+      "n_test": 1060,
+      "mse_reduction_pct": -1.152
+    },
+    "spx500_ros": {
+      "base": 0.20266921438262037,
+      "with_z": 0.20345737179048376,
+      "n_test": 1055,
+      "mse_reduction_pct": -0.389
+    },
+    "gold_w30": {
+      "base": 0.20780573087731047,
+      "with_z": 0.207432673334246,
+      "n_test": 1059,
+      "mse_reduction_pct": 0.18
+    },
+    "gold_w120": {
+      "base": 0.17069297898746918,
+      "with_z": 0.17190504275517346,
+      "n_test": 1060,
+      "mse_reduction_pct": -0.71
+    },
+    "gold_ros": {
+      "base": 0.15782511520156617,
+      "with_z": 0.1585785223593388,
+      "n_test": 1059,
+      "mse_reduction_pct": -0.477
+    }
+  },
+  "discrete": {
+    "fx_w30": {
+      "n": 584,
+      "n_surprise": 105,
+      "coef_log": 0.2898,
+      "se": 0.0589
+    },
+    "fx_w120": {
+      "n": 584,
+      "n_surprise": 105,
+      "coef_log": 0.1951,
+      "se": 0.0525
+    },
+    "fx_ros": {
+      "n": 573,
+      "n_surprise": 105,
+      "coef_log": 0.0936,
+      "se": 0.0457
+    },
+    "nq_w30": {
+      "n": 172,
+      "n_surprise": 47,
+      "coef_log": 0.1237,
+      "se": 0.0962
+    },
+    "nq_w120": {
+      "n": 171,
+      "n_surprise": 47,
+      "coef_log": -0.0162,
+      "se": 0.0805
+    },
+    "nq_ros": {
+      "n": 171,
+      "n_surprise": 47,
+      "coef_log": 0.0392,
+      "se": 0.0895
+    },
+    "spx500_w30": {
+      "n": 148,
+      "n_surprise": 40,
+      "coef_log": 0.0448,
+      "se": 0.1096
+    },
+    "spx500_w120": {
+      "n": 148,
+      "n_surprise": 40,
+      "coef_log": -0.0206,
+      "se": 0.0945
+    },
+    "spx500_ros": {
+      "n": 147,
+      "n_surprise": 39,
+      "coef_log": 0.0088,
+      "se": 0.0968
+    },
+    "gold_w30": {
+      "n": 172,
+      "n_surprise": 47,
+      "coef_log": 0.1188,
+      "se": 0.0723
+    },
+    "gold_w120": {
+      "n": 171,
+      "n_surprise": 47,
+      "coef_log": 0.0044,
+      "se": 0.0768
+    },
+    "gold_ros": {
+      "n": 171,
+      "n_surprise": 47,
+      "coef_log": 0.0454,
+      "se": 0.082
+    }
+  },
+  "population": {
+    "fx_events_by_econ_w30": {
+      "AU": 468,
+      "CA": 769,
+      "CH": 125,
+      "EU": 976,
+      "GB": 758,
+      "JP": 84,
+      "NZ": 168,
+      "US": 2499
+    },
+    "us_risk_events_w30": {
+      "gold": 2492,
+      "nq": 2490,
+      "spx500": 2278
+    },
+    "rows_invalid_share": 0.0296
+  },
+  "disagg_summary": {
+    "tests": 119,
+    "survive_bh_positive": 29,
+    "chance_expected_at_0.10": 11.9
+  },
+  "verdicts": {
+    "surprise-size-pooled-fx": "VALIDATED",
+    "surprise-size-pooled-us-risk": "VALIDATED",
+    "surprise-size-pooled-us-indices": "UNDERPOWERED"
+  },
+  "verdict_note": "Registered ids: -fx (best cell fx_w30 VALIDATED) and -us-risk (best cell gold_w30 VALIDATED). Amendment A1 (post-hoc, describe/demote only): the NQ and SPX500 cells are banked apart as -us-indices (best cell spx500_w30 UNDERPOWERED; all NQ cells NULL) so -us-risk does not read as validated for indices.",
+  "headline": "A bigger surprise means a wider first 30 minutes in the home currency (+9.9% from a 0.5-sigma to a 2-sigma miss, all 8 economies alike) and in gold on US releases (+9.0%), beyond the production forecast and event multiplier. By 2 h it is a few percent (context); by the session close it is gone. NQ and the S&P 500 show no material size effect.",
+  "prep": {
+    "raw_rows": 83427,
+    "rows_8ccy_high_med_with_consensus": 26403,
+    "dedup_dropped": 0,
+    "realclock_rows_shifted_plus60_2023on": 555,
+    "calendar_events_rows": 102759,
+    "calendar_events_exact_dups_dropped": 46095,
+    "calendar_events_dst_fixed_rows": 119,
+    "csv_match_realclock_rows": 2523,
+    "csv_vs_ff_realclock_agree_share": 0.801,
+    "csv_vs_ff_realclock_agree_share_2016on": 0.958,
+    "csv_vs_ff_realclock_within2min_share_2016on": 0.977,
+    "csv_vs_schedule_agree_share_2016on": 0.917,
+    "csv_vs_schedule_imputed_rows": 1838,
+    "csv_vs_schedule_agree_share": 0.81,
+    "placeholder_rows": 10426,
+    "placeholder_timed_from_calendar_events": 2742,
+    "placeholder_timed_from_schedule": 4801,
+    "untimed_dropped": 2883,
+    "unparseable_dropped": 331,
+    "rows_timed_total": 23189,
+    "rows_2016on": 8618,
+    "rows_2016on_scored_z": 7795,
+    "rows_2016on_discrete": 624,
+    "by_econ_2016on": {
+      "US": {
+        "rows": 3952,
+        "z": 3679,
+        "high_z": 2084,
+        "discrete": 174,
+        "imputed_share": 0.15
+      },
+      "EU": {
+        "rows": 1355,
+        "z": 1212,
+        "high_z": 247,
+        "discrete": 123,
+        "imputed_share": 0.168
+      },
+      "GB": {
+        "rows": 1219,
+        "z": 1044,
+        "high_z": 529,
+        "discrete": 139,
+        "imputed_share": 0.103
+      },
+      "JP": {
+        "rows": 115,
+        "z": 98,
+        "high_z": 5,
+        "discrete": 0,
+        "imputed_share": 0.27
+      },
+      "AU": {
+        "rows": 637,
+        "z": 527,
+        "high_z": 353,
+        "discrete": 98,
+        "imputed_share": 0.176
+      },
+      "NZ": {
+        "rows": 282,
+        "z": 217,
+        "high_z": 134,
+        "discrete": 62,
+        "imputed_share": 0.057
+      },
+      "CA": {
+        "rows": 920,
+        "z": 893,
+        "high_z": 432,
+        "discrete": 15,
+        "imputed_share": 0.198
+      },
+      "CH": {
+        "rows": 138,
+        "z": 125,
+        "high_z": 34,
+        "discrete": 13,
+        "imputed_share": 0.058
+      }
+    },
+    "family_2016on_z": {
+      "survey": 2026,
+      "activity": 1681,
+      "employment": 1408,
+      "inflation": 1397,
+      "other": 831,
+      "gdp": 452
+    },
+    "z_quantiles_2016on": {
+      "0.1": 0.012,
+      "0.25": 0.238,
+      "0.5": 0.584,
+      "0.75": 1.047,
+      "0.9": 1.661,
+      "0.99": 4.266
+    }
+  },
+  "power": {
+    "sd_zc_events": 0.8215,
+    "n_events_cont": 5941,
+    "cells": {
+      "fx_w30": {
+        "n_control": 2935,
+        "resid_sd": 0.4013,
+        "deff": 1.09,
+        "se_gamma": 0.00941,
+        "mde_gamma": 0.0349,
+        "mde_uplift_0.5_to_2": 0.0537
+      },
+      "fx_w120": {
+        "n_control": 2935,
+        "resid_sd": 0.3925,
+        "deff": 1.176,
+        "se_gamma": 0.00956,
+        "mde_gamma": 0.0354,
+        "mde_uplift_0.5_to_2": 0.0546
+      },
+      "fx_ros": {
+        "n_control": 2753,
+        "resid_sd": 0.3818,
+        "deff": 1.492,
+        "se_gamma": 0.01082,
+        "mde_gamma": 0.0401,
+        "mde_uplift_0.5_to_2": 0.062
+      },
+      "nq_w30": {
+        "n_control": 556,
+        "resid_sd": 0.404,
+        "deff": 1.026,
+        "se_gamma": 0.02113,
+        "mde_gamma": 0.0783,
+        "mde_uplift_0.5_to_2": 0.1246
+      },
+      "nq_w120": {
+        "n_control": 554,
+        "resid_sd": 0.4043,
+        "deff": 1.064,
+        "se_gamma": 0.02157,
+        "mde_gamma": 0.0799,
+        "mde_uplift_0.5_to_2": 0.1274
+      },
+      "nq_ros": {
+        "n_control": 505,
+        "resid_sd": 0.4056,
+        "deff": 1.259,
+        "se_gamma": 0.02466,
+        "mde_gamma": 0.0914,
+        "mde_uplift_0.5_to_2": 0.1469
+      },
+      "spx500_w30": {
+        "n_control": 503,
+        "resid_sd": 0.4192,
+        "deff": 1.029,
+        "se_gamma": 0.02308,
+        "mde_gamma": 0.0856,
+        "mde_uplift_0.5_to_2": 0.1369
+      },
+      "spx500_w120": {
+        "n_control": 503,
+        "resid_sd": 0.4152,
+        "deff": 1.089,
+        "se_gamma": 0.02351,
+        "mde_gamma": 0.0871,
+        "mde_uplift_0.5_to_2": 0.1396
+      },
+      "spx500_ros": {
+        "n_control": 461,
+        "resid_sd": 0.3941,
+        "deff": 1.195,
+        "se_gamma": 0.02442,
+        "mde_gamma": 0.0905,
+        "mde_uplift_0.5_to_2": 0.1454
+      },
+      "gold_w30": {
+        "n_control": 558,
+        "resid_sd": 0.4171,
+        "deff": 1.04,
+        "se_gamma": 0.02192,
+        "mde_gamma": 0.0812,
+        "mde_uplift_0.5_to_2": 0.1296
+      },
+      "gold_w120": {
+        "n_control": 559,
+        "resid_sd": 0.3976,
+        "deff": 1.124,
+        "se_gamma": 0.0217,
+        "mde_gamma": 0.0804,
+        "mde_uplift_0.5_to_2": 0.1282
+      },
+      "gold_ros": {
+        "n_control": 533,
+        "resid_sd": 0.3911,
+        "deff": 1.275,
+        "se_gamma": 0.02329,
+        "mde_gamma": 0.0863,
+        "mde_uplift_0.5_to_2": 0.1382
+      }
+    }
+  },
+  "cells": [
+    {
+      "name": "fx_w30",
+      "n": 5847,
+      "est": 0.063,
+      "lo": 0.0467,
+      "hi": 0.0814,
+      "uplift": 0.0991,
+      "p": 0.006,
+      "verdict": "validated"
+    },
+    {
+      "name": "fx_w120",
+      "n": 5846,
+      "est": 0.0282,
+      "lo": 0.014,
+      "hi": 0.0422,
+      "uplift": 0.0432,
+      "p": 0.006,
+      "verdict": "context"
+    },
+    {
+      "name": "fx_ros",
+      "n": 5632,
+      "est": 0.0104,
+      "lo": -0.0027,
+      "hi": 0.0237,
+      "uplift": 0.0158,
+      "p": 0.595,
+      "verdict": "null"
+    },
+    {
+      "name": "nq_w30",
+      "n": 2490,
+      "est": 0.0256,
+      "lo": 0.0022,
+      "hi": 0.0476,
+      "uplift": 0.0391,
+      "p": 0.198,
+      "verdict": "null"
+    },
+    {
+      "name": "nq_w120",
+      "n": 2488,
+      "est": 0.0152,
+      "lo": -0.0066,
+      "hi": 0.0371,
+      "uplift": 0.0231,
+      "p": 0.595,
+      "verdict": "null"
+    },
+    {
+      "name": "nq_ros",
+      "n": 2479,
+      "est": 0.0092,
+      "lo": -0.0118,
+      "hi": 0.0327,
+      "uplift": 0.0139,
+      "p": 0.748,
+      "verdict": "null"
+    },
+    {
+      "name": "spx500_w30",
+      "n": 2278,
+      "est": 0.0318,
+      "lo": 0.0057,
+      "hi": 0.058,
+      "uplift": 0.0488,
+      "p": 0.133,
+      "verdict": "underpowered"
+    },
+    {
+      "name": "spx500_w120",
+      "n": 2286,
+      "est": 0.019,
+      "lo": -0.0047,
+      "hi": 0.0443,
+      "uplift": 0.0289,
+      "p": 0.595,
+      "verdict": "null"
+    },
+    {
+      "name": "spx500_ros",
+      "n": 2250,
+      "est": 0.0032,
+      "lo": -0.02,
+      "hi": 0.0253,
+      "uplift": 0.0049,
+      "p": 0.79,
+      "verdict": "null"
+    },
+    {
+      "name": "gold_w30",
+      "n": 2492,
+      "est": 0.0572,
+      "lo": 0.0361,
+      "hi": 0.0798,
+      "uplift": 0.0896,
+      "p": 0.006,
+      "verdict": "validated"
+    },
+    {
+      "name": "gold_w120",
+      "n": 2493,
+      "est": 0.0344,
+      "lo": 0.0123,
+      "hi": 0.0594,
+      "uplift": 0.0529,
+      "p": 0.036,
+      "verdict": "context"
+    },
+    {
+      "name": "gold_ros",
+      "n": 2491,
+      "est": 0.0252,
+      "lo": 0.0052,
+      "hi": 0.0479,
+      "uplift": 0.0386,
+      "p": 0.096,
+      "verdict": "null"
+    }
+  ]
+}

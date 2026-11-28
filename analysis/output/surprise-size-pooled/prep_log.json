@@ -1,0 +1,99 @@
+{
+  "raw_rows": 83427,
+  "rows_8ccy_high_med_with_consensus": 26403,
+  "dedup_dropped": 0,
+  "realclock_rows_shifted_plus60_2023on": 555,
+  "calendar_events_rows": 102759,
+  "calendar_events_exact_dups_dropped": 46095,
+  "calendar_events_dst_fixed_rows": 119,
+  "csv_match_realclock_rows": 2523,
+  "csv_vs_ff_realclock_agree_share": 0.801,
+  "csv_vs_ff_realclock_agree_share_2016on": 0.958,
+  "csv_vs_ff_realclock_within2min_share_2016on": 0.977,
+  "csv_vs_schedule_agree_share_2016on": 0.917,
+  "csv_vs_schedule_imputed_rows": 1838,
+  "csv_vs_schedule_agree_share": 0.81,
+  "placeholder_rows": 10426,
+  "placeholder_timed_from_calendar_events": 2742,
+  "placeholder_timed_from_schedule": 4801,
+  "untimed_dropped": 2883,
+  "unparseable_dropped": 331,
+  "rows_timed_total": 23189,
+  "rows_2016on": 8618,
+  "rows_2016on_scored_z": 7795,
+  "rows_2016on_discrete": 624,
+  "by_econ_2016on": {
+    "US": {
+      "rows": 3952,
+      "z": 3679,
+      "high_z": 2084,
+      "discrete": 174,
+      "imputed_share": 0.15
+    },
+    "EU": {
+      "rows": 1355,
+      "z": 1212,
+      "high_z": 247,
+      "discrete": 123,
+      "imputed_share": 0.168
+    },
+    "GB": {
+      "rows": 1219,
+      "z": 1044,
+      "high_z": 529,
+      "discrete": 139,
+      "imputed_share": 0.103
+    },
+    "JP": {
+      "rows": 115,
+      "z": 98,
+      "high_z": 5,
+      "discrete": 0,
+      "imputed_share": 0.27
+    },
+    "AU": {
+      "rows": 637,
+      "z": 527,
+      "high_z": 353,
+      "discrete": 98,
+      "imputed_share": 0.176
+    },
+    "NZ": {
+      "rows": 282,
+      "z": 217,
+      "high_z": 134,
+      "discrete": 62,
+      "imputed_share": 0.057
+    },
+    "CA": {
+      "rows": 920,
+      "z": 893,
+      "high_z": 432,
+      "discrete": 15,
+      "imputed_share": 0.198
+    },
+    "CH": {
+      "rows": 138,
+      "z": 125,
+      "high_z": 34,
+      "discrete": 13,
+      "imputed_share": 0.058
+    }
+  },
+  "family_2016on_z": {
+    "survey": 2026,
+    "activity": 1681,
+    "employment": 1408,
+    "inflation": 1397,
+    "other": 831,
+    "gdp": 452
+  },
+  "z_quantiles_2016on": {
+    "0.1": 0.012,
+    "0.25": 0.238,
+    "0.5": 0.584,
+    "0.75": 1.047,
+    "0.9": 1.661,
+    "0.99": 4.266
+  }
+}

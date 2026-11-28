@@ -215,7 +215,12 @@ window anyway. Every cell is then POWERED. Population counts per economy (contin
 
 ## Amendments
 
-(none)
+### A1 — 2026-11-28 — POST-HOC (results seen)
+Describe / demote only. Under the registered rule `surprise-size-pooled-us-risk` takes its best cell,
+gold 30 min (VALIDATED), while every NQ cell is NULL and the S&P 500 30-min cell is UNDERPOWERED. So the
+id does not read as "validated for US indices", the NQ and SPX500 cells are banked apart as
+`surprise-size-pooled-us-indices` (best cell by the same rule: UNDERPOWERED), and
+`surprise-size-pooled-us-risk` carries `GOLD` only. No cell verdict changed.
 
 ## RESULTS
 
