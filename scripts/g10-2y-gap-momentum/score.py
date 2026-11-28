@@ -267,7 +267,14 @@ def main():
         fam = p["verdict"]
     meta = {"seed": SEED, "B": B, "prereg": "forge/G10_2Y_GAP_MOMENTUM_PREREG.md", "family_verdict": fam,
             "ccys": CCYS, "null_bar_ic": 0.03, "end": str(END.date())}
-    json.dump({"meta": meta, "cells": res}, open(os.path.join(OUT, "results.json"), "w"), indent=1)
+    summary = [{"name": c, "n": res[c]["ic"]["days"], "est": res[c]["ic"]["mean"], "lo": res[c]["ic"]["ci95"][0],
+                "hi": res[c]["ic"]["ci95"][1], "mde": round(3.1 * res[c]["ic"]["se"], 4), "p": res[c]["holm_p_pos"],
+                "verdict": res[c]["verdict"].lower()} for c, _, _ in CELLS]
+    json.dump({"id": "g10-2y-gap-momentum", "verdict": fam.lower(),
+               "ranAt": pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%dT%H:%M:%SZ"), "seed": SEED, "B": B,
+               "prereg": "forge/G10_2Y_GAP_MOMENTUM_PREREG.md", "preregCommit": "ebbd9f48",
+               "branch": "ccr-251b1df6-yo7y0p", "cells": summary, "meta": meta, "detail": res},
+              open(os.path.join(OUT, "results.json"), "w"), indent=1)
     site["meta"] = meta
     site["results"] = res
     json.dump(site, open(os.path.join(OUT, "site.json"), "w"), separators=(",", ":"))

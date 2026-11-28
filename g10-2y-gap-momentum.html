@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G10 Rate-Gap Momentum</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --blue:#3987e5;--amber:#d29922;--red:#f85149;--green:#3fb950;--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .chip.ok{color:var(--green);border-color:var(--green)} .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 48px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .note{font-size:12px;color:var(--text2);line-height:1.6;max-width:130ch} .note b{color:var(--text)}
+  .ctrl{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px}
+  .ctrl label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font:inherit;font-size:12.5px;text-transform:none;letter-spacing:0;max-width:100%}
+  .verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+  .vcard{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text2)}
+  .vcard b{color:var(--text)} .vword{font-weight:800;letter-spacing:.04em}
+  .vword.VALIDATED{color:var(--green)} .vword.NULL{color:var(--red)} .vword.UNDERPOWERED{color:var(--amber)} .vword.CONTEXT{color:var(--text2)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media (max-width:950px){.grid2{grid-template-columns:1fr}}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:4px 7px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+  th{color:var(--text3);font-weight:600;background:var(--card)}
+  td:first-child,th:first-child{text-align:left}
+  .xscroll{overflow-x:auto;max-width:100%}
+  .pos{color:#5fb4ff} .neg{color:#ff8a5c} .mut{color:var(--text3)}
+  #cic{height:320px} #eq{height:300px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text2);margin:2px 0 6px}
+  .sw{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>G10 rate-gap momentum · FX-001</h1>
+  <span class="chip" id="chipFam">—</span>
+  <span class="chip">pre-registered 2026-11-28</span>
+  <span class="spacer"></span>
+  <a class="chip" href="residual-fx8-paper-layers.html?u=g10" target="_blank">G10 residual book →</a>
+  <a class="chip" href="evidence.html" target="_blank">Evidence Book</a>
+</div>
+<div class="wrap">
+  <div class="box">
+    <h2>The question</h2>
+    <div class="note">When a country's <b>2-year government yield rises relative to the other G10 countries</b>, the market is repricing its central bank.
+      Does that currency keep gaining over the <b>next 5 or 20 trading days</b>? Each day, the 9 currencies (USD EUR JPY GBP CAD AUD CHF SEK NOK) are ranked by the
+      5- or 20-day change in their yield gap to the average (yields lagged one day), and that ranking is compared with how each currency then does against the basket.
+      The score is the daily rank correlation (IC), averaged over 2005–2026. An IC of 0.03 was fixed in advance as the smallest useful effect.</div>
+  </div>
+
+  <div class="box">
+    <h2>Scored verdicts</h2>
+    <div class="verdict" id="verdicts"></div>
+  </div>
+
+  <div class="box">
+    <h2>Cumulative IC (a real edge climbs steadily; noise wanders)</h2>
+    <div class="legend" id="cicLegend"></div>
+    <div id="cic"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="box">
+      <h2>Ranking book (rank weights, gross 1, house costs)</h2>
+      <div class="ctrl"><label>Cell<select id="selCell"></select></label></div>
+      <div class="legend"><span><span class="sw" style="background:#5fb4ff"></span>net of cost</span><span><span class="sw" style="background:#6e7681"></span>gross</span><span class="mut">cumulative %</span></div>
+      <div id="eq"></div>
+      <div class="note" id="bookNote" style="margin-top:6px"></div>
+    </div>
+    <div class="box">
+      <h2>What does carry information (descriptive, not scored)</h2>
+      <div class="xscroll"><table id="descTable"></table></div>
+      <div class="note" style="margin-top:8px">The yield <b>level</b> (carry) ranks the next days positively and the past 20-day move ranks them <b>negatively</b>
+        (short-term reversal). The yield <b>change</b> does not. Over the same window, yield-gap changes and currency moves line up strongly (IC +0.36 at 20 days):
+        FX reprices <b>with</b> the rates market, not after it, so nothing is left to follow.</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>IC by year</h2>
+    <div class="xscroll"><table id="yrTable"></table></div>
+  </div>
+
+  <div class="box">
+    <h2>Controls and data</h2>
+    <div class="note" id="dataNote"></div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 3) => v == null || !isFinite(v) ? '—' : (+v).toFixed(d);
+const sgn = (v, d = 3) => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + (+v).toFixed(d);
+const cls = v => v > 0 ? 'pos' : v < 0 ? 'neg' : 'mut';
+const LABEL = {'g10-2y-gap-l20h5': '20-day change → next 5 days (primary)', 'g10-2y-gap-l5h5': '5-day change → next 5 days',
+  'g10-2y-gap-l20h20': '20-day change → next 20 days', 'g10-2y-gap-l5h20': '5-day change → next 20 days'};
+const COL = {'g10-2y-gap-l20h5': '#5fb4ff', 'g10-2y-gap-l5h5': '#d29922', 'g10-2y-gap-l20h20': '#3fb950', 'g10-2y-gap-l5h20': '#b083f0'};
+let S, eqChart;
+function mk(el, h) {
+  return LightweightCharts.createChart(el, {height: h, layout: {background: {color: '#161b22'}, textColor: '#9da7b3'},
+    grid: {vertLines: {color: '#21262d'}, horzLines: {color: '#21262d'}}, rightPriceScale: {borderColor: '#30363d'},
+    timeScale: {borderColor: '#30363d', minBarSpacing: 0.01}, crosshair: {mode: 0}, autoSize: true});
+}
+function verdicts() {
+  const R = S.results, fam = S.meta.family_verdict;
+  $('chipFam').textContent = 'verdict ' + fam; $('chipFam').className = 'chip ' + (fam === 'VALIDATED' ? 'ok' : fam === 'NULL' ? 'bad' : 'warn');
+  $('verdicts').innerHTML = Object.keys(LABEL).map(c => {
+    const v = R[c];
+    return `<div class="vcard"><b>${LABEL[c]}</b><br><span class="vword ${v.verdict}">${v.verdict}</span><br>
+      Mean IC <b class="${cls(v.ic.mean)}">${sgn(v.ic.mean)}</b> [${sgn(v.ic.ci95[0])}, ${sgn(v.ic.ci95[1])}] · Holm p ${fmt(v.holm_p_pos, 2)}<br>
+      Halves ${sgn(v.ic_half1.mean)} / ${sgn(v.ic_half2.mean)} · beyond carry ${sgn(v.ic_carry_orth.mean)}<br>
+      Net book Sharpe ${sgn(v.book_net.sharpe, 2)} [${sgn(v.book_net.ci95[0], 2)}, ${sgn(v.book_net.ci95[1], 2)}] · ${v.signal_days.toLocaleString()} days</div>`;
+  }).join('');
+}
+function cumIC() {
+  const ch = mk($('cic'), 320);
+  Object.keys(LABEL).forEach(c => {
+    const d = S.cells[c]; let s = 0; const pts = [];
+    d.dates.forEach((t, i) => { if (d.ic[i] != null) { s += d.ic[i]; pts.push({time: t, value: s}); } });
+    ch.addLineSeries({color: COL[c], lineWidth: c.endsWith('l20h5') ? 2 : 1.5, priceLineVisible: false}).setData(pts);
+  });
+  ch.timeScale().fitContent(); setTimeout(() => ch.timeScale().fitContent(), 50);
+  $('cicLegend').innerHTML = Object.keys(LABEL).map(c => `<span><span class="sw" style="background:${COL[c]}"></span>${LABEL[c]}</span>`).join('')
+    + '<span class="mut">sum of daily ICs</span>';
+}
+function book() {
+  const c = $('selCell').value, d = S.cells[c], v = S.results[c];
+  if (eqChart) eqChart.remove();
+  eqChart = mk($('eq'), 300);
+  const line = key => { let e = 1; return d.dates.map((t, i) => { e *= 1 + d[key][i] / 1e4; return {time: t, value: (e - 1) * 100}; }); };
+  eqChart.addLineSeries({color: '#6e7681', lineWidth: 1.5, priceLineVisible: false}).setData(line('gross_bp'));
+  eqChart.addLineSeries({color: '#5fb4ff', lineWidth: 2, priceLineVisible: false}).setData(line('net_bp'));
+  eqChart.timeScale().fitContent(); setTimeout(() => eqChart && eqChart.timeScale().fitContent(), 50);
+  $('bookNote').innerHTML = `Net Sharpe <b>${sgn(v.book_net.sharpe, 2)}</b> [${sgn(v.book_net.ci95[0], 2)}, ${sgn(v.book_net.ci95[1], 2)}], halves ${v.book_net_halves.map(x => sgn(x, 2)).join(' / ')};
+    gross ${sgn(v.book_gross.sharpe, 2)}; cost ${fmt(v.book_cost_bp_day, 2)} bp/day; ${fmt(v.book_net.ann_ret_pct, 2)}% a year at ${fmt(v.book_net.ann_vol_pct, 2)}% vol.`;
+}
+function desc() {
+  const R = S.results;
+  $('descTable').innerHTML = '<tr><th>Horizon</th><th>Yield change (scored)</th><th>Yield level (carry)</th><th>Past 20-day move</th></tr>' +
+    [['5 days', 'g10-2y-gap-l20h5'], ['20 days', 'g10-2y-gap-l20h20']].map(([h, c]) => {
+      const v = R[c], ca = v.desc.carry_level_ic, mo = v.desc.price_mom20_ic;
+      const cell = x => `<span class="${cls(x.mean)}">${sgn(x.mean)}</span> <span class="mut">[${sgn(x.ci95[0])}, ${sgn(x.ci95[1])}]</span>`;
+      return `<tr><td>${h}</td><td>${cell(v.ic)}</td><td>${cell(ca)}</td><td>${cell(mo)}</td></tr>`;
+    }).join('');
+}
+function years() {
+  const cs = Object.keys(LABEL), ys = Object.keys(S.results[cs[0]].desc.ic_by_year);
+  $('yrTable').innerHTML = '<tr><th>Cell</th>' + ys.map(y => `<th>${y}</th>`).join('') + '</tr>' + cs.map(c =>
+    `<tr><td>${LABEL[c]}</td>` + ys.map(y => { const v = S.results[c].desc.ic_by_year[y]; return `<td class="${cls(v)}">${sgn(v, 2)}</td>`; }).join('') + '</tr>').join('');
+}
+function notes() {
+  $('dataNote').innerHTML = `<b>Positive control</b> (run and committed before scoring): a planted signal with true IC ≈ 0.048 came back as 0.043 [0.033, 0.052]; 500 shuffled rankings averaged −0.0001.
+    <b>Sign check:</b> same-window IC +0.36, so the signal and data are aligned.<br>
+    <b>Yields</b> (one official series each): US FRED DGS2 · German 2y (Bundesbank) for EUR · JGB 2Y (MoF) · UK 2y spot (BoE) · Canada 2y (BoC) · Australia 2y (RBA; missing May–Aug 2013) ·
+    Swiss 2y (SNB; ends 2025-07-31) · Sweden 2y (Riksbank) · Norway 3y (Norges Bank; from 2019). NZD is left out: no reachable daily source.<br>
+    <b>FX:</b> Fed H.10 noon New York fixings (OANDA is unreachable from the research sandbox). Outcomes end on or before 2026-08-20 (lockbox untouched).<br>
+    <b>Statistics:</b> moving-block bootstrap on days (block 21 for 5-day, 40 for 20-day outcomes), B 2,000, seed ${S.meta.seed}; Holm over 4 cells.
+    Prereg <code>${S.meta.prereg}</code>; results <code>analysis/output/g10-2y-gap-momentum/RESULTS.md</code>.`;
+}
+(async () => {
+  S = await (await fetch('analysis/output/g10-2y-gap-momentum/site.json', {cache: 'no-store'})).json();
+  $('selCell').innerHTML = Object.keys(LABEL).map(c => `<option value="${c}">${LABEL[c]}</option>`).join('');
+  $('selCell').onchange = book;
+  verdicts(); cumIC(); book(); desc(); years(); notes();
+})();
+</script>
+</body>
+</html>

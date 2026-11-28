@@ -5085,6 +5085,34 @@ export const DESK_EVIDENCE = [
     use: 'No support for the "break lean (hint)" on gold; it stays a hint until F3 in oi-gamma-peak-pin reads.',
     instruments: ['GOLD'],
   },
+  {
+    id: 'g10-2y-gap-l20h5', domain: 'macro', verdict: 'null', date: '2026-11-28', doc: 'forge/G10_2Y_GAP_MOMENTUM_PREREG.md', also: ['analysis/output/g10-2y-gap-momentum/RESULTS.md'],
+    claim: 'FX-001 primary: does the 20-day change in a currency\'s daily 2-year government yield gap (vs the 9-currency average, yields lagged one day) rank its next 5 trading days against the basket (USD EUR JPY GBP CAD AUD CHF SEK NOK, Fed H.10 noon, 2005-2026)?',
+    result: 'NULL. Mean daily rank IC +0.006 [-0.011, +0.025] over 5,416 days (block 21), Holm p 0.72, halves +0.015 / -0.002; the whole CI is below the 0.03 bar. Carry-orthogonal IC +0.006 (p 0.28); net book Sharpe +0.01 [-0.36, +0.37]. Positive control recovered a planted 0.048 as 0.043 [0.033, 0.052]; shuffle mean -0.0001. Same-window IC +0.36: FX moves with the rate repricing, not after it.',
+    use: 'Do not rank or tilt G10 currencies on recent 2-year yield-gap changes at a 5-20 day horizon; the daily version of rate-diff-xsmom is dead too. Carry (the level) is the part that carries information (descriptive IC +0.033 [+0.009, +0.057]).',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'],
+  },
+  {
+    id: 'g10-2y-gap-l5h5', domain: 'macro', verdict: 'underpowered', date: '2026-11-28', doc: 'forge/G10_2Y_GAP_MOMENTUM_PREREG.md', also: ['analysis/output/g10-2y-gap-momentum/RESULTS.md'],
+    claim: 'FX-001 secondary: does the 5-day change in the daily 2-year yield gap rank G10 currencies over the next 5 trading days?',
+    result: 'UNDERPOWERED. Mean IC +0.013 [-0.004, +0.031] (5,416 days), Holm p 0.32, halves +0.016 / +0.009; carry-orthogonal +0.015 (p 0.027, not a gated cell). Gross book Sharpe +0.28, net +0.11 [-0.28, +0.47] after 0.17 bp/day of cost; net halves +0.24 / -0.07.',
+    use: 'No signal. The fast version is small, cost-sensitive and not significant; not worth a forward record on its own.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'],
+  },
+  {
+    id: 'g10-2y-gap-l20h20', domain: 'macro', verdict: 'null', date: '2026-11-28', doc: 'forge/G10_2Y_GAP_MOMENTUM_PREREG.md', also: ['analysis/output/g10-2y-gap-momentum/RESULTS.md'],
+    claim: 'FX-001 secondary: does the 20-day change in the daily 2-year yield gap rank G10 currencies over the next 20 trading days?',
+    result: 'NULL. Mean IC -0.017 [-0.044, +0.015] (5,401 days, block 40), halves -0.019 / -0.015; net book Sharpe -0.13 [-0.49, +0.21]. Not a significant reversal either (Holm p 0.12 on the mirror).',
+    use: 'No month-scale continuation from rate-gap changes in G10.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'],
+  },
+  {
+    id: 'g10-2y-gap-l5h20', domain: 'macro', verdict: 'null', date: '2026-11-28', doc: 'forge/G10_2Y_GAP_MOMENTUM_PREREG.md', also: ['analysis/output/g10-2y-gap-momentum/RESULTS.md'],
+    claim: 'FX-001 secondary: does the 5-day change in the daily 2-year yield gap rank G10 currencies over the next 20 trading days?',
+    result: 'NULL. Mean IC +0.007 [-0.009, +0.025] (5,401 days), Holm p 0.72, halves +0.011 / +0.002; net book Sharpe -0.00 [-0.36, +0.34].',
+    use: 'No signal.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'],
+  },
 ];
 
 // The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
@@ -5150,6 +5178,10 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'g10-2y-gap-l20h5': { n: '5,416 signal days, 9 currencies (8.3 a day), 21-day blocks (~258 blocks)', note: 'MDE 0.029 vs bar 0.03: powered; CI upper +0.025 < bar' },
+  'g10-2y-gap-l5h5': { n: '5,416 signal days, 21-day blocks', note: 'MDE 0.027 vs bar 0.03; CI upper +0.031 includes the bar' },
+  'g10-2y-gap-l20h20': { n: '5,401 signal days, 40-day blocks (~135 blocks)', note: 'MDE 0.048 vs bar 0.03 (underpowered by design) but CI upper +0.015 < bar' },
+  'g10-2y-gap-l5h20': { n: '5,401 signal days, 40-day blocks', note: 'MDE 0.027 vs bar 0.03; CI upper +0.025 < bar' },
   'ema-regime-line-filter': { n: '31,234 line trades, 3 markets, 21-session date blocks', note: 'every kept net CI upper edge below 0: a +0.05R trade ruled out' },
   'bias-day-trade-fx': { n: '11,788 calls, 27 pairs, 21-session date blocks', note: 'MDE 0.026 (2.8 x random-side placebo sd) vs bar 0.04: powered' },
   'bias-day-trade-gold': { n: '979 calls, one market', note: 'MDE 0.104 vs bar 0.04: underpowered by design' },

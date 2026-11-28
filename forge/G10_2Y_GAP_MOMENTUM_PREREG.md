@@ -150,6 +150,11 @@ further correction). Descriptive cells are not scored. No other variants: tenors
 
 (none)
 
-## RESULTS
+## RESULTS — run 2026-11-28
 
-(not yet run)
+**NULL** (family). Primary `g10-2y-gap-l20h5`: mean IC +0.006 [−0.011, +0.025], Holm p 0.72, halves +0.015 / −0.002;
+CI entirely below the 0.03 bar → NULL. `l5h5` +0.013 [−0.004, +0.031] UNDERPOWERED; `l20h20` −0.017 [−0.044, +0.015]
+NULL; `l5h20` +0.007 [−0.009, +0.025] NULL. Gate not reached; no reversal (mirror). Positive control and shuffle passed
+before scoring; same-window sign check IC +0.36 (FX moves with the rate repricing, not after it). Descriptive: carry
+level IC +0.033 [+0.009, +0.057] at 5 days; 20-day price momentum IC −0.024 / −0.052 (reversal).
+Full write-up: `analysis/output/g10-2y-gap-momentum/RESULTS.md`.
