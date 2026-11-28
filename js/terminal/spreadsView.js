@@ -160,7 +160,7 @@ function foundHtml(row) {
 export function storiesStripHtml(rank) {
   const S = storiesNow(rank); if (!S.items.length) return '';
   const lab = id => STORIES.find(x => x.id === id)?.label ?? id;
-  return `<section class="sp-stories" aria-label="Stories now"><div class="sp-stories-h"><b>Stories now</b><span class="muted">${S.outer} of ${S.total} pairs sit in the outer tenth at either end of their own history; about ${S.chance} would by chance alone, so the longer this list runs past that, the more the market is stretched.</span></div>
+  return `<section class="sp-stories" aria-label="Stories now"><div class="sp-stories-h"><b>Stories now</b><span class="muted">${S.outer} of the ${S.total} pairs with a reading today sit in the outer tenth at either end of their own history; about ${S.chance} would by chance alone, so the longer this list runs past that, the more the market is stretched.</span></div>
 <ul class="sp-stories-l">${S.items.map(it => `<li><button type="button" class="sp-story-card" data-open="${esc(it.id)}" aria-label="Open ${esc(it.row.pair.short)}"><span class="sp-story-tag sp-story-${esc(it.story)}">${esc(lab(it.story))}</span><span class="sp-story-t">${esc(it.text)}</span><span class="sp-chips">${gradeChipsHtml(it.row, 1)}</span></button></li>`).join('')}</ul></section>`;
 }
 

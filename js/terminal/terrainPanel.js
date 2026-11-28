@@ -7,6 +7,9 @@
 import { drawTerrain, terrainSmiles, SMILE_SYMS } from '../terrainChart.js';
 import { mountTerrainLive, DESK_OF_SYM, LIVE_COLOUR } from '../terrainLive.js';
 import { ownerLink, ownerOnly } from './links.js';
+import { oiBookLegs } from '../oi.js';
+import { bookExpiry, isExpired, dteOf, londonDate } from '../optionExpiry.js';
+import { captureDateOf } from './optionsView.js';
 
 const NAMES = { 'XAU/USD': 'Gold', NAS100_USD: 'Nasdaq (NQ)', SPX500_USD: 'S&P 500 (ES)', US2000_USD: 'Russell (RTY)', US30_USD: 'Dow (YM)', 'EUR/USD': 'EURUSD', 'GBP/USD': 'GBPUSD',
   'USD/JPY': 'USDJPY', 'AUD/USD': 'AUDUSD', 'USD/CAD': 'USDCAD', 'USD/CHF': 'USDCHF', 'XAG/USD': 'Silver', 'XCU/USD': 'Copper', WTICO_USD: 'WTI', BCO_USD: 'Brent', NATGAS_USD: 'Nat gas' };
@@ -42,6 +45,23 @@ const showTip = (ev, html) => { TIP ??= Object.assign(document.createElement('di
   TIP.innerHTML = html; TIP.style.display = 'block'; TIP.style.left = Math.min(innerWidth - TIP.offsetWidth - 10, ev.clientX + 16) + 'px'; TIP.style.top = Math.min(innerHeight - TIP.offsetHeight - 10, ev.clientY + 14) + 'px'; };
 const hideTip = () => { if (TIP) TIP.style.display = 'none'; };
 
+/** The stored entries themselves (cached with the terrain), for the option lines' expiry codes and the front expiry. */
+export async function terrainStore(J) { return loadStore(J).catch(() => ({})); }
+/** One stored book's expiries as [{ dte, code, oi, expiry }], with the date each expires (js/optionExpiry.js). */
+export function bookLegs(e) {
+  let b = null; try { b = oiBookLegs(e); } catch { /* no per-expiry book */ }
+  const cap = captureDateOf(e);
+  return (b?.legs ?? []).map(l => ({ dte: l.dte, code: l.code ?? null, oi: (l.calls ?? []).reduce((a, x) => a + (x || 0), 0) + (l.puts ?? []).reduce((a, x) => a + (x || 0), 0), expiry: cap && Number.isFinite(l.dte) ? bookExpiry(cap, l.dte, l.code) : null }));
+}
+/** The terrain's expiry rule: an expiry that has stopped trading is dropped, and days to expiry count from today's date. */
+export function liveLegs(e, sym, now = Date.now()) {
+  const cap = captureDateOf(e), today = londonDate(now);
+  return legs => legs.flatMap(l => { const x = cap && Number.isFinite(l.dte) ? bookExpiry(cap, l.dte, l.code) : null; if (!x) return [l]; if (isExpired(x, sym, now, l.code)) return []; return [{ ...l, dte: dteOf(today, x), expiry: x }]; });
+}
+export function primaryTag(e, now = Date.now()) {
+  const p = e?.primaryExpiry, cap = captureDateOf(e); if (!p || !Number.isFinite(p.dte) || !cap) return null;
+  const x = bookExpiry(cap, p.dte, p.code); return x ? `${dteOf(londonDate(now), x)} DTE` : null;
+}
 /** The stored open interest's market keys (OANDA style: 'XAU/USD', 'NAS100_USD'), for the tab's one market list. */
 export async function terrainKeys(J) {
   const store = await loadStore(J).catch(() => ({}));
@@ -77,7 +97,8 @@ export async function mountTerrain(root, J, state = {}, { idOf = k => k, nameOf 
     state.sym = sym;
     const useSmile = SMILE_SYMS.includes(sym), smile = useSmile ? (SMILE[sym] ?? (loadSmile(sym, draw), { state: 'loading' })) : null;
     const desk = liveOn() ? DESK_OF_SYM[sym] ?? null : null;
-    const r = drawTerrain(cv, { e: store[sym], sym, maxDte: state.maxDte, smile, smileCover: useSmile, px: pxFor(sym), fmtBig, showTip, hideTip, spotLabel: desk ? 'SNAPSHOT SPOT' : undefined });
+    const r = drawTerrain(cv, { e: store[sym], sym, maxDte: state.maxDte, smile, smileCover: useSmile, px: pxFor(sym), fmtBig, showTip, hideTip, spotLabel: desk ? 'SNAPSHOT SPOT' : undefined,
+      legMap: liveLegs(store[sym], sym), primaryTag: primaryTag(store[sym]) });
     const paintLeg = () => { leg.innerHTML = (r.legend || '') + (state.liveNote ? `<div style="margin-top:6px"><span style="color:${LIVE_COLOUR}">&#9632;</span> ${esc(state.liveNote)}</div>` : ''); };
     state.liveNote = ''; paintLeg();
     if (!state.liveCtl || state.liveCv !== cv) {

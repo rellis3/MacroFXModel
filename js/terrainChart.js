@@ -56,7 +56,9 @@ export function terrainColor(i) { return i < 4 ? { c: `hsl(${72 + i * 28} 80% 62
 
 export function drawTerrain(cv, o) {
   const { e, maxDte = 3, smile = null, px, fmtBig, showTip = () => {}, hideTip = () => {} } = o;
-  const useSmile = !!o.smileCover;
+  // a Cboe chain that failed to load (403 from Cboe, Nov 2026) falls back to the CME book's own lines, said in the legend,
+  // rather than leaving both wings blank
+  const smileFailed = !!o.smileCover && smile?.state === 'err', useSmile = !!o.smileCover && !smileFailed;
   if (!cv) return { legend: '', note: 'no canvas' };
   const dpr = Math.min(2, window.devicePixelRatio || 1), cssW = cv.clientWidth || 1000, cssH = cv.clientHeight || 880;
   cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
@@ -70,7 +72,10 @@ export function drawTerrain(cv, o) {
   const mono = '11px ui-monospace,"IBM Plex Mono",Consolas,monospace';
   const PL = 78, PR = 14, PT = 34, PB = 38, pw = cssW - PL - PR, ph = cssH - PT - PB;
   const yOf = p => PT + (hi - p) / (hi - lo) * ph;
-  const legs = b.legs.filter(l => !Number.isFinite(l.dte) || l.dte <= maxDte);
+  // legMap (optional): the page's own expiry rule (js/optionExpiry.js): drop expiries that have stopped trading, count days
+  // to expiry from today's date
+  const legs = (o.legMap ? o.legMap(b.legs) : b.legs).filter(l => !Number.isFinite(l.dte) || l.dte <= maxDte);
+  if (!legs.length) return note(maxDte >= 400 ? 'No expiry in this book is still trading.' : `No expiry within ${maxDte} days is still trading today: pick ≤30 DTE or the whole book.`);
   // OI by strike
   const oi = new Map();
   for (const l of legs) for (let i = 0; i < l.strikes.length; i++) { const K = l.strikes[i]; if (K < lo || K > hi) continue; const q = oi.get(K) || { c: 0, p: 0 }; q.c += l.calls[i] || 0; q.p += l.puts[i] || 0; oi.set(K, q); }
@@ -144,12 +149,18 @@ export function drawTerrain(cv, o) {
   g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx, PT); g.lineTo(cx, PT + ph); g.stroke();
   // levels, labelled at the right end like a desk chart
   let bigK = null, bigV = 0; for (const [K, q] of oi) { if (q.c + q.p > bigV) { bigV = q.c + q.p; bigK = K; } }
+  // each label says which expiries it is read from (owner review 27 Nov 2026: SPX "MAJOR WALL 7190" against walls of
+  // 6990/7290/7490 in the option-lines table): the major wall is the biggest strike in the window shown, the walls and max
+  // pain are the primary expiry's (primaryTag, e.g. '21 DTE')
+  const win = maxDte >= 400 ? 'WHOLE BOOK' : `≤${maxDte} DTE`, pt = o.primaryTag ? ` · ${o.primaryTag}` : '';
   const lvAll = [[spot, '#ffffff', o.spotLabel || 'SPOT PRICE', 'solid'], [D.flip, '#f0b04a', 'GEX FLIP (ZERO CROSSING)', 'dot'], [bigK, '#7fb0ff', 'MAJOR WALL', 'dash'], [D.mp, '#c9cdd2', 'MAX PAIN', 'dot'], [D.cw, '#ee6d66', 'CALL WALL', 'dash'], [D.pw, '#3fc583', 'PUT WALL', 'dash']];
+  // the drawn label carries the tag; the geometry keeps the plain names (js/terrainLive.js reads them)
+  const tagOf = n => (n === 'MAJOR WALL' ? ` (${win})` : pt && ['MAX PAIN', 'CALL WALL', 'PUT WALL'].includes(n) ? ` (${pt.slice(3)})` : pt && n.startsWith('GEX FLIP') ? ` · ${pt.slice(3)}` : '');
   const lv = lvAll.filter(l => Number.isFinite(l[0]) && l[0] > lo && l[0] < hi).sort((x, y) => yOf(x[0]) - yOf(y[0]));
   let lastY = -99;
   lv.forEach(([p, col, name, style]) => { const y = yOf(p); g.strokeStyle = col; g.lineWidth = style === 'solid' ? 1.5 : 1.1; g.setLineDash(style === 'dash' ? [7, 5] : style === 'dot' ? [2, 4] : []); g.globalAlpha = .9;
     g.beginPath(); g.moveTo(PL, y); g.lineTo(PL + pw, y); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
-    const ly = Math.max(y - 8, lastY + 13); lastY = ly; g.textAlign = 'right'; g.font = mono; g.lineJoin = 'round'; g.lineWidth = 4; g.strokeStyle = '#090e13'; g.strokeText(`${name}: ${px(p)}`, PL + pw - 6, ly); g.fillStyle = col; g.fillText(`${name}: ${px(p)}`, PL + pw - 6, ly); });
+    const ly = Math.max(y - 8, lastY + 13); lastY = ly; g.textAlign = 'right'; g.font = mono; g.lineJoin = 'round'; g.lineWidth = 4; g.strokeStyle = '#090e13'; g.strokeText(`${name}${tagOf(name)}: ${px(p)}`, PL + pw - 6, ly); g.fillStyle = col; g.fillText(`${name}${tagOf(name)}: ${px(p)}`, PL + pw - 6, ly); });
   // headers + axes
   g.font = '10.5px ui-monospace,Consolas,monospace'; g.fillStyle = '#8a95a3'; g.textBaseline = 'alphabetic';
   g.textAlign = 'left'; g.fillText(useSmile ? 'PUTS IV LESS ATM  −2 pt' : 'PUT GAMMA BY EXPIRY, SMOOTHED', xl0 + 4, 16); g.textAlign = 'right'; g.fillText(useSmile ? '+4 pt' : '', xc0 - 4, 16);
@@ -157,7 +168,9 @@ export function drawTerrain(cv, o) {
   g.textAlign = 'center';
   [-1, -0.5, 0, 0.5, 1].forEach(f => { const x = cx + f * half, v = Math.abs(f) * oiMax; g.fillText(f === 0 ? '0' : (fmtBig(v)), x, cssH - PB + 18); });
   g.fillText('OI (contracts)  ·  puts ←   → calls', cx, cssH - 6);
-  const legend = (legTxt ? `Expiries, nearest first: ${legTxt}` : '') + (useSmile ? '<br>Smiles are live from Cboe (15 minutes delayed) and pinch at that moment\'s spot; the levels and open interest are from the last saved OI snapshot, so the pinch and the spot line can sit a little apart.' : '');
+  const legend = (legTxt ? `Expiries, nearest first: ${legTxt}` : '') + (useSmile ? '<br>Smiles are live from Cboe (15 minutes delayed) and pinch at that moment\'s spot; the levels and open interest are from the last saved OI snapshot, so the pinch and the spot line can sit a little apart.' : '')
+    + (smileFailed ? '<br>The live Cboe chain did not load today, so the outer panels show the CME book instead (its own smiles where stored, else gamma by strike).' : '')
+    + `<br>Major wall = the biggest strike among the expiries shown (${win.toLowerCase()}); call wall, put wall and max pain are read from ${o.primaryTag ? `the ${o.primaryTag.toLowerCase()} expiry alone` : 'the book\'s primary expiry'}, so they can differ from the option-lines table, which lists each expiry's own lines.`;
   // hover
   cv.onmousemove = ev => { const r = cv.getBoundingClientRect(), y = ev.clientY - r.top, price = hi - (y - PT) / ph * (hi - lo); let best = null, bd = 1e18; for (const K of ks) { const d = Math.abs(K - price); if (d < bd) { bd = d; best = K; } }
     if (best == null || bd > step) return hideTip(); const q = oi.get(best); showTip(ev, `<b>${px(best)}</b><br>calls ${fmtBig(q.c)} · puts ${fmtBig(q.p)}<br><span style="color:#8a95a3">${maxDte >= 400 ? 'whole book' : 'expiries within ' + maxDte + ' days'}</span>`); };

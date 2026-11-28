@@ -13,7 +13,11 @@ console.log('noise units');
 console.log('follow-through');
 { const big = 3 * CHAIN_NODES.nq.floor * Math.sqrt(1 / 20);
   const c = followThrough(V({ nq: -big, spx: -0.5, dxy: 0.01, usdjpy: 0.02, us2y: 0.3, us10y: 0.5 }), 1);
-  ok('a big stock move nothing else follows is "contained"', c.verdict === 'contained' && /liquidation/.test(c.line), c.line);
+  ok('a big stock move nothing else follows is "contained", worded as an untested rule of thumb', c.verdict === 'contained' && /positioning/.test(c.line) && /untested/.test(c.line), c.line);
+  // review 2026-11-27: on Thanksgiving the Nasdaq printed and FRED's yields did not; they cannot confirm or deny that session
+  const D = (d, asOf) => ({ delta: d, last: 1, asOf });
+  const hol = followThrough({ nq: D(-big, '2026-11-26'), usdjpy: D(0.02, '2026-11-26'), eurusd: D(0.01, '2026-11-26'), us2y: D(0.3, '2026-11-24'), us10y: D(0.5, '2026-11-24') }, 1);
+  ok('only markets that printed on the lead stock move\'s day are compared', hol.of === 2 && /did not print on 2026-11-26/.test(hol.line), hol.line);
   const f = followThrough(V({ nq: -big, dxy: 0.5, usdjpy: -0.9, us2y: -6, us10y: -8 }), 1);
   ok('two or more FX/rates markets past their band is "followed"', f.verdict === 'followed' && f.moved >= 2);
   ok('a small stock move is "quiet", nothing to test', followThrough(V({ nq: 0.1, dxy: 2 }), 1).verdict === 'quiet');
@@ -58,7 +62,8 @@ console.log('stories and the checklist');
   const cl = checklist({ idea: s.byWin[20], links, ft: { verdict: 'contained' }, clocks: { opposed: 2 }, crowd: { rows: [{}], crowded: 1, pressed: 0 }, news: { fought: 0 }, events: [], nowMs: 0 });
   ok('eight questions, each with a state', cl.length === 8 && cl.every(q => ['ok', 'watch', 'broken', 'none', 'info'].includes(q.state)));
   ok('no follow-through flags the price-reaction question', cl.find(q => q.n === 5).state === 'watch');
-  ok('two clocks pulling apart flag the horizon question', cl.find(q => q.n === 7).tag === '2 pulling apart');
+  ok('the horizon question carries its own answer, not the two-clocks count', cl.find(q => q.n === 7).tag === '20-session view' && cl.find(q => q.n === 7).state === 'info');
+  ok('the headline is the story link itself, not the ends of the extended path', /^\S/.test(s.byWin[20].headline) && s.byWin[20].steps.length >= 2 && s.byWin[20].headline.split(' to ').length === 2);
   ok('no idea, no checklist', checklist({}).length === 0); }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');

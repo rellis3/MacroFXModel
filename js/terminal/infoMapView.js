@@ -48,11 +48,22 @@ export function filtersHtml(st = {}, fams = FAMILIES) {
 <div class="nt-f2"><label class="nt-book"><input type="checkbox" data-im-flag${st.flag ? ' checked' : ''}> Only stale, blocked or doubtful (${c.flagged})</label><label class="nt-book"><input type="checkbox" data-im-recent${st.recent ? ' checked' : ''}> Added since ${esc(NEW_SINCE)} (${c.recent})</label><input type="search" data-im-q placeholder="Search families, pages, routes" value="${esc(st.q ?? '')}" aria-label="Search the info map"></div>`;
 }
 
+/**
+ * Script and plan paths (run_cb_expectations.bat, plans/LAPTOP_TASKS.md) are the owner's detail: a desk login reads the sentence without them
+ * (review 2026-11-27). owner = globalThis.deskIsViewer is absent or false.
+ */
+const PATH_RX = /\b[\w./-]+\.(?:bat|md|py|mjs|js|ps1|sh)\b/;
+export const isOwner = () => !(globalThis.deskIsViewer?.() ?? false);
+export function ownerText(t, owner = isOwner()) {
+  const s = String(t ?? '');
+  if (owner) return s;
+  return s.replace(/\s*\((?:[^()]*\b[\w./-]+\.(?:bat|md|py|mjs|js|ps1|sh)\b[^()]*)\)/g, '').replace(new RegExp(PATH_RX.source, 'g'), 'a desk script');
+}
 /** the gold box: what not to trust yet */
-export function staleHtml(fams = FAMILIES) {
+export function staleHtml(fams = FAMILIES, owner = isOwner()) {
   const fl = fams.filter(f => f.flag);
   if (!fl.length) return '';
-  return `<div class="nt-top" id="im-stale"><div class="lbl">Stale, blocked or doubtful: check before building on these</div>${fl.map(f => `<div class="nt-topi"><span class="chip gold">${esc(FLAG_KINDS[f.flag.kind] ?? f.flag.kind)}</span> <b>${esc(f.name)}</b> <span class="muted">${esc(f.flag.text)}</span></div>`).join('')}</div>`;
+  return `<div class="nt-top" id="im-stale"><div class="lbl">Stale, blocked or doubtful: check before building on these</div>${fl.map(f => `<div class="nt-topi"><span class="chip gold">${esc(FLAG_KINDS[f.flag.kind] ?? f.flag.kind)}</span> <b>${esc(f.name)}</b> <span class="muted">${esc(ownerText(f.flag.text, owner))}</span></div>`).join('')}</div>`;
 }
 
 const link = (href, text) => ownerLink(href, esc(text), { target: '_blank' });
@@ -67,16 +78,16 @@ export function rowHtml(f, d = DERIVED.families?.[f.id]) {
   const seen = ['terminal', 'today', 'atlas', 'newsletter'].map(k => `${k} ${(m[k] ?? []).length ? 'yes' : 'no'}`).join(' · ');
   const drift = d?.drift?.length ? `<div class="im-drift">${d.drift.map(esc).join(' ')}</div>` : '';
   return `<details class="im-row" id="im-${esc(f.id)}">
-<summary><span class="im-n">${esc(f.name)}</span><span class="vchip ${STATUS_CLS[f.status] ?? ''}" title="${esc(STATUSES[f.status]?.blurb)}">${esc(STATUSES[f.status]?.label ?? f.status)}</span>${f.flag ? `<span class="chip gold" title="${esc(f.flag.text)}">${esc(FLAG_KINDS[f.flag.kind] ?? f.flag.kind)}</span>` : ''}<span class="im-u muted">${esc(USES[f.use] ?? f.use)}</span></summary>
+<summary><span class="im-n">${esc(f.name)}</span><span class="vchip ${STATUS_CLS[f.status] ?? ''}" title="${esc(STATUSES[f.status]?.blurb)}">${esc(STATUSES[f.status]?.label ?? f.status)}</span>${f.flag ? `<span class="chip gold" title="${esc(ownerText(f.flag.text))}">${esc(FLAG_KINDS[f.flag.kind] ?? f.flag.kind)}</span>` : ''}<span class="im-u muted">${esc(USES[f.use] ?? f.use)}</span></summary>
 <div class="im-b">
 <div class="im-line">${[tabLink, pages].filter(Boolean).join(' · ') || '<span class="muted">No page of its own</span>'}</div>
-<div class="muted im-line">${esc(f.family)}</div>
+<div class="muted im-line">${esc(ownerText(f.family))}</div>
 ${f.visual ? `<div class="im-vis"><span class="lbl">Terminal visual idea</span> ${esc(f.visual)}</div>` : ''}
-<div class="tt-kv im-kv"><span class="lbl">Source</span><span>${esc(f.store || 'not recorded')}${f.cadence ? ` · ${esc(f.cadence)}` : ''}</span>
+<div class="tt-kv im-kv"><span class="lbl">Source</span><span>${esc(ownerText(f.store) || 'not recorded')}${f.cadence ? ` · ${esc(f.cadence)}` : ''}</span>
 <span class="lbl">Routes</span><span class="mono">${(d?.routes ?? f.routes.map(route => ({ route, exists: true }))).map(r => `${esc(r.route)}${r.exists ? '' : ' (not found)'}`).join(' ') || 'none'}${(d?.modules ?? []).map(x => ` ${esc(x.file)}`).join('')}</span>
 <span class="lbl">Seen in</span><span>${esc(pack)} · name match, not a trace: ${esc(seen)}</span>
-<span class="lbl">Traced</span><span>${esc(f.traced)}</span>
-${f.pageNote ? `<span class="lbl">Page shows</span><span>${esc(f.pageNote)}</span>` : ''}
+<span class="lbl">Traced</span><span>${esc(ownerText(f.traced))}</span>
+${f.pageNote ? `<span class="lbl">Page shows</span><span>${esc(ownerText(f.pageNote))}</span>` : ''}
 <span class="lbl">Tested</span><span>${ev || '<span class="muted">no Evidence Book entry</span>'} ${f.evidenceNote ? `<span class="muted">${esc(f.evidenceNote)}</span>` : ''}</span></div>
 ${drift}
 </div></details>`;
@@ -105,7 +116,9 @@ const NOTE = 'Status was traced by reading the code, not by matching names; the 
 export function mount(root, { openTab = id => document.querySelector(`#tabs [data-t="${id}"]`)?.click() } = {}) {
   if (!root) return;
   const st = { status: '', group: '', flag: false, recent: false, q: '' };
-  root.innerHTML = `<div id="im-sw"></div><div id="im-ver" class="muted" style="font-size:12px;margin:2px 2px 8px"></div><div id="im-ci" class="muted" style="font-size:12px;margin:2px 2px 8px"></div><div class="card glow">${headerHtml()}${staleHtml()}<div id="im-f"></div><div id="im-n" class="muted" style="margin-bottom:4px"></div><div id="im-list"></div><p class="tt-note">${esc(NOTE)}</p></div>`;
+  // the map first; the ~40 preview switches, the build version and CI sit below it, folded (review 2026-11-27: the map was ~4,000px down)
+  root.innerHTML = `<div class="card glow">${headerHtml()}${staleHtml()}<div id="im-f"></div><div id="im-n" class="muted" style="margin-bottom:4px"></div><div id="im-list"></div><p class="tt-note">${esc(NOTE)}</p></div>
+<details class="card" style="margin-top:14px"><summary class="lbl" style="cursor:pointer">Preview switches, build version and CI</summary><div id="im-ver" class="muted" style="font-size:12px;margin:8px 2px"></div><div id="im-ci" class="muted" style="font-size:12px;margin:2px 2px 8px"></div><div id="im-sw"></div></details>`;
   import('./previewSwitches.js').then(m => m.mountSwitches(root.querySelector('#im-sw'))).catch(() => { /* a convenience: the Info map works without it */ });
   import('./buildVersion.js').then(m => m.mountVersion(root.querySelector('#im-ver'))).catch(() => { /* a convenience */ });
   import('./ciStatus.js').then(m => m.mountCiStatus(root.querySelector('#im-ci'))).catch(() => { /* owner-only convenience: a desk login gets a 403 and sees nothing */ });

@@ -70,13 +70,13 @@ test('the Overview card: a quiet record is one line and six dots, with no ribbon
   const mq = C.model(quiet, { flagEvidence: FLAG_EVIDENCE, evidence }), cq = compactHtml(mq);
   assert.equal((cq.match(/class="rfs-mini"/g) ?? []).length, 0, 'no ribbons when nothing has been on');
   assert.equal((cq.match(/class="rfs-dotitem"/g) ?? []).length, 6, 'the six lights are dots');
-  assert.match(cq, /0 of 6 stress lights have been on since 14 Nov, 30 hourly captures/);
+  assert.match(cq, /Since 14 Nov, 0 of the 6 risk flags have been on at some point \(30 hourly captures\)/);
   assert.equal((cq.match(/rfs-dot-off/g) ?? []).length, 5); assert.equal((cq.match(/rfs-dot-na/g) ?? []).length, 1, 'the unreadable flag is a hatched dot, not an off one');
-  assert.match(cq, /could not be read now/); assert.match(cq, /range finding/, 'the validated range finding keeps its chip');
+  assert.match(cq, /Euro vol stress <span class="rfs-dst">source ended/, "a light whose source ended says so, not n/a"); assert.match(cq, /rfs-dot-na/, "and keeps the hatched dot"); assert.match(cq, /range finding/, 'the validated range finding keeps its chip');
   assert.doesNotMatch(cq, /<svg/); assert.doesNotMatch(cq, /undefined|NaN/); assert.match(cq, /data-surface="panel.risk.strip"/);
   // one flag on at the end: that flag gets a ribbon, the other five are dots under a "never on" line
   const one = quiet.map((p, i) => i >= 25 ? { ...p, d: { risk: { flags: { ...p.d.risk.flags, hy_speed: [1, -20] } } } } : p);
   const co = compactHtml(C.model(one, { flagEvidence: FLAG_EVIDENCE, evidence }));
-  assert.equal((co.match(/class="rfs-mini"/g) ?? []).length, 1); assert.equal((co.match(/class="rfs-dotitem"/g) ?? []).length, 5); assert.match(co, /1 of 6 stress lights has been on since 14 Nov/); assert.match(co, /Never on since 14 Nov/);
+  assert.equal((co.match(/class="rfs-mini"/g) ?? []).length, 1); assert.equal((co.match(/class="rfs-dotitem"/g) ?? []).length, 5); assert.match(co, /Since 14 Nov, 1 of the 6 risk flags has been on at some point/); assert.match(co, /on now: \d of the 6 risk flags/); assert.match(co, /Never on since 14 Nov/);
   assert.doesNotMatch(cq + co, /\b(bullish|bearish|buy|sell|signal)\b/i);
 });

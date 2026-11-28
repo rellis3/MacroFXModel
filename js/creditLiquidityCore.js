@@ -65,7 +65,13 @@ const sg = v => (v > 0 ? '+' : v < 0 ? '−' : '');
 export function describe(cl) {
   if (!cl?.ok) return null;
   const parts = [];
-  if (fin(cl.csi?.value)) parts.push(`The Credit Stress Index is ${sg(cl.csi.value)}${Math.abs(cl.csi.value).toFixed(2)}: credit conditions are ${cl.csi.word}`);
+  if (fin(cl.csi?.value)) {
+    // the index has a VIX leg: say so when the VIX carries it and the two credit legs point the other way (2026-11-27: +0.61 "tighter" on a VIX z of +2.8
+    // with both credit legs below a normal year)
+    const k = cl.csi.components ?? {}, cr = fin(k.quality) && fin(k.credit) ? (k.quality + k.credit) / 2 : null;
+    const vixLed = cr != null && fin(k.vix) && cl.csi.value > 0.35 && cr < 0 && k.vix > 1;
+    parts.push(`The Credit Stress Index (credit spreads plus the VIX) is ${sg(cl.csi.value)}${Math.abs(cl.csi.value).toFixed(2)}: ${vixLed ? `the reading is ${cl.csi.word}, driven by the VIX leg; the credit legs alone are ${sg(cr)}${Math.abs(cr).toFixed(2)}` : `credit conditions are ${cl.csi.word}`}`);
+  }
   if (cl.spread?.bp != null) parts.push(`Baa over the 10-year Treasury is ${cl.spread.bp}bp${cl.spread.pct5y != null ? `, the ${cl.spread.pct5y}th percentile of five years` : ''}${cl.spread.chg20d != null ? `, ${sg(cl.spread.chg20d)}${Math.abs(cl.spread.chg20d)}bp in 20 days` : ''}`);
   if (cl.g4 && fin(cl.g4.impulse)) parts.push(`global central-bank liquidity is ${cl.g4.phase ? cl.g4.phase.toLowerCase() : (cl.g4.impulse >= 0 ? 'rising' : 'falling')} (impulse ${sg(cl.g4.impulse)}${Math.abs(cl.g4.impulse).toFixed(2)}, level ${sg(cl.g4.level)}${Math.abs(cl.g4.level).toFixed(2)})`);
   return parts.length ? `${parts.join('; ')}.` : null;

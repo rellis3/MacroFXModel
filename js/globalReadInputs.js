@@ -267,7 +267,9 @@ export function assembleGlobalReadInput(D = {}, { now = Date.now(), skip = [] } 
   // ── invalidation: the live thresholds that would change the read ──────────
   const maxZ = ys?.signals ? Math.max(...Object.values(ys.signals).map(s => Math.abs(s.z))) : null;
   const invalidation = [
-    `VIX closes ≥ VIX3M (now ${obs.vix ?? '?'} vs ${obs.vix3m ?? '?'}) → alternative scenario; index, USDJPY and gold ranges widen.`,
+    obs.vix != null && obs.vix3m != null && obs.vix >= obs.vix3m
+      ? `VIX closes back below VIX3M (now ${obs.vix} vs ${obs.vix3m}${vix?.date ? `, both ${vix.date}` : ''}) → the inverted state ends.`
+      : `VIX closes ≥ VIX3M (now ${obs.vix ?? '?'} vs ${obs.vix3m ?? '?'}${vix?.date ? `, both ${vix.date}` : ''}) → alternative scenario; index, USDJPY and gold ranges widen.`,
     `HY above 4% (now ${mc.hy?.last ?? '?'}%) or another +25bp in a week → the credit axis turns to stress.`,
     `Any 2Y spread |z| ≥ ${ysThr} (largest now ${maxZ != null ? maxZ.toFixed(2) : '?'}) → a tested directional input switches on for that pair.`,
     'An IV÷σ tag flips (continue ↔ exhaust) at the 22:00 rebuild → that instrument\'s behaviour label flips.',

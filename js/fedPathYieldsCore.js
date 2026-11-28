@@ -26,6 +26,7 @@
  * 15-minute lead of the Fed path is a banked null (Evidence Book 'stir-wide-scan') and no daily direction claim is tested.
  */
 import { reconcile, fedPathRows } from './terminal/ratesBoardCore.js';
+import { thinFlags } from './fedPathZq.js';
 
 const DAY = 864e5;
 const fin = v => v != null && Number.isFinite(+v);
@@ -46,7 +47,8 @@ const MIN_2Y_BP = 2;
 /** Past this many days the nightly laptop pull has missed at least a weekend. */
 const STALE_DAYS = 4;
 
-const meetingsOf = strip => (strip?.meetings ?? []).filter(m => m && fin(m.rAfter) && fin(m.rBefore) && m.meeting);
+// thin = where the strip's liquidity runs out (js/fedPathZq.js thinFlags), re-read here so a strip served before that rule is cut in the same place
+const meetingsOf = strip => thinFlags((strip?.meetings ?? []).filter(m => m && fin(m.rAfter) && fin(m.rBefore) && m.meeting));
 
 /** The lookback strip for a window, or null with a reason. */
 export function lookbackFor(zq, w) {
@@ -158,7 +160,9 @@ export function fedPathYields({ fp, board, tp = null, now = Date.now() } = {}) {
   const gapSteps = rec.diff;
   const proxy = { ...rec,
     diverges: gapSteps != null && Math.abs(gapSteps) >= 1,
-    note: gapSteps == null ? null : Math.abs(gapSteps) < 1 ? 'the 2Y and the futures strip price about the same amount of policy'
+    // "about the same" only inside half a step; up to a step the gap is named (0.6-0.8 steps read "about the same" before 2026-11-27)
+    note: gapSteps == null ? null : Math.abs(gapSteps) < 0.5 ? 'the 2Y and the futures strip price about the same amount of policy'
+      : Math.abs(gapSteps) < 1 ? `the 2Y prices about ${Math.abs(gapSteps).toFixed(1)} of a 25bp step ${gapSteps > 0 ? 'more' : 'less'} than the futures strip: close, not the same`
       : gapSteps > 0 ? 'the 2Y prices more policy than the futures strip: term premium, or a path beyond the front months'
         : 'the futures strip prices more near-term policy than the 2Y does: the 2Y expects it to unwind later or is carrying negative term premium' };
   const term = tp?.value != null ? { value: tp.value, chg20d: tp.chg20d ?? null, asOf: tp.asOf ?? null } : null;

@@ -1,7 +1,7 @@
 // Macro engines board: the shaping (macroEnginesCore.js) and the drawing (macroEngines.js), on synthetic releases.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { familyOf, cadenceOf, buildMacroBoard, flattenAhead, FAMILIES, CCYS } from './macroEnginesCore.js';
+import { familyOf, cadenceOf, buildMacroBoard, flattenAhead, FAMILIES, CCYS, unitOf, seriesCadence, ambiguousSeries, isStopped } from './macroEnginesCore.js';
 import { cellHtml, drawerHtml, boardHtml, defaultPick, heat, sparkSvg } from './macroEngines.js';
 globalThis.deskAccessState = { role: 'owner' };   // the owner sees the links to the main site (js/terminal/links.test.mjs covers the viewer)
 
@@ -157,4 +157,49 @@ test('buildMacroBoard: z is shown only when it agrees with the beat or miss; an 
   assert.equal(c.strength, 0); assert.equal(c.z, null);
   assert.match(cellHtml('CHF', FAMILIES.find(f => f.key === 'gdp'), c), /=/);
   assert.equal(heat(c), 'transparent');
+});
+
+// ── review 2026-11-27: the live calendar's titles, the freshness guard, units ──
+test('familyOf: the Nasdaq titles that carry the live prints map to their families', () => {
+  assert.equal(familyOf('HCOB Eurozone Manufacturing PMI').family, 'pmi');
+  assert.equal(familyOf('S&P Global Manufacturing PMI').family, 'pmi');
+  assert.deepEqual(familyOf('Monthly CPI Indicator'), { family: 'cpi', rank: 1 });
+  assert.deepEqual(familyOf('National CPI'), { family: 'cpi', rank: 1 });
+  assert.equal(familyOf('Tokyo Core CPI').family, 'cpi');
+  assert.equal(familyOf('Retail Sales').family, 'retail');
+  assert.equal(familyOf('PPI Output').family, 'ppi');
+  assert.equal(familyOf('Monthly GDP 3m/3m Change').family, 'gdp');
+  assert.equal(familyOf('Household Confidence').family, 'confidence');
+  assert.equal(familyOf('HCOB Germany Manufacturing PMI'), null, 'a member state is not the euro-area headline');
+});
+test('unitOf and seriesCadence: the unit from the title, the cadence from the gaps between prints', () => {
+  assert.equal(unitOf('CPI m/m'), 'm/m'); assert.equal(unitOf('Final CPI y/y'), 'y/y'); assert.equal(unitOf('Monthly CPI Indicator'), 'y/y'); assert.equal(unitOf('Ivey PMI'), '');
+  const q = [0, 91, 182, 273].map(d => NOW - d * 864e5), m = [0, 30, 61, 92].map(d => NOW - d * 864e5);
+  assert.equal(seriesCadence('Retail Sales', q), 'quarterly'); assert.equal(seriesCadence('Retail Sales', m), 'monthly');
+  assert.equal(seriesCadence('GDP', [NOW]), 'quarterly', 'one print: the title rule, and a bare GDP is quarterly');
+  assert.ok(ambiguousSeries([{ ms: NOW, actual: '-1.5%' }, { ms: NOW, actual: '0.8%' }]), 'two values on one release day under one title');
+  assert.ok(!ambiguousSeries([{ ms: NOW, actual: '1.3%' }, { ms: NOW - 864e5, actual: '1.3%' }]));
+});
+test('buildMacroBoard: a dead ForexFactory series gives way to the live Nasdaq one; a print past twice its cadence is "feed stopped", never current', () => {
+  const rows = [
+    ...series('EU', 'Flash Manufacturing PMI', '48.7', '48.0', { ageDays: 613 }),                       // ForexFactory, no actual since 2025
+    ...series('EU', 'HCOB Eurozone Manufacturing PMI', '52.9', '52.7', { ageDays: 4 }),                  // Nasdaq, this week
+    ...series('FR', 'PPI', '8.2%', '1.0%', { ageDays: 1 }),                                             // France under a generic title: not the EUR cell
+    ...series('US', 'ISM Manufacturing PMI', '49.0', '49.5', { ageDays: 605 }),                          // proprietary, stopped reaching the store
+    { country: 'CA', event: 'Retail Sales', impact: 'High', ms: D(7), estimate: null, prev: null, actual: '-1.5%' },
+    { country: 'CA', event: 'Retail Sales', impact: 'High', ms: D(7), estimate: null, prev: null, actual: '0.8%' },
+    ...series('CA', 'Core Retail Sales', '1.0%', '0.7%', { ageDays: 7 }),
+  ];
+  const b = buildMacroBoard({ rows, now: NOW });
+  assert.equal(b.cells.EUR.pmi.event, 'HCOB Eurozone Manufacturing PMI'); assert.equal(b.cells.EUR.pmi.stopped, false);
+  assert.equal(b.cells.EUR.ppi.status, 'none', 'the French PPI is not the euro-area PPI');
+  assert.equal(b.cells.USD.pmi.stopped, true); assert.deepEqual(b.coverage.USD.stopped, ['PMI / ISM']);
+  assert.equal(b.cells.CAD.retail.event, 'Core Retail Sales', 'the ambiguous same-day "Retail Sales" pair is not used');
+  const f = FAMILIES.find(x => x.key === 'pmi'), html = cellHtml('USD', f, b.cells.USD.pmi);
+  assert.match(html, /feed stopped/); assert.doesNotMatch(html, />49\.0</, 'the old print is not the face of the cell');
+  assert.equal(defaultPick(b)?.ccy === 'USD' && defaultPick(b)?.fam === 'pmi', false);
+  assert.ok(isStopped({ ageDays: 612, cadence: 'monthly' }), 'a board served before the flag existed is still guarded');
+  assert.ok(!isStopped({ ageDays: 73, cadence: 'quarterly' }));
+  assert.match(drawerHtml(b, 'EUR', 'pmi'), /newest first/);
+  assert.match(drawerHtml(b, 'EUR', 'pmi'), /20\d\d</, 'the drawer dates carry the year');
 });

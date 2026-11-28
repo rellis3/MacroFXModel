@@ -97,3 +97,10 @@ test('nothing in, nothing claimed', () => {
   }
   assert.deepEqual(meetingProbabilities(PULL, []).rows, []);
 });
+
+test('thin = where liquidity runs out, not one quiet 15-minute bar on a front contract', async () => {
+  const { thinFlags } = await import('./fedPathZq.js');
+  const rows = [4, 50, 15, 22, 6, 2, 4].map((v, i) => ({ meeting: `m${i}`, volumeHint: v }));
+  assert.deepEqual(thinFlags(rows).map(r => r.thin), [false, false, false, false, false, true, true], 'December at 4 with January at 50 is a quiet bar (2026-11-27)');
+  assert.equal(thinFlags([{ meeting: 'x', thin: true }])[0].thin, true, 'no volume: the flag it carries stands');
+});

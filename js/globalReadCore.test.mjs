@@ -234,3 +234,23 @@ _t('untested and null are labelled apart', () => {
   _assert.match(_TL.untested, /never tested/);
   _assert.equal(_REG_A.find(r => r.id === 'post-fomc').tier, 'descriptive');
 });
+
+// ── review 2026-11-27: a scenario that is already true, and a 25% that is a definition ──
+import { scenarios as _sc, isLinesDefault as _isDef, tradePlan as _tp } from './globalReadCore.js';
+_t('with the VIX curve already inverted the base case is not "no inversion within 5 sessions"', () => {
+  const on = _sc({ envLabel: 'Risk-off', ax: {}, persist: { vixInvert5d: 0.09 }, vixInvNow: true });
+  _assert.ok(!on.some(s => /no VIX inversion/.test(s.name)), on.map(s => s.name).join(' | '));
+  _assert.match(on[0].name, /already inverted/);
+  _assert.equal(on[0].p, null);
+  const off = _sc({ envLabel: 'Calm', ax: {}, persist: { vixInvert5d: 0.09 }, vixInvNow: false });
+  _assert.match(off[0].name, /no VIX inversion/);
+  _assert.equal(off[0].p, 0.91);
+});
+_t('the chosen lines with nothing on top are a 25% by construction, and the plan says so', () => {
+  const rv = rangeView({ sym: 'EURUSD', lines: { source: 'chosen', hl_p50: 0.5, hl_p75: 0.7 } }, {});
+  _assert.equal(rv.pAbove75, 0.25);
+  _assert.ok(_isDef(rv));
+  const plan = _tp({ sym: 'EURUSD', range: rv, behaviour: { label: 'normal' }, direction: { pUp: 0.5, shown: [] } });
+  _assert.match(plan.lines, /by construction, not a call/);
+  _assert.equal(_tp({ sym: 'NZDUSD', range: null, behaviour: { label: 'unknown' }, direction: { pUp: 0.5, shown: [] } }).stance, 'NO RANGE READ');
+});

@@ -41,6 +41,17 @@ const series = { dates: ['2026-09-08', '2026-09-15', '2026-09-22', '2026-09-29',
 const r = S.cotStateFor({ row: { specSharePct: 96, specShare: 36, reportDate: '2026-10-13' }, series, bars });
 ok('cotStateFor: uptrend, 4-week pullback, share down over 4 reports -> D', r.state === 'D' && r.ev === 'cot-crowding-p5' && r.share4 === 41, JSON.stringify({ s: r.state, m13: r.move13, m4: r.move4, s4: r.share4 }));
 ok('cotStateFor: no row -> null', S.cotStateFor({ row: null }) === null);
+// the USDCHF row in franc terms beside it (the analysts read "long, 91st pct, +15.6" as crowded long CHF on 2026-11-27)
+{ const v = S.ccyView('CHF', { side: 'long', pct: 91, share: 15.63 });
+  ok('ccyView: long USDCHF at the 91st percentile is SHORT the franc at the 9th, -15.6% of OI', v.ccySide === 'short' && v.ccyPct === 9 && v.ccyShare === -15.63 && /net SHORT the Swiss franc \(9th percentile/.test(v.ccyReads), JSON.stringify(v));
+  ok('ccyView: rows already in currency terms get nothing extra', Object.keys(S.ccyView('EUR', { side: 'long', pct: 80 })).length === 0); }
+
+// next report: Friday for the Tuesday before, the Monday after in a federal-holiday week
+{ const a = S.nextCotRelease('2026-11-17'), b = S.nextCotRelease('2026-11-10'), c = S.nextCotRelease('2026-12-15');
+  ok('Thanksgiving week: the 24 Nov report is due Mon 30 Nov', a?.dataDate === '2026-11-24' && a.release === '2026-11-30' && a.delayed, JSON.stringify(a));
+  ok('an ordinary week: Friday', b?.release === '2026-11-20' && !b.delayed, JSON.stringify(b));
+  ok('Christmas Friday: Monday 28 Dec', c?.release === '2026-12-28' && c.delayed, JSON.stringify(c));
+  ok('no report date -> null', S.nextCotRelease(null) === null); }
 
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);

@@ -29,6 +29,7 @@ test('mergedLevels: every level once, highest first, near ones merged, distance 
   const at = p => rows.find(r => r.price === p);
   assert.ok(at(208.7).labels.includes('forecast p50 up'));
   assert.ok(at(208.7).labels.includes("today's high"));      // 208.66 is within 0.08u of 208.7
+  assert.match(ladderHtml(rows, m), /today&#39;s high 208\.66|today's high 208\.66/, 'a merged level keeps its own price in the label (27 Nov: "today\'s open" drawn at 1.42483, true 1.42464)');
   assert.ok(rows.some(r => r.labels.includes('plan invalidation')));
   assert.ok(rows.some(r => r.labels.includes("yesterday's high")));
   assert.equal(at(209.7).dU, 1.83);

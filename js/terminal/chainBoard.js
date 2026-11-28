@@ -83,8 +83,9 @@ export function termPremiumSplit(fred, win = 20) {
 }
 
 export const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-export const winWord = w => (w === 'live' ? (isLiveFrozen() ? 'last session' : 'live') : w === 1 ? '1-day' : `${w}-day`);
-export const overWord = w => (w === 'live' ? (isLiveFrozen() ? 'over the last session' : 'since the last close') : `over ${w} day${w === 1 ? '' : 's'}`);
+// 5 and 20 count SESSIONS (js/macroChange.js seriesDeltas on a daily series), the same 20 Insight counts: the words say so
+export const winWord = w => (w === 'live' ? (isLiveFrozen() ? 'last session' : 'live') : w === 1 ? '1-day' : `${w}-session`);
+export const overWord = w => (w === 'live' ? (isLiveFrozen() ? 'over the last session' : 'since the last close') : w === 1 ? 'over 1 day' : `over ${w} sessions`);
 
 /** Short pill labels that fit between the chips (today.html's, so both pages name a link the same). */
 export const EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear', 'giltgap-gbpusd': 'gilts→£', 'bundgap-eurusd': 'bunds→€', 'jgbgap-usdjpy': 'JGBs→yen', 'crack-bei': 'crack→infl.', 'hy-nq': 'HY→growth', 'hy-spx': 'HY→broad', 'smh-nq': 'chips→Nasdaq', 'oil-xle': 'oil→energy', 'us10y-xlre': '10Y→property', 'move-vix': 'bond fear→VIX', 'hy-ccc': 'HY→CCC', 'ccc-nq': 'CCC→growth', 'dxy-emdollar': '$→EM FX', 'emdollar-copper': 'EM→Cu', 'emoas-hy': 'EM credit→HY' };
@@ -125,8 +126,16 @@ export const CHAIN_ICON = {
   _: '<circle cx="12" cy="12" r="4"/>',
 };
 
-export const VCLS = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'none', notlive: 'none' };
-export const VWORD = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'no data', notlive: 'not live' };
+export const VCLS = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'none', notlive: 'none', assumed: 'none' };
+export const VWORD = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'no data', notlive: 'not live', assumed: 'assumed, not judged' };
+
+/**
+ * Chips whose number rises when the thing named on the chip FALLS. The EM chip is the Fed's dollar index against EM
+ * currencies, so +1.1% means EM currencies fell: its colour (and a few words) follow what it means, not the raw sign.
+ */
+export const CHIP_INVERTED = { emdollar: 'EM FX' };
+/** The direction a chip is coloured by: the node's own move, flipped for an inverted chip. */
+export const chipDir = (k, dir) => (CHIP_INVERTED[k] && (dir === 'up' || dir === 'down') ? (dir === 'up' ? 'down' : 'up') : dir);
 
 /** A chip's short name (today.html's shortening, so the two pages read the same). */
 export const shortLabel = n => n.label.replace(/ \(.*\)$/, '').replace('Inflation expectations', 'Infl. pricing').replace('Credit spreads', 'Credit (HY)').replace('Growth stocks', 'Nasdaq').replace('Broad stocks', 'S&P 500').replace('Fear gauge', 'VIX').replace('Funding', 'Funding (repo)');
@@ -142,7 +151,8 @@ export function chainSvg(links, { win = 20, nodeSel = null, linkSel = null, show
   const POS = CHAIN_LAYOUT, PX = 232, PY = 98, BW = 156, BH = 46, OX = 14, OY = 12, R = 14;
   const ROWS = Math.max(...Object.values(POS).map(p => p[1])) + 1, W = OX * 2 + PX * 5 + BW, H = OY * 2 + PY * (ROWS - 1) + BH;
   const cx = k => OX + POS[k][0] * PX + BW / 2, cy = k => OY + POS[k][1] * PY + BH / 2;
-  const ends = {}; for (const l of links) { if (l.a?.key) ends[l.a.key] = l.a; if (l.b?.key) ends[l.b.key] = l.b; }
+  // a chip shows its node's OWN latest move (a0/b0); a link's a/b may be re-measured to a common end date for the verdict
+  const ends = {}; for (const l of links) { const A = l.a0 ?? l.a, B = l.b0 ?? l.b; if (A?.key) ends[A.key] = A; if (B?.key) ends[B.key] = B; }
   const wrongEnd = new Set(links.filter(l => l.verdict === 'broken').map(l => l.b?.key));
   const clip = (x0, y0, x1, y1) => { const dx = x1 - x0, dy = y1 - y0, tx = dx ? (BW / 2) / Math.abs(dx) : Infinity, ty = dy ? (BH / 2) / Math.abs(dy) : Infinity, t = Math.min(tx, ty); return [x0 + dx * t, y0 + dy * t]; };
   const show = l => showQuiet || l.verdict === 'holding' || l.verdict === 'broken' || l.id === linkSel || (nodeSel && (l.a?.key === nodeSel || l.b?.key === nodeSel));
@@ -162,10 +172,12 @@ export function chainSvg(links, { win = 20, nodeSel = null, linkSel = null, show
     const n = CHAIN_NODES[k]; if (!n) return '';
     const e = ends[k], x = cx(k) - BW / 2, y = cy(k) - BH / 2, stale = win === 'live' && e?.basis === 'last-print';
     const moved = e?.delta != null && e.moved && !stale;
-    let ring = stale ? 'none' : wrongEnd.has(k) ? 'wrong' : moved ? (e.dir === 'up' ? 'up' : 'dn') : e?.delta == null ? 'none' : 'quiet';
-    const tint = !stale && ring === 'quiet' ? tintStrength(e) : null; if (tint != null) ring = e.dir === 'up' ? 'tu' : 'td';
-    const dirCls = !stale && e?.dir ? (e.dir === 'up' ? 'up' : 'dn') : '';
-    const val = e?.delta == null ? 'no data' : stale ? `${e.text} · last print` : `${e.text} ${moved ? arrow(e.dir) : '· quiet'}`;
+    const cdir = chipDir(k, e?.dir);
+    let ring = stale ? 'none' : wrongEnd.has(k) ? 'wrong' : moved ? (cdir === 'up' ? 'up' : 'dn') : e?.delta == null ? 'none' : 'quiet';
+    const tint = !stale && ring === 'quiet' ? tintStrength(e) : null; if (tint != null) ring = cdir === 'up' ? 'tu' : 'td';
+    const dirCls = !stale && cdir ? (cdir === 'up' ? 'up' : 'dn') : '';
+    // an inverted chip's arrow points the way the named thing went ("+1.6% · EM FX ↓": the index up, EM currencies down)
+    const val = e?.delta == null ? 'no data' : stale ? `${e.text} · last print` : moved && CHIP_INVERTED[k] ? `${e.text} · ${CHIP_INVERTED[k]} ${arrow(cdir)}` : `${e.text} ${moved ? arrow(e.dir) : '· quiet'}`;
     return `<g class="cg-n ${ring}${stale ? ' stale' : ''}${nodeSel === k ? ' sel' : ''}"${tint != null ? ` style="--s:${tint.toFixed(2)}"` : ''} data-node="${k}" tabindex="0" role="button" aria-label="${esc(`${n.label}: ${val}`)}"><rect class="cg-chip" x="${x}" y="${y}" width="${BW}" height="${BH}" rx="23"/><circle class="cg-ring" cx="${x + 23}" cy="${y + BH / 2}" r="${R}"/><g class="cg-ic" transform="translate(${x + 23 - 8},${y + BH / 2 - 8}) scale(0.667)">${CHAIN_ICON[k] ?? CHAIN_ICON._}</g><text class="cg-nl" x="${x + 44}" y="${y + 19}">${esc(shortLabel(n))}</text><text class="cg-nv ${moved ? dirCls : ''}" x="${x + 44}" y="${y + 35}">${esc(val)}</text></g>`;
   }).join('');
   const defs = `<defs><filter id="cg-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.2"/></filter>${['hold', 'broke', 'quiet', 'none'].map(c => `<marker id="cg-ah-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 Z" class="cg-ah ${c}"/></marker>`).join('')}</defs>`;
@@ -188,6 +200,26 @@ export function chainSnapshot({ links, vals, win, policy = null, events = [], se
   // the Fed path against the yields (js/fedPathYieldsCore.js chainLine): a rule-built sentence over THIS window, "priced" not forecast
   const pol = [pol0, fedPath ? `  FED FUTURES PATH, ${win}-day: ${fedPath}` : null].filter(Boolean).join('\n') || null;
   return { asOf: new Date(now).toISOString(), window: win, moved: null, chain: chainForPrompt(links, win) || null, ratesSplit: null, policy: pol, assets: assets || null, risk: null, equities: null, setups, ccy: null, divergences: null, caveats, events: evs, evidence: null };
+}
+
+/**
+ * The Chain tab's week ahead and timeline calendar: /api/events (ForexFactory, which now also carries the rated forward rows) merged with
+ * /api/calendar-ahead, ONE copy per release and time. A forward Nasdaq row counts only when it carries ForexFactory's own rating (`ratedAs`,
+ * js/calendarAhead.js): an unrated one had its impact guessed by a word pattern, which called every German state CPI and every Canadian GDP
+ * line "High" and listed each of them twice or four times (one row per period). Returns { rows, dropped } (dropped = unrated rows left out).
+ */
+export function weekAheadRows(ev = [], ahead = [], { now = Date.now(), days = 7, countries = null, high = true } = {}) {
+  const ms = e => Number(e?.ms ?? Date.parse(String(e?.time ?? '').replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(String(e?.time ?? '')) ? '' : 'Z')));
+  const rated = (ahead ?? []).filter(e => e?.ratedAs), dropped = (ahead ?? []).length - rated.length;
+  const seen = new Map();
+  for (const e of [...(ev ?? []), ...rated]) {
+    const t = ms(e); if (!Number.isFinite(t) || t <= now || t > now + days * 864e5) continue;
+    if (high && !/high/i.test(e.impact ?? '')) continue;
+    if (countries && !countries.has(e.country)) continue;
+    const k = `${e.country}|${String(e.event ?? '').trim().toLowerCase()}|${t}`, had = seen.get(k);
+    if (!had || (!had.estimate && e.estimate)) seen.set(k, { ...e, ms: t });
+  }
+  return { rows: [...seen.values()].sort((a, b) => a.ms - b.ms), dropped };
 }
 
 export { summariseChain, CHAIN_NODES, CHAIN_LAYOUT };

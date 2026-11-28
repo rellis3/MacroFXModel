@@ -31,10 +31,23 @@ test('the payload carries the CSI, the Baa spread with its two percentiles, glob
 
 test('the sentence is rule-built, names what it measured and never says forecast', () => {
   const s = describe(buildCreditLiquidity({ ...F(), now: NOW }));
-  assert.match(s, /Credit Stress Index is −0\.89: credit conditions are easier than the past year/);
+  assert.match(s, /Credit Stress Index \(credit spreads plus the VIX\) is −0\.89: credit conditions are easier than the past year/);
   assert.match(s, /Baa over the 10-year Treasury is \d+bp/);
   assert.match(s, /global central-bank liquidity is falling/);
   assert.doesNotMatch(s, /forecast|will|signal|buy|sell|long|short/i);
+});
+
+test('a reading carried by the VIX leg says so, with the credit-only part; the gate credit z is the HY spread, shown stress-positive', () => {
+  const cl = buildCreditLiquidity({ ...F(), now: NOW });
+  cl.csi = { ...cl.csi, value: 0.61, word: csiWord(0.61), components: { quality: -0.68, credit: -0.31, vix: 2.83 } };
+  assert.match(describe(cl), /driven by the VIX leg; the credit legs alone are −0\.49/);
+  cl.gateZ = { asOf: '2026-11-27', netliq: -0.03, curve: -1.68, credit: -3.4 };
+  const html = boardHtml(cl, { E: { 'credit-board': { ok: true, rows: [{ label: 'US high yield', pctile1y: 100 }] } } });
+  assert.match(html, /The VIX leg drives this reading/);
+  assert.match(html, /Credit legs only/);
+  assert.match(html, /US high yield\); the Moody's Baa measures here are not/);
+  assert.match(html, /US high-yield spread \(ICE\)/); assert.match(html, /\+3\.40/);
+  assert.doesNotMatch(html, /Credit \(Baa − Aaa\)|globalLiquidityEngine\.js|card above|board above/);
 });
 
 test('with no CSI it says so instead of drawing', () => {

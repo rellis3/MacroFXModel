@@ -22,7 +22,7 @@ export const WINDOWS = [20, 60, 120];
 // the correlation build's OANDA names -> the terminal's market ids
 const SYM_TO_ID = { XAUUSD: 'GOLD', XAGUSD: 'SILVER', XPTUSD: 'PLATINUM', XCUUSD: 'COPPER', WTICO_USD: 'WTI', BCO_USD: 'BRENT', NAS100_USD: 'NQ', SPX500_USD: 'SPX500', US30_USD: 'US30', US2000_USD: 'US2000' };
 export const idOf = sym => SYM_TO_ID[sym] ?? String(sym ?? '').replace(/_/g, '');
-export const LABEL = { GOLD: 'Gold', SILVER: 'Silver', PLATINUM: 'Platinum', COPPER: 'Copper', WTI: 'WTI', BRENT: 'Brent', NQ: 'Nasdaq 100', SPX500: 'S&P 500', US30: 'Dow', US2000: 'Russell 2000' };
+export const LABEL = { US2Y: 'US 2y yield', US10Y: 'US 10y yield', GOLD: 'Gold', SILVER: 'Silver', PLATINUM: 'Platinum', COPPER: 'Copper', WTI: 'WTI', BRENT: 'Brent', NQ: 'Nasdaq 100', SPX500: 'S&P 500', US30: 'Dow', US2000: 'Russell 2000' };
 export const labelOf = id => (LABEL[id] ?? (/^[A-Z]{3}\*$/.test(id) ? `${id.slice(0, 3)} basket` : /^[A-Z]{6}$/.test(id) ? `${id.slice(0, 3)}/${id.slice(3)}` : id));
 // each currency's USD leg and the sign that turns it into "the currency's value in dollars"
 const LEG = { EUR: ['EURUSD', 1], GBP: ['GBPUSD', 1], AUD: ['AUDUSD', 1], NZD: ['NZDUSD', 1], JPY: ['USDJPY', -1], CAD: ['USDCAD', -1], CHF: ['USDCHF', -1] };
@@ -42,11 +42,25 @@ export function toReturns(closes = []) {
   return out;
 }
 
-/** The panel as { dates, ids, ret: {id: returns[]}, trend, n, cache }. */
-export function series(panel) {
+/**
+ * A yield series ([[date, percent], ...], FRED) as daily CHANGES in percentage points on the panel's dates: the change
+ * from the last day both had a print. A day with no print (a US holiday) is null.
+ */
+export function yieldChanges(dates, obs) {
+  const by = new Map((obs ?? []).filter(o => Array.isArray(o) && Number.isFinite(+o[1])).map(o => [String(o[0]).slice(0, 10), +o[1]]));
+  const out = new Array(dates.length).fill(null); let prev = null;
+  for (let i = 0; i < dates.length; i++) { const v = by.get(dates[i]); if (v == null) { prev = null; continue; } if (prev != null) out[i] = v - prev; prev = v; }
+  return out;
+}
+/**
+ * The panel as { dates, ids, ret: {id: returns[]}, trend, n, cache }. `yields` ({ US2Y: [[date, %], ...], US10Y }) adds
+ * those as daily changes (ret only, not ids: a yield is a factor, not a market to trade or hedge with).
+ */
+export function series(panel, { yields = null } = {}) {
   const dates = panel?.dates ?? [];
   const ret = {}, ids = [];
   for (const sym of panel?.syms ?? []) { const id = idOf(sym); ids.push(id); ret[id] = toReturns(panel.closes?.[sym] ?? []); }
+  for (const [id, obs] of Object.entries(yields ?? {})) { const ch = yieldChanges(dates, obs); if (ch.filter(fin).length >= 60) ret[id] = ch; }
   return { dates, ids, ret, trend: panel?.trend ?? dates.map(() => null), n: dates.length, cache: new Map() };
 }
 
@@ -115,12 +129,16 @@ export function matrix(S, ids, w, end = S.n - 1) {
   return { ids, m, w, end };
 }
 
-/** What a change from `base` to `now` means: flipped sign, strengthening, weakening or steady. */
+/**
+ * What a change from `base` to `now` means: flipped (the sign changed with both at least `flip`), else strengthening or
+ * weakening when the correlation moved by `big` or more (stronger or weaker in size), else steady. Judged on the move
+ * itself, not on the change in size alone: -0.05 to +0.18 moved 0.23 and is strengthening, not steady (review 2026-11-27).
+ */
 export function changeLabel(now, base, { big = 0.15, flip = 0.2 } = {}) {
   if (!fin(now) || !fin(base)) return 'n/a';
   if (Math.sign(now) !== Math.sign(base) && Math.abs(now) >= flip && Math.abs(base) >= flip) return 'flipped';
-  const d = Math.abs(now) - Math.abs(base);
-  return d >= big ? 'strengthening' : d <= -big ? 'weakening' : 'steady';
+  if (Math.abs(now - base) < big) return 'steady';
+  return Math.abs(now) >= Math.abs(base) ? 'strengthening' : 'weakening';
 }
 /** Every pair of `ids`: the window-w correlation now against the 120-day, ranked by the size of the change. */
 export function changes(S, ids, { w = 20, base = 120, end = S.n - 1, top = 12 } = {}) {
@@ -179,7 +197,23 @@ export function rankCandidates(S, tx, cands, { w = 60, end = S.n - 1, inverseOnl
       ratio: fin(sdT) && fin(sdC) && sdC > 0 ? Math.abs(rho) * sdT / sdC : null, varCut: rho * rho, score: hedgeScore(rho, st.share),
       ratioEwma: (() => { const b = ewmaBeta(tx, cx, end); return fin(b) ? Math.abs(b) : null; })(), oos: oosCut(tx, cx, end, { w }), oosEwma: oosCut(tx, cx, end, { w, kind: 'ewma' }) });
   }
-  return rows.sort((a, b) => b.score - a.score || Math.abs(b.rho) - Math.abs(a.rho));
+  // a candidate whose ratio removed less than nothing on the days it had not seen (held up < 0) ranks after every other one (review 2026-11-27: CAD/JPY "held up -11%" ranked)
+  return rows.sort((a, b) => failedOos(a) - failedOos(b) || b.score - a.score || Math.abs(b.rho) - Math.abs(a.rho));
+}
+/** 1 when the hedge ratio added variance out of sample (held up below 0), else 0. */
+export const failedOos = r => (fin(r?.oos?.cut) && r.oos.cut < 0 ? 1 : 0);
+/**
+ * Pairs whose window-w correlation now sits outside the p10-p90 band of its own last year of window-w correlations
+ * (sampled every 5 days): [{ a, b, now, p10, p90, side: 'below' | 'above', by }], furthest outside first.
+ */
+export function extremes(S, ids, { w = 60, top = 6 } = {}) {
+  const out = [];
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+    const st = stability(S, ids[i], ids[j], w); if (!fin(st.now) || !fin(st.p10) || !fin(st.p90)) continue;
+    if (st.now < st.p10) out.push({ a: ids[i], b: ids[j], now: st.now, p10: st.p10, p90: st.p90, side: 'below', by: st.p10 - st.now });
+    else if (st.now > st.p90) out.push({ a: ids[i], b: ids[j], now: st.now, p10: st.p10, p90: st.p90, side: 'above', by: st.now - st.p90 });
+  }
+  return out.sort((x, y) => y.by - x.by).slice(0, top);
 }
 export const rankHedges = (S, target, cands, opts = {}) => rankCandidates(S, retOf(S, target), cands.filter(c => c !== target), opts);
 
@@ -216,11 +250,15 @@ export function bookHedges(S, exposure, cands, opts = {}) {
 // ── factors ──
 export const FACTORS = [
   { k: 'DXY', label: 'Dollar (DXY)', note: 'the ICE dollar index rebuilt from its legs (SEK left out, weights renormalised)' },
-  { k: 'RATES', label: 'Rates proxy', id: 'USDJPY', note: 'USD/JPY, the old page\'s rates proxy: no yield series in this build' },
+  { k: 'RATES', label: 'USD/JPY (rates proxy)', id: 'USDJPY', note: 'USD/JPY standing in for rates: the US 2y yield did not load' },
   { k: 'RISK', label: 'Risk (S&P 500)', id: 'SPX500', note: 'S&P 500 daily return' },
   { k: 'OIL', label: 'Oil (WTI)', id: 'WTI', note: 'WTI crude daily return' },
 ];
 export const factorRet = (S, f) => retOf(S, f.k === 'DXY' ? 'DXY' : f.id);
+// the rates factor is the US 2y yield's daily change when the panel carries it (/api/corr-terminal yields, FRED DGS2); USD/JPY only as the fallback
+const RATES_2Y = { k: 'RATES', label: 'US 2y yield', id: 'US2Y', note: 'the daily change in the US 2-year Treasury yield (FRED), in percentage points: beta = % move per 1 pp of yield' };
+/** The factors for this panel: RATES is the US 2y yield when it loaded, else USD/JPY labelled as the proxy. */
+export const factorsOf = S => FACTORS.map(f => (f.k === 'RATES' && S?.ret?.US2Y ? RATES_2Y : f));
 
 /** OLS beta and correlation of y on x over the window. */
 export function betaWin(y, x, end, w) {
@@ -264,7 +302,7 @@ export function oosCut(y, x, end, { w = 60, test = 250, kind = 'ols' } = {}) {
 
 /** Per instrument: each factor's beta and correlation, the dominant factor (largest r^2) and every factor's r^2 share. */
 export function factorBoard(S, ids, { w = 60, end = S.n - 1 } = {}) {
-  const fr = FACTORS.map(f => factorRet(S, f));
+  const FACTORS = factorsOf(S), fr = FACTORS.map(f => factorRet(S, f));
   return ids.map(id => {
     const y = retOf(S, id); if (!y) return { id, f: {}, dom: null, shares: {} };
     const f = {}; let tot = 0;

@@ -91,6 +91,10 @@ test('the 2Y proxy is reconciled against the futures strip and a gap of a step i
   const far = BOARD(); far.policy.hikesEquivalent = 3;
   const r2 = C.fedPathYields({ fp: FP(), board: far, now: NOW });
   assert.equal(r2.proxy.diverges, true); assert.match(r2.proxy.note, /prices more policy than the futures strip/);
+  // "about the same" only inside half a step; between half and one step the gap is named
+  const mid = BOARD(); mid.policy.hikesEquivalent = r.proxy.strip + 0.7;
+  const r3 = C.fedPathYields({ fp: FP(), board: mid, now: NOW });
+  assert.equal(r3.proxy.diverges, false); assert.match(r3.proxy.note, /0\.7 of a 25bp step more than the futures strip: close, not the same/);
 });
 
 test('Atlanta window odds are windows, with deltas in percentage points', () => {

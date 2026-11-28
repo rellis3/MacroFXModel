@@ -121,3 +121,15 @@ test('fallbackChip: a flat or missing desk call shows the engine lean; a real ca
   assert.equal(V.fallbackChip(null, 'FLAT'), '');
   assert.equal(V.fallbackChip({ dir: null }, 'FLAT'), '');
 });
+
+test('the Macro section: plain weight names, the oldest input per row, the desk book side, and R at its cap said in words', () => {
+  const r = rec();
+  const desk = Object.fromEntries(Object.keys(r.currencies).map(c => [c, { bias: -(V.engineSign(r.currencies[c]) || 1) }]));
+  const h = V.macroSectionHtml(r, { desk });
+  assert.match(h, /Policy path/); assert.match(h, /Real yield/); assert.doesNotMatch(h, /<span title="[a-zA-Z]+">(realYield|fedPath|vixTerm|spxTrend)</, 'no camelCase key as a label');
+  assert.match(h, /Oldest input/); assert.match(h, />20d</, 'the data driver is 20 days old');
+  assert.match(h, /book differs/);
+  const capped = { ...r, risk: { score: -2, coverage: 1, drivers: ['vixLevel', 'vixTerm', 'credit', 'spxTrend'].map(k => ({ key: k, label: k, d: -2, contrib: -0.5, reading: 'x' })) } };
+  assert.match(V.macroSectionHtml(capped), /Every risk input is at its cap/);
+  assert.doesNotMatch(V.macroSectionHtml(r), /Every risk input is at its cap/);
+});

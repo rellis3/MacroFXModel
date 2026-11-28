@@ -44,6 +44,10 @@ const dim = age => (age != null && age > STALE_DAYS ? ' style="opacity:.55"' : '
  */
 export function boardHtml(rb, fp, gy, h = {}) {
   if (!rb?.ok) return '';
+  // 5d / 20d = 5 and 20 trading days (7 and 28 calendar days), the windows every other rates card uses; a payload from before that fix carries them
+  // as chg7d / chg28d
+  const win = x => ({ ...x, chg5d: x.chg7d ?? x.chg5d, chg20d: x.chg28d ?? x.chg20d });
+  rb = { ...rb, tenors: (rb.tenors ?? []).map(win), slopes: (rb.slopes ?? []).map(win) };
   const esc = h.esc ?? defEsc, sgn = h.sgn ?? defSgn, spk = h.spk ?? (() => '');
   const bp = v => (v == null ? '–' : `${v > 0 ? '+' : ''}${Math.round(v)}bp`);
   const pct = (p, n) => (p == null ? '–' : `${p}<span class="muted" style="font-size:10px"> n${n}</span>`);
@@ -56,7 +60,7 @@ export function boardHtml(rb, fp, gy, h = {}) {
   const curveCard = `<div class="card"><div class="ch"><span class="lbl">US Treasury curve</span><span class="r muted">${esc(rb.asOf)}${ageChip(rb.asOf, rb.tenors[0]?.ageDays)}</span></div>
 <div class="grid g4">${tenorCells}</div>
 <div style="margin-top:10px">${curveSvg(rb.curve, esc)}</div>
-<p class="muted" style="font-size:12px">Constant-maturity yields, daily (FRED H.15), so the last print is the prior close.</p></div>`;
+<p class="muted" style="font-size:12px">Constant-maturity yields, daily (FRED H.15), so the last print is the prior close. 5d and 20d are 5 and 20 trading days${rb.curve?.w1?.date && rb.curve?.m1?.date ? ` (against ${esc(rb.curve.w1.date)} and ${esc(rb.curve.m1.date)})` : ''}, the same windows as the Fed-path and curve cards.</p></div>`;
 
   const slopeRows = rb.slopes.map(s => `<tr${dim(s.ageDays)}><td><b>${esc(s.k)}</b> <span class="muted">${esc(s.label)}</span>${s.inverted ? ' <span class="chip dn">inverted</span>' : ''}</td><td class="n mono">${bp(s.bp)}</td><td class="n mono">${bp(s.chg1d)}</td><td class="n mono">${bp(s.chg5d)}</td><td class="n mono">${bp(s.chg20d)}</td><td class="n mono">${pct(s.pct1y, s.n1y)}</td><td class="n mono">${pct(s.pct5y, s.n5y)}</td><td>${spk(s.spark, 90, 22)}</td></tr>`).join('');
   const slopeCard = `<div class="card"><div class="ch"><span class="lbl">Slopes · where each sits in its own history</span><span class="r muted">${esc(rb.slopes[0]?.asOf ?? '')}${ageChip(rb.slopes[0]?.asOf, rb.slopes[0]?.ageDays)}</span></div>

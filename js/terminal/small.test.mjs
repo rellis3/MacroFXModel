@@ -27,7 +27,7 @@ test('flagRows: the VIX curve flag carries a validated range finding, the credit
 });
 test('flagsHtml: validated range section first, lights labelled, the off/on/not-available words, range-not-direction wording, no trade words, no hard-coded colours, escaped', () => {
   const h = flagsHtml(flagRows(RF()));
-  assert.match(h, /Flags with a validated range finding/); assert.match(h, /Other lights \(no validated finding\)/); assert.match(h, /NOT AVAILABLE/); assert.match(h, /<b class="in-ls">ON<\/b>/); assert.match(h, /never which way/);
+  assert.match(h, /Flags with a validated range finding/); assert.match(h, /Other lights \(no validated finding\)/); assert.match(h, />SOURCE ENDED</, "the euro vol light whose source ended says so, not NOT AVAILABLE"); assert.match(h, /<b class="in-ls">ON<\/b>/); assert.match(h, /never which way/);
   assert.match(h, /No test of its own in the Evidence Book/); assert.match(h, /nearest test, not the same measure/); assert.match(h, /A flag that is off says nothing/);
   assert.ok(h.indexOf('validated range finding') < h.indexOf('Other lights')); assert.ok(!/#[0-9a-f]{6}\b/i.test(h)); assert.ok(!/\b(buy|sell|go long|go short|stop loss|take profit)\b/i.test(h.replace(/<[^>]+>/g, ' ')));
   const evil = flagRows({ ...RF(), flags: [{ key: 'x', label: '<img src=x>', on: false, detail: '<b>' }] }); assert.ok(!flagsHtml(evil).includes('<img src=x>'));

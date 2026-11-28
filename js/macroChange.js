@@ -28,7 +28,7 @@ export const MACRO_CHANGE_SPEC = {
   bei:   { label: '10Y breakeven',    bps: true,  kind: 'rate' },
   hy:    { label: 'HY credit spread', bps: true,  kind: 'spread', up: 'widening', down: 'tightening' },
   vix:   { label: 'VIX',              bps: false, kind: 'level', dp: 2 },
-  dxy:   { label: 'DXY (broad $)',    bps: false, kind: 'level', dp: 2 },
+  dxy:   { label: 'Broad dollar index (Fed, not the ICE DXY)', bps: false, kind: 'level', dp: 2 },
   // Money-market plumbing: SOFR = the overnight REPO rate (% → bps); RRP = the
   // Fed's reverse-repo facility usage ($bn level → change shows liquidity
   // draining/building). Both daily.
@@ -61,8 +61,9 @@ export function formatFlowBn(v) {
 }
 
 
-// Latest value + change over each window, measured in CALENDAR DAYS BACK, not in
-// observation count.
+// Latest value + change over each window. A slower-than-daily series is measured in
+// CALENDAR DAYS BACK, not in observation count; a daily one in sessions (see the note
+// above seriesDeltas, 2026-11-27).
 //
 // It used to index back N observations and label the result "1d / 5d / 20d". On a
 // daily series that is roughly right (weekends/holidays are skipped, so 1/5/20 obs
@@ -106,13 +107,30 @@ export function seriesCadenceDays(pts) {
   return Math.round(med * 10) / 10;
 }
 
-export function seriesDeltas(pts, windows = [1, 5, 20]) {
+// SESSIONS for daily series, CALENDAR DAYS for slower ones. A trader's "20D" is twenty
+// sessions, and the rest of the desk (Insight, the precedent and setup engines, the
+// gold board) counts sessions; counted in calendar days a "20d" was ~14 sessions and a
+// "5d" ~3, so one label disagreed across panels (XLE -10.3% over 20 sessions but
+// +0.1% "20d" on the chain). A series whose median print spacing is at most
+// SESSION_CADENCE_MAX_DAYS (a weekday or a seven-day series) now steps back N valid
+// prints. Anything slower (weekly, monthly) keeps the calendar rule above, so the
+// monthly-series protection stands, and the same N + max(4, 0.6N) calendar tolerance
+// applies to both: a session window whose N-th print back is far older than N
+// sessions can be (a data hole) is refused rather than relabelled. opts.basis forces
+// 'calendar' or 'sessions'; `basis` in the result says which rule was used.
+export const SESSION_CADENCE_MAX_DAYS = 1.6;
+const _tolerance = n => n + Math.max(4, 0.6 * n);
+const _valid = p => p?.value != null && Number.isFinite(p.value) && Number.isFinite(_ts(p));
+
+export function seriesDeltas(pts, windows = [1, 5, 20], opts = {}) {
   if (!Array.isArray(pts) || pts.length < 2) return null;
   const last = pts[pts.length - 1];
   if (last?.value == null || !Number.isFinite(last.value)) return null;
   const lastT = _ts(last);
   const dated = Number.isFinite(lastT);
   const cadenceDays = dated ? seriesCadenceDays(pts) : null;
+  const sessions = dated && opts.basis !== 'calendar' && (opts.basis === 'sessions' || (cadenceDays != null && cadenceDays <= SESSION_CADENCE_MAX_DAYS));
+  const basis = !dated ? 'positional' : sessions ? 'sessions' : 'calendar';
   const d = {}, refDate = {}, refGapDays = {};
   for (const n of windows) {
     d[n] = null; refDate[n] = null; refGapDays[n] = null;
@@ -122,22 +140,33 @@ export function seriesDeltas(pts, windows = [1, 5, 20]) {
       if (pts.length >= n + 1 && ref?.value != null && Number.isFinite(ref.value)) d[n] = last.value - ref.value;
       continue;
     }
-    const cutoff = lastT - n * _DAY_MS;
     let ref = null;
-    for (let i = pts.length - 2; i >= 0; i--) {
-      const t = _ts(pts[i]);
-      if (Number.isFinite(t) && t <= cutoff) { ref = pts[i]; break; }
+    if (sessions) {
+      // the N-th valid, dated print before the last one
+      for (let i = pts.length - 2, k = 0; i >= 0; i--) { if (_valid(pts[i]) && ++k === n) { ref = pts[i]; break; } }
+    } else {
+      const cutoff = lastT - n * _DAY_MS;
+      for (let i = pts.length - 2; i >= 0; i--) {
+        const t = _ts(pts[i]);
+        if (Number.isFinite(t) && t <= cutoff) { ref = pts[i]; break; }
+      }
     }
     if (!ref || ref.value == null || !Number.isFinite(ref.value)) continue;
     const gap = Math.round((lastT - _ts(ref)) / _DAY_MS);
     // The nearest available print is much older than the window asked for: this
     // series' cadence cannot answer this question, so report nothing rather than a
     // number whose real horizon differs from its label.
-    if (!Number.isFinite(gap) || gap > n + Math.max(4, 0.6 * n)) continue;
+    if (!Number.isFinite(gap) || gap > _tolerance(n)) continue;
     refDate[n] = ref.date ?? null; refGapDays[n] = gap;
     d[n] = last.value - ref.value;
   }
-  return { last: last.value, lastDate: last.date, d, refDate, refGapDays, cadenceDays };
+  return { last: last.value, lastDate: last.date, d, refDate, refGapDays, cadenceDays, basis };
+}
+
+/** True when a window's real calendar span is wider than its label honestly carries (a holiday week, a slower series). */
+export function windowWiderThanLabel(n, gapDays, basis) {
+  if (gapDays == null) return false;
+  return basis === 'sessions' ? gapDays > Math.ceil(n * 1.4) + 2 : gapDays > n + 1;
 }
 
 const _dirOf = v => (v == null ? '' : v > 0 ? '↑' : v < 0 ? '↓' : '→');
@@ -164,7 +193,7 @@ export function buildMacroChanges(histByKey = {}, spec = MACRO_CHANGE_SPEC, opts
       // What each window ACTUALLY spans, and the series' own print cadence — so a
       // consumer can show "1d" honestly, or say why a window is blank, instead of
       // assuming every row on the strip is measured over the same horizon.
-      refGapDays: s.refGapDays, cadenceDays: s.cadenceDays,
+      refGapDays: s.refGapDays, cadenceDays: s.cadenceDays, basis: s.basis,
       dir: _dirOf(lead),
       note: meta.up ? (lead > 0 ? meta.up : lead < 0 ? meta.down : '') : '',
     };
@@ -187,6 +216,7 @@ export function buildMacroChanges(histByKey = {}, spec = MACRO_CHANGE_SPEC, opts
       refGapDays: Object.fromEntries(windows.map(n => [n,
         Math.max(byKey.us10y.refGapDays?.[n] ?? 0, byKey.us2y.refGapDays?.[n] ?? 0) || null])),
       cadenceDays: Math.max(byKey.us10y.cadenceDays ?? 0, byKey.us2y.cadenceDays ?? 0) || null,
+      basis: byKey.us10y.basis === byKey.us2y.basis ? byKey.us10y.basis : 'calendar',
       deltas, dir: _dirOf(trend),
       note: trend > 0 ? 'steepening' : trend < 0 ? 'flattening' : '',
     });
@@ -217,7 +247,7 @@ export function formatMacroChanges(rows, windows = [1, 5, 20]) {
       // for (holiday weeks, a slower series) rather than letting the label imply
       // a horizon the data doesn't have.
       const gap = r.refGapDays?.[n];
-      const span = (gap != null && gap > n + 1) ? ` (over ${gap}d)` : '';
+      const span = windowWiderThanLabel(n, gap, r.basis) ? ` (over ${gap}d)` : '';
       return `${lbl[n] ?? n + 'd'} ${_sign(r.deltas[n])}${r.unit}${span}`;
     });
     return `${r.label} ${_fmtLast(r)} · ${parts.join(' · ')} ${r.dir}${r.note ? ' ' + r.note : ''}`;
