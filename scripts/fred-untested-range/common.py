@@ -8,7 +8,7 @@ B_DISC, B_CONF, BLOCK = 1000, 2000, 21
 H = 5                                   # next-week window: sessions D .. D+4
 SPLIT = pd.Timestamp('2023-08-21')      # discovery < SPLIT <= held-out
 END = pd.Timestamp('2026-08-20')        # last session; lockbox starts 2026-08-22
-WIN, MINWIN = 756, 252                  # trailing percentile window (sessions), minimum history
+WIN, MINWIN = 252, 126                  # trailing percentile window (grid days), minimum history (A1: was 756/252)
 CHG = 20                                # change lookback, sessions
 INSTS = ['EURUSD', 'USDJPY', 'GOLD', 'NQ', 'SPX500']
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -36,15 +36,18 @@ def errors():
 def trailing_pct(x, win=WIN, minwin=MINWIN):
     """percentile rank of x[t] among x[t-win+1 .. t] (causal); NaN until minwin valid points."""
     s = pd.Series(x)
-    return s.rolling(win, min_periods=minwin).apply(lambda w: (w[:-1] < w[-1]).mean() + 0.5 * (w[:-1] == w[-1]).mean()
-                                                     if np.isfinite(w[-1]) else np.nan, raw=True).values
+    def f(w):
+        if not np.isfinite(w[-1]): return np.nan
+        h = w[:-1][np.isfinite(w[:-1])]
+        return (h < w[-1]).mean() + 0.5 * (h == w[-1]).mean() if len(h) >= minwin - 1 else np.nan
+    return s.rolling(win, min_periods=minwin).apply(f, raw=True).values
 
 
-def tdiff(ev, pct):
+def tdiff(ev, pct, nmin=60):
     """mean e5 where pct >= 2/3 minus mean e5 where pct <= 1/3 (log units)."""
     ok = np.isfinite(ev) & np.isfinite(pct)
     a = ev[ok & (pct >= 2 / 3)]; b = ev[ok & (pct <= 1 / 3)]
-    return a.mean() - b.mean() if len(a) >= 60 and len(b) >= 60 else np.nan
+    return a.mean() - b.mean() if len(a) >= nmin and len(b) >= nmin else np.nan
 
 
 def block_idx(n, rng, B, block=BLOCK):
@@ -65,6 +68,7 @@ def p_from_boot(est, bs):
 
 
 def bh(ps, q=0.10):
+    ps = [1.0 if not np.isfinite(p) else p for p in ps]
     order = sorted(range(len(ps)), key=lambda i: ps[i]); m = len(ps); k = 0
     for r, i in enumerate(order, 1):
         if ps[i] <= q * r / m: k = r
@@ -72,6 +76,7 @@ def bh(ps, q=0.10):
 
 
 def holm(ps, alpha=0.05):
+    ps = [1.0 if not np.isfinite(p) else p for p in ps]
     order = sorted(range(len(ps)), key=lambda i: ps[i]); m = len(ps); keep = set()
     for r, i in enumerate(order):
         if ps[i] <= alpha / (m - r): keep.add(i)
