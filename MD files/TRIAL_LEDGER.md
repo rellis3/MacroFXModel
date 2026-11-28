@@ -10,16 +10,16 @@ Generated 2026-11-28.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **649** |
-| validated | 201 |
-| null | 260 |
-| underpowered | 188 |
+| claims tested (validated + null + underpowered) | **653** |
+| validated | 202 |
+| null | 262 |
+| underpowered | 189 |
 | context (base rates, descriptions: not counted as tests) | 87 |
-| pre-registrations with no banked verdict (below) | 92 |
+| pre-registrations with no banked verdict (below) | 90 |
 
-**What the count says (Lesson 02 §05).** If none of the 649 claims were real, tests at the usual 5% size would still pass
-about **32.5** of them by luck. 201 passed, so most passes are unlikely to be luck alone, but
-**roughly 33 of the 201 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 653 claims were real, tests at the usual 5% size would still pass
+about **32.7** of them by luck. 202 passed, so most passes are unlikely to be luck alone, but
+**roughly 33 of the 202 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -169,6 +169,9 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-08 | stir-wide-scan | macro | null | forge/STIR_WIDE_SCAN_PROTOCOL.md |
 | 2026-10-09 | rate-diff-nq-leadlag | macro | null | analysis/output/rate_diff_nq/REPORT.md |
 | 2026-10-10 | stir-composite-nq | macro | null | forge/STIR_COMPOSITE_NQ_PREREG.md |
+| 2026-10-11 | level-p2-identity | price | null | forge/LEVEL_P2_PREREG.md |
+| 2026-10-11 | level-p2-race | price | null | forge/LEVEL_P2_PREREG.md |
+| 2026-10-11 | level-p2-reach | volatility | validated | forge/LEVEL_P2_PREREG.md |
 | 2026-10-11 | rate-curve-structure | macro | null | forge/RATE_CURVE_STRUCTURE_PREREG.md |
 | 2026-10-13 | vol-asia-fib-confluence | price | null | forge/VOL_ASIA_FIB_CONFLUENCE_PREREG.md |
 | 2026-10-14 | cog-exact-pair-lead | macro | null | forge/COG_EXACT_PAIR_LEAD_PREREG.md |
@@ -811,14 +814,12 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/FLOW_COLUMNS_PREREG.md`: Flow and positioning columns at the vol lines — pre-registration
 - `forge/FUTURES_COST_RESCORE_PREREG.md`: Futures-cost re-score of the line-touch fade (registered 2026-10-11, before the re-score is computed)
 - `forge/FUTURES_VOL_PREREG.md`: Futures volatility forecast — does intraday futures data beat the incumbent HAR? (shadow study)
-- `forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md`: gold-line-system-jordan: the gold line system on Jordan's lines only (HL projections and Close±, P75/P90)
 - `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score
 - `forge/HEDGING_PLAN_OI_PREREG.md`: HEDGING PLAN, OI-LEVEL VERSION: do orders on the OI map's own levels do better than orders on the forecast lin
 - `forge/HEDGING_STATE_FORWARD_PREREG.md`: hedging-state-forward — On the full Cboe book, does the dealer-hedging state at the open tell us how the day b
 - `forge/IEP_TIME_PREREG.md`: IEP-TIME: time of day, trading session and day of week in band attainment, first touch and consolidation
 - `forge/INTRADAY_EXTREME_PATHS_PREREG.md`: INTRADAY-EXTREME-PATHS: after a dynamic intraday extreme, what is the probability of continuation, meaningful 
 - `forge/IVRV_COT_PREREG.md`: IV ÷ RV in the book, the rich-IV break rule on the indices, and COT positioning at the lines — pre-registratio
-- `forge/LEVEL_P2_PREREG.md`: Level engine, Phase 2: reach, which-first, time-to-reach (registered 2026-10-10, before any Phase 2 outcome is
 - `forge/LEVEL_SCENARIO_SHADOW_PREREG.md`: S3 shadow: level scenarios, live reach / which-first / time (registered 2026-10-11, before any live session is
 - `forge/LINE_CLUSTER_MFE_PREREG.md`: Clusters of the forecast lines, and fade MFE / MAE at every touch — pre-registration
 - `forge/LINE_REACTION_PREREG.md`: LINE-REACTION: how price approaches the chosen forecast's lines, and what it does next
