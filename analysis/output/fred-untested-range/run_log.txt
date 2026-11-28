@@ -1,0 +1,44 @@
+CAL {('EURUSD', 'disc'): 1.34, ('USDJPY', 'disc'): 1.23, ('GOLD', 'disc'): 1.26, ('NQ', 'disc'): 1.22, ('SPX500', 'disc'): 1.22, ('POOL', 'disc'): 1.24, ('EURUSD', 'held'): 1.19, ('USDJPY', 'held'): 1.24, ('GOLD', 'held'): 1.04, ('NQ', 'held'): 1.2, ('SPX500', 'held'): 1.14, ('POOL', 'held'): 1.14}
+CONTROL {"plants": [{"rep": 0, "disc": {"est": 0.05556712639295275, "z": 1.175068835866835, "p": 0.3437482038367149, "cal": 1.241114390041481, "pl_mu": -0.005008637281366139, "pl_sd": 0.05155082138624911, "lo": 0.005700191835909349, "hi": 0.10229201194119066, "pl95": [-0.06641289971428041, 0.07944187939748878]}, "held": null, "bh_single": false, "confirmed": false, "recovered_disc": 0.10000000000000003}, {"rep": 1, "disc": {"est": 0.045288579265360146, "z": 1.3410474421263325, "p": 0.2799112157778284, "cal": 1.241114390041481, "pl_mu": -0.0014902119935173205, "pl_sd": 0.034882279171798834, "lo": 0.00017486300746126656, "hi": 0.08905499706837433, "pl95": [-0.06941228591451763, 0.05672363120657771]}, "held": null, "bh_single": false, "confirmed": false, "recovered_disc": 0.1}, {"rep": 2, "disc": {"est": 0.13797235322427825, "z": 3.193157311085836, "p": 0.010087520859483666, "cal": 1.241114390041481, "pl_mu": -0.013612716302045014, "pl_sd": 0.047471845185972576, "lo": 0.09100518337039937, "hi": 0.18701311635400694, "pl95": [-0.07633046859055598, 0.07678759319428607]}, "held": {"est": 0.18465436503318278, "z": 4.537349495240836, "p": 6.987407980989844e-05, "cal": 1.1409795489073395, "pl_mu": -0.009342495630356325, "pl_sd": 0.04275554723457379, "lo": 0.12838290075893624, "hi": 0.23965312394259874, "pl95": [-0.0840386425758372, 0.07922446554228164]}, "bh_single": true, "confirmed": true, "recovered_disc": 0.1}], "fresh_noise_frac_p_lt_05": 0.0, "fresh_noise_frac_p_lt_01": 0.0}
+{'n_units': 49, 'n_scorable_cells': 408, 'bh_survivors': 0, 'confirmed': 0, 'family_verdict': 'NULL'}
+unscorable: [('AAA10Y', 'lvl'), ('BAMLEMCBPIOAS', 'lvl'), ('BAMLEMCBPIOAS', 'mov'), ('BAMLH0A1HYBB', 'lvl'), ('BAMLH0A1HYBB', 'mov'), ('DCPF3M', 'lvl'), ('DEXJPUS', 'lvl'), ('DEXSZUS', 'lvl'), ('DEXUSUK', 'lvl'), ('DGS20', 'lvl'), ('DGS3', 'lvl'), ('DGS30', 'lvl'), ('DGS3MO', 'lvl'), ('DGS5', 'lvl'), ('DGS6MO', 'lvl'), ('DGS7', 'lvl'), ('DTB3', 'lvl'), ('EVZCLS', 'lvl'), ('EVZCLS', 'mov'), ('GEPUCURRENT', 'lvl'), ('GEPUCURRENT', 'mov'), ('NDFFRIW027SBOG', 'lvl'), ('PCEPILFE', 'lvl'), ('SOFRVOL', 'lvl'), ('SWPT', 'lvl'), ('THREEFYTP10', 'lvl'), ('THREEFYTP10', 'mov'), ('WMTSECL1', 'lvl'), ('IORB_SPLICE', 'lvl'), ('IORB_SPLICE', 'mov')]
+DGS6MO          mov EURUSD disc 17.8% p=0.0214    | full 8.0% mde 11.6 UNDERPOWERED
+DCPF3M          mov EURUSD disc 14.5% p=0.0216    | full 8.0% mde 10.9 UNDERPOWERED
+OVXCLS          lvl EURUSD disc 18.0% p=0.0249    | full 5.9% mde 15.7 UNDERPOWERED
+T5YIE           mov EURUSD disc 9.1% p=0.0321    | full 3.1% mde 8.4 NULL
+SWPT            mov SPX500 disc 9.4% p=0.0407    | full 3.4% mde 14.1 UNDERPOWERED
+DGS3MO          mov EURUSD disc 16.3% p=0.0424    | full 8.8% mde 14.4 UNDERPOWERED
+PCEPILFE        mov SPX500 disc -9.2% p=0.0435    | full -7.8% mde 11.3 UNDERPOWERED
+DGS1            mov EURUSD disc 13.9% p=0.0439    | full 6.1% mde 11.0 UNDERPOWERED
+DTB3            mov EURUSD disc 16.0% p=0.0447    | full 7.9% mde 15.6 UNDERPOWERED
+TOTBKCR         lvl USDJPY disc 13.5% p=0.0450    | full 1.3% mde 33.7 UNDERPOWERED
+TOTBKCR         lvl GOLD   disc -9.4% p=0.0475    | full 0.2% mde 13.4 UNDERPOWERED
+PPIFIS          lvl GOLD   disc -6.7% p=0.0480    | full -0.3% mde 14.8 UNDERPOWERED
+DTB3            mov USDJPY disc 12.2% p=0.0511    | full 14.1% mde 25.5 UNDERPOWERED
+WRESBAL         lvl POOL   disc -11.1% p=0.0519    | full -5.9% mde 10.8 UNDERPOWERED
+DGS3MO          mov USDJPY disc 12.1% p=0.0521    | full 11.9% mde 23.6 UNDERPOWERED
+TOTBKCR         lvl EURUSD disc 18.3% p=0.0543    | full 1.8% mde 25.4 UNDERPOWERED
+WTREGEN         mov SPX500 disc -6.7% p=0.0549    | full -3.7% mde 13.6 UNDERPOWERED
+NFCI            lvl EURUSD disc 15.2% p=0.0607    | full 9.8% mde 18.0 UNDERPOWERED
+BAA10Y          lvl EURUSD disc 17.0% p=0.0637    | full 8.3% mde 18.8 UNDERPOWERED
+WRESBAL         lvl NQ     disc -14.8% p=0.0646    | full -6.0% mde 12.9 UNDERPOWERED
+DFII5           lvl NQ     disc 17.0% p=0.0714    | full 12.2% mde 18.9 UNDERPOWERED
+T5YIFR          lvl NQ     disc -10.6% p=0.0780    | full -6.1% mde 15.5 UNDERPOWERED
+NDFFRIW027SBOG  mov GOLD   disc -6.7% p=0.0812    | full -4.2% mde 10.2 UNDERPOWERED
+DEXCHUS         mov SPX500 disc 11.0% p=0.0815    | full 1.7% mde 12.0 UNDERPOWERED
+T5YIE           lvl GOLD   disc -5.0% p=0.0875    | full -1.2% mde 13.9 UNDERPOWERED
+USEPUINDXM      lvl EURUSD disc 14.9% p=0.0888    | full 7.7% mde 21.5 UNDERPOWERED
+DGS20           mov NQ     disc 7.8% p=0.0921    | full 3.9% mde 8.7 NULL
+DGS1MO          mov USDJPY disc 10.3% p=0.0945    | full 12.9% mde 24.1 UNDERPOWERED
+DEXUSEU         mov USDJPY disc 7.9% p=0.0951    | full 6.8% mde 14.7 UNDERPOWERED
+DCPF3M          mov USDJPY disc 8.4% p=0.0992    | full 5.8% mde 19.6 UNDERPOWERED
+SWPT            mov NQ     disc 7.1% p=0.1024    | full 3.6% mde 11.8 UNDERPOWERED
+DGS1            lvl NQ     disc 15.0% p=0.1050    | full 9.5% mde 21.2 UNDERPOWERED
+DFII5           lvl POOL   disc 10.5% p=0.1071    | full 6.8% mde 12.8 UNDERPOWERED
+T5YIFR          lvl SPX500 disc -12.8% p=0.1081    | full -5.0% mde 19.1 UNDERPOWERED
+WRESBAL         lvl SPX500 disc -17.7% p=0.1134    | full -7.0% mde 20.3 UNDERPOWERED
+DTWEXEMEGS      mov GOLD   disc -5.8% p=0.1146    | full -4.1% mde 9.4 NULL
+T5YIFR          mov GOLD   disc -5.7% p=0.1167    | full -2.8% mde 8.0 NULL
+DEXUSNZ         mov EURUSD disc 6.6% p=0.1197    | full 2.6% mde 7.4 NULL
+USEPUINDXM      mov NQ     disc 7.6% p=0.1207    | full 5.4% mde 9.6 NULL
+DGS6MO          mov USDJPY disc 10.0% p=0.1222    | full 8.8% mde 21.3 UNDERPOWERED

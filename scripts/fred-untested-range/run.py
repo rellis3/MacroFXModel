@@ -193,7 +193,7 @@ def main():
     vix = pd.read_parquet(os.path.join(DATA, 'features', 'vix.parquet'))
     vix['asof'] = pd.to_datetime(vix['asof'], utc=True).dt.tz_localize(None)
     vix = vix.dropna(subset=['value']).sort_values('asof')
-    vg = pd.Series(vix.value.values, index=vix.asof.values)
+    vg = pd.Series(vix['value'].values, index=vix['asof'].values)
     vgrid = vg.groupby(level=0).last().reindex(GRID - pd.Timedelta(days=1), method='ffill').values
     vpct = pd.Series(trailing_pct(vgrid), index=GRID).reindex(E5.index).values
     S = E5.index; held = np.asarray(S >= SPLIT); mon = np.asarray(S.dayofweek == 0)
