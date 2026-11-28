@@ -33,11 +33,12 @@ export function gridHtml(d) {
   const head = '<div class="sec"><h2>Who leads whom</h2><span class="lbl">lead-lag: does one market\'s move today show up in another 1-5 days later? · daily · description, not a signal</span></div>';
   if (!d.ok) return `${head}<div class="card muted">${esc(d.error ?? 'Not available yet.')}</div>`;
   const leads = d.leads ?? [], near = (d.near ?? []).slice(0, 12);
-  return `${head}<div class="card"><p style="margin:0 0 8px"><b>${d.tested}</b> leader → follower pairs across ${d.ids.length} markets, lags 1-${d.lags} days, ${esc(d.from)} to ${esc(d.to)}: <b class="${leads.length ? 'gold' : ''}">${leads.length} lead${leads.length === 1 ? '' : 's'}</b> survive the correction and hold in both halves.</p>
+  // folded by default with its one-line result (review 2026-11-27: the research boards made Assets ~16,000px)
+  return `${head}<details class="card"><summary style="cursor:pointer"><b>${d.tested}</b> leader → follower pairs across ${d.ids.length} markets, lags 1-${d.lags} days, ${esc(d.from)} to ${esc(d.to)}: <b class="${leads.length ? 'gold' : ''}">${leads.length} lead${leads.length === 1 ? '' : 's'}</b> survive the correction and hold in both halves. <span class="muted">Open for the table and the grid.</span></summary>
 ${leads.length ? `<div class="scroll"><table style="min-width:560px">${HEAD}<tbody>${leads.map(x => row(x, d.labels)).join('')}</tbody></table></div>` : '<p class="muted" style="margin:4px 0">No market reliably leads another at the daily horizon: what you would expect in liquid markets that all price off the same news.</p>'}
 <details style="margin-top:8px"><summary class="muted">The ${near.length} strongest that did not pass</summary><div class="scroll"><table style="min-width:560px">${HEAD}<tbody>${near.map(x => row(x, d.labels)).join('')}</tbody></table></div></details>
 <details style="margin-top:8px"><summary class="muted">The full grid (one day ahead)</summary>${heatGrid(d)}<p class="muted" style="font-size:12px">Each cell: the correlation of the row market's move today with the column market's move tomorrow. Green = the follower tends to move the same way, red = the opposite way; a gold outline is a lead that passed. Most cells are near zero.</p></details>
-<p class="muted" style="font-size:12px">How to read it. <b>r</b> is the correlation at the best lag; even a real lead of 0.05 explains a quarter of a percent of the follower's next move. <b>Same day</b> is how much the two move together on the day itself: pairs sharing a currency (EURUSD and GBPUSD) score high here, and that is not a lead. A market that trades thinly or closes late can look like it is led, because its stale price catches up the next day. ${esc(d.label)}${Object.keys(d.errors ?? {}).length ? ` Not loaded: ${Object.keys(d.errors).map(esc).join(', ')}.` : ''}</p></div>`;
+<p class="muted" style="font-size:12px">How to read it. <b>r</b> is the correlation at the best lag; even a real lead of 0.05 explains a quarter of a percent of the follower's next move. <b>Same day</b> is how much the two move together on the day itself: pairs sharing a currency (EURUSD and GBPUSD) score high here, and that is not a lead. A market that trades thinly or closes late can look like it is led, because its stale price catches up the next day. ${esc(d.label)}${Object.keys(d.errors ?? {}).length ? ` Not loaded: ${Object.keys(d.errors).map(esc).join(', ')}.` : ''}</p></details>`;
 }
 
 /** The Pair-tab card: who leads this market, and what it leads. */
@@ -45,8 +46,10 @@ export function pairCard(d, inst) {
   const id = String(inst ?? '').toUpperCase(), m = d?.byMarket?.[id], hd = '<div class="ch"><span class="lbl">Who leads this market · lead-lag</span></div>';
   if (!d) return '';
   if (!d.ok || !m) return `${hd}<div class="muted">${esc(d?.ok ? 'This market is not on the lead-lag grid.' : d?.error ?? 'Not available yet.')}</div>`;
+  // a lead that passed is shown; near misses (did not pass the correction) fold away behind one line (review 2026-11-27: six NEAR MISS rows on the Deep dive)
   const li = x => `<div class="tt-row">${chip(x)}<span style="flex:1;min-width:0;font-size:13px">${esc(pairLine(x, d.labels))}</span></div>`;
-  return `${hd}<div class="lbl" style="margin-top:4px">Markets that move before ${esc(id)}</div>${m.ledBy.slice(0, 3).map(li).join('') || '<div class="muted">–</div>'}
-<div class="lbl" style="margin-top:8px">Markets ${esc(id)} moves before</div>${m.leads.slice(0, 3).map(li).join('') || '<div class="muted">–</div>'}
-<p class="tt-note">The three strongest each way out of ${d.tested} pairs tested. Description, not a signal: a lead found here is a question for the quick test and the research protocol.</p>`;
+  const side = (xs, lab) => { const top = xs.slice(0, 3), pass = top.filter(x => x.isLead), rest = top.filter(x => !x.isLead);
+    return `<div class="lbl" style="margin-top:8px">${lab}</div>${pass.map(li).join('') || '<div class="muted">none that passed</div>'}${rest.length ? `<details><summary class="muted">${rest.length} near miss${rest.length === 1 ? '' : 'es'} (did not pass the correction)</summary>${rest.map(li).join('')}</details>` : ''}`; };
+  return `${hd}${side(m.ledBy, `Markets that move before ${esc(id)}`)}${side(m.leads, `Markets ${esc(id)} moves before`)}
+<p class="tt-note">The three strongest each way out of ${d.tested} pairs tested; ${(d.leads ?? []).length} lead${(d.leads ?? []).length === 1 ? '' : 's'} survive across the whole grid. Description, not a signal: a lead found here is a question for the quick test and the research protocol.</p>`;
 }

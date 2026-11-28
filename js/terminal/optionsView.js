@@ -65,10 +65,14 @@ export const evChip = k => { const e = EVIDENCE[k] ?? EVIDENCE.oi_cluster; retur
 const LTYPE = { max_pain: 'Max pain', call_wall: 'Call wall', put_wall: 'Put wall', gamma_flip: 'Gamma flip', gex_flip: 'GEX flip', hvl: 'High-vol line', oi_volume: 'Heavy strike', oi_cluster: 'OI cluster' };
 const LCOL = { call_wall: 'var(--up)', put_wall: 'var(--dn)', max_pain: 'var(--gold)', gamma_flip: 'var(--pur3)', gex_flip: 'var(--pur3)', hvl: 'var(--pur3)', oi_volume: 'var(--blue)', oi_cluster: 'var(--blue)' };
 
-/** Put/call ratio history → { last, pct (0-100, where today sits in its own history), chg5, n, spark } */
-export function pcStats(rows = []) {
+/**
+ * Put/call ratio history → { last, pct (0-100, where today sits in its own history), chg5, n, spark }. `now` = the ratio the card prints, when it
+ * comes from a fresher pull than the history's last row: the percentile is then of that number (review 2026-11-27: "1.56 puts per call" printed
+ * beside "calls much heavier than usual", the reading of an older row).
+ */
+export function pcStats(rows = [], now = null) {
   const v = (rows ?? []).map(r => r.pc).filter(fin); if (!v.length) return null;
-  const last = v.at(-1), pct = Math.round((v.filter(x => x < last).length + 0.5 * (v.filter(x => x === last).length - 1)) / Math.max(1, v.length - 1) * 100);
+  const last = fin(now) ? +now : v.at(-1), pct = Math.round((v.filter(x => x < last).length + 0.5 * Math.max(0, v.filter(x => x === last).length - 1)) / Math.max(1, v.length - 1) * 100);
   return { last, pct: v.length >= 20 ? Math.max(0, Math.min(100, pct)) : null, chg5: v.length > 5 ? last - v.at(-6) : null, n: v.length, spark: v.slice(-60), from: rows[0]?.date, to: rows.at(-1)?.date };
 }
 /** A plain reading of the ratio against its own past. */
@@ -411,7 +415,7 @@ export function pairCard(inst, { oi, hist, hs } = {}) {
   const id = String(inst ?? '').toUpperCase(), row = (oi?.pairs ?? []).find(p => idOf(p.pair) === id), dm = (hs?.markets ?? []).find(m => idOf(m.pair) === id);
   const hd = '<div class="ch"><span class="lbl">Options · positioning and lines</span></div>';
   if (!row && !dm) return `${hd}<div class="muted">No listed options book for this market in the CME open-interest feed.</div>`;
-  const st = row ? pcStats(hist?.markets?.[row.pair]) : null, rd = pcRead(st);
+  const st = row ? pcStats(hist?.markets?.[row.pair], row.pcRatio) : null, rd = pcRead(st);
   return `${hd}${row ? `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${gaugeSvg(row.pcRatio, { w: 130, pct: st?.pct })}<div><div class="mono" style="font-size:18px">${fin(row.pcRatio) ? (+row.pcRatio).toFixed(2) : '–'} <span class="muted" style="font-size:11px">puts per call</span></div><div class="${rd.cls}">${esc(rd.word)}${st?.pct != null ? ` (${ordinal(st.pct)} pct)` : ''}</div>${evChip('pc')}</div></div>` : ''}
 ${dm ? `<p style="margin:8px 0 0"><span class="chip ${dm.state === 'calms' ? 'up' : 'gold'}">${dm.state === 'calms' ? 'hedging calms moves' : 'hedging speeds moves'}</span> switch point ${pxf(dm.switchPoint)} (${sg(dm.switchDistPct, 2)}%). ${esc(dm.lines?.[4] ?? '')}</p>` : ''}
 ${row ? `<div class="mono" style="font-size:12px;margin-top:6px">call wall ${fin(row.callWall) ? (+row.callWall).toPrecision(6) : '–'} · put wall ${fin(row.putWall) ? (+row.putWall).toPrecision(6) : '–'} · max pain ${fin(row.maxPain) ? (+row.maxPain).toPrecision(6) : '–'} ${evChip('call_wall')}</div>` : ''}

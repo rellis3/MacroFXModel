@@ -254,6 +254,7 @@ test('autocorrelation view: board, pair card, bars, always description not a sig
   const b = ACV.boardHtml(d);
   assert.match(b, /Memory in prices/); assert.match(b, /data-pair="NQ"/); assert.doesNotMatch(b, /data-pair="BAD"/); assert.match(b, /not a signal/); assert.match(b, /Not loaded: US30/);
   assert.match(b, /NQ line &lt;x&gt;/); assert.match(b, /1 revert/);
+  assert.match(b, /<details class="card scroll"><summary[^>]*><b>\d+<\/b> markets/, 'folded by default behind its one-line result (review 2026-11-27)'); assert.doesNotMatch(b, /<details[^>]* open/);
   assert.match(ACV.lagBars(d.rows[0], 'ret'), /var\(--gold\)/, 'a lag clearing its band is gold');
   assert.equal((ACV.lagBars(d.rows[0], 'vol').match(/<rect/g) ?? []).length, 10);
   assert.match(ACV.pairCard(d, 'nq'), /reverts/); assert.match(ACV.pairCard(d, 'nq'), /quick test/);
@@ -283,6 +284,9 @@ test('options view: gauges read against own history, lines carry evidence words,
     vix: { vix: Array.from({ length: 30 }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, '0')}`, value: 15 + i / 3 })), vix3m: Array.from({ length: 30 }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, '0')}`, value: 20 })) } };
   const st = OPV.pcStats(hist.markets['EUR/USD']); assert.equal(st.pct, 100); assert.equal(OPV.pcRead(st).word, 'puts much heavier than usual');
   assert.equal(OPV.pcRead(OPV.pcStats([{ pc: 1 }])).word, 'short history');
+  // review 2026-11-27: the card printed today's ratio beside the reading of an older row; the reading is now of the number printed
+  assert.equal(OPV.pcRead(OPV.pcStats(hist.markets['EUR/USD'], 1.0)).word, 'calls much heavier than usual');
+  assert.equal(OPV.pcStats(hist.markets['EUR/USD'], 1.0).pct, 0); assert.equal(OPV.pcStats(hist.markets['EUR/USD'], 9).pct, 100);
   const oi = { ok: true, pairs: [{ pair: 'EUR/USD', spot: 1.1234, pcRatio: 1.59, regime: 'BREAKOUT', dte: 2, callWall: 1.1258, putWall: 1.1233, maxPain: 1.1383,
     levels: [{ price: 1.1383, type: 'max_pain', distPips: 149 }, { price: 1.1258, type: 'call_wall', tier: 'moderate', distPips: 24, touchPct: 41 }, { price: 1.1183, type: 'put_wall', distPips: -51, touchPct: 8 }] }] };
   const pos = OPV.positioningHtml(oi, hist);
@@ -464,4 +468,16 @@ test('newsView.pairCard / latestLine / filtersHtml', () => {
   assert.match(f, /data-nt-tier="1" aria-pressed="true"/); assert.match(f, /data-nt-key="EUR" aria-pressed="true"/); assert.match(f, /data-nt-key="GBP" aria-pressed="false"/);
   assert.match(f, /data-nt-book checked/); assert.match(f, /value="&quot;x&quot;"/); assert.match(f, /EURUSD/);
   for (const k of ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF', 'EQUITIES', 'GOLD', 'OIL']) assert.match(f, new RegExp(`data-nt-key="${k}"`));
+});
+
+// review 2026-11-27: the lead-lag card folds its near misses; the Assets grid folds behind its one-line result
+test('lead-lag view: a lead that passed is shown, near misses fold away, the Assets grid is folded', () => {
+  const x = (lead, follow, isLead) => ({ lead, follow, k: 1, r: 0.04, sameDay: 0.1, isLead, survivedBH: false, halves: [0.03, 0.05], p: 0.01 });
+  const d = { ok: true, tested: 90, lags: 5, ids: ['NQ', 'GOLD'], from: '2016-01-01', to: '2026-11-01', leads: [x('NQ', 'GOLD', true)], near: [x('GOLD', 'NQ', false)], labels: {},
+    byMarket: { GOLD: { ledBy: [x('NQ', 'GOLD', true), x('WTI', 'GOLD', false), x('SPX500', 'GOLD', false)], leads: [x('GOLD', 'NQ', false)] } } };
+  const c = LLV.pairCard(d, 'GOLD');
+  assert.match(c, /NQ today → GOLD/); assert.match(c, /<details><summary class="muted">2 near misses \(did not pass the correction\)<\/summary>/);
+  assert.match(c, /none that passed<\/div><details><summary class="muted">1 near miss /);
+  const g = LLV.gridHtml(d);
+  assert.match(g, /<details class="card"><summary[^>]*><b>90<\/b> leader → follower pairs/); assert.match(g, /<\/details>$/);
 });
