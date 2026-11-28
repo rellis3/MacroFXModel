@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FRED Range Scan</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --blue:#3987e5;--amber:#d29922;--red:#f85149;--green:#3fb950;--grid:#21262d}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:16px;font-weight:700}
+  .spacer{flex:1}
+  .chip{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .chip.ok{color:var(--green);border-color:var(--green)} .chip.warn{color:var(--amber);border-color:var(--amber)} .chip.bad{color:var(--red);border-color:var(--red)}
+  .wrap{max-width:1500px;margin:0 auto;padding:12px 16px 48px;display:flex;flex-direction:column;gap:14px}
+  .box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;min-width:0}
+  .box h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .note{font-size:12px;color:var(--text2);line-height:1.6;max-width:130ch} .note b{color:var(--text)}
+  .ctrl{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px}
+  .ctrl label{display:flex;flex-direction:column;gap:3px;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font:inherit;font-size:12.5px;text-transform:none;letter-spacing:0;max-width:100%}
+  .verdict{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+  .vcard{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text2)}
+  .vcard b{color:var(--text)} .vword{font-weight:800;letter-spacing:.04em}
+  .vword.VALIDATED{color:var(--green)} .vword.NULL{color:var(--red)} .vword.UNDERPOWERED{color:var(--amber)} .vword.CONTEXT{color:var(--text2)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media (max-width:950px){.grid2{grid-template-columns:1fr}}
+  table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+  th,td{padding:4px 7px;border-bottom:1px solid var(--grid);text-align:right;white-space:nowrap}
+  th{color:var(--text3);font-weight:600;background:var(--card)}
+  .xscroll{overflow-x:auto;max-width:100%}
+  .mut{color:var(--text3)}
+  td.c{min-width:64px;text-align:center;border-left:1px solid var(--grid)}
+  td.c.up{color:#5fb4ff} td.c.dn{color:#ff8a5c} td.c.uw{opacity:.45} td.c.ns{color:var(--text3)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text2);margin:2px 0 6px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>Untested FRED series vs next-week range</h1>
+  <span class="chip" id="chipFam">—</span>
+  <span class="chip">pre-registered 2026-11-28</span>
+  <span class="spacer"></span>
+  <a class="chip" href="evidence.html" target="_blank">Evidence Book</a>
+</div>
+<div class="wrap">
+  <div class="box">
+    <h2>The question</h2>
+    <div class="note">The data catalogue held about 50 FRED series that had never been scored, including NFCI, the 5y5y forward, TIPS, breakevens, the
+      curve legs, policy-uncertainty indices, reserves and TGA, bank credit, CP, the H.10 fixings and OVX. Does any of them, known before the week starts, say that
+      <b>next week's realised range</b> (London sessions, high to low) will come in <b>wider or narrower than the shipped range forecast</b>?
+      This is a size-only question. Each series is taken <b>point-in-time</b>: the ALFRED first release, usable only from two days after FRED published it.
+      Two readings per series: its <b>level</b> and the <b>size of its 20-day move</b>, each as a percentile of its own trailing year.
+      The score compares the top third with the bottom third. Discovery runs 2020-08 to 2023-08 (BH q 0.10). The held-out check, 2023-08 to 2026-08 with Holm 0.05, was never reached.</div>
+  </div>
+  <div class="box">
+    <h2>Scored verdicts</h2>
+    <div class="verdict" id="verdicts"></div>
+  </div>
+  <div class="box">
+    <h2>Every cell: top third minus bottom third, next-week range vs forecast</h2>
+    <div class="ctrl">
+      <label>Show<select id="selView"><option value="fe">full sample 2020–26 (graded weight)</option><option value="de">discovery 2020–23 (the scored stage)</option></select></label>
+      <label>Reading<select id="selTr"><option value="all">level and move size</option><option value="lvl">level only</option><option value="mov">move size only</option></select></label>
+      <label>Sort<select id="selSort"><option value="u">series</option><option value="p">smallest discovery p</option><option value="pool">largest pooled effect</option></select></label>
+    </div>
+    <div class="legend"><span style="color:#5fb4ff">+ wider than forecast</span><span style="color:#ff8a5c">− narrower</span>
+      <span class="mut">faded = underpowered cell (its MDE95 is above the 10% bar) · hover a cell for p, CI and MDE · no cell passed discovery</span></div>
+    <div class="xscroll"><table id="grid"></table></div>
+  </div>
+  <div class="grid2">
+    <div class="box">
+      <h2>Discovery p-values against chance</h2>
+      <div class="xscroll"><table id="ptab"></table></div>
+      <div class="note" style="margin-top:8px">If nothing were there, about 5% of cells would land under 0.05 by luck. Fewer did, and none came under 0.01.
+        p uses a shift placebo (the signal slid against the outcome), widened by a factor measured on 300 pure-noise signals.
+        Slow macro series line up with month-long runs in the forecast miss, and a plain bootstrap would have called dozens of those "significant".</div>
+    </div>
+    <div class="box">
+      <h2>Not scorable</h2>
+      <div class="note" id="unsc"></div>
+    </div>
+  </div>
+  <div class="box">
+    <h2>Controls and data</h2>
+    <div class="note" id="dataNote"></div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const sg = (v, d = 1) => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + (+v).toFixed(d);
+const TG = ['EURUSD', 'USDJPY', 'GOLD', 'NQ', 'SPX500', 'POOL'];
+const TRN = {lvl: 'level', mov: 'move size'};
+let S;
+function verdicts() {
+  const m = S.meta, fam = m.family_verdict;
+  $('chipFam').textContent = 'verdict ' + fam + ' (pooled)'; $('chipFam').className = 'chip ' + (fam === 'VALIDATED' ? 'ok' : fam === 'NULL' ? 'bad' : 'warn');
+  const pool = S.cells.filter(c => c.g === 'POOL'), inst = S.cells.filter(c => c.g !== 'POOL');
+  const nN = a => a.filter(c => c.grade === 'NULL').length;
+  const fe = pool.map(c => c.fe);
+  $('verdicts').innerHTML = `
+    <div class="vcard"><b>Pooled five instruments</b><br><span class="vword NULL">NULL</span><br>
+      ${m.bh_survivors} of ${m.n_scorable_cells} cells passed discovery, so ${m.confirmed} confirmed. ${nN(pool)} of ${pool.length} pooled cells could have seen a 10% effect.
+      Pooled full-sample effects run ${sg(Math.min(...fe))}% to ${sg(Math.max(...fe))}%.</div>
+    <div class="vcard"><b>Per instrument</b><br><span class="vword UNDERPOWERED">UNDERPOWERED</span><br>
+      ${inst.length - nN(inst)} of ${inst.length} cells could only have found effects above 10% of next-week range (single-instrument MDE about 10–30%).
+      Smaller per-instrument effects are <b>untested, not ruled out</b>.</div>
+    <div class="vcard"><b>Positive control</b><br>A planted +10% came back at +10.0%, and it passed both stages in
+      ${S.control.plants.filter(p => p.confirmed).length} of ${S.control.plants.length} replicates. This design rules out effects of about 10% or more, not 5%.</div>`;
+}
+function grid() {
+  const view = $('selView').value, tr = $('selTr').value, so = $('selSort').value;
+  const rows = {};
+  S.cells.forEach(c => { if (tr !== 'all' && c.t !== tr) return; (rows[c.u + '|' + c.t] = rows[c.u + '|' + c.t] || {u: c.u, t: c.t, c: {}}).c[c.g] = c; });
+  let R = Object.values(rows);
+  const minp = r => Math.min(...Object.values(r.c).map(c => c.p));
+  if (so === 'u') R.sort((a, b) => (a.u + a.t).localeCompare(b.u + b.t));
+  if (so === 'p') R.sort((a, b) => minp(a) - minp(b));
+  if (so === 'pool') R.sort((a, b) => Math.abs((b.c.POOL || {})[view] || 0) - Math.abs((a.c.POOL || {})[view] || 0));
+  $('grid').innerHTML = '<tr><th>Series</th><th>Reading</th>' + TG.map(t => `<th style="text-align:center">${t === 'POOL' ? 'Pooled' : t}</th>`).join('') + '<th>min p</th></tr>' +
+    R.map(r => '<tr><td>' + r.u + '</td><td class="mut">' + TRN[r.t] + '</td>' + TG.map(t => {
+      const c = r.c[t]; if (!c) return '<td class="c ns">—</td>';
+      const v = c[view], k = (v > 0 ? 'up' : 'dn') + (c.grade === 'UNDERPOWERED' ? ' uw' : '');
+      const tip = `${r.u} ${TRN[r.t]} → ${t}: discovery ${sg(c.de)}% [${sg(c.dlo)}, ${sg(c.dhi)}] (block bootstrap), calibrated p ${c.p.toFixed(3)}; full sample ${sg(c.fe)}%, MDE95 ${c.mde == null ? '—' : c.mde.toFixed(1)}% → ${c.grade}`;
+      return `<td class="c ${k}" title="${tip}">${sg(v)}</td>`;
+    }).join('') + `<td class="mut">${minp(r).toFixed(3)}</td></tr>`).join('');
+}
+function ptab() {
+  const ps = S.cells.map(c => c.p), n = ps.length, bins = [[0, .01], [.01, .05], [.05, .1], [.1, .5], [.5, 1.01]];
+  $('ptab').innerHTML = `<tr><th>p range (${n} cells)</th><th>cells</th><th>expected by chance</th></tr>` + bins.map(([a, b]) =>
+    `<tr><td>${a} – ${b > 1 ? 1 : b}</td><td>${ps.filter(p => p >= a && p < b).length}</td><td class="mut">${(n * (Math.min(b, 1) - a)).toFixed(1)}</td></tr>`).join('');
+}
+function notes() {
+  $('unsc').innerHTML = `${S.unscorable.length} series × reading pairs were left out by the pre-registered rules: coverage under 70%, or a top or bottom third holding under 15% of sessions in either period.<br><br>` +
+    S.unscorable.map(x => `<b>${x.u}</b> ${TRN[x.t]} <span class="mut">(coverage ${x.cd}/${x.ch}, smallest third ${Math.min(x.top, x.bot)})</span>`).join(' · ') +
+    `<br><br>Why: the ICE BB and EM spreads have FRED history only from 2023-11. EVZ died in 2025-03. Global EPU first releases arrive 2–7 months late.
+    The term premium's first releases are irregular. IORB is a step function. Trending levels (most curve legs, SOFR volume, Fed custody holdings) spend a whole period in one third of their own trailing year.`;
+  $('dataNote').innerHTML = `<b>Outcome:</b> ln(realised London high–low ÷ shipped p50), with the p50 IV-adjusted where available, the same error as the forecast-miss scan. It is averaged over the next five sessions and, for the pooled
+    target, across EURUSD, USDJPY, GOLD, NQ and SPX500. Sessions ${S.meta.discovery[0]} → ${S.meta.heldout[1]}; the lockbox is untouched.<br>
+    <b>Point in time:</b> ALFRED first releases. Daily series with more than 2,000 vintages were rebuilt from one-year real-time windows. A value counts only once FRED's realtime_start is at least two days before the session.
+    Measured lags: about 1 day for the curve and credit, 5 for NFCI and the H.10 fixings, 9 for H.8, 42–58 for PPI, durables and core PCE.<br>
+    <b>Statistics:</b> trailing 252-day percentile; p from a circular-shift placebo, calibrated per target (factor ${Math.min(...Object.values(S.calibration)).toFixed(2)}–${Math.max(...Object.values(S.calibration)).toFixed(2)});
+    BH q ${S.meta.bh_q} on discovery, then Holm ${S.meta.holm_alpha} on the held-out survivors (none). Seed ${S.meta.seed}. Prereg <code>${S.prereg}</code>; results <code>analysis/output/fred-untested-range/RESULTS.md</code>.<br>
+    <b>Largest leans</b> (graded weight, not candidates): high reserves (WRESBAL), pooled −5.9%; high 5-year real yield (DFII5), +6.8%; large front-end moves (3-month to 1-year bills), EURUSD +6% to +9%.`;
+}
+(async () => {
+  S = await (await fetch('analysis/output/fred-untested-range/site.json', {cache: 'no-store'})).json();
+  ['selView', 'selTr', 'selSort'].forEach(id => $(id).onchange = grid);
+  verdicts(); grid(); ptab(); notes();
+})();
+</script>
+</body>
+</html>

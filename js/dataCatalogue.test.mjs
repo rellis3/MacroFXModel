@@ -93,11 +93,14 @@ test('the untested list is the answer to "what should we pull next"', () => {
   const u = untested();
   assert.ok(u.length > 0, 'if everything were tested this list would be empty, which would be news');
   // T10Y2Y was the canary here and was SCORED on 2026-10-01 (curve-inversion, null), so
-  // the canary moved rather than the test being deleted. T5YIFR is the next one: the
-  // 5y5y forward, pulled for Chapter D, never put to a question.
-  assert.ok(u.some(c => c.id === 'T5YIFR'),
-    'T5YIFR is pulled and has never been scored — if that changes, move this canary again, do not delete the test');
+  // the canary moved rather than the test being deleted. T5YIFR was next and was scored on
+  // 2026-11-28 (fred-untested-range, with 42 other FRED series). GEPUCURRENT is the canary
+  // now: global EPU, pulled but its first releases arrive 2-7 months late, so that scan
+  // could not score it.
+  assert.ok(u.some(c => c.id === 'GEPUCURRENT'),
+    'GEPUCURRENT is pulled and has never been scored — if that changes, move this canary again, do not delete the test');
   assert.ok(!u.some(c => c.id === 'T10Y2Y'), 'T10Y2Y has been tested; its verdict belongs in the catalogue');
+  assert.ok(!u.some(c => c.id === 'T5YIFR'), 'T5YIFR has been tested (fred-untested-range); its verdict belongs in the catalogue');
 });
 
 test('the traps carry real detail, not a shrug', () => {
