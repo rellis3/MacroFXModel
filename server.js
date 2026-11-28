@@ -15,6 +15,7 @@ import './js/intlCache.js';
 import { intlCacheStats } from './js/intlCache.js';
 import { dxySeries as _dxyIceSeries } from './js/dxyIce.js';
 import { archiveMacro as _archiveMacro, FRED_EXTRA as _FRED_EXTRA } from './js/macroCapture.js';
+import { archiveG10Free as _archiveG10Free } from './js/g10FreeCapture.js';
 import { createRefreshGuard } from './js/refreshGuard.js';
 import { mountHelixRoutes } from './js/helixRoutes.js';
 import express              from 'express';
@@ -46753,6 +46754,8 @@ async function _archiveDaily() {
   try { const m = await _fetchDtsTga('2005-01-01'); const w = await _archive.mergeSeries('treasury', 'TGA_DTS', [...m].map(([date, value]) => ({ date, value })), { unit: '$bn', via: 'Daily Treasury Statement' }); if (!w.error) out.overnight++; } catch (e) { out.failed.push(`TGA: ${e.message}`); }
   // G10 yields, NY Fed money markets, OFR repo, Treasury auctions, 15-min MOVE / DXY / rates (js/macroCapture.js, plans/DATA_CAPTURE_G10.md)
   try { out.macro = await _archiveMacro(_archive, { fetchBoe: _fetchBoeSeries, getJSON: _r2GetJSON }); } catch (e) { out.failed.push(`macro capture: ${e.message}`); }
+  // BoE curves / SONIA tails / weekly report, SNB, ECB money, TONA, TIC, IMF COFER, CFTC TFF weekly (js/g10FreeCapture.js, plans/DATA_CAPTURE_G10.md §3 phase 3)
+  try { out.g10Free = await _archiveG10Free(_archive, { fetchBoe: _fetchBoeSeries }); } catch (e) { out.failed.push(`g10 free capture: ${e.message}`); }
   // The desk's own forecast and session records (the data behind the proven range results; KV is the only copy).
   for (const [prefix, source] of [['vol_forecast_', 'vol_forecast'], ['vol_session_', 'vol_session']]) {
     try {
