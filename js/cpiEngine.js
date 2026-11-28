@@ -105,13 +105,19 @@ export const CPI_UNIVERSE = {
 //   AUD  ABS monthly CPI indicator y/y: ForexFactory's "CPI y/y" (Oct 2022 - Mar 2025), then the same release under Nasdaq's name
 //        "Monthly CPI Indicator" (Jul 2025 on). Same measure, two vendor names; no overlap to compare, a three-month gap.
 //   JPY  national core CPI y/y (ex fresh food, Japan's standard gauge): "National Core CPI y/y" then "National Core CPI".
-// Not available, so still discontinued: CAD (only CPI m/m is stored, with a gap Mar 2025 - Sep 2026, so a 12-month chain cannot be built;
-// the Bank of Canada's core measures run ~1.9% against a 3.1% headline, so standing them in would misread the level) and NZD (only
-// quarterly q/q prints, which stop in Jan 2025).
+// CAD and NZD were first left discontinued (only CPI m/m and q/q were stored: Nasdaq lists the m/m or q/q and the y/y under one name, and the
+// store dropped both copies). From 2026-11-28 those pairs are named (js/nasdaqReleases.js nameAmbiguous), so their headline y/y is stored too;
+// each scores once it has the 7 prints the trend needs. The Bank of Canada's core measures are NOT used for CAD: they run ~1.9% against a
+// 3.1% headline, which would misread the level.
 export const LIVE_CPI = {
   GBP: { events: [{ country: 'GB', event: 'CPI y/y' }], measure: 'ONS CPI y/y (calendar prints)' },
   AUD: { events: [{ country: 'AU', event: 'CPI y/y' }, { country: 'AU', event: 'Monthly CPI Indicator' }], measure: 'ABS monthly CPI indicator y/y (calendar prints)' },
   JPY: { events: [{ country: 'JP', event: 'National Core CPI y/y' }, { country: 'JP', event: 'National Core CPI' }], measure: 'national core CPI y/y, ex fresh food (calendar prints)' },
+  // From 2026-11-28 the Nasdaq rows that list the m/m (or q/q) and the y/y under ONE name are named instead of dropped
+  // (js/nasdaqReleases.js nameAmbiguous), so Statistics Canada's headline CPI y/y and Stats NZ's quarterly CPI y/y are stored as "CPI y/y".
+  // Each scores once it holds the 7 prints the trend baseline needs; until then the currency stays discontinued (liveCpiSeries -> null).
+  CAD: { events: [{ country: 'CA', event: 'CPI y/y' }], measure: 'Statistics Canada CPI y/y (calendar prints)' },
+  NZD: { events: [{ country: 'NZ', event: 'CPI y/y' }], measure: 'Stats NZ CPI y/y, quarterly (calendar prints)', quarterly: true },
 };
 
 /**

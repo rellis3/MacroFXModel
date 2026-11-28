@@ -14296,14 +14296,14 @@ async function _buildCpiScores() {
   if (!fredKey) throw new Error('FRED_KEY not configured');
   const byCcy = {}, availability = {};
   // GBP, AUD and JPY lost their FRED CPI in 2025; their headline y/y is printed live on the calendar and kept in the surprise store
-  // (js/cpiEngine.js LIVE_CPI, owner decision 2026-11-28). CAD and NZD stay discontinued: the store holds no usable headline y/y for them.
+  // (js/cpiEngine.js LIVE_CPI, owner decision 2026-11-28). CAD and NZD join once the named-pairs backfill has stored enough of their y/y prints.
   let stored = []; try { stored = await _readSurpriseStore(); } catch (e) { console.warn('[cpi] surprise store:', e.message); }
   await Promise.all(Object.keys(CPI_UNIVERSE).map(async ccy => {
     try {
       const { data, availability: avail } = await fetchCpiData(ccy, fredKey);
       const live = CPI_UNIVERSE[ccy].discontinued && LIVE_CPI[ccy] ? liveCpiSeries(stored, ccy) : null;
       if (live) { data.headline = live; avail.push({ factor: 'headline', series: LIVE_CPI[ccy].measure, n: live.size }); }
-      byCcy[ccy] = cpiScore(data, live ? { ...CPI_UNIVERSE[ccy], headline: { isIndex: false }, live: LIVE_CPI[ccy] } : CPI_UNIVERSE[ccy]);
+      byCcy[ccy] = cpiScore(data, live ? { ...CPI_UNIVERSE[ccy], headline: { isIndex: false, quarterly: !!LIVE_CPI[ccy].quarterly }, live: LIVE_CPI[ccy] } : CPI_UNIVERSE[ccy]);
       availability[ccy] = avail;
     } catch (e) {
       availability[ccy] = [{ error: e.message }];
@@ -23657,7 +23657,8 @@ async function _refreshSurpriseStore() {
   // actuals and the statistics-office fills cover a handful of releases, so 6 of 8 currencies had no live prints.
   try {
     if (Date.now() - _calFeed.at > 30 * 60_000) await _refreshCalFeed();
-    const nq = _nqDedupe(_nqRows(_calNasRaw), [...stored, ...events]);
+    // reference rows name Nasdaq's ambiguous pairs ("CPI" = the m/m and the y/y) from ForexFactory's names and the store's own (js/nasdaqReleases.js nameAmbiguous)
+    const nq = _nqDedupe(_nqRows(_calNasRaw, { reference: [...events, ...stored] }), [...stored, ...events]);
     events.push(...nq);
   } catch (e) { console.warn('[surprise] nasdaq rows:', e.message); }
   const merged = _mergeReleases(stored, events);
@@ -23717,6 +23718,8 @@ async function _backfillNasdaqSurprises(days = 460) {
   _nqBackfill = { running: true, last: { startedAt: new Date().toISOString(), days, fetched: 0, failed: 0 } };
   const H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
   let rows = [], added = 0, candidates = 0;
+  // the store's own rows name Nasdaq's ambiguous pairs by consensus/previous (2026-11-28: they used to be dropped, both copies)
+  let reference = []; try { reference = await _readSurpriseStore(); } catch { /* unnamed pairs are dropped, as before */ }
   // Saved in 50-day chunks: a deploy restarts the server, and an all-at-the-end write lost every run to one.
   const flush = async () => {
     if (!rows.length) return;
@@ -23731,7 +23734,7 @@ async function _backfillNasdaqSurprises(days = 460) {
       const d = new Date(Date.now() - k * 864e5).toISOString().slice(0, 10);
       try {
         const r = await fetch(`https://api.nasdaq.com/api/calendar/economicevents?date=${d}`, { headers: H, signal: AbortSignal.timeout(20_000) });
-        if (r.ok) { rows.push(..._nqRows(_calParseNasdaq(await r.json(), d))); _nqBackfill.last.fetched++; } else _nqBackfill.last.failed++;
+        if (r.ok) { rows.push(..._nqRows(_calParseNasdaq(await r.json(), d), { reference })); _nqBackfill.last.fetched++; } else _nqBackfill.last.failed++;
       } catch { _nqBackfill.last.failed++; }
       _nqBackfill.last.at = d;
       if (k % 50 === 0) await flush();
@@ -23749,6 +23752,16 @@ app.post('/api/econ-surprise/backfill-nasdaq', (req, res) => {
   res.json({ ok: true, started: true, status: _nqBackfill });
 });
 app.get('/api/econ-surprise/backfill-nasdaq', (_req, res) => res.json({ ok: true, ..._nqBackfill }));
+// One re-run of the Nasdaq history after the 2026-11-28 change (ambiguous pairs named, US releases FRED does not fill): the pairs it used to
+// drop, both copies (Canada CPI y/y, NZ CPI, AU GDP, ISM, CB confidence), are recovered for the last ~15 months, once. A KV flag marks it done.
+const _NQ_BACKFILL_V = 'nasdaq_backfill_v2_named_pairs';
+svcTimeout('econPollers', async () => {
+  try {
+    if (await kv.get(_NQ_BACKFILL_V)) return;
+    await _backfillNasdaqSurprises(460);
+    if (_nqBackfill.last?.done && !_nqBackfill.last?.error) await kv.put(_NQ_BACKFILL_V, JSON.stringify({ at: new Date().toISOString(), ..._nqBackfill.last }));
+  } catch (e) { console.warn('[surprise] named-pairs backfill:', e.message); }
+}, 9 * 60_000);
 
 async function _backfillSurpriseStore({ force = false } = {}) {
   if (!fs.existsSync(_SURPRISE_BACKFILL)) return { skipped: 'no backfill file' };
@@ -40056,7 +40069,7 @@ async function _dalTick(trigger = 'poll') {
   const now = Date.now(), errors = {};
   try {
     const st = await _dalLoad();   // throws on a failed read: better to skip a check than to forget what was already sent
-    const BOARDS = { stress: 'world-stress', skew: 'options-skew', fair: 'fair-value', carry: 'carry-vol', cli: 'leading-indicators', drift: 'speech-drift', chainstats: 'chain-stats' }, boards = {};
+    const BOARDS = { stress: 'world-stress', skew: 'options-skew', fair: 'fair-value', carry: 'carry-vol', cli: 'leading-indicators', drift: 'speech-drift', chainstats: 'chain-stats', health: 'data-health' }, boards = {};
     await Promise.all(Object.entries(BOARDS).map(async ([k, path]) => {
       const r = await _dpFetchFeed({ path, timeoutMs: 120_000 });
       if (r.json && r.json.ok !== false) boards[k] = r.json; else errors[k] = r.error ?? r.json?.error ?? (r.json ? 'the board answered ok:false (no data yet)' : `HTTP ${r.httpStatus ?? '?'}`);

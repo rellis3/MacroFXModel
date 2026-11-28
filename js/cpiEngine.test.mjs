@@ -164,7 +164,7 @@ console.log('[a discontinued source reports WHY, rather than going quiet]');
   ok('AUD scores from the live series and says so', sc.pressure != null && sc.pressure > 0 && sc.discontinued === undefined && /ABS monthly CPI indicator/.test(sc.source) && sc.replaces?.was === 'CPALTT01AUQ659N');
   ok('without a live series the currency is still discontinued', cpiScore({}, CPI_UNIVERSE.AUD).discontinued?.was === 'CPALTT01AUQ659N');
   ok('too few prints for the trend baseline: no live series', liveCpiSeries(rows.slice(0, 5), 'AUD') === null);
-  ok('CAD and NZD have no live CPI source configured (only m/m with a gap, only q/q that stopped)', !LIVE_CPI.CAD && !LIVE_CPI.NZD && liveCpiSeries(rows, 'CAD') === null);
+  ok('CAD and NZD read the named "CPI y/y" prints, and stay discontinued until there are 7 of them', LIVE_CPI.CAD && LIVE_CPI.NZD?.quarterly === true && liveCpiSeries(rows, 'CAD') === null && liveCpiSeries([...Array(7)].map((_, i) => ({ country: 'CA', event: 'CPI y/y', ms: ms(2026, 1 + i), actual: '2.5%' })), 'CAD')?.size === 7);
   ok('a value that is not a CPI y/y (an index level) is skipped', liveCpiSeries([...rows, { country: 'AU', event: 'CPI y/y', ms: ms(2026, 12), actual: '103.6' }], 'AUD').size === 14);
 }
 
