@@ -132,6 +132,7 @@ import { mountPaperBoards } from './js/paperBoardsRoutes.js';                  /
 import { fetchCiStatus, githubGetter } from './js/ciStatusCore.js';       // GET /api/ci-status: is main's Tests workflow green (owner only, cached 10 minutes)
 import { mountDeskBoards } from './js/deskBoardRoutes.js';              // the Desk Terminal's newer Macro boards (credit & liquidity, curve, regime, releases, strength, vol)
 import { mountLadderV2Shadow } from './js/ladderV2ShadowRoutes.js';   // ladder-v2 shadow forecast + exhaustion exports (v3 page)
+import { mountQlikeAlerts as _mountQlikeAlerts } from './js/qlikeAlertRoutes.js';   // QLIKE level alerts (GET /api/qlike-alerts, service qlikeAlerts, tgMaster.qlikeLevels)
 import { mountFuturesBars } from './js/futuresBarsRoutes.js';   // stored NT8 futures 1-min bars for the reversion page (R2 futures-bars/v1)
 import { mountReplay as _mountReplay } from './js/replayRoutes.js';                  // the Desk Terminal REPLAY (time machine, stage 1): a session as minutes, the option levels as known then, strength every 15 min (/api/replay/*)
 import { mountGhostWalk as _mountGhostWalk } from './js/ghostWalkRoutes.js';       // the ghost walk (preview): one market's days in units of the forecast median range, the OI levels in force, touches against a mirrored placebo (/api/replay/ghosts)
@@ -2095,6 +2096,7 @@ const TG_SENDERS = {
   aiSpend:           'Model spend: a note at every £5 (or the step set on Bot Config → AI models) spent on model calls in a UTC day, with the dearest jobs and the last call',
   deskAlertRules:    'Desk alert rules you set yourself: range used, Fed path move, data gone stale, a level touched, a weekend gap closed (one note per episode, at most 12 a day, descriptions not trade instructions)',
   deskAlerts:        'Desk alerts: world stress colour, options-skew extremes, fair value beyond 10%, carry/vol collapse, leading-indicator phase, speaker drift (context, not a signal)',
+  qlikeLevels:       'QLIKE level alerts: price reached a QLIKE per-line p75/p90 level (once per level per session, quiet 22:00-07:00 London, at most 20 a day; a description of the range, not a signal)',
   // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
   // (see its own tg_master_on doc) — unlike every other sender above, this
   // one is NOT enforced by server.js's tgOn(), since the bot that actually
@@ -40034,6 +40036,12 @@ app.get('/api/desk-alerts', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/desk-alerts/run', async (req, res) => { if (deskSessionRole(req) !== 'owner') return res.status(403).json({ ok: false, error: 'owner only: a run can send Telegram notes' }); try { res.json(await _dalTick('manual')); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+// ── QLIKE level alerts (owner 2026-11-28, desk layers): a note when price reaches a QLIKE per-line p75/p90 level on the CFD board.
+// Logic js/qlikeLevelAlerts.js (pure, tested), I/O js/qlikeAlertRoutes.js; GET /api/qlike-alerts. Reads the stored board, never changes it.
+const _qla = _mountQlikeAlerts(app, { kv, weekOpen: _fxWeekOpen, muted: () => !tgOn('qlikeLevels'),
+  fetchPrices: async list => { const q = await _fetchSpreads(list); const out = {}; for (const [k, p] of Object.entries(q.pairs ?? {})) if (p?.tradeable !== false && Number.isFinite(p?.bid) && Number.isFinite(p?.ask)) out[k] = (p.bid + p.ask) / 2; return out; },
+  notify: msg => (state.tg?.token && state.tg?.chatId ? sendTelegram(state.tg.token, state.tg.chatId, msg) : false) });
+svcInterval('qlikeAlerts', () => _qla.tick('poll'), 60_000);
 // ══ end of speeches, surprises and desk alerts ══════════════════════════════════════════════════════════════════════════
 
 // ══ Expectations vs reality, and transmission statistics on the Chain (owner, 2026-11-04, build list items 2 and 3) ═══════════════

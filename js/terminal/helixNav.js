@@ -110,13 +110,14 @@ export function nextStyle(view, has = () => true, dir = 1) {
 
 // ── one alert inbox ──
 const bare = t => String(t ?? '').replace(/^(?:jarvis|helix)\s*:\s*/i, '').replace(/\s*\(description, not a trade\)\s*$/i, '').trim();
-/** tab = [{ at (ms), level, text }] (this tab's watcher), server = /api/jarvis/watch lastAlerts [{ at (iso), level, text, sent }], desk = /api/desk-alert-rules rules [{ name, kind, firedAt }].
- *  -> [{ at, src: 'tab' | 'phone' | 'desk', level, text }], newest first; the same sentence from the tab and the phone within 15 minutes is one row (marked 'phone' since it reached the phone). */
-export function mergeInbox({ tab = [], server = [], desk = [] } = {}, { cap = 60, windowMs = 15 * 60_000 } = {}) {
+/** tab = [{ at (ms), level, text }] (this tab's watcher), server = /api/jarvis/watch lastAlerts [{ at (iso), level, text, sent }], desk = /api/desk-alert-rules rules [{ name, kind, firedAt }], qlike = /api/qlike-alerts log [{ at (iso), text, send }].
+ *  -> [{ at, src: 'tab' | 'phone' | 'desk' | 'qlike', level, text }], newest first; the same sentence from the tab and the phone within 15 minutes is one row (marked 'phone' since it reached the phone). */
+export function mergeInbox({ tab = [], server = [], desk = [], qlike = [] } = {}, { cap = 60, windowMs = 15 * 60_000 } = {}) {
   const rows = [];
   for (const a of server ?? []) { const at = Date.parse(a?.at); if (Number.isFinite(at) && a.text) rows.push({ at, src: a.sent === false ? 'server' : 'phone', level: a.level ?? 'info', text: bare(a.text) }); }
   for (const a of tab ?? []) { const at = +a?.at; if (!Number.isFinite(at) || !a.text) continue; const t = bare(a.text); if (rows.some(r => r.src !== 'tab' && r.src !== 'desk' && r.text === t && Math.abs(r.at - at) < windowMs)) continue; rows.push({ at, src: 'tab', level: a.level ?? 'info', text: t }); }
   for (const r of desk ?? []) { const at = Date.parse(r?.firedAt); if (Number.isFinite(at)) rows.push({ at, src: 'desk', level: 'info', text: `Desk alert: ${String(r.name || r.kind || 'rule')}` }); }
+  for (const e of qlike ?? []) { const at = Date.parse(e?.at); if (Number.isFinite(at) && e.text) rows.push({ at, src: 'qlike', level: 'info', text: `${bare(e.text)}${e.send === false ? ' (logged, not sent)' : ''}` }); }   // QLIKE level alerts (js/qlikeLevelAlerts.js)
   return rows.sort((a, b) => b.at - a.at).slice(0, cap);
 }
 
