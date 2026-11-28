@@ -1,0 +1,11 @@
+id,resolved,rebanked,by,note
+vvix-ratio-range,2026-11-28,underpowered,reopened-audit-rerun,"block-bootstrap SE (63) replaces Newey-West; fails Holm-24 and 82-cell sibling Holm"
+vix-beta-change,2026-11-28,underpowered,reopened-audit-rerun,"block t 2.995 passes Holm-16, fails 82-cell sibling Holm"
+vix-second-derivative,2026-11-28,underpowered,reopened-audit-rerun,"block t 2.96 passes part-C Holm, fails 82-cell sibling Holm"
+vix-ratio-vx-futures,2026-11-28,underpowered,reopened-audit-rerun,"block t -2.16/-2.63; fails 82-cell sibling Holm; flags shared with vvix-ratio-range"
+surprise-size,2026-11-28,underpowered,reopened-audit-rerun,"size tested within release days (54 cells, Holm): 0 pass"
+nq-down-week,2026-11-28,context,reopened-audit-rerun,"vol-state-controlled +0.096 [+0.040, +0.151] ATR, under +0.10 bar"
+post-fomc-usd-drift,2026-11-28,validated,reopened-audit-rerun,"local-drift placebo: +30.5bp, t 2.81, 99.9th pct, both halves; OOS 2022+ t 1.06"
+gex-range-es,2026-11-28,validated,reopened-audit-rerun,"no code defect; claim scoped (gamma-specific part not independent)"
+ladder-calibration,2026-11-28,validated,reopened-audit-rerun,"amendment fixed a data fault; claim narrowed to reduces, target not met"
+vmc-nq-cipher-volatility,2026-11-28,context,reopened-audit-rerun,"absorbed by price + calendar features (own follow-ups)"

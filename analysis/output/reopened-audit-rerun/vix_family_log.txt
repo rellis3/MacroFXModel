@@ -1,0 +1,14 @@
+vvix done
+beta done
+calculus BC done
+               prereg construction tail  outcome     n   beta  beta_reproduced   t_nw    t63   t126  holm_within  holm_family82  sign_ok  placebo_ok  gate_orig  gate_new  verdict_cell
+3   vvix-nasdaq-ratio          R_a   hi   dvix20  3909 -0.295             True -3.068 -2.649 -2.777        False          False     True        True       True     False  underpowered
+11  vvix-nasdaq-ratio          R_b   hi   dvix20  3909 -0.287             True -3.146 -2.895 -2.907        False          False     True        True       True     False  underpowered
+19  vvix-nasdaq-ratio          R_c   hi   dvix20  3909 -0.260             True -2.952 -2.697 -2.663        False          False     True        True      False     False  underpowered
+22  vvix-nasdaq-ratio          R_c   lo  range20  3909  0.410             True  2.943  2.939  2.886        False          False     True        True      False     False  underpowered
+31    vix-nasdaq-beta      B_level   lo   dvix20  3909 -0.257             True -2.860 -2.757 -2.589        False          False     True        True      False     False  underpowered
+36    vix-nasdaq-beta     B_change   lo     ret5  3924  0.211             True  3.004  2.995  2.877         True          False     True        True       True     False  underpowered
+73     vix-calculus-C        dRimp   hi    ret20  3909  0.232             True  3.036  2.955  3.010         True          False     True        True       True     False  underpowered
+80     vix-calculus-E          R_a   hi     vx20  3314 -0.267             True -2.439 -2.159 -2.289         True          False     True        True       True     False  underpowered
+81     vix-calculus-E          R_b   hi     vx20  3314 -0.307             True -2.903 -2.630 -2.665         True          False     True        True       True     False  underpowered
+beta reproduced on 82 of 82 | cells passing new gate: 0

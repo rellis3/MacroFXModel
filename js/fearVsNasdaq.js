@@ -2,7 +2,7 @@
  * "Fear versus the Nasdaq": has the VIX (or the VVIX, the volatility of the VIX) been moving far more than the Nasdaq?
  *
  * This is C.OG's idea (Discord, 2026-10-23: "the ratio between how VVIX and Nasdaq are pricing in information ... when that ratio is at an extreme, what then
- * happens"), pre-registered and run the same day (forge/VVIX_NASDAQ_RATIO_PREREG.md, ledger `vvix-ratio-range` VALIDATED, `vvix-ratio-direction`
+ * happens"), pre-registered and run the same day (forge/VVIX_NASDAQ_RATIO_PREREG.md, ledger `vvix-ratio-range` (VALIDATED 2026-10-23; UNDERPOWERED on the 2026-11-28 block-bootstrap re-run, reopened-audit-rerun), `vvix-ratio-direction`
  * UNDERPOWERED). The finding: when the 20-session ratio of VIX (or VVIX) moves to Nasdaq moves is in the top decile of its own last year, the VIX has
  * tended to fall about 7% over the next month, beyond what the VIX's own state predicts (t -3.1, all three periods, placebo, leave-one-year-out). It is a
  * volatility read. The Nasdaq's own direction after it came out underpowered, so nothing here says which way stocks go.
@@ -42,13 +42,13 @@ export function fearVsNasdaq(s) {
 /** Plain words for the reading. */
 export function fearWords(f) {
   if (!f) return '';
-  if (f.on) return `Fear has run ahead of the Nasdaq. Over the last 20 sessions the VIX${f.a?.on ? ' and the VVIX (the volatility of the VIX)' : ''} ${f.a?.on && f.b?.on ? 'have' : 'has'} moved far more than the Nasdaq, in the top tenth of the past year. After that, the VIX has tended to give back about 7% over the following month. It is a read on volatility. It does not say which way stocks will go.`;
+  if (f.on) return `Fear has run ahead of the Nasdaq. Over the last 20 sessions the VIX${f.a?.on ? ' and the VVIX (the volatility of the VIX)' : ''} ${f.a?.on && f.b?.on ? 'have' : 'has'} moved far more than the Nasdaq, in the top tenth of the past year. After that, the VIX has tended to give back about 7% over the following month. It is a read on volatility, and not proven: on re-check (2026-11-28) it failed the multiple-testing bar. It does not say which way stocks will go.`;
   return `Fear versus the Nasdaq is at the ${f.top}th percentile of its past year, below the top-tenth level (90th) that has gone with the VIX giving back about 7% over the next month. It is a read on volatility only. It does not say which way stocks will go.`;
 }
 
 /*
  * C.OG's dR/dt (Discord 2026-10-23, education/cog-snippets.md §3b): R = the signed % change of the VIX per % change of the Nasdaq, and how fast it is changing.
- * Pre-registered and run the same day (forge/VIX_NASDAQ_BETA_PREREG.md, ledger `vix-beta-change` VALIDATED research-only, `vix-beta-level` UNDERPOWERED).
+ * Pre-registered and run the same day (forge/VIX_NASDAQ_BETA_PREREG.md, ledger `vix-beta-change` (VALIDATED research-only 2026-10-23; UNDERPOWERED on the 2026-11-28 re-run), `vix-beta-level` UNDERPOWERED).
  *   R over a window = slope of daily change in ln VIX on daily change in ln Nasdaq over the last 20 sessions (normally about -5)
  *   dR/dt          = R today minus R five sessions ago
  *   extreme        = dR/dt's percentile among its own last 252 sessions (at least 200 known), today included; bottom tenth is 10% or less
@@ -95,7 +95,7 @@ export function vixBeta(s) {
 /** Plain words. It is a research reading and says so in both states. */
 export function vixBetaWords(v) {
   if (!v) return '';
-  const tail = 'Research only: it needs a costed rule and a forward record before it can be traded.';
+  const tail = 'Research only and not proven: on re-check (2026-11-28) it failed the multiple-testing bar, so it needs a forward record before it carries any weight.';
   if (v.on) return `C.OG's dR/dt is in its bottom tenth (${v.pct}th percentile of the past year): over the last week the VIX has started reacting much harder against the Nasdaq. In the 2009-2026 test, the Nasdaq's next 5 sessions after this averaged +0.76% (higher on 67% of occasions) against +0.33% (60%) on all days. ${tail}`;
   return `C.OG's dR/dt, how fast the VIX's reaction to the Nasdaq is changing, is at the ${v.pct}th percentile of its past year. The research reading is the bottom tenth (10th or below), after which the Nasdaq's next 5 sessions averaged +0.76% against +0.33% on all days. ${tail}`;
 }
@@ -142,7 +142,7 @@ export function impliedRatioChange(s) {
 /** Plain words; research only in both states. */
 export function impliedRatioWords(v) {
   if (!v) return '';
-  const tail = 'Research only: it needs a costed rule and a forward record before it can be traded.';
+  const tail = 'Research only and not proven: on re-check (2026-11-28) it failed the multiple-testing bar, so it needs a forward record before it carries any weight.';
   if (v.on) return `The priced-in ratio VVIX/VXN (${v.ratio}) has risen ${v.change5 > 0 ? '+' : ''}${v.change5}% in 5 sessions, in the top tenth of its past year (${v.pct}th percentile): options have just started pricing the VIX's own swings far more richly than the Nasdaq's. In the 2009-2026 test the Nasdaq's next 20 sessions after this averaged +2.5% (higher on 76% of occasions) against +1.3% (66%) on all days. ${tail}`;
   return `The priced-in ratio VVIX/VXN is ${v.ratio}; its 5-session change (${v.change5 > 0 ? '+' : ''}${v.change5}%) is at the ${v.pct}th percentile of its past year. The research reading is the top tenth (90th or above), after which the Nasdaq's next 20 sessions averaged +2.5% against +1.3% on all days. ${tail}`;
 }

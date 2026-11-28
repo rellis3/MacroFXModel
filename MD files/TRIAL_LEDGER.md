@@ -10,16 +10,16 @@ Generated 2026-11-28.
 
 | | n |
 |---|---|
-| claims tested (validated + null + underpowered) | **649** |
-| validated | 201 |
+| claims tested (validated + null + underpowered) | **648** |
+| validated | 194 |
 | null | 260 |
-| underpowered | 188 |
-| context (base rates, descriptions: not counted as tests) | 87 |
+| underpowered | 194 |
+| context (base rates, descriptions: not counted as tests) | 89 |
 | pre-registrations with no banked verdict (below) | 92 |
 
-**What the count says (Lesson 02 §05).** If none of the 649 claims were real, tests at the usual 5% size would still pass
-about **32.5** of them by luck. 201 passed, so most passes are unlikely to be luck alone, but
-**roughly 33 of the 201 could be**. Which ones cannot be told from the backtest.
+**What the count says (Lesson 02 §05).** If none of the 648 claims were real, tests at the usual 5% size would still pass
+about **32.4** of them by luck. 194 passed, so most passes are unlikely to be luck alone, but
+**roughly 32 of the 194 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -52,14 +52,14 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-17 | fed-two-moves | events | context | MD files/MARKET_SENSE_TESTS.md#S9 |
 | 2026-09-17 | fomc-leadup-surprise-table | events | context | MD files/MARKET_SENSE_TESTS.md#S12 |
 | 2026-09-17 | front-end-shock | macro | null | MD files/MARKET_SENSE_TESTS.md#S3 |
-| 2026-09-17 | nq-down-week | price | validated | MD files/GROWTH_VS_YIELDS_TEST.md |
+| 2026-09-17 | nq-down-week | price | context | MD files/GROWTH_VS_YIELDS_TEST.md |
 | 2026-09-17 | oil-to-breakevens | macro | null | MD files/MARKET_SENSE_TESTS.md#S4 |
 | 2026-09-17 | price-vs-spread-divergence | macro | null | MD files/MARKET_SENSE_TESTS.md#S11 |
 | 2026-09-17 | priced-in | events | null | MD files/MARKET_SENSE_TESTS.md#S6 |
 | 2026-09-17 | priced-in-direction | events | null | MD files/EVENT_RESPONSE_BOOK.md#§6-§7 |
 | 2026-09-17 | rotation-extreme | price | null | MD files/MARKET_SENSE_TESTS.md#S8 |
 | 2026-09-17 | stock-bond-flip | macro | context | MD files/MARKET_SENSE_TESTS.md#S2 |
-| 2026-09-17 | surprise-size | events | validated | MD files/MARKET_SENSE_TESTS.md#S7 |
+| 2026-09-17 | surprise-size | events | underpowered | MD files/MARKET_SENSE_TESTS.md#S7 |
 | 2026-09-17 | vix-inversion | volatility | validated | MD files/MARKET_SENSE_TESTS.md#S1 |
 | 2026-09-18 | asia-range-london | price | context | MD files/TECHNICAL_RANGE_TESTS.md#T7 |
 | 2026-09-18 | band-reach-from-here | price | validated | MD files/TECHNICAL_RANGE_TESTS.md#T7 |
@@ -241,14 +241,14 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-23 | basis-yearend-jpy | events | underpowered | forge/BASIS_STRESS_JPYCHF_PREREG.md |
 | 2026-10-23 | garin-vix-intraday-oos | price | underpowered | forge/VIX_CALCULUS_PREREG.md |
 | 2026-10-23 | short-vx-rule | volatility | underpowered | forge/SHORT_VX_RULE_PREREG.md |
-| 2026-10-23 | vix-beta-change | price | validated | forge/VIX_NASDAQ_BETA_PREREG.md |
+| 2026-10-23 | vix-beta-change | price | underpowered | forge/VIX_NASDAQ_BETA_PREREG.md |
 | 2026-10-23 | vix-beta-level | volatility | underpowered | forge/VIX_NASDAQ_BETA_PREREG.md |
 | 2026-10-23 | vix-brownian-scaling | volatility | context | forge/VIX_CALCULUS_PREREG.md |
 | 2026-10-23 | vix-integral-gaps | volatility | underpowered | forge/VIX_CALCULUS_PREREG.md |
-| 2026-10-23 | vix-ratio-vx-futures | volatility | validated | forge/VIX_CALCULUS_PREREG.md |
-| 2026-10-23 | vix-second-derivative | price | validated | forge/VIX_CALCULUS_PREREG.md |
+| 2026-10-23 | vix-ratio-vx-futures | volatility | underpowered | forge/VIX_CALCULUS_PREREG.md |
+| 2026-10-23 | vix-second-derivative | price | underpowered | forge/VIX_CALCULUS_PREREG.md |
 | 2026-10-23 | vvix-ratio-direction | volatility | underpowered | forge/VVIX_NASDAQ_RATIO_PREREG.md |
-| 2026-10-23 | vvix-ratio-range | volatility | validated | forge/VVIX_NASDAQ_RATIO_PREREG.md |
+| 2026-10-23 | vvix-ratio-range | volatility | underpowered | forge/VVIX_NASDAQ_RATIO_PREREG.md |
 | 2026-10-24 | cot-crowding-a1 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
 | 2026-10-24 | cot-crowding-a2 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
 | 2026-10-24 | cot-crowding-a3 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
@@ -313,7 +313,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-30 | vmc-nq-cipher-direction | price | null | forge/VMC_NQ_CIPHER_PREREG.md |
 | 2026-10-30 | vmc-nq-cipher-interaction | price | null | forge/VMC_NQ_CIPHER_PREREG.md |
 | 2026-10-30 | vmc-nq-cipher-sequencing | price | validated | forge/VMC_NQ_CIPHER_PREREG.md |
-| 2026-10-30 | vmc-nq-cipher-volatility | price | validated | forge/VMC_NQ_CIPHER_PREREG.md |
+| 2026-10-30 | vmc-nq-cipher-volatility | price | context | forge/VMC_NQ_CIPHER_PREREG.md |
 | 2026-10-31 | direction-bar | macro | context | forge/DIRECTION_BAR_PREREG.md |
 | 2026-10-31 | hedge-flow | volatility | null | oi_research_book/HEDGE_FLOW_PREREG.md |
 | 2026-10-31 | hedge-flow-side | volatility | underpowered | oi_research_book/HEDGE_FLOW_PREREG.md |
@@ -811,7 +811,6 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/FLOW_COLUMNS_PREREG.md`: Flow and positioning columns at the vol lines — pre-registration
 - `forge/FUTURES_COST_RESCORE_PREREG.md`: Futures-cost re-score of the line-touch fade (registered 2026-10-11, before the re-score is computed)
 - `forge/FUTURES_VOL_PREREG.md`: Futures volatility forecast — does intraday futures data beat the incumbent HAR? (shadow study)
-- `forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md`: gold-line-system-jordan: the gold line system on Jordan's lines only (HL projections and Close±, P75/P90)
 - `forge/HARNESS_REGISTRY_PREREG.md`: Unified study harness, and deflating the registry it will re-score
 - `forge/HEDGING_PLAN_OI_PREREG.md`: HEDGING PLAN, OI-LEVEL VERSION: do orders on the OI map's own levels do better than orders on the forecast lin
 - `forge/HEDGING_STATE_FORWARD_PREREG.md`: hedging-state-forward — On the full Cboe book, does the dealer-hedging state at the open tell us how the day b
@@ -832,6 +831,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
+- `forge/REOPENED_AUDIT_RERUN_PREREG.md`: reopened-audit-rerun — do the 11 validated entries the 2026-10-31 code audit REOPENED stand once their specifi
 - `forge/RESIDUAL_FX8_FORWARD_PREREG.md`: residual-fx8-forward — does the frozen FX8 residual threshold book keep its edge on new data?
 - `forge/RESIDUAL_INTRADAY_PREREG.md`: Study 3 — intraday relative value: does a lagging market catch up? (pre-registration)
 - `forge/RUBBER_BAND_PREREG.md`: Study 2 — the rubber band: stretch from fair value at three speeds (pre-registration)

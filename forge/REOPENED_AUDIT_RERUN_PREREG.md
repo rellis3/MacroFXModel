@@ -163,6 +163,12 @@ path of `bootDiff`) is handed over in the results file instead. No 3B outcome wa
 3A was first run with B = 50 as a smoke test of the code (82/82 betas reproduce the registered ones). Its output was
 printed before the B = 2000 run. Nothing in the design was changed after it; the B = 2000 run is the scored one.
 
+### A3 — 2026-11-28 — POST-HOC (results seen), describes only
+§7 said live surfaces would only be listed. The repo's guard tests (`js/rangePressure.test.mjs`,
+`js/deskWatchEvidence.test.mjs`, `js/fearVsNasdaq.test.mjs`) fail when a surface cites a demoted entry as validated or
+tested, so evidence WORDING and tags were changed on those surfaces (no calculation, threshold or expectation number
+changed); the list is in RESULTS. Verdicts are unaffected.
+
 ## RESULTS
 
 See `analysis/output/reopened-audit-rerun/RESULTS.md`.

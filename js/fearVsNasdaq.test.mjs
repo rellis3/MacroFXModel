@@ -27,7 +27,9 @@ ok('days where any of the three series is missing are skipped, not zero-filled',
 ok('the words say it is a volatility read and not a direction call, in both states', /does not say which way stocks will go/.test(fearWords(hot)) && /does not say which way stocks will go/.test(fearWords(quietFear)) && /ahead of the Nasdaq/.test(fearWords(hot)) && /percentile of its past year/.test(fearWords(quietFear)) && fearWords(null) === '');
 ok('the words claim only what the study found: about 7% back over the next month, nothing about stocks rising', /about 7%/.test(fearWords(hot)) && !/\b(rally|bounce|buy|sell|will rise|bullish)\b/i.test(fearWords(hot) + fearWords(quietFear)));
 const e = DESK_EVIDENCE.find(x => x.id === 'vvix-ratio-range');
-ok(process.env.STRICT ? 'the cited ledger entry exists and is validated' : 'the cited ledger entry, where this checkout has it, is validated (STRICT=1 requires it)', process.env.STRICT ? !!e && e.verdict === 'validated' : !e || e.verdict === 'validated');
+// 2026-11-28 (reopened-audit-rerun): the entry was re-banked UNDERPOWERED; the words must then say it is not proven.
+const citeOk = (x, words) => x.verdict === 'validated' || (x.verdict === 'underpowered' && /not proven/.test(words));
+ok(process.env.STRICT ? 'the cited ledger entry exists and is validated, or the words say not proven' : 'the cited ledger entry, where this checkout has it, is validated or the words say not proven (STRICT=1 requires it)', process.env.STRICT ? !!e && citeOk(e, fearWords(hot)) : !e || citeOk(e, fearWords(hot)));
 // ── C.OG's dR/dt (vix-beta-change): parity with the study's pandas code on the last 700 study sessions ──
 const F = JSON.parse(readFileSync(new URL('./fixtures/vixBeta.parity.json', import.meta.url), 'utf8')), BS = vixBetaSeries(F.vix, F.ndx);
 let worstB = 0, worstP = 0, missing = 0, flagDiff = 0;
@@ -41,7 +43,7 @@ ok('too little history is no reading', vixBeta({ vix: F.vix.slice(0, 150), nq: F
 const onW = vixBetaWords({ ...vb, on: true, pct: 6 }), offW = vixBetaWords(vb);
 ok('the words cite the tested numbers and say research only in both states', /\+0\.76%/.test(onW) && /67%/.test(onW) && /bottom tenth/.test(onW) && /Research only/.test(onW) && /Research only/.test(offW) && /44th percentile/.test(offW) && vixBetaWords(null) === '');
 const eb = DESK_EVIDENCE.find(x => x.id === 'vix-beta-change');
-ok('the cited ledger entry, where this checkout has it, is validated', process.env.STRICT ? !!eb && eb.verdict === 'validated' : !eb || eb.verdict === 'validated');
+ok('the cited ledger entry, where this checkout has it, is validated or the words say not proven', process.env.STRICT ? !!eb && citeOk(eb, onW) : !eb || citeOk(eb, onW));
 // ── vix-calculus C2: dR/dt of the implied ratio VVIX/VXN, parity with the study's pandas code ──
 const G = JSON.parse(readFileSync(new URL('./fixtures/impliedRatio.parity.json', import.meta.url), 'utf8')), IS = impliedRatioSeries(G.vvix, G.vxn);
 let wI = 0, missI = 0, flagI = 0;

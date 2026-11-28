@@ -32,7 +32,8 @@ ok('a doc that IS a file path counts as a study',
 const AUDITED_OUT = DESK_EVIDENCE.filter(e => ['reopened', 'unverified'].includes(citable(e).audit?.status));
 ok('a verdict the code audit reopened or could not verify is never quoted as settled',
   AUDITED_OUT.length > 0 && AUDITED_OUT.every(e => !citable(e).strong && /(REOPENED|UNVERIFIED) by code audit/.test(citable(e).tag)), `${AUDITED_OUT.length} entries`);
-ok('post-fomc-usd-drift reads as reopened', /REOPENED/.test(citable(DESK_EVIDENCE.find(e => e.id === 'post-fomc-usd-drift')).tag));
+ok('dispersion-reset reads as reopened', /REOPENED/.test(citable(DESK_EVIDENCE.find(e => e.id === 'dispersion-reset')).tag));
+ok('post-fomc-usd-drift reads as resolved (reopened-audit-rerun 2026-11-28)', /resolved 2026-11-28/.test(citable(DESK_EVIDENCE.find(e => e.id === 'post-fomc-usd-drift')).tag));
 ok('a verdict that stands says so', DESK_EVIDENCE.filter(e => citable(e).audit?.status === 'stands').every(e => /code audit [\d-]+: stands/.test(citable(e).tag)));
 for (const id of ['oi-max-pain', 'yields-to-fx-direction']) {
   const e = DESK_EVIDENCE.find(x => x.id === id);

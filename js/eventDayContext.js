@@ -18,8 +18,8 @@ const LABEL = { sofr: 'SOFR Sep26 leg', eur: 'Euribor Mar27 leg', zt: 'US 2y not
 
 const US_ASSETS = ['zn', 'dx', 'eurusd', 'usdjpy', 'gold', 'nq'];
 // What each family's evidence says, in the ledger's own words (js/deskEvidence.js). Ids are quoted so the reader can look them up.
-const US_DATA = 'Tested here: the surprise explains the first 15 minutes and gives no evidence on the next hour to five days (rate-surprise-eurusd, rate-surprise-nq, underpowered); the surprise SIZE widens the session (surprise-size, validated), never a direction.';
-const CB = 'Tested here: a rate decision widens the session (surprise-size, validated: rate decisions widened EUR/USD +0.38 ATR on the day and GBP/USD +0.38 the session after); no direction rule has passed.';
+const US_DATA = 'Tested here: the surprise explains the first 15 minutes and gives no evidence on the next hour to five days (rate-surprise-eurusd, rate-surprise-nq, underpowered); release days run wider than ordinary days, but a BIGGER surprise was not shown to widen them further (surprise-size, re-banked underpowered 2026-11-28), never a direction.';
+const CB = 'Tested here: a rate-decision day has run wider than a matched ordinary day (EUR/USD +0.38 ATR on the day, GBP/USD +0.38 the session after, S7 as run); the size of the surprise was not shown to matter (surprise-size, re-banked underpowered 2026-11-28); no direction rule has passed.';
 export const FAMILIES = {
   NFP: { name: 'US payrolls', ccys: ['USD'], assets: US_ASSETS, evidence: US_DATA },
   CPI: { name: 'US CPI', ccys: ['USD'], assets: US_ASSETS, evidence: US_DATA },
