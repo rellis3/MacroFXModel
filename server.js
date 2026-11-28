@@ -8922,7 +8922,8 @@ app.get('/api/residual-fx8-forward', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
     const raw = await kv.get('residual_fx8_forward_v1').catch(() => null), p = raw ? JSON.parse(raw) : null, payload = p?.data ?? p;
     if (!payload?.latest) return res.json({ ok: false, error: 'no record yet: the Railway recorder runs nightly at 22:40 London (service residualFx8Forward)' });
-    res.json({ ok: true, ...payload });
+    const craw = await kv.get('residual_fx8_carry_forward_v1').catch(() => null), cp = craw ? JSON.parse(craw) : null;
+    res.json({ ok: true, ...payload, carryShadow: cp?.data ?? null });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // Nightly recorder on Railway (owner 2026-11-28: nothing runs on the laptop, so the record stalled after 2026-11-12).
@@ -8933,6 +8934,8 @@ app.get('/api/residual-fx8-forward', async (_req, res) => {
 // flagged fin_stale), exactly as the prereg's §3 says. Paper only: reads candles and financing rates, places no orders.
 const _RFX8_DIR = path.join(__dirname, 'analysis', 'output', 'residual-fx8-forward');
 const _RFX8_FILES = [['record.csv', 'residual_fx8_forward_record_csv_v1'], ['financing_log.csv', 'residual_fx8_forward_finlog_csv_v1'], ['discrepancies.log', 'residual_fx8_forward_disc_v1']];
+const _RFX8C_DIR = path.join(__dirname, 'analysis', 'output', 'residual-fx8-carry-forward');
+const _RFX8C_FILES = [['record.csv', 'residual_fx8_carry_forward_record_csv_v1'], ['discrepancies.log', 'residual_fx8_carry_forward_disc_v1']];
 let _rfx8Run = null;
 function _rfx8Tick(source) {
   if (_rfx8Run && !_rfx8Run.done) return _rfx8Run;
@@ -8953,7 +8956,27 @@ function _rfx8Tick(source) {
     const summary = JSON.parse(fs.readFileSync(path.join(_RFX8_DIR, 'summary.json'), 'utf8'));
     summary.recorder = 'railway';
     await kv.put('residual_fx8_forward_v1', JSON.stringify({ key: 'residual_fx8_forward_v1', data: summary, timestamp: Date.now() }));
-    return out.trim().split('\n').slice(-2).join(' | ');
+    // The carry-guard shadow (forge/RESIDUAL_FX8_CARRY_FORWARD_PREREG.md) runs after the main record, reading its
+    // financing log. Its own files and summary live under residual_fx8_carry_forward_*; a failure here never touches the main record.
+    let shadow = 'carry shadow: not run';
+    try {
+      for (const [name, key] of _RFX8C_FILES) {
+        const v = await kv.getStrict(key), file = path.join(_RFX8C_DIR, name);
+        fs.mkdirSync(_RFX8C_DIR, { recursive: true });
+        if (v) fs.writeFileSync(file, v); else if (fs.existsSync(file)) fs.unlinkSync(file);
+      }
+      const so = await new Promise((resolve, reject) => execFile('python3', ['scripts/residual-fx8-carry-forward/record_carry.py'],
+        { cwd: __dirname, timeout: 10 * 60_000, maxBuffer: 8 << 20, env: { ...process.env, RFX8_OANDA_HOST: _oandaBaseMe() } },
+        (err, stdout, stderr) => (err ? reject(new Error(`record_carry.py: ${err.message} ${String(stderr).slice(-400)}`)) : resolve(String(stdout)))));
+      for (const [name, key] of _RFX8C_FILES) {
+        const file = path.join(_RFX8C_DIR, name);
+        if (fs.existsSync(file)) await kv.put(key, fs.readFileSync(file, 'utf8'));
+      }
+      const cs = JSON.parse(fs.readFileSync(path.join(_RFX8C_DIR, 'summary.json'), 'utf8'));
+      await kv.put('residual_fx8_carry_forward_v1', JSON.stringify({ key: 'residual_fx8_carry_forward_v1', data: cs, timestamp: Date.now() }));
+      shadow = so.trim().split('\n').at(-1);
+    } catch (e) { shadow = `carry shadow failed: ${e.message}`; console.error('[residual-fx8-forward]', shadow); }
+    return out.trim().split('\n').slice(-2).join(' | ') + ' | ' + shadow;
   })()
     .then(r => { run.result = r; console.log(`[residual-fx8-forward] ${source}: ${r}`); })
     .catch(e => { run.error = e?.message || String(e); console.error('[residual-fx8-forward]', run.error); })
