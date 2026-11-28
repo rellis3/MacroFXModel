@@ -216,7 +216,7 @@ to land here.
 
 ## Amendments
 
-### A1 — power table (2026-11-27, before any `--mode score` run)
+### A1 — PRE-RESULTS — power table (2026-11-27, before any `--mode score` run)
 
 Source: `node scripts/atlas-honest-gonogo/run.mjs --mode count` on the laptop, bid/ask M1 extracted by
 `extract.py` (34 keys, 2016-10 → 2026-08-20 23:59 UTC, lockbox cut). Count mode prints no means; none has been seen.
@@ -238,7 +238,7 @@ vote's deff < 1 probably comes from each touch's fade and follow, which are clos
 the control together. Any change to how deff is estimated would be a separate amendment (A2), made before
 scoring and without seeing a mean. A1 records the registered machinery's output as it stands.
 
-### A2 — design effect from the scored sample (2026-11-28, before any `--mode score` run)
+### A2 — PRE-RESULTS — design effect from the scored sample (2026-11-28, before any `--mode score` run)
 
 **Change.** Count mode now measures the design effect on the sample that is scored: the vote's traded touches at
 the production margin, using the same session-date block bootstrap (b = 400, block 21). The figure is the
@@ -264,4 +264,12 @@ the 400 resamples now share the RNG stream with the A2 bootstrap. The registered
 vote is scored for a verdict, and Asia and Monday are description only. Asia would need about 2.3× its trades at
 this SD and deff to reach the bar.
 
-## RESULTS — not run
+## RESULTS — run 2026-11-28 (see `analysis/output/atlas-honest-gonogo/RESULTS.md`)
+
+- **Vote Atlas: NULL.** −0.060R [−0.076, −0.044], n 27,480.
+- **Asia Fib: UNDERPOWERED** by design. −0.414R [−0.460, −0.367], n 4,100.
+- **Monday Fib: UNDERPOWERED** by design. −0.271R [−0.351, −0.188], n 650.
+- Mid fills are about 0 in all three: the spread is the loss.
+- The §8 audit (random-walk guard, production route against the script, dropped/unfilled counts) was clean
+  before banking.
+- Ledger ids: `atlas-honest-gonogo-vote`, `-asia`, `-monday`.

@@ -23,6 +23,27 @@ import { EVIDENCE_AUDIT, EVIDENCE_AUDIT_DATE } from './evidenceAudit.js';
 
 export const DESK_EVIDENCE = [
   {
+    id: 'atlas-honest-gonogo-vote', domain: 'price', verdict: 'null', date: '2026-11-28', doc: 'forge/ATLAS_HONEST_GONOGO_PREREG.md', also: ['analysis/output/atlas-honest-gonogo/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCHF', 'EURAUD', 'EURCHF', 'AUDJPY', 'CADJPY', 'CHFJPY', 'GOLD', 'NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100'],
+    claim: 'With the known leaks removed (in-sample-only vote book, causal session-vol inputs), the Vote Atlas fade/follow vote at the production margin (>= 3) makes money on real OANDA bid/ask fills and beats the same trades with its decisions shuffled',
+    result: 'NULL. 17 production instruments, OOS from each pair\'s 60/40 split (2022) to 2026-08-20, 27,480 trades: -0.060 R [-0.076, -0.044] net of the spread, MDE 0.027 vs bar +0.05; both halves negative (-0.072 / -0.050), every year 2022-2026 negative, 0 instruments survive BH. Mid fills -0.004 R: the spread is the loss. The vote does beat its decision shuffle (real pct 1.00 vs p95 -0.069) by leaning to follows (fades -0.083, follows -0.030). Audit before banking: random walk -0.003 R at zero spread; production route vs script on EURUSD 100% same decision and margin.',
+    use: 'Do not present Vote Atlas fade/follow trades as profitable after costs; the vote ranks fade vs follow a little better than chance but not enough to pay the spread at these stops. Show the Atlas as a range/level map; a direction or stop-placement use needs its own prereg, not a retune of this vote.',
+  },
+  {
+    id: 'atlas-honest-gonogo-asia', domain: 'price', verdict: 'underpowered', date: '2026-11-28', doc: 'forge/ATLAS_HONEST_GONOGO_PREREG.md', also: ['analysis/output/atlas-honest-gonogo/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'EURGBP', 'EURAUD', 'GBPAUD', 'AUDJPY', 'AUDNZD', 'AUDCAD', 'CADJPY', 'NZDJPY', 'GOLD'],
+    claim: 'With the known leaks removed, the Asia Fib Atlas fade/follow vote at the production margin (>= 2) makes money on real OANDA bid/ask fills and beats the same trades with its decisions shuffled',
+    result: 'UNDERPOWERED by design (A2 MDE 0.075 > bar +0.05; description only). 16 instruments, 4,100 trades: -0.414 R [-0.460, -0.367], both halves negative, below zero in every year; mid fills +0.015 R, so the loss is the spread on narrow Asia lines. Beats its decision shuffle (pct 1.00); always-fade -0.434, always-follow -0.833. Gap filter <= 30 min: -0.455 R (n 1,822). 0 instruments survive BH.',
+    use: 'Cannot be called null from this sample, but nothing supports trading the Asia Fib vote on its own lines after costs. Do not describe it as working.',
+  },
+  {
+    id: 'atlas-honest-gonogo-monday', domain: 'price', verdict: 'underpowered', date: '2026-11-28', doc: 'forge/ATLAS_HONEST_GONOGO_PREREG.md', also: ['analysis/output/atlas-honest-gonogo/RESULTS.md'],
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF', 'EURGBP', 'EURAUD', 'GBPAUD', 'AUDJPY', 'AUDNZD', 'AUDCAD', 'CADJPY', 'NZDJPY', 'GOLD'],
+    claim: 'With the known leaks removed, the Monday Fib Atlas fade/follow vote at the production margin (>= 2) makes money on real OANDA bid/ask fills and beats the same trades with its decisions shuffled',
+    result: 'UNDERPOWERED by design (A2 MDE 0.129 > bar +0.05; description only). 16 instruments, 650 trades: -0.271 R [-0.351, -0.188], both halves negative; below its own decision shuffle (pct 0.004); mid fills -0.017 R. Gap filter <= 180 min: -0.307 R (n 345).',
+    use: 'Cannot be called null from this sample, but nothing supports trading the Monday Fib vote after costs. Do not describe it as working.',
+  },
+  {
     id: 'vix-inversion', domain: 'volatility', verdict: 'validated', date: '2026-09-17', doc: 'MD files/MARKET_SENSE_TESTS.md#S1',
     claim: 'VIX above VIX3M (near-term fear priced above the 3-month) is followed by a wider week',
     result: 'First day of inversion → next-5-session range vs matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Inversions are brief (median 1 session).',
@@ -5150,6 +5171,9 @@ export function evidenceFor(instrument) {
 // recorded the power yet", and it reads as "single test, power not recorded"
 // until someone does. That default is the safe direction.
 const POWER = {
+  'atlas-honest-gonogo-vote': { n: '27,480 trades on 1,108 session dates, 17 instruments, 21-date blocks', note: 'MDE 0.027 (A2, voted-sample deff 2.88) vs bar 0.05: powered; CI upper -0.044 rules out the bar' },
+  'atlas-honest-gonogo-asia': { n: '4,100 trades on 803 session dates, 16 instruments', note: 'MDE 0.075 (A2) vs bar 0.05: underpowered by design' },
+  'atlas-honest-gonogo-monday': { n: '650 trades on 331 session dates, 16 instruments', note: 'MDE 0.129 (A2) vs bar 0.05: underpowered by design' },
   'ema-regime-line-filter': { n: '31,234 line trades, 3 markets, 21-session date blocks', note: 'every kept net CI upper edge below 0: a +0.05R trade ruled out' },
   'bias-day-trade-fx': { n: '11,788 calls, 27 pairs, 21-session date blocks', note: 'MDE 0.026 (2.8 x random-side placebo sd) vs bar 0.04: powered' },
   'bias-day-trade-gold': { n: '979 calls, one market', note: 'MDE 0.104 vs bar 0.04: underpowered by design' },
