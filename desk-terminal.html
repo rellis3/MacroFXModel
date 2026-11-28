@@ -400,13 +400,14 @@ const fmtScore = s => (s == null || !Number.isFinite(s) ? '–' : s > 0 ? `▲ +
 const signedScore = s => (s == null || !Number.isFinite(s) ? '–' : s > 0 ? `+${s.toFixed(1)}` : s < 0 ? `−${Math.abs(s).toFixed(1)}` : '0.0');
 const scoreText = (s, word) => (s == null || !Number.isFinite(s) ? 'no data' : `${fmtScore(s)} · ${word}`);
 const assetText = c => scoreText(assetScore(c), assetWord(c));
-// the currency read is shown on the book's own −2..+2 scale everywhere (review 2026-11-27: the strip read +5.0 / −2.5 while the panel read +2 / −1)
-const fmtBias = b => (b == null || !Number.isFinite(b) ? '–' : b > 0 ? `▲ +${b}` : b < 0 ? `▼ −${Math.abs(b)}` : '● 0');
-const BIAS_NOTE = 'The currency read runs −2 to +2, the book\'s own scale: + bullish, − bearish, 0 no view, – no data.';
-const ccyText = bias => { const b = numOrNull(bias); return b == null ? 'no data' : `${fmtBias(b)} · ${ccyWord(b)}`; };
+const ccyText = bias => scoreText(ccyScore(bias), ccyWord(bias));
 const grade = c => { const d = Math.abs(DIR[c?.rating] ?? 0); if (!d || !(c.size > 0)) return null; return d === 2 && c.conviction === 'high' ? 'A+' : c.conviction === 'high' ? 'A' : c.conviction === 'medium' ? (d === 2 ? 'A-' : 'B+') : 'B'; };
 const gradeLabel = c => { const g = grade(c); return g ? `${g} conviction` : null; };
 // SCORE-DISPLAY END
+// the currency read is shown on the book's own −2..+2 scale on this page (review 2026-11-27: the strip read +5.0 / −2.5 while the panel read +2 / −1)
+const fmtBias = b => (b == null || !Number.isFinite(b) ? '–' : b > 0 ? `▲ +${b}` : b < 0 ? `▼ −${Math.abs(b)}` : '● 0');
+const BIAS_NOTE = 'The currency read runs −2 to +2, the book\'s own scale: + bullish, − bearish, 0 no view, – no data.';
+const ccyBiasText = bias => { const b = numOrNull(bias); return b == null ? 'no data' : `${fmtBias(b)} · ${ccyWord(b)}`; };
 // the grade chip says what it grades: the card's conviction, not a hit rate or a direction
 const gradeChip = c => { const g = gradeLabel(c); return g ? `<span class="grade" title="The card's conviction grade (A+ = strong view at high conviction). Not a hit rate and not a direction.">${g}</span>` : ''; };
 const px = v => (Number.isFinite(+v) ? (+v).toFixed(+v >= 1000 ? 1 : +v >= 100 ? 2 : +v >= 10 ? 3 : 5) : '–');
@@ -488,7 +489,7 @@ function landTip(e, d, layer) {
   const rateLine = b ? `<br>${esc(b.name)} policy rate ${b.rate}% (${esc(b.asOf)}) · ${esc(b.cycle)} · 12m ${b.change12m > 0 ? '+' : ''}${b.change12m ?? '–'}pp` : '';
   const creditLine = r ? `<br>cross-border bank credit $${Math.round(r.stockBn ?? 0).toLocaleString('en-GB')}bn · ${r.g > 0 ? '+' : ''}${r.g ?? '–'}% over 4 quarters${r.list === 'usdBorrowers' ? ' (in dollars)' : ''}` : '';
   if (layer === 'value') { const f = fairOf(d.id); return tip(e, f ? `<b>${nm} · ${esc(f.ccy)}</b><br>real effective rate ${f.devPct > 0 ? '+' : ''}${f.devPct}% against its ${Math.round(f.years)}-year average · <b>${esc(f.label)}</b><br><span class="muted">12m ${f.chg12m > 0 ? '+' : ''}${f.chg12m ?? '–'}% · BIS, ${esc(f.period)}</span>` : `<b>${nm}</b><br><span class="muted">no BIS fair-value series here</span>`); }
-  if (layer === 'bias' && c) { const v = D.ccy[c] ?? {}; return tip(e, `<b>${nm} · ${c}</b><br><span class="${dirCls(v.bias)}">${v.bias == null ? 'no currency ruling (no data)' : `bias ${v.bias > 0 ? '+' : ''}${v.bias} · ${ccyText(v.bias)}`}</span><br><span class="muted">${esc(firstSentence(v.why).slice(0, 140))}</span>${rateLine}`); }
+  if (layer === 'bias' && c) { const v = D.ccy[c] ?? {}; return tip(e, `<b>${nm} · ${c}</b><br><span class="${dirCls(v.bias)}">${v.bias == null ? 'no currency ruling (no data)' : `bias ${v.bias > 0 ? '+' : ''}${v.bias} · ${ccyBiasText(v.bias)}`}</span><br><span class="muted">${esc(firstSentence(v.why).slice(0, 140))}</span>${rateLine}`); }
   if (!b && !r) return tip(e, `<b>${nm}</b><br><span class="muted">${layer === 'credit' ? 'not in the BIS borrower list' : 'no BIS policy rate'}</span>`);
   tip(e, `<b>${nm}</b>${layer === 'credit' ? creditLine + rateLine : rateLine + creditLine}`);
 }
@@ -555,7 +556,7 @@ async function drawMap(el, mode = 'bias') {
   svg.append('g').selectAll('path').data(geo.features).join('path')
     .attr('d', path).attr('class', d => (ZONE[d.id] ? 'land zone' : 'land'))
     .attr('style', d => (mode === 'cb' ? (ZONE[d.id] ? `fill:${fill(ZONE[d.id])}` : null) : landStyle(d, mode === 'bias' ? (el.id === 'heromap' ? HLAYER : 'bias') : mode)))
-    .on('mousemove', (e, d) => { if (mode !== 'cb') return landTip(e, d, mode === 'bias' ? (el.id === 'heromap' ? HLAYER : 'bias') : mode); const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">${mode === 'cb' && cb[c] ? `${esc(cb[c].regime)} · hawkishness ${cb[c].score}` : v.bias == null ? 'no currency ruling (no data)' : `bias ${v.bias > 0 ? '+' : ''}${v.bias} · ${ccyText(v.bias)}`}</span><br><span class="muted">${esc(firstSentence(v.why).slice(0, 140))}</span>`); })
+    .on('mousemove', (e, d) => { if (mode !== 'cb') return landTip(e, d, mode === 'bias' ? (el.id === 'heromap' ? HLAYER : 'bias') : mode); const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">${mode === 'cb' && cb[c] ? `${esc(cb[c].regime)} · hawkishness ${cb[c].score}` : v.bias == null ? 'no currency ruling (no data)' : `bias ${v.bias > 0 ? '+' : ''}${v.bias} · ${ccyBiasText(v.bias)}`}</span><br><span class="muted">${esc(firstSentence(v.why).slice(0, 140))}</span>`); })
     .on('mouseleave', () => tip(null)).on('click', (e, d) => { tip(null); if (el.id === 'heromap') return openCountry(d.id); if (ZONE[d.id]) ccyModal(ZONE[d.id]); });
   // the book's main trade: strongest against weakest, along the great circle (only when both ends are single currencies, not a tie)
   if (mode === 'bias' && D.ranking?.length >= 2 && rankEnds().single) {
@@ -603,7 +604,7 @@ async function drawGlobe(el) {
   const grat = svg.append('path').attr('class', 'grat');
   const land = svg.append('g').selectAll('path').data(geo.features).join('path').attr('class', d => (ZONE[d.id] ? 'land zone' : 'land'))
     .attr('style', d => landStyle(d, HLAYER))
-    .on('mousemove', (e, d) => { return landTip(e, d, HLAYER); const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">${v.bias == null ? 'no data' : `bias ${v.bias} · ${ccyText(v.bias)}`}</span>`); })
+    .on('mousemove', (e, d) => { return landTip(e, d, HLAYER); const c = ZONE[d.id]; if (!c) return tip(e, null); const v = D.ccy[c] ?? {}; tip(e, `<b>${esc(d.properties.name)} · ${c}</b><br><span class="${dirCls(v.bias)}">${v.bias == null ? 'no data' : `bias ${v.bias} · ${ccyBiasText(v.bias)}`}</span>`); })
     .on('mouseleave', () => tip(null)).on('click', (e, d) => { tip(null); if (el.id === 'heromap') return openCountry(d.id); if (ZONE[d.id]) ccyModal(ZONE[d.id]); });
   const arcEl = svg.append('path').attr('class', 'arc');
   const single = rankEnds().single, a = single ? CB_GEO[D.ranking?.[0]] : null, b = single ? CB_GEO[D.ranking?.at(-1)] : null;
@@ -1078,7 +1079,7 @@ ${v.flip?.length ? `<details><summary>What would flip it</summary><ul>${v.flip.m
 }
 function strengthStrip() {
   return `<div class="card"><div class="ch"><span class="lbl">Currency strength · analyst read, daily</span><span class="r muted">strongest → weakest, the Currency Manager's ruling · tap for the card</span></div><div class="strength">${D.ranking.map(c => { const b = numOrNull(D.ccy[c]?.bias), s = ccyScore(b);
-    return `<div class="sbox" tabindex="0" data-ccy="${c}" title="${esc(ccyText(b))} (−5..+5)"><b>${FLAG[c] ?? ''} ${c}</b><div class="vbar"><i style="height:${s == null ? 2 : Math.max(6, Math.abs(s) * 8)}px;background:${b > 0 ? 'var(--up)' : b < 0 ? 'var(--dn)' : 'var(--flat)'}"></i></div><div class="v ${dirCls(b)}">${fmtBias(b)}</div><span class="muted">${s == null ? 'no data' : ccyWord(b)}</span></div>`; }).join('')}</div><p class="muted" style="font-size:11.5px;margin:6px 0 0">${esc(BIAS_NOTE)}</p></div>`;
+    return `<div class="sbox" tabindex="0" data-ccy="${c}" title="${esc(ccyBiasText(b))} (−5..+5)"><b>${FLAG[c] ?? ''} ${c}</b><div class="vbar"><i style="height:${s == null ? 2 : Math.max(6, Math.abs(s) * 8)}px;background:${b > 0 ? 'var(--up)' : b < 0 ? 'var(--dn)' : 'var(--flat)'}"></i></div><div class="v ${dirCls(b)}">${fmtBias(b)}</div><span class="muted">${s == null ? 'no data' : ccyWord(b)}</span></div>`; }).join('')}</div><p class="muted" style="font-size:11.5px;margin:6px 0 0">${esc(BIAS_NOTE)}</p></div>`;
 }
 function playbookCard(n, c) {
   const L = c.levels, d = Math.sign(DIR[c.rating] ?? 0);
@@ -1304,7 +1305,7 @@ function ccyModal(c) {
   const v = D.ccy[c] ?? {}, s = numOrNull(v.bias), cb = D.sc?.cbSentiment?.[c], rate = D.rd?.byCcy?.[c], real = D.ry?.byCcy?.[c], exp = D.run?.head?.book?.exposure;
   const drv = ccyDrivers(c), best = bestExpressions(c);
   openModal(`<div class="ch"><span style="font-size:28px">${FLAG[c] ?? ''}</span><div><h3 style="font-size:20px">${c}</h3><span class="muted">${BANK[c] ?? ''}</span></div>${biasChip(v.bias)}<button class="x" aria-label="Close">✕</button></div>
-<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><div style="text-align:center">${ring(s, 84, ccyWord(v.bias), 2)}<div class="muted" style="font-size:11px">${esc(ccyText(v.bias))}</div></div>${rateBars(c)}</div>
+<div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap"><div style="text-align:center">${ring(s, 84, ccyWord(v.bias), 2)}<div class="muted" style="font-size:11px">${esc(ccyBiasText(v.bias))}</div></div>${rateBars(c)}</div>
 <div class="synth">${esc(v.why ?? (['NOK', 'SEK'].includes(c) ? 'Traded, not debated: the desk reads NOK and SEK pairs from the EUR or USD view, the central bank, oil (NOK) and the risk tone.' : 'No ruling.'))}</div>
 <div class="drv">${cb ? `<span class="chip ${cb.regime === 'HAWKISH' ? 'gold' : cb.regime === 'DOVISH' ? 'pur' : ''}">${esc(cb.regime)} · hawk ${cb.score}</span><span>last meeting ${esc(cb.meetingDate)}</span>` : ''}${pol(c) ? `<span title="${esc(pol(c).source)}">policy ${pct(pol(c).rate)} · ${esc(pol(c).asOf)}</span>` : ''}${rate ? `<span>3m rate ${rate.latestRate}%</span>` : ''}${real ? `<span>real 10y ${f(real.latestReal)}%</span>` : ''}${exp?.after?.[c] != null ? `<span>book exposure ${f(exp.after[c])}${exp.before?.[c] !== exp.after?.[c] ? ` (was ${f(exp.before[c])})` : ''}</span>` : ''}<span title="The Currency Manager's conviction in this currency's bias (not the global ruling's, not a card's)">currency conviction ${esc(v.conviction ?? '–')}</span></div>
 ${globalThis.cbToneStrip?.(E['cb-board'], c) ?? ''}
