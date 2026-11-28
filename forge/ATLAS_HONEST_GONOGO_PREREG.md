@@ -147,11 +147,13 @@ It never prints a mean.
 
 | Cell | Planned n | Outcome SD (control) | Design effect | **MDE** | Pass bar | Verdict |
 |---|---|---|---|---|---|---|
-| vote | 27,480 | 0.888 | 0.633 | **+0.013R** | +0.05R | powered: scored |
-| asia | 4,100 | 0.984 | 68.06 | **+0.377R** | +0.05R | UNDERPOWERED by design |
-| monday | 650 | 1.021 | 42.41 | **+0.775R** | +0.05R | UNDERPOWERED by design |
+| vote | 27,480 | 0.888 | 2.880 | **+0.027R** | +0.05R | powered: scored |
+| asia | 4,100 | 0.984 | 2.734 | **+0.075R** | +0.05R | UNDERPOWERED by design |
+| monday | 650 | 1.021 | 1.169 | **+0.129R** | +0.05R | UNDERPOWERED by design |
 
-(Filled by amendment A1, 2026-11-27, from `run.mjs --mode count`; see Amendments.)
+(Amendment A2, 2026-11-28: design effect measured on the voted traded sample. It replaces A1's control-sample
+figures: vote 0.633 / +0.013R, asia 68.06 / +0.377R, monday 42.41 / +0.775R. See Amendments. The powered/underpowered
+split is the same under both.)
 
 **Rule.** A system whose MDE exceeds +0.05R is UNDERPOWERED by design: it is still run, but only as description,
 and cannot be VALIDATED or NULL from this sample. Monday trades about once per pair per week and is the likeliest
@@ -235,5 +237,31 @@ that is the whole difference: at deff = 1 the MDE would be ≈ 0.046 (under the 
 vote's deff < 1 probably comes from each touch's fade and follow, which are close to mirror images, entering
 the control together. Any change to how deff is estimated would be a separate amendment (A2), made before
 scoring and without seeing a mean. A1 records the registered machinery's output as it stands.
+
+### A2 — design effect from the scored sample (2026-11-28, before any `--mode score` run)
+
+**Change.** Count mode now measures the design effect on the sample that is scored: the vote's traded touches at
+the production margin, using the same session-date block bootstrap (b = 400, block 21). The figure is the
+bootstrap SE squared over the naive SE squared. Only spreads are used; the sample's mean is neither printed nor
+stored. SD (control sample), n, α = 0.05/3 one-sided, 80% power and the +0.05R bar are unchanged. `--mode score`
+reads its MDE from `count.json`, which now holds the A2 figures. A1's output is kept at `count_A1.json`, and the
+control-sample deff is still reported as `deffControl`.
+
+**Why.** A1's note: the control sample has dozens of rows per session date and includes each touch's fade and
+follow together. That inflates the clustering for the Fib systems (Asia 68) and deflates it for the vote (0.63,
+from pairs that mirror each other). Neither describes the voted trades the test scores.
+
+**Owner decision** 2026-11-28, after A1 and with no means seen.
+
+| System | Traded at margin | Traded dates | SD (control) | deff A1 (control) | **deff A2 (voted)** | MDE A1 | **MDE A2** | Powered |
+|---|---|---|---|---|---|---|---|---|
+| vote | 27,480 | 1,108 | 0.8876 | 0.633 | **2.880** | 0.0127 | **0.0270** | yes |
+| asia | 4,100 | 803 | 0.9841 | 68.06 | **2.734** | 0.3765 | **0.0755** | no |
+| monday | 650 | 331 | 1.0214 | 42.41 | **1.169** | 0.7748 | **0.1286** | no |
+
+The rerun's control-sample deff (Asia 60.7, Monday 40.7) differs from A1's (68.1, 42.4) only in bootstrap noise:
+the 400 resamples now share the RNG stream with the A2 bootstrap. The registered verdict rule does not change:
+vote is scored for a verdict, and Asia and Monday are description only. Asia would need about 2.3× its trades at
+this SD and deff to reach the bar.
 
 ## RESULTS — not run

@@ -210,9 +210,17 @@ function countMode() {
     const sd = control.length > 1 ? sdOf(control.map(t => t.r)) : null;
     const boot = control.length > 30 ? blockBoot(control, rnd, { b: 400 }) : null;
     const seBoot = boot ? sdOf(boot) : null, seNaive = sd / Math.sqrt(control.length);
-    const deff = seBoot ? (seBoot / seNaive) ** 2 : null;
+    const deffControl = seBoot ? (seBoot / seNaive) ** 2 : null;
+    const mdeA1 = nTraded > 1 && sd ? mdeMeanDiff({ sd, n1: nTraded, alpha: 0.05 / 3, twoSided: false, deff: deffControl }) : null;
+    // Amendment A2 (2026-11-28): the design effect is measured on the sample that is scored,
+    // the vote's traded touches at the production margin, with the same date-block bootstrap.
+    // Only its spread (bootstrap SE vs naive SE) is used; its mean is never printed or stored.
+    const traded = voted.map(r => pick(r, r.decision)).filter(Boolean);
+    const bootV = traded.length > 30 ? blockBoot(traded, rnd, { b: 400 }) : null;
+    const sdV = traded.length > 1 ? sdOf(traded.map(t => t.r)) : null;
+    const deff = bootV && sdV ? (sdOf(bootV) / (sdV / Math.sqrt(traded.length))) ** 2 : null;
     const mde = nTraded > 1 && sd ? mdeMeanDiff({ sd, n1: nTraded, alpha: 0.05 / 3, twoSided: false, deff }) : null;
-    out[sys] = { instruments: SYSTEMS[sys].pairs.length - missing.length, missing, oosTouches: rows.length, votedAtMargin: voted.length, tradedAtMargin: nTraded, sdControl: sd, deff, mde, passBar: PASS_BAR, powered: mde != null && mde <= PASS_BAR };
+    out[sys] = { instruments: SYSTEMS[sys].pairs.length - missing.length, missing, oosTouches: rows.length, votedAtMargin: voted.length, tradedAtMargin: nTraded, tradedDates: new Set(traded.map(t => t.date)).size, sdControl: sd, deffControl, mdeA1, deff, mde, passBar: PASS_BAR, powered: mde != null && mde <= PASS_BAR };
   }
   console.log(JSON.stringify(out, null, 2));
 }
