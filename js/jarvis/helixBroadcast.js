@@ -7,6 +7,8 @@
 //   GET  /api/helix/special-due          the rank-3 release (payrolls, CPI, a rate decision) printed 30-80 minutes ago that has no special yet, or none (read-only)
 //   POST /api/helix/podcast/episode?id=&title=&part=&seconds=  (audio/mpeg body) -> R2 helix/podcast/<id>.mp3, the feed, and the note. Needs the push secret.
 //   GET  /api/helix/podcast/<feedKey>/feed.xml | /<id>.mp3     the private podcast feed (an obscure address, not listed anywhere)
+//   GET  /api/helix/weekly-digest?week=YYYY-MM-DD[&format=text|json]  owner only: the WRITTEN weekly digest (a printable page; js/jarvis/helixDigestCore.js), read-only.
+//        Its link goes in the Friday weekly recap's Telegram note.
 //
 // AUTH (the laptop has no login cookie): the platform's laptop-push convention, the X-Auth-Token header against KV_WRITE_SECRET, the same variable /api/kv/set and the
 // footprint pushes use (read from the same env var on both sides). With KV_WRITE_SECRET set, every write here needs it. Without it, the two note routes stay usable but
@@ -14,6 +16,8 @@
 // Description only: the notes say a video is up or a run failed, nothing else.
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { KV_KEY, readStore, addItem, addFailure, validatePublished, validateFailed, publishedText, failedText, specialsDue, validateEpisode, podcastRss } from './helixBroadcastCore.js';
+import { weekDates, buildDigest, digestText, digestHtml } from './helixDigestCore.js';
+import { byteRange } from './helixMediaCore.js';
 
 const R2_PREFIX = 'helix/podcast/';
 const origin = req => { const h = String(req.get('host') ?? ''); return `${/^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(h) ? 'http' : 'https'}://${h}`; };      // Railway terminates TLS in front of us
@@ -44,8 +48,10 @@ export async function mount(app, deps) {
     const v = validatePublished(req.body); if (!v.ok) return res.status(400).json(v);
     try {
       const r = await update(s => addItem(s, v.item, londonDay(deps)));
-      const sent = !r.duplicate && !r.capped ? await send(publishedText(v.item)) : false;
-      res.json({ ok: true, duplicate: r.duplicate, capped: r.capped, sent, url: v.item.url });
+      // the Friday weekly recap's note carries the written digest's link (owner-only page; the week is the recap's own London date)
+      const digest = v.item.part === 'weekly' ? `${origin(req)}/api/helix/weekly-digest?week=${londonDay(deps)}` : null;
+      const sent = !r.duplicate && !r.capped ? await send(publishedText(v.item) + (digest ? `\nWritten digest (prints to PDF): ${digest}` : '')) : false;
+      res.json({ ok: true, duplicate: r.duplicate, capped: r.capped, sent, url: v.item.url, digest });
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 
@@ -76,6 +82,31 @@ export async function mount(app, deps) {
       const now = Number.isFinite(+req.query.now) && +req.query.now > 0 ? +req.query.now : Date.now();     // ?now= replays a time (for testing the laptop's launcher); nothing is written
       const due = specialsDue(events, now, done);
       res.json({ ok: true, now: new Date(now).toISOString(), checked: events.length, due });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+
+  // ── the written WEEKLY DIGEST (owner only, read-only): the week's day records, the calendar and the published list; cached 10 min per week ──
+  const digests = new Map();
+  async function weekDigest(week) {
+    const hit = digests.get(week[0]); if (hit && Date.now() - hit.at < 10 * 60_000) return hit.d;
+    const r2ok = !!deps.r2?.configured?.();
+    const recs = await Promise.all(week.map(async d => [d, r2ok ? await deps.r2.getJSON(`helix/days/${d}.json`).catch(() => null) : null]));
+    let events = []; try { const ev = await deps.selfJson('/api/events'); events = Array.isArray(ev) ? ev : Array.isArray(ev?.events) ? ev.events : []; } catch (e) { events = []; }
+    const items = readStore(await kv.get(KV_KEY).catch(() => null)).items;
+    const d = buildDigest({ week, records: Object.fromEntries(recs), events, items, now: Date.now() });
+    digests.set(week[0], { at: Date.now(), d }); if (digests.size > 12) digests.delete(digests.keys().next().value);
+    return d;
+  }
+  app.get('/api/helix/weekly-digest', deps.ownerOnly, async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const q = String(req.query.week ?? ''), day = /^\d{4}-\d{2}-\d{2}$/.test(q) ? q : londonDay(deps), week = weekDates(day);
+    if (!week.length) return res.status(400).json({ ok: false, error: 'week=YYYY-MM-DD' });
+    try {
+      const d = await weekDigest(week), fmt = String(req.query.format ?? 'html'), self = `/api/helix/weekly-digest?week=${week[0]}`;
+      if (fmt === 'json') return res.json(d);
+      if (fmt === 'text') return res.type('text/plain; charset=utf-8').send(digestText(d, `${origin(req)}${self}`));
+      const shift = n => { const t = Date.parse(`${week[0]}T12:00:00Z`) + n * 7 * 864e5; return `/api/helix/weekly-digest?week=${new Date(t).toISOString().slice(0, 10)}`; };
+      res.set('X-Robots-Tag', 'noindex').type('text/html; charset=utf-8').send(digestHtml(d, { textHref: `${self}&format=text`, prevHref: shift(-1), nextHref: week[0] < weekDates(londonDay(deps))[0] ? shift(1) : null, builtAt: Date.now() }));
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
   });
 
@@ -117,12 +148,9 @@ export async function mount(app, deps) {
     try {
       const buf = await deps.r2.getBuffer(`${R2_PREFIX}${m[1]}.mp3`); if (!buf) return res.status(404).end();
       res.set({ 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, max-age=86400', 'Accept-Ranges': 'bytes', 'X-Robots-Tag': 'noindex' });
-      const rg = /^bytes=(\d*)-(\d*)$/.exec(req.get('range') ?? '');
-      if (rg && (rg[1] || rg[2])) {
-        const size = buf.length, a = rg[1] ? +rg[1] : Math.max(0, size - +rg[2]), b = rg[1] && rg[2] ? Math.min(size - 1, +rg[2]) : size - 1;
-        if (a > b || a >= size) return res.status(416).set('Content-Range', `bytes */${size}`).end();
-        return res.status(206).set('Content-Range', `bytes ${a}-${b}/${size}`).send(buf.subarray(a, b + 1));
-      }
+      const rg = byteRange(req.get('range'), buf.length);           // a player's scrubber sends Range (the rule and its tests: js/jarvis/helixMediaCore.js)
+      if (rg?.unsatisfiable) return res.status(416).set('Content-Range', `bytes */${buf.length}`).end();
+      if (rg) return res.status(206).set('Content-Range', `bytes ${rg.start}-${rg.end}/${buf.length}`).send(buf.subarray(rg.start, rg.end + 1));
       res.send(buf);
     } catch (e) { res.status(500).end(); }
   });

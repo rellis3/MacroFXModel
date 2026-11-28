@@ -209,6 +209,10 @@ export const FULL_EXCLUDED = [
   { path: 'fundabias-log', why: 'the owner\'s FundaBias log is itself a write-once KV record per day (fundabias_log_<date>, served by /api/fundabias-log?date=)' },
   { path: 'desk-run', why: 'about 275 KB; the morning book is already kept for good, one key a day (desk_run_<date>); CORE carries its ratings, convictions and exposure' },
   // Helix data routes (js/helixRoutes.js, 2026-11-27): each is rebuilt from R2 records or OANDA bars that are already stored, so a daily copy would repeat them
+  // desk layers (2026-11-28): QLIKE level alerts and the real-yield layer
+  { path: 'real-yields', why: 'rebuilt hourly from the FRED chapter series (DFII5/DFII10/T5YIE/T10YIE/DGS5/DGS10) and the R2 archive series g10_yields AU_10Y / AU_10Y_REAL, which are the permanent record' },
+  { path: 'qlike-alerts', why: 'the alert log is itself kept in KV (qlike_alerts_v1, capped) and every level it reports is on the stored QLIKE board (R2 qlike-lines/cfd/<session>.json)' },
+  { path: 'real-yields', why: 'rebuilt on request from FRED (the /api/chapters series DFII5, DFII10, T5YIE, T10YIE, DGS5, DGS10) and the R2 archive series g10_yields/AU_10Y and AU_10Y_REAL, which are themselves the permanent record' },
   { path: 'g10-rates', why: 'rebuilt on request from the R2 archive series (archive/series/g10_yields, archive/series/fred), which are themselves the permanent record' },
   { path: 'funding-board', why: 'rebuilt on request from the R2 archive (archive/series/nyfed, ofr, fred, treasury and archive/tables/ust_auctions), already the permanent record' },
   { path: 'vol-terrain', why: 'the daily ranges the VOL view draws, recomputed from OANDA daily bars on request; nothing in it is not in the bars' },
@@ -216,6 +220,14 @@ export const FULL_EXCLUDED = [
   { path: 'helix/record', why: 'owner-only: the Helix daily record itself, written once per broadcast run to R2 helix/days/<date>.json' },
   { path: 'helix/roll-health', why: 'a reader of rates-legs/_health.json in R2, which the IBKR roll job rewrites; the file is the record' },
   { path: 'helix/stress', why: 'rebuilt from the stored 15-minute bars in R2 (archive/i15_MOVE, archive/i15_DXY)' },
+  // Helix memory (js/helixMemoryRoutes.js, 2026-11-28): owner-only readers of R2 records that are themselves the permanent record
+  { path: 'helix/diary', why: 'owner-only: a reader of the stored Helix daily records (helix/days/<date>.json) and their scores; the R2 files are the record' },
+  { path: 'helix/diary/search', why: 'owner-only: a keyword search over the stored Helix daily records in R2; nothing in it is not in those files' },
+  { path: 'helix/scores', why: 'owner-only: a reader of helix/scores/<date>.json, written once a day by the helixScore job; the file is the record' },
+  { path: 'helix/scorecard', why: 'owner-only: a reader of helix/scores/_summary.json, the rolling calibration the helixScore job rewrites; the file is the record' },
+  { path: 'helix/score', why: 'owner-only POST that runs the evening scorer now; it writes helix/scores/<date>.json, nothing to snapshot' },
+  { path: 'helix/media', why: 'owner-only list of the H.E.L.I.X. videos and podcast episodes (the Media tab); the archive itself is the record, in R2 helix/media/videos.json and helix/podcast/index.json' },
+  { path: 'helix/broadcasts', why: 'owner-only: the last published broadcasts, already kept in KV helix_published_v1; the Media tab reads the fuller R2 archive' },
 ];
 /** Feeds that carry trade levels or the owner's own record: stored in FULL for the owner, removed from a desk viewer's copy. */
 export const OWNER_ONLY_FEEDS = ['trade-watch', 'pair-select', 'desk-alerts', 'desk-score/record', 'desk-quality'];

@@ -57,6 +57,7 @@ import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
 import { isLinesDefault } from '../globalReadCore.js';
 import * as RBV from './ratesBoardView.js';
+import * as RYV from './realYieldsView.js';   // the real-yield layer beside the nominal boards (/api/real-yields)
 import * as FYV from './fedPathYieldsView.js';
 import * as BOEV from './boePathView.js';
 import * as MacroSubs from './macroSubtabs.js';
@@ -1009,6 +1010,8 @@ const RENDER = { today: renderToday, pair: renderPair, deep: renderDeep, changed
   replay: () => import('./replayView.js').then(V => V.mount(el('replay'))).catch(e => { el('replay').innerHTML = `<div class="card"><p class="muted">The Replay tab did not load: ${h(e.message)}</p></div>`; }),
   // the Bias process (plans/DESK_BIAS_PROCESS_SPEC.md "Desk Terminal"): cards, head to head, weekly review, the owner's FundaBias log (js/terminal/deskBiasProcessView.js)
   bprocess: () => import('./deskBiasProcessView.js').then(V => V.mount(el('bprocess'), { getJson, book: () => D?.cards ?? null })).catch(e => { el('bprocess').innerHTML = `<div class="card"><p class="muted">The Bias process tab did not load: ${h(e.message)}</p></div>`; }),
+  // the Media tab (owner only): every H.E.L.I.X. video by day and the podcast player (js/terminal/mediaView.js, GET /api/helix/media); mounted once, kept while you switch tabs
+  media: () => { const r = el('media'); if (r.dataset.built) return; r.dataset.built = '1'; import('./mediaView.js').then(V => V.mount(r, { variant: 'desk' })).catch(e => { r.dataset.built = ''; r.innerHTML = `<div class="card"><p class="muted">The Media tab did not load: ${h(e.message)}</p></div>`; }); },
   corr: () => import('./corrView.js').then(V => V.render(el('corr'), { getJson, book: () => D })).catch(e => { el('corr').innerHTML = `<div class="card"><p class="muted">Correlations &amp; hedges did not load: ${h(e.message)}</p></div>`; }) };
 globalThis.onTerminalTab = t => { T.tab = t; if (t !== 'today') stopLive(); if (t !== 'news') { clearInterval(NS.timer); NS.timer = null; } if ((t !== 'pair' && /pair=/.test(location.hash)) || (t !== 'deep' && /^#deep/.test(location.hash))) history.replaceState(null, '', location.pathname + location.search); try { RENDER[t]?.(); } catch (e) { console.warn('terminal tab', t, e); } };
 globalThis.openPairPage = openPair;
@@ -1044,6 +1047,8 @@ globalThis.llGridHtml = LLV.gridHtml;
 // the Macro tab's Rates & policy board (desk-terminal.html enrichMacro): the curve, its slopes, the priced Fed path beside them
 globalThis.ratesBoardHtml = (rb, fp, gy) => { try { return RBV.boardHtml(rb, fp, gy, { esc, spk, sgn }); } catch (e) { console.warn('rates board', e); return ''; } };
 // ...and the Fed path against the yields (js/fedPathYieldsCore.js): the priced path, the 2Y / 2s10s / 10Y and the Atlanta window odds, same dates
+// the real-yield layer (js/terminal/realYieldsView.js): TIPS, breakevens and the AU indexed bond beside the nominal boards, behind a toggle
+globalThis.realYieldsHtml = ry => { try { return RYV.boardHtml(ry); } catch (e) { console.warn('real yields', e); return ''; } };
 globalThis.macroMoreHtml = (E, extra) => macroMoreHtml(E, extra);
 globalThis.macroMoreBoard = (key, E, extra) => macroMoreBoard(key, E, extra);
 globalThis.macroSubs = MacroSubs;

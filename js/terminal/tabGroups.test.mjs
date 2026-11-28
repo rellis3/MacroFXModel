@@ -20,6 +20,6 @@ test('group lookups and visibility under access rules', () => {
   assert.equal(groupOf('today'), 'chain');       // the tab called today is the Chain
   assert.equal(groupOf('nope'), null);
   assert.deepEqual(pillsFor('markets', new Set(['deep', 'kchart'])), ['assets', 'pair', 'monitor']);
-  assert.ok(!visibleGroups(new Set(['bprocess', 'workspace', 'infomap'])).some(g => g.id === 'tools'));
+  assert.ok(!visibleGroups(new Set(['bprocess', 'workspace', 'infomap', 'media'])).some(g => g.id === 'tools'));
   assert.ok(visibleGroups().length === GROUPS.length);
 });

@@ -254,6 +254,11 @@ export function splitsZ(net, moves, thr = 0.6, zMin = 2) {
   list.sort((x, y) => (y.core - x.core) || (Math.abs(y.z) - Math.abs(x.z)));
   return { list, out, tested, expected: tested * Z_TAIL_2 };
 }
+/** HELIX MEMORY: the checkable claim in the brief's "Moving as one" sentence (helixScoreCore.js net_as_one): the anchor and its members with their window correlations. [] when no block. */
+export function netClaims(net, thr = 0.6) {
+  const ot = net?.m ? oneTrade(net, thr) : null;
+  return ot ? [{ kind: 'net_as_one', anchor: ot.a, members: ot.mem.map(x => ({ k: x.k, r: Math.round(x.r * 1000) / 1000 })), cue: 'Moving as one' }] : [];
+}
 const chanceWords = e => (e < 1 ? 'fewer than one' : e < 1.5 ? 'about one' : `about ${Math.round(e)}`);
 /** Where the day's move was: the cluster with the biggest average move against its usual (>= 0.8), with its direction when most agree: { id, name, mean, ids, dir: 'up'|'dn'|null } or null. */
 export function moveGroup(net, moves) {

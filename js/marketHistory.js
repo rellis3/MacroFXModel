@@ -33,6 +33,8 @@ export const YAHOO_LONG = {
   TIP: { t: 'TIP', label: 'TIPS ETF' }, SHY: { t: 'SHY', label: '1-3Y Treasury ETF' }, BIL: { t: 'BIL', label: 'T-bill ETF' },
   EMB: { t: 'EMB', label: 'EM dollar bond ETF' }, BKLN: { t: 'BKLN', label: 'Leveraged loan ETF' }, IHYG: { t: 'IHYG.L', label: 'Euro high-yield ETF' },
   KRE: { t: 'KRE', label: 'US regional banks ETF' }, KBE: { t: 'KBE', label: 'US banks ETF' }, EUFN: { t: 'EUFN', label: 'European financials ETF' },
+  // 2026-11-28 (plans/DATA_CAPTURE_G10.md phase 3): UK gilt ETFs, the free daily read of gilts beside the BoE curves.
+  IGLT: { t: 'IGLT.L', label: 'UK gilts ETF (iShares Core, GBP)' }, INXG: { t: 'INXG.L', label: 'UK index-linked gilts ETF (iShares, GBP)' }, VGOV: { t: 'VGOV.L', label: 'UK gilts ETF (Vanguard, GBP)' },
 };
 const FX_SEED = 'analysis/output/fx-dollar-funding-exposure/cache';
 export const YAHOO_FX = ['AUDUSD', 'EURUSD', 'GBPUSD', 'NZDUSD', 'BRL', 'CAD', 'CHF', 'IDR', 'INR', 'JPY', 'KRW', 'MXN', 'MYR', 'NOK', 'PHP', 'SEK', 'SGD', 'THB', 'TRY', 'TWD'];

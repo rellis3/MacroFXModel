@@ -15,7 +15,7 @@
 import { registerJarvisModule } from './jarvisModules.js';
 import { registerShowScene } from './showCore.js';
 import { glView, orbitPos, ease } from './jarvisGL.js';
-import { holoModel, windowState, heightOf, blendInto, ccyCard, placeLabels, fxgridScript, defaultWindow, shortestWindow, sg, KEYS, CAP_SIGMA } from './fxHoloCore.js';
+import { holoModel, windowState, heightOf, blendInto, ccyCard, placeLabels, fxgridScript, defaultWindow, shortestWindow, scriptWindow, sg, KEYS, CAP_SIGMA } from './fxHoloCore.js';
 
 const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD'], N = 8, CELL = 0.46, COLW = 0.25, EDGE = 4.75 * CELL, MORPH = 1.3;
 const PAIRS = []; for (const a of CCYS) for (const b of CCYS) if (a !== b) PAIRS.push([a, b]);
@@ -272,9 +272,10 @@ await import('./jarvisViewRatePaths.js').catch(() => null);   // so the 'cbpaths
 registerShowScene({
   id: 'fxgrid', after: 'cbpaths',
   prepare: api => loadFx(api).catch(() => null),
-  build: () => {
-    const text = S.model ? fxgridScript(S.model) : null; if (!text) return null;
-    const k = shortestWindow(S.model);
+  build: inp => {
+    const evening = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(new Date(+(inp?.now ?? Date.now()))) % 24 >= 18;
+    const text = S.model ? fxgridScript(S.model, { evening }) : null; if (!text) return null;
+    const k = scriptWindow(S.model, { evening });
     return { title: 'Who has out-run whom', view: 'fxgrid', cam: null, text,
       enter: api => { S.sel = null; if (k && k !== S.key) setWindow(k); Object.assign(api.st, { yaw: 0.35, pitch: -0.45, zoom: 1, spin: false }); },
       motion: (api, p) => { S.showP = clampN(p, 0, 1); S.showAt = Date.now(); } };

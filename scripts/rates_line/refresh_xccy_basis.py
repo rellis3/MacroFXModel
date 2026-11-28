@@ -20,6 +20,26 @@ import sys
 import time
 import urllib.request
 from datetime import date, datetime, timedelta, timezone
+
+
+def _push_auth(headers: dict) -> dict:
+    """PUSH-SECRET READINESS: add X-Auth-Token from env KV_WRITE_SECRET, else from a git-ignored push_secret.txt (the repo root or jarvis_broadcast/), when one exists.
+    With neither the headers go out unchanged, so today's pushes behave exactly as before."""
+    import os
+    from pathlib import Path as _P
+    s = os.environ.get('KV_WRITE_SECRET', '').strip()
+    if not s:
+        for d in _P(__file__).resolve().parents:
+            for f in (d / 'push_secret.txt', d / 'jarvis_broadcast' / 'push_secret.txt'):
+                try:
+                    if f.is_file():
+                        s = f.read_text(encoding='utf-8').strip()
+                        break
+                except OSError:
+                    pass
+            if s or (d / '.git').exists():
+                break
+    return {**headers, 'X-Auth-Token': s} if s else dict(headers)
 asyncio.set_event_loop(asyncio.new_event_loop())
 
 BASE = 'https://macrofxmodel-production.up.railway.app'
@@ -110,7 +130,7 @@ def main():
             print('nothing to push')
             sys.exit(1)
         body = json.dumps({'key': KV_KEY, 'data': payload, 'timestamp': int(time.time() * 1000)}).encode()
-        req = urllib.request.Request(f'{BASE}/api/kv/set', data=body, headers={'Content-Type': 'application/json'}, method='POST')
+        req = urllib.request.Request(f'{BASE}/api/kv/set', data=body, headers=_push_auth({'Content-Type': 'application/json'}), method='POST')
         with urllib.request.urlopen(req, timeout=30) as r:
             print(f'POST /api/kv/set {KV_KEY} -> HTTP {r.status}')
 

@@ -201,3 +201,7 @@ was rebuilt from raw data to the identical figure (+0.05479R, 936 trades). Omiss
 - **`line-system-backtest.html`** (the standard backtest page: trades, candles, % / R / $ CSVs) shows this version.
 - Next: forward record, tick-data fill check, then the lockbox once.
 
+
+- **2026-11-28:** continuation ideas are parked in `plans/GOLD_CONTINUATION_PARKED.md` (the owner wants the MFE-after-break analysis first, later). Focus is the fade.
+
+- **2026-11-28 `gold-line-vwap-stretch-filter` (banked, UNDERPOWERED, all gates pass):** skip fills less than 2σ from VWAP. IS −0.085 → −0.001, OOS +0.302 → +0.377, and every year is better. It is a switch on the backtest page. Confirm it on the lockbox or forward.

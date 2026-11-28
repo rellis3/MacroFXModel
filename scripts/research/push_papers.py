@@ -24,6 +24,26 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+
+def _push_auth(headers: dict) -> dict:
+    """PUSH-SECRET READINESS: add X-Auth-Token from env KV_WRITE_SECRET, else from a git-ignored push_secret.txt (the repo root or jarvis_broadcast/), when one exists.
+    With neither the headers go out unchanged, so today's pushes behave exactly as before."""
+    import os
+    from pathlib import Path as _P
+    s = os.environ.get('KV_WRITE_SECRET', '').strip()
+    if not s:
+        for d in _P(__file__).resolve().parents:
+            for f in (d / 'push_secret.txt', d / 'jarvis_broadcast' / 'push_secret.txt'):
+                try:
+                    if f.is_file():
+                        s = f.read_text(encoding='utf-8').strip()
+                        break
+                except OSError:
+                    pass
+            if s or (d / '.git').exists():
+                break
+    return {**headers, 'X-Auth-Token': s} if s else dict(headers)
+
 BASE = os.environ.get('MACROFX_BASE', 'https://macrofxmodel-production.up.railway.app')
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -49,8 +69,8 @@ def upload(base, path, read=False, timeout=180):
     with open(path, 'rb') as f:
         body = f.read()
     url = base + '/api/research-pod/upload' + ('?read=1' if read else '')
-    req = urllib.request.Request(url, data=body, method='POST', headers={
-        'Content-Type': 'application/pdf', 'X-Filename': urllib.parse.quote(os.path.basename(path))})
+    req = urllib.request.Request(url, data=body, method='POST', headers=_push_auth({
+        'Content-Type': 'application/pdf', 'X-Filename': urllib.parse.quote(os.path.basename(path))}))
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode('utf-8'))

@@ -12,11 +12,12 @@ import { registerShowScene } from './showCore.js';
 import { glView, orbitPos } from './jarvisGL.js';
 import { placeBox } from './gammaHoloCore.js';
 import { keyLine } from './jarvisViewGammaPillar.js';
+import { realLayerLines } from '../realYields.js';   // the real-yield layer (GET /api/real-yields), drawn beside the curve, never into it
 import { TENORS, T2, T10, T30, xOfYears, buildGrid, slopeBp, slopeMix, ribbonOn, curveStats, yieldsScript, dayWord, bpText, monoCurve, yieldsShowAct } from './jarvisYieldsCore.js';
 
 const ID = 'yields', NT = TENORS.length, TTL = 30 * 60_000, XW = 6.4, ZD = 6.4, ZF = ZD / 2, YS = 2.8, SUB = 8, NC = (NT - 1) * SUB + 1;
 const RIBS = [['real', 'REAL 10Y', 'up'], ['de', 'BUND 10Y', 'tx'], ['gb', 'GILT 10Y', 'cy']];
-const S = { G: null, st: null, rib: { real: null, de: null, gb: null }, on: { real: true, de: false, gb: false }, status: 'loading', at: 0, busy: null, showP: -1, showAt: 0, spin: null };
+const S = { G: null, st: null, rib: { real: null, de: null, gb: null }, on: { real: true, de: false, gb: false, ry: false }, ry: null, status: 'loading', at: 0, busy: null, showP: -1, showAt: 0, spin: null };
 const KEY = 'left to right = maturity, 3M to 30Y (log) · toward you = time, newest curve at the front · height = yield (back wall in %) · colour = 2s10s slope: cool normal (40bp+), gold flat, red inverted · description of the curve, not a forecast';
 const KEY_PH = 'maturity across · time toward you, newest at front · height = yield · cool normal, gold flat, red inverted 2s10s · description, not a forecast';
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -28,7 +29,8 @@ export function loadYields(api, force) {
   if (S.busy) return S.busy; if (S.G && !force && Date.now() - S.at < TTL) return Promise.resolve(S.G);
   S.busy = (async () => {
     const ok = p => Promise.resolve(p).catch(() => null);
-    const [ch, iy] = await Promise.all([ok(api.jf('/api/chapters')), ok(api.jf('/api/intl-yields'))]);
+    const [ch, iy, ry] = await Promise.all([ok(api.jf('/api/chapters')), ok(api.jf('/api/intl-yields')), ok(api.jf('/api/real-yields'))]);
+    if (ry?.ok) S.ry = ry;
     let G = null; try { G = buildGrid(ch); } catch (e) { G = null; }
     if (G) { S.G = G; S.st = curveStats(G); S.at = Date.now(); S.status = 'ok'; S.rib.real = ribbonOn(G, ch?.series?.real10 ?? ch?.series?.tips); S.rib.de = ribbonOn(G, iy?.series?.de10y); S.rib.gb = ribbonOn(G, iy?.series?.gb10y); }
     else if (!S.G) S.status = 'fail';
@@ -209,7 +211,7 @@ function overlay(ctx, g, api, H, camera, B) {
   for (const v of B.ticks) if (!cp || Math.abs(v - Math.round(v)) < 1e-6) label(Sc([B.x0 - 0.06, B.yOf(v), -ZF]), `${v.toFixed(1)}%`, C.tx2, 10, '', [[left, cen]]);
   // ribbon toggles above the key
   const kt = cp ? KEY_PH : KEY; font(11); const lines = keyLines(ctx, kt, W - 24), keyTop = Hh - (cp ? 96 : 70) - (lines - 1) * 14 - 13;
-  const bw = cp ? Math.min(96, (W - 28) / 3 - 6) : 100, bh = cp ? 28 : 20, by = keyTop - bh / 2 - 10, bx0 = cp ? (W - (bw * 3 + 12)) / 2 : 170;
+  const bw = cp ? Math.min(96, (W - 28) / 4 - 6) : 100, bh = cp ? 28 : 20, by = keyTop - bh / 2 - 10, bx0 = cp ? (W - (bw * 4 + 18)) / 2 : 170;
   font(10); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   RIBS.forEach(([k, nm, tone], r) => {
     const have = !!S.rib[k], on = have && S.on[k], x = bx0 + r * (bw + (cp ? 6 : 10));
@@ -218,7 +220,20 @@ function overlay(ctx, g, api, H, camera, B) {
     if (on) { ctx.globalAlpha = 0.25 * fade; ctx.fillStyle = C[tone]; ctx.fillRect(x + 1, by - bh / 2 + 1, bw - 2, bh - 2); }
     ctx.globalAlpha = (have ? 0.95 : 0.4) * fade; ctx.fillStyle = C.tx; ctx.fillText(have ? `${on ? '■' : '□'} ${nm}` : `${nm} n/a`, x + bw / 2, by + 1); if (have) g.hit(`yl:${k}`, x + bw / 2, by);
   });
+  { // the fourth toggle: the real-yield layer panel (a table beside the terrain; the terrain and its numbers are unchanged)
+    const have = !!S.ry, on = have && S.on.ry, x = bx0 + 3 * (bw + (cp ? 6 : 10));
+    ctx.globalAlpha = fade * 0.85; ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(x, by - bh / 2, bw, bh);
+    ctx.globalAlpha = (have ? 0.9 : 0.35) * fade; ctx.strokeStyle = C.tx2; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, by - bh / 2 + 0.5, bw - 1, bh - 1);
+    if (on) { ctx.globalAlpha = 0.25 * fade; ctx.fillStyle = C.tx2; ctx.fillRect(x + 1, by - bh / 2 + 1, bw - 2, bh - 2); }
+    ctx.globalAlpha = (have ? 0.95 : 0.4) * fade; ctx.fillStyle = C.tx; ctx.fillText(have ? `${on ? '■' : '□'} REAL LAYER` : 'REAL n/a', x + bw / 2, by + 1); if (have) g.hit('yl:ry', x + bw / 2, by);
+  }
   ctx.textBaseline = 'alphabetic';
+  if (S.on.ry && S.ry) { // the real-yield panel, top right
+    ctx.textAlign = 'left';
+    const L = realLayerLines(S.ry), px = cp ? 10 : 11, lh = px + 5; font(px); const w = Math.min(W - 16, Math.max(...L.map(l => ctx.measureText(l.text).width)) + 16), x = W - w - 8, y = cp ? 128 : 100;
+    ctx.globalAlpha = fade * 0.9; ctx.fillStyle = bg; ctx.fillRect(x, y, w, L.length * lh + 10); ctx.globalAlpha = fade;
+    L.forEach((l, i) => { ctx.fillStyle = C[l.tone] ?? C.tx2; ctx.fillText(l.text, x + 8, y + 6 + px + i * lh); });
+  }
   if (!cp) { ctx.textAlign = 'right'; ctx.fillStyle = C.tx2; ctx.globalAlpha = 0.75 * fade; ctx.fillText('ribbons beyond 30Y:', bx0 - 10, by + 4); }
   ctx.textAlign = 'left'; ctx.globalAlpha = fade; keyLine(ctx, g, kt);
   ctx.restore();
@@ -234,7 +249,7 @@ registerJarvisModule({
   id: 'yields', label: 'YIELDS',
   render(pane, api) {
     pane.innerHTML = `<h3>YIELDS</h3><p>The US Treasury curve as a flowing 3D terrain. Maturity runs left to right, the last 120 sessions flow toward you and the height is the yield. The surface is coloured by the 2s10s slope of each session: cool when normal, gold when flat, red when inverted. The bright line is the newest curve.</p>
-<div class="jv-row"><button type="button" data-y="go">▶ FLY OVER THE CURVE</button></div><p class="jv-sub">Real 10 year, Bund and gilt ribbons are optional. A description of the curve's shape, never a forecast.</p>`;
+<div class="jv-row"><button type="button" data-y="go">▶ FLY OVER THE CURVE</button></div><p class="jv-sub">Real 10 year, Bund and gilt ribbons are optional; REAL LAYER shows US TIPS real yields, breakevens and the Australian indexed bond beside the curve (the nominal curve is unchanged). A description of the curve's shape, never a forecast.</p>`;
     pane.querySelector('[data-y="go"]').onclick = () => { api.setView('yields'); loadYields(api, true); };
   },
   views: [view],

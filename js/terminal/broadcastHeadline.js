@@ -92,3 +92,39 @@ export function buildHeadline(feeds = {}, { nowMs = Date.now(), evening = false 
   const op = todayOpening({ events: headlineEvents(feeds.events, nowMs), nowMs, assets, changes, asia: evening ? null : feeds.asia?.instruments ?? null });
   return headlineCard(op, assets);
 }
+
+// ── THE BROADCAST'S SIZE WORDS (Helix evening 27 Nov 2026: "Gold edges higher 2.4%" on a day gold moved about twice its usual size, under a "QUIET DAY" kicker) ──
+// The newsletter sizes its verb against the median high-to-low range; the broadcast says every move against its USUAL MOVE (open to close), so its headline verb follows the same
+// yardstick the voice uses a sentence later. The newsletter itself is unchanged.
+const NL_VERBS = 'edges higher|edges lower|climbs|slips|jumps|slides|surges|tumbles';
+/** The verb for a move of `ratio` times its usual move: under 0.8 edges / drifts, 0.8 to 1.5 moves, 1.5 to 2.5 jumps / drops, over 2.5 surges / slumps. */
+export function sizeVerb(ratio) {
+  const a = Math.abs(ratio), up = ratio >= 0;
+  return a < 0.8 ? (up ? 'edges higher' : 'drifts lower') : a < 1.5 ? (up ? 'moves higher' : 'moves lower') : a < 2.5 ? (up ? 'jumps' : 'drops') : (up ? 'surges' : 'slumps');
+}
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+/**
+ * The headline card fitted to the broadcast's board: each named market's verb by its move against its usual move, and a kicker that does not call a big day quiet.
+ * inp = { rows: candle rows [{ key, ratio, hl, range }] }. Returns a new card (the input is not changed), or the card as it was when there is nothing to fit.
+ */
+export function tuneHeadline(card, { rows = [] } = {}) {
+  if (!card?.headline) return card;
+  const R = new Map((rows ?? []).filter(r => r?.key && fin(r.ratio)).map(r => [r.key, r]));
+  let headline = card.headline, say = card.say ?? '';
+  for (const k of card.keys ?? (card.key ? [card.key] : [])) {
+    const r = R.get(k); if (!r) continue;
+    for (const nm of [...new Set([headLabel(k), spokenName(k)])]) {
+      const re = new RegExp(`(${reEsc(nm)}) (?:${NL_VERBS}) (\\d+(?:\\.\\d+)?%)`, 'g'), fix = t => t.replace(re, (m, a, p) => `${a} ${sizeVerb(r.ratio)} ${p}`);
+      headline = fix(headline); say = fix(say);
+    }
+  }
+  // the kicker: "QUIET DAY" only when the day was quiet (the newsletter's kicker counts calendar releases, not moves)
+  let kicker = card.kicker ?? '';
+  if (/^QUIET DAY\b/i.test(kicker)) {
+    const all = [...R.values()], head = card.key ? R.get(card.key) : null, top = [...all].sort((a, b) => Math.abs(b.ratio) - Math.abs(a.ratio)).slice(0, 3);
+    const big = (head && Math.abs(head.ratio) >= 1.5) || top.some(r => Math.abs(r.ratio) >= 1.5);
+    const sized = all.filter(r => fin(r.range) && r.range > 0 && fin(r.hl)), wide = sized.length >= 4 && sized.filter(r => r.hl > r.range).length / sized.length >= 0.4;
+    if (big || wide) kicker = kicker.replace(/^QUIET DAY/i, big ? 'BIG MOVES' : 'WIDE RANGES');
+  }
+  return { ...card, headline, say, kicker };
+}

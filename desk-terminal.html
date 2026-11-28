@@ -312,6 +312,7 @@ html[data-role="owner"] .disclaimer{display:none}
       <button role="tab" aria-selected="false" data-t="workspace" data-surface="tab.workspace" title="Drag and resize the terminal panels into a screen of your own (preview)">Workspace</button>
       <a class="tablink" data-surface="nav.research-tab" href="research.html" title="Research has its own hub now: ideas, rooms, tests, verdicts">Research ↗</a>
       <button role="tab" aria-selected="false" data-t="infomap" data-surface="tab.infomap" title="What information the repo holds and how much of it the terminal draws">Info map</button>
+      <button role="tab" aria-selected="false" data-t="media" data-surface="tab.media" title="Every H.E.L.I.X. video by day, and the podcast with a player (owner only)">Media</button>
     </div>
   </nav>
   <div class="disclaimer" data-surface="widget.disclaimer">Educational and informational macro analysis. Not investment advice and not a trade signal.</div>
@@ -340,6 +341,7 @@ html[data-role="owner"] .disclaimer{display:none}
   <section id="news" hidden data-surface="tab.news"></section>
   <section id="corr" hidden data-surface="tab.corr"></section>
   <section id="infomap" hidden data-surface="tab.infomap"></section>
+  <section id="media" hidden data-surface="tab.media"></section>
 </main>
 <button class="fab" id="askbtn" data-surface="widget.ask" aria-label="Ask the desk" title="Owner only: a free-form question is a paid model call">✦ Ask the desk</button>
 <div class="modal" id="modal" hidden></div>
@@ -767,6 +769,7 @@ tabGroups(); addEventListener('deskaccess', tabGroups); setTimeout(tabGroups, 80
 try { let q = 0; new MutationObserver(() => { clearTimeout(q); q = setTimeout(tabGroups, 120); }).observe(document.head, { childList: true, subtree: true, characterData: true }); } catch { /* old browser: the timers above cover it */ }
 try { const t = localStorage.getItem('deskTerminalTab'); if (t) document.querySelector(`#tabs [data-t="${t}"]`)?.click(); } catch { /* ignore */ }
 if (/^#macro/.test(location.hash)) document.querySelector('#tabs [data-t="macro"]')?.click();   // a shared #macro/rates link lands on that section
+if (/^#media/.test(location.hash)) document.querySelector('#tabs [data-t="media"]')?.click();   // the Command Hub shortcut (desk-terminal.html#media) lands on the Media tab
 
 // ── modal ──
 function openModal(html) { const m = $('modal'); m.innerHTML = `<div class="card" role="dialog" aria-modal="true">${html}</div>`; m.hidden = false; m.querySelectorAll('[data-aa]').forEach(b => globalThis.mountAnalyse?.(b)); m.querySelector('.x')?.focus(); globalThis.liveLayer?.patch(); m.querySelector('.x')?.addEventListener('click', closeModal); }
@@ -993,7 +996,7 @@ function mxSection(sub) {
   const fp = E['fed-path'], more = k => globalThis.macroMoreBoard?.(k, E) ?? '', paper = k => globalThis.paperBoardById?.(k, E) ?? '', grid = h => (h.trim() ? `<div class="grid g2" style="margin-top:14px">${h}</div>` : '');
   const BB = boardBlocks(), DB = driverBlocks(), OB = macroOwnBlocks();
   if (sub === 'policy') return sf('panel.macro.cbcards', mxCards()) + sf('panel.macro.cbboard', globalThis.cbBoardHtml?.(E['cb-board'], { cbx: D.cbx?.ok ? D.cbx.banks : null }) ?? '') + sf('panel.macro.cbfutures', cbExpectCard()) + sf('panel.macro.ratediff', mxRateDiff()) + sf('panel.macro.speakers', speakersHtml()) + sf('panel.macro.speechdrift', speechDriftHtml()) + sf('panel.macro.ratecycle', mxRateCycle()) + sf('panel.macro.fomcstrip', paper('panel.macro.fomcstrip')) + sf('panel.macro.pathdiff', paper('panel.macro.pathdiff')) + mxNote();
-  if (sub === 'rates') return sf('panel.macro.legchart', globalThis.ttLegChartHtml?.() ?? '') + sf('panel.macro.ratesboard', globalThis.ratesBoardHtml?.(E['rates-board'], fp, E['global-yields']) ?? '') + (globalThis.fedYieldsHtml?.(fp, E['rates-board'], E['term-premium']) ?? '') + sf('panel.macro.boepath', globalThis.boePathHtml?.(E['cb-path/boe']) ?? '') + more('curve-board') + sf('panel.macro.globalyields', BB.globalyields) + grid(sf('panel.macro.termprem', BB.termprem)) + sf('panel.macro.jgb', paper('panel.macro.jgb')) + sf('panel.macro.inflation', paper('panel.macro.inflation')) + sf('panel.macro.fiscalauct', paper('panel.macro.fiscalauct'));
+  if (sub === 'rates') return sf('panel.macro.legchart', globalThis.ttLegChartHtml?.() ?? '') + sf('panel.macro.ratesboard', globalThis.ratesBoardHtml?.(E['rates-board'], fp, E['global-yields']) ?? '') + (globalThis.fedYieldsHtml?.(fp, E['rates-board'], E['term-premium']) ?? '') + sf('panel.macro.boepath', globalThis.boePathHtml?.(E['cb-path/boe']) ?? '') + more('curve-board') + sf('panel.macro.globalyields', BB.globalyields) + sf('panel.macro.realyields', globalThis.realYieldsHtml?.(E['real-yields']) ?? '') + grid(sf('panel.macro.termprem', BB.termprem)) + sf('panel.macro.jgb', paper('panel.macro.jgb')) + sf('panel.macro.inflation', paper('panel.macro.inflation')) + sf('panel.macro.fiscalauct', paper('panel.macro.fiscalauct'));
   if (sub === 'economy') return sf('panel.macro.engines', globalThis.ttMacroBoardHtml?.(E['macro-engines-board']) ?? '') + sf('panel.macro.scorecard', mxScorecard()) + grid(sf('panel.macro.cli', DB.cli) + sf('panel.macro.nowcasts', OB.nowcasts)) + more('releases-board');
   if (sub === 'credit') return more('credit-liquidity') + grid(sf('panel.macro.creditspreads', BB.creditspreads) + sf('panel.macro.fedliq', BB.fedliq) + sf('panel.macro.xccy', BB.xccy) + sf('panel.macro.plumbing', OB.plumbing) + sf('panel.macro.bankcredit', OB.bankcredit));
   if (sub === 'engine') return sf('panel.macro.biasengine', beTry(() => BEV()?.macroSectionHtml(beRec(), { desk: D.ccy })) || `<div class="card muted">${D.be === null ? 'The bias engine has no read right now.' : 'Loading the bias engine…'}</div>`) + sf('panel.macro.bev2', '<div class="card" id="bev2host"></div>');

@@ -46,6 +46,7 @@ export function loadPaths(api, force) {
     const ok = u => Promise.resolve().then(() => api.jf(u)).catch(() => null);
     const [cbx, fed, boe] = await Promise.all([ok('/api/cb-expectations'), ok('/api/fed-path'), ok('/api/cb-path/boe')]);
     let m = null; try { m = buildLanes({ cbx: cbx?.ok === false ? { policy: cbx.policy } : cbx, fed: fed?.ok ? fed : null, boe: boe?.ok ? boe : null, calendars: CALS, now: Date.now() }); } catch (e) { m = null; }
+    if (m?.dropped?.length) console.warn('[rate paths] rungs dropped by the sanity guard', m.dropped);
     if (m?.lanes?.length) { S.model = m; S.status = 'ok'; } else if (!S.model) S.status = (cbx || fed || boe) ? 'empty' : 'fail';
     S.at = Date.now(); S.busy = null; return S.model;
   })();

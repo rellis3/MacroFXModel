@@ -18,8 +18,12 @@ export const EXTRA = [];
 export const registerJarvisModule = m => { if (m?.id && typeof m.render === 'function' && !EXTRA.some(x => x.id === m.id)) EXTRA.push(m); return m; };
 export const MODULE_FILES = ['./jarvisModPrecedent.js', './jarvisModPapers.js', './jarvisModExplain.js', './jarvisModFilm.js', './jarvisModMarkets.js', './jarvisModShow.js', './jarvisViewSession.js', './jarvisViewBook.js', './jarvisViewChain.js', './jarvisViewYields.js', './jarvisViewG10.js', './jarvisViewWx.js', './jarvisViewCcy.js', './jarvisViewNet.js', './jarvisViewVol.js', './jarvisViewGamma.js', './jarvisModNews.js',
   // the hologram views (WebGL, js/terminal/jarvisGL.js); a file that is not there yet is simply skipped
-  './jarvisViewReactor.js', './jarvisViewGammaPillar.js', './jarvisViewGammaTerrain.js', './jarvisViewVolSurface.js', './jarvisViewRatePaths.js', './jarvisViewFxMatrix.js', './jarvisViewDayAhead.js', './jarvisViewSurprise.js', './jarvisViewShockwave.js', './jarvisViewCot.js', './jarvisViewCycle.js', './jarvisViewMoneyGlobe.js', './jarvisViewBoard.js', './broadcastPanels.js', './jarvisModBroadcast.js',
+  './jarvisViewReactor.js', './jarvisViewGammaPillar.js', './jarvisViewGammaTerrain.js', './jarvisViewVolSurface.js', './jarvisViewRatePaths.js', './jarvisViewFxMatrix.js', './jarvisViewDayAhead.js', './jarvisViewSurprise.js', './jarvisViewShockwave.js', './jarvisViewCot.js', './jarvisViewCycle.js', './jarvisViewMoneyGlobe.js', './jarvisViewBoard.js', './broadcastPanels.js', './jarvisModBroadcast.js', './jarvisModMedia.js',
   // the three description views added with the look-and-feel pass: every market's distance to its gamma flip, range used against the usual range, and the London day so far
-  './jarvisViewFlip.js', './jarvisViewRangeUsed.js', './jarvisViewDaySoFar.js'];
+  './jarvisViewFlip.js', './jarvisViewRangeUsed.js', './jarvisViewDaySoFar.js',
+  // HELIX MEMORY: the diary of what Helix said, its evening score and the rolling scorecard
+  './jarvisModDiary.js',
+  // desk layers (2026-11-28): each market's 25-delta risk reversal and butterfly against its last 20 prints
+  './jarvisViewSkew.js'];
 export const viewsOf = () => EXTRA.flatMap(m => (Array.isArray(m.views) ? m.views : []));
 export async function loadModules() { await Promise.all(MODULE_FILES.map(f => import(f).catch(() => null))); return EXTRA; }

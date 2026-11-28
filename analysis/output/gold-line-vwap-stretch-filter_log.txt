@@ -1,0 +1,38 @@
+  fill_any placebo 50/200
+  fill_any placebo 100/200
+  fill_any placebo 150/200
+  fill_any placebo 200/200
+
+== Same-candle retouch fills · chase any line (the tested system) ==
+  base      IS -0.085 (n 333, -28R) | OOS +0.302 (n 749, +226R, w/o top1% +104R, stop 66%)
+  >= 1.5σ    IS -0.071 (n 326, -23R) | OOS +0.313 (n 720, +225R, w/o top1% +103R, stop 67%) | OOS skipped 4% of fills | OOS diff 90% CI [-0.006, +0.030]
+  >= 2.0σ    IS -0.001 (n 297, -0R) | OOS +0.377 (n 629, +237R, w/o top1% +127R, stop 67%) | OOS skipped 16% of fills | OOS diff 90% CI [+0.031, +0.116]
+  >= 2.5σ    IS -0.045 (n 244, -11R) | OOS +0.379 (n 497, +188R, w/o top1% +106R, stop 68%) | OOS skipped 34% of fills | OOS diff 90% CI [-0.006, +0.193]
+  2σ layer: OOS improvement +0.075 vs random-skip placebo mean -0.001 p95 +0.067; gates {'both_periods': True, 'keeps_90pct_total': True, 'beats_placebo': True} -> UNDERPOWERED
+  by year:
+   y  base_n  base_R  layer_n  layer_R
+2021     180  -0.036      160    0.033
+2022     153  -0.142      137   -0.040
+2023     177   0.391      163    0.452
+2024     223   0.184      188    0.250
+2025     212   0.374      172    0.445
+2026     137   0.267      106    0.377
+  ignore_any placebo 50/200
+  ignore_any placebo 100/200
+  ignore_any placebo 150/200
+  ignore_any placebo 200/200
+
+== Same-candle retouch ignored · chase any line ==
+  base      IS -0.188 (n 260, -49R) | OOS +0.032 (n 620, +20R, w/o top1% -71R, stop 68%)
+  >= 1.5σ    IS -0.167 (n 252, -42R) | OOS +0.043 (n 591, +26R, w/o top1% -57R, stop 69%) | OOS skipped 5% of fills | OOS diff 90% CI [-0.006, +0.031]
+  >= 2.0σ    IS -0.097 (n 221, -22R) | OOS +0.061 (n 508, +31R, w/o top1% -51R, stop 69%) | OOS skipped 18% of fills | OOS diff 90% CI [-0.033, +0.086]
+  >= 2.5σ    IS -0.109 (n 181, -20R) | OOS +0.045 (n 395, +18R, w/o top1% -40R, stop 70%) | OOS skipped 37% of fills | OOS diff 90% CI [-0.080, +0.115]
+  2σ layer: OOS improvement +0.029 vs random-skip placebo mean +0.005 p95 +0.069; gates {'both_periods': True, 'keeps_90pct_total': True, 'beats_placebo': False} -> descriptive
+  by year:
+   y  base_n  base_R  layer_n  layer_R
+2021     136  -0.048      115    0.045
+2022     124  -0.342      106   -0.252
+2023     129  -0.018      119    0.014
+2024     190   0.024      157    0.044
+2025     179   0.105      140    0.141
+2026     122  -0.009       92    0.031

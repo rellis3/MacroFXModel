@@ -3728,6 +3728,13 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ', 'EURUSD'],
   },
   {
+    id: 'gold-line-vwap-stretch-filter', domain: 'volatility', verdict: 'underpowered', date: '2026-11-28', doc: 'forge/GOLD_LINE_VWAP_STRETCH_FILTER_PREREG.md', also: ['analysis/output/gold-line-vwap-stretch-filter/RESULTS.md', 'line-system-backtest.html'],
+    claim: 'Layer on the gold line system (Jordan 8 lines): skipping fade fills less than 2 sigma_v from VWAP raises net R a trade in both periods by more than skipping the same share at random',
+    result: 'Pre-registered (1f0fb6d5) after the exploratory finding on the same data. Base IS -0.085 / OOS +0.302 (749, +226R); with the filter IS -0.001 / OOS +0.377 (629, +237R, w/o top 1 pct +127R), 16 pct of OOS fills skipped; OOS diff +0.075 [+0.031, +0.116]; random-skip placebo mean -0.001 p95 +0.067; every year improved (2021 +0.033, 2022 -0.040). All 3 gates pass -> UNDERPOWERED (max on seen data). Same-candle-ignored rule: helps both periods but not above random skipping',
+    use: 'Candidate layer, switch on line-system-backtest.html; confirm on lockbox/forward. Does not fix the same-minute fill caveat (tick-data check first).',
+    instruments: ['GOLD'],
+  },
+  {
     id: 'gold-line-system-jordan', domain: 'volatility', verdict: 'underpowered', date: '2026-11-27', doc: 'forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md', also: ['analysis/output/gold-line-system-jordan/RESULTS.md', 'line-system-backtest.html'],
     claim: 'The gold line system on Jordan 8 lines only (HL projection up/down, Close+, Close-, P75/P90): Jordan gold entry, VWAP +/- 0.5 sigma_v target, rolling-MAE stop, BE off, makes money net OOS above shuffled lines and does not depend on its best 1 pct of trades',
     result: 'Pre-registered (e40eb60e). OOS +0.302R [+0.111, +0.485] n 749, total +226R, without best 1 pct +104R, before costs +0.416, PF 1.40; placebo mean -0.004 p95 +0.114 (real above all 100); p 0.003. IS 2021-22 -0.085 (n 333; shorts -0.428, longs +0.281) -> fails IS gate -> UNDERPOWERED. Years 2021 -0.04, 2022 -0.14, then +0.39/+0.18/+0.37/+0.27. BE on worse (+0.224 OOS); 12 lines with P50 +0.111 (-30R without top 1 pct). OOS partly seen when the line set was chosen. A1 (descriptive): same-minute poke+retouch fills carry it (326 OOS trades +0.64R = +210R; later-minute fills +0.04R) and the sim selects them on the minute close; with the same-candle retouch ignored OOS +0.032 [-0.134, +0.217] (fake lines -0.135); PDF same-line chase changes nothing',
@@ -5240,6 +5247,7 @@ const POWER = {
   'gold-rolling-mae-window': { n: 'GC 7,199 first touches, 1,659 sessions, scored 2021-2026.08', note: 'calibration (miss %), no test' },
   'gold-rolling-mae-trade': { n: 'GC 4,078 OOS trades 2023-2026.08, 63-session blocks B 2000, 100 placebo runs', note: 'OOS -0.089R [-0.152, -0.041]' },
   'gold-rolling-mae-entry': { n: 'GC 2,136 OOS trades 2023-2026.08, 63-session blocks B 2000, 100 placebo runs, BH over {T, E}', note: 'OOS +0.059R [-0.007, +0.128]; placebo median +0.040' },
+  'gold-line-vwap-stretch-filter': { n: 'GC 629 vs 749 OOS trades 2023-2026.08, 63-session blocks B 2000, 200 random-skip placebo runs', note: 'OOS diff +0.075 [+0.031, +0.116]' },
   'gold-line-system-jordan': { n: 'GC 749 OOS / 333 IS trades 2021-2026.08, 63-session blocks B 2000, 100 placebo runs', note: 'OOS +0.302R [+0.111, +0.485]; IS -0.085' },
   'gold-line-system-base-mae': { n: 'GC 2,119 OOS trades 2023-2026.08, 63-session blocks B 2000, 100 placebo runs, BH over 2', note: 'OOS +0.106R [+0.032, +0.160]' },
   'gold-line-system-base-nq': { n: 'NQ 2,464 OOS trades 2023-2026.08, 63-session blocks B 2000, 100 placebo runs', note: 'OOS +0.153R [+0.065, +0.236]; placebo +0.115' },

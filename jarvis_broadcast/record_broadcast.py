@@ -47,7 +47,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from broadcast_core import (concat_list, max_volume, is_silent, title_for, description_for, short_warning, part_of_day, voiced_problem, resolve_part, PART_TITLES,  # noqa: E402
                             PAGE_PROGRAMME, tags_for, chapters_text, srt_text, loudnorm_first, loudnorm_measured, loudnorm_second, detect_problem, short_window, desk_run_state,
-                            queue_push, queue_due, queue_after_fail, queue_done, QUEUE_MAX_TRIES, podcast_id)
+                            queue_push, queue_due, queue_after_fail, queue_done, QUEUE_MAX_TRIES, podcast_id,
+                            machine_busy, backoff_s, is_page_load_error)
 import helix_notify  # noqa: E402
 
 BASE = 'https://macrofxmodel-production.up.railway.app'
@@ -78,8 +79,8 @@ def ffmpeg_exe() -> str:
         return imageio_ffmpeg.get_ffmpeg_exe()
     except Exception:
         exe = shutil.which('ffmpeg')
-        if not exe:
-            sys.exit('ffmpeg not found: pip install imageio-ffmpeg (or install ffmpeg and put it on PATH)')
+        if not exe:                                 # raised, not sys.exit: the run's failure note must still go out
+            raise RuntimeError('ffmpeg not found: pip install imageio-ffmpeg (or install ffmpeg and put it on PATH)')
         return exe
 
 
@@ -136,6 +137,81 @@ def open_broadcast(ctx, base: str):
     return page
 
 
+PAGE_TRIES = int(os.environ.get('JARVIS_PAGE_TRIES', '4'))      # page-load attempts before the recording gives up (frames) or falls back (live)
+
+
+def machine_load() -> tuple[float | None, float | None]:
+    """(free RAM in MB, CPU % over about one second), each None when it cannot be read. psutil when installed, else the Windows API (standard library only)."""
+    try:
+        import psutil  # optional
+        return psutil.virtual_memory().available / 2 ** 20, psutil.cpu_percent(interval=1.0)
+    except Exception:
+        pass
+    free = cpu = None
+    try:
+        import ctypes
+
+        class MEMSTAT(ctypes.Structure):
+            _fields_ = [('dwLength', ctypes.c_ulong), ('dwMemoryLoad', ctypes.c_ulong), ('ullTotalPhys', ctypes.c_ulonglong), ('ullAvailPhys', ctypes.c_ulonglong),
+                        ('ullTotalPageFile', ctypes.c_ulonglong), ('ullAvailPageFile', ctypes.c_ulonglong), ('ullTotalVirtual', ctypes.c_ulonglong),
+                        ('ullAvailVirtual', ctypes.c_ulonglong), ('ullAvailExtendedVirtual', ctypes.c_ulonglong)]
+        m = MEMSTAT()
+        m.dwLength = ctypes.sizeof(MEMSTAT)
+        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m)):
+            free = m.ullAvailPhys / 2 ** 20
+        ft = ctypes.c_ulonglong
+
+        def times():
+            i, k, u = ft(), ft(), ft()
+            ctypes.windll.kernel32.GetSystemTimes(ctypes.byref(i), ctypes.byref(k), ctypes.byref(u))
+            return i.value, k.value + u.value            # kernel time includes idle
+        i0, t0 = times()
+        time.sleep(1.0)
+        i1, t1 = times()
+        if t1 > t0:
+            cpu = max(0.0, min(100.0, 100.0 * (1 - (i1 - i0) / (t1 - t0))))
+    except Exception:
+        pass
+    return free, cpu
+
+
+def wait_machine(limit_s: int = 10 * 60, every_s: int = 30, reader=machine_load, sleep=time.sleep, clock=time.time) -> str | None:
+    """Pre-flight: if the laptop is saturated (little free RAM or the CPU pinned), wait for it, up to limit_s, then record anyway (a late video beats none). Never ends
+    another process (the owner's rule: never kill). Returns the last reason it was busy, or None when it was fine."""
+    t0, noted = clock(), False
+    while True:
+        free, cpu = reader()
+        why = machine_busy(free, cpu)
+        if not why:
+            if noted:
+                log(f'the laptop has room now ({free or 0:,.0f} MB free, CPU {cpu or 0:.0f}%): recording')
+            return None
+        if clock() - t0 >= limit_s:
+            log(f'the laptop is still busy after {limit_s // 60} min ({why}): recording anyway')
+            return why
+        if not noted:
+            log(f'the laptop is busy ({why}): waiting for it, up to {limit_s // 60} min (nothing is closed)')
+            noted = True
+        sleep(every_s)
+
+
+def open_broadcast_retry(ctx, base: str, tries: int = PAGE_TRIES, sleep=time.sleep, opener=None, machine=None):
+    """open_broadcast with a back-off: a desk page or HUD hook that does not appear in time (an overloaded laptop, a slow deploy) is retried up to `tries` times,
+    20 s, 40 s, 80 s apart, with a bounded wait for the machine in between. A logged-out profile is not retried. The last error is raised."""
+    opener = opener or open_broadcast
+    machine = machine or (lambda: wait_machine(limit_s=3 * 60))
+    for attempt in range(1, max(1, tries) + 1):
+        try:
+            return opener(ctx, base)
+        except Exception as e:
+            if not is_page_load_error(e) or attempt >= tries:
+                raise
+            wait = backoff_s(attempt)
+            log(f'the page or the HUD did not load in time (try {attempt} of {tries}: {str(e).splitlines()[0][:160]}); trying again in {wait:.0f} s')
+            sleep(wait)
+            machine()
+
+
 def wait_desk_run(page, limit_s: int = 720):
     """The morning brief leads with the desk run's call: if one is still running (desk_run.py starts it after the OI pull), wait for it, up to 12 minutes."""
     t0 = time.time()
@@ -169,7 +245,7 @@ def record_frames(base: str, length: str, engine: str, visible: bool, out_dir: P
     with sync_playwright() as pw:
         ctx = launch(pw, visible)
         ctx.add_init_script(path=str(VCLOCK))
-        page = open_broadcast(ctx, base)
+        page = open_broadcast_retry(ctx, base)
         if not page.evaluate('() => !!window.__vclock'):
             raise RuntimeError('the virtual clock did not load (vclock.js)')
         cdp = ctx.new_cdp_session(page)
@@ -229,7 +305,7 @@ def record(base: str, length: str, engine: str, visible: bool, out_dir: Path, ra
     frames: list[tuple[str, float]] = []
     with sync_playwright() as pw:
         ctx = launch(pw, visible)
-        page = open_broadcast(ctx, base)
+        page = open_broadcast_retry(ctx, base, tries=2)
         cdp = ctx.new_cdp_session(page)
         n = {'i': 0}
 
@@ -459,9 +535,10 @@ def make_mp3(ff: str, audio: Path, out: Path) -> Path:
 LOG_KEYS = ('lines', 'voiced', 'marks', 'script', 'programme', 'headline', 'keys', 'voiceForced')
 
 
-def build_meta(cap: dict, mp4: Path, part: str, fmt: str, rel: dict | None, guide_url: str | None) -> dict:
-    """Everything the upload needs, written to the run folder as meta.json (so --upload-only and the retry queue can publish it later)."""
-    today = datetime.now().date()
+def build_meta(cap: dict, mp4: Path, part: str, fmt: str, rel: dict | None, guide_url: str | None, started: datetime | None = None) -> dict:
+    """Everything the upload needs, written to the run folder as meta.json (so --upload-only and the retry queue can publish it later).
+    The date is the run's START (27 Nov 2026: an evening run forced at 23:26 finished after midnight and labelled its podcast "Sat 28 Nov")."""
+    today = (started or datetime.now()).date()
     lg = cap.get('log') or {}
     secs = cap.get('seconds') or 0
     rel_name = (rel or {}).get('name')
@@ -504,7 +581,9 @@ def publish(meta: dict, base: str, out_dir: Path, *, short_cut: bool = True, pod
     if not dry:
         try:
             import youtube_upload as yu
-            if meta.get('srt') and yu.captions_ready():
+            if fmt == 'short':
+                pass                                # never captions on the Short: captions.insert costs 400 of the 10,000 daily YouTube units, and a 60 s phone clip has burnt-in text anyway
+            elif meta.get('srt') and yu.captions_ready():
                 yu.upload_captions(vid, Path(meta['srt']))
                 log('captions uploaded')
             elif meta.get('srt'):
@@ -606,6 +685,18 @@ def dry_capture(out_dir: Path, seconds: float = 70.0) -> dict:
             'log': {'lines': len(script), 'voiced': len(script), 'marks': marks, 'script': script, 'programme': 'briefing', 'headline': 'Gold runs 2.4 times its usual move', 'keys': ['GOLD', 'USDJPY', 'WTI']}}
 
 
+def preflight(a, out_dir: Path) -> None:
+    """Before anything opens: ffmpeg is there, the browser profile exists (a real run), and the laptop is not saturated (a bounded wait, see wait_machine).
+    A failure here raises, so main() sends the failure note like any other stage."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ffmpeg_exe()
+    if a.dry_run:
+        return
+    if not PROFILE.exists():
+        raise RuntimeError(f'no browser profile at {PROFILE}: run  python record_broadcast.py --login  once')
+    wait_machine(limit_s=int(os.environ.get('JARVIS_BUSY_WAIT_S', '600')))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--login', action='store_true', help='one-off: log into the desk site in a visible window')
@@ -662,6 +753,8 @@ def main() -> None:
             (out_dir / 'last_run.json').write_text(json.dumps({'ok': True, 'uploadOnly': True, **res}, indent=2), encoding='utf-8')
         except Exception as e:
             log(f'FAILED (upload only): {e}')
+            if not a.dry_run:
+                helix_notify.notify_failed(a.base, meta.get('part', 'morning'), f'upload only: {e}', log=log)
             sys.exit(1)
         return
     now = datetime.now()
@@ -679,13 +772,17 @@ def main() -> None:
     prog = {'part': part, 'page': page}
     notify = not a.no_upload and not a.dry_run
     keep_awake(True)
+    stage = 'pre-flight'
     try:
+        preflight(a, out_dir)
+        stage = 'waiting for the browser'
         if a.wait_busy:
             wait_for_recorder(out_dir)
         else:
             end_stuck_run(out_dir)
         if part == 'morning' and not a.dry_run:
             wait_desk_launcher(out_dir)
+        stage = 'recording'
         if a.dry_run:
             cap = dry_capture(out_dir)
             mp4 = encode(cap, part)
@@ -711,11 +808,12 @@ def main() -> None:
                     'description': ('Every picture in the H.E.L.I.X. morning and evening briefings: what it shows and how to read it. '
                                     'The briefings themselves skip the explanations and go straight to the analysis; keep this one for reference.\n\n'
                                     'Description only. Not a forecast, not advice, not a trade.'),
-                    'tags': tags_for([], 'guide'), 'srt': None, 'thumbAt': None, 'marks': [], 'releaseKey': None, 'audio': '', 'date': datetime.now().date().isoformat()}
+                    'tags': tags_for([], 'guide'), 'srt': None, 'thumbAt': None, 'marks': [], 'releaseKey': None, 'audio': '', 'date': now.date().isoformat()}
         else:
             gu = guide_file.read_text(encoding='utf-8').strip() if guide_file.exists() else None
-            meta = build_meta(cap, mp4, part, a.format, rel, gu)
+            meta = build_meta(cap, mp4, part, a.format, rel, gu, started=now)
         (cap['work'] / 'meta.json').write_text(json.dumps(meta, indent=2), encoding='utf-8')
+        stage = 'upload'
         if not a.no_upload:
             try:
                 res = publish(meta, a.base, out_dir, short_cut=not a.no_short, podcast=not a.no_podcast, dry=a.dry_run)
@@ -729,11 +827,19 @@ def main() -> None:
         (out_dir / 'last_run.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
         if not a.dry_run:
             keep_last(out_dir, 9)
-    except Exception as e:
-        log(f'FAILED: {e}')
-        (out_dir / 'last_run.json').write_text(json.dumps({'ok': False, 'part': part, 'error': str(e), 'at': datetime.now().isoformat(timespec='seconds')}, indent=2), encoding='utf-8')
+    except BaseException as e:                      # ANY stage, pre-flight included, and a Ctrl+C or a stray sys.exit too: the failure note must go out
+        msg = f'{stage}: {e or type(e).__name__}'
+        log(f'FAILED ({msg})')
+        try:
+            out_dir.mkdir(parents=True, exist_ok=True)
+            (out_dir / 'last_run.json').write_text(json.dumps({'ok': False, 'part': part, 'stage': stage, 'error': str(e), 'at': datetime.now().isoformat(timespec='seconds'),
+                                                               'started': now.isoformat(timespec='seconds')}, indent=2), encoding='utf-8')
+        except OSError:
+            pass
         if notify and part != 'guide':
-            helix_notify.notify_failed(a.base, part, str(e), log=log)       # the server sends the short failure note; a failed notify is only logged
+            helix_notify.notify_failed(a.base, part, msg, log=log)          # the server sends the short failure note; a failed notify is only logged
+        if not isinstance(e, Exception):
+            raise
         sys.exit(1)
     finally:
         keep_awake(False)

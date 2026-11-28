@@ -68,6 +68,7 @@ svg text{font:11px var(--mono);fill:var(--text2)}
     <div class="ctl" id="instrBox"></div>
     <div class="ctl">
       <label>Entry rules <select id="entry"></select></label>
+      <label title="Layer under test (gold-line-vwap-stretch-filter): skip a fill when it is less than 2 sigma_v from VWAP"><input type="checkbox" id="vwapF"> VWAP filter: only fade 2σ+ from VWAP</label>
       <label>Sample <select id="sample"><option value="OOS">Out of sample (2023 → Aug 2026)</option><option value="IS">In sample (2021–22)</option><option value="ALL">All (2021 → Aug 2026)</option></select></label>
       <label>Costs <select id="costx"><option value="1">As tested (×1)</option><option value="0">None (×0)</option><option value="2">Double (×2)</option><option value="3">Triple (×3)</option></select></label>
       <label>Account <input type="number" id="acct" value="100000" step="10000" min="1000"></label>
@@ -178,13 +179,13 @@ svg text{font:11px var(--mono);fill:var(--text2)}
 // Instrument registry: one row per instrument in the book. Add an instrument by exporting it with
 // scripts/gold-line-system-base/export_backtest.py <SYM> and adding a row here (with its own banked verdict).
 const INSTR = [
-  { sym: 'GOLD', label: 'Gold (GC)', dir: 'analysis/output/line-system-backtest/GOLD', results: 'analysis/output/gold-line-system-jordan/results.json', arm: 'S2', rules: 'analysis/output/gold-line-system-jordan/entry_rules.json', on: true, status: 'UNDERPOWERED' },
+  { sym: 'GOLD', label: 'Gold (GC)', dir: 'analysis/output/line-system-backtest/GOLD', results: 'analysis/output/gold-line-system-jordan/results.json', arm: 'S2', rules: 'analysis/output/gold-line-system-jordan/entry_rules.json', layer: 'analysis/output/gold-line-vwap-stretch-filter/results.json', on: true, status: 'UNDERPOWERED' },
 ];
 const NOT_IN_BOOK = 'NQ and EURUSD are not in the book (the 18-line version failed on both); they would need their own run on these 8 lines.';
 const TIERS = ['P75', 'P90'], FAMS = ['HL up', 'HL down', 'Close+', 'Close-'];
 const LINE_NAME = { OH: 'OH (forecast high)', OL: 'OL (forecast low)', 'Close+': 'Close+', 'Close-': 'Close−', 'HL up': 'HL projection up', 'HL down': 'HL projection down' };
 const $ = id => document.getElementById(id);
-const D = { meta: {}, trades: [], res: {}, rules: {}, candles: {} };
+const D = { meta: {}, trades: [], res: {}, rules: {}, layer: {}, candles: {} };
 const st = { eq: 'R', tiers: new Set(TIERS), fams: new Set(FAMS), sel: null, page: 0, sort: { k: 'date', d: 1 }, list: [] };
 const f = (v, d = 2) => v == null || !isFinite(v) ? '–' : (+v).toFixed(d);
 const fs = (v, d = 2) => v == null || !isFinite(v) ? '–' : (v > 0 ? '+' : '') + (+v).toFixed(d);
@@ -200,8 +201,8 @@ async function init() {
   $('tierBox').innerHTML = TIERS.map(t => `<button class="on" data-tier="${t}">${t}</button>`).join(' ');
   $('famBox').innerHTML = FAMS.map(t => `<button class="on" data-fam="${t}">${t === 'Close-' ? 'Close−' : t}</button>`).join(' ');
   for (const i of INSTR) {
-    const [m, r, ru] = await Promise.all([getJSON(i.dir + '/meta.json'), getJSON(i.results).catch(() => null), getJSON(i.rules).catch(() => null)]);
-    D.meta[i.sym] = m; D.res[i.sym] = r; D.rules[i.sym] = ru;
+    const [m, r, ru, la] = await Promise.all([getJSON(i.dir + '/meta.json'), getJSON(i.results).catch(() => null), getJSON(i.rules).catch(() => null), getJSON(i.layer).catch(() => null)]);
+    D.meta[i.sym] = m; D.res[i.sym] = r; D.rules[i.sym] = ru; D.layer[i.sym] = la;
   }
   const m0 = D.meta[INSTR[0].sym];
   $('entry').innerHTML = Object.entries(m0.variants).map(([k, l]) => `<option value="${k}" ${k === m0.primary ? 'selected' : ''}>${l}</option>`).join('');
@@ -209,7 +210,7 @@ async function init() {
   wire(); renderHow(); await loadTrades();
 }
 async function loadTrades() {
-  const v = $('entry').value; D.trades = [];
+  const v = $('entry').value + ($('vwapF').checked ? '__vwap2' : ''); D.trades = [];
   for (const i of INSTR) {
     const t = await getJSON(`${i.dir}/${v}/trades.json`);
     for (const x of t) { x.sym = i.sym; x.dow = new Date(x.date + 'T12:00:00Z').getUTCDay(); x.hr = +x.fill.slice(0, 2); x.mon = x.date.slice(0, 7); D.trades.push(x); }
@@ -225,6 +226,7 @@ async function loadTrades() {
 function wire() {
   ['sample', 'costx', 'acct', 'riskPct', 'sizing', 'side'].forEach(id => $(id).addEventListener('change', render));
   $('entry').addEventListener('change', loadTrades);
+  $('vwapF').addEventListener('change', loadTrades);
   document.querySelectorAll('[data-sym]').forEach(c => c.addEventListener('change', () => { INSTR.find(i => i.sym === c.dataset.sym).on = c.checked; render(); }));
   document.querySelectorAll('[data-tier]').forEach(b => b.onclick = () => { tog(st.tiers, b.dataset.tier, b); render(); });
   document.querySelectorAll('[data-fam]').forEach(b => b.onclick = () => { tog(st.fams, b.dataset.fam, b); render(); });
@@ -338,7 +340,9 @@ function renderVerdict() {
   }).join('');
   const v = $('entry').value, ru = D.rules[INSTR[0].sym]?.variants?.[v];
   const vline = ru ? `<p><b>Entry rules shown: ${D.meta[INSTR[0].sym].variants[v]}.</b> ${v === D.meta[INSTR[0].sym].primary ? 'This is the tested system (the verdict above).' : 'A descriptive switch (prereg A1), no verdict of its own:'} out of sample ${fs(ru.OOS_R, 3)}R [${fs(ru.OOS_lo, 3)}, ${fs(ru.OOS_hi, 3)}], ${ru.OOS_n} trades, ${fs(ru.OOS_totR, 0)}R, without the best 1% ${fs(ru.OOS_tot_wo_top1, 0)}R; in sample ${fs(ru.IS_R, 3)}R; fake lines ${fs(ru.pl1_mean, 3)} (real beats ${f(100 * ru.pl1_rank, 0)}%).</p>` : '';
-  $('verdict').innerHTML = `<h2>What this is</h2><p>The gold line system on <b>Jordan's 8 shadow lines</b> (HL projection up / down, Close+, Close−, at P75 and P90) → <b>Jordan's gold entry</b> (arm then retest) → <b>target VWAP ± 0.5σ</b> fixed at the fill → <b>rolling-MAE stop</b> (3 months per line). Every trade 2021 → 21 Aug 2026, with the standard backtest read-outs. More instruments join the book once each has its own result.</p>${parts}${vline}<p class="warn">Read it carefully: 2023–26 is strong and well above fake lines, but 2021–22 lost (shorts at Close+ and HL up lost then; longs made money). The 2023–26 period was partly seen when this line set was picked, so the clean test is the held-back data after 21 Aug 2026, used once at the end. <b>Most of the profit comes from same-candle fills</b> (poke and retouch inside one minute: +0.64R a trade, +210R of the +226R out of sample). The sim only takes those when the minute closes back through the line, which it can't know at the moment of the fill, so it favours them. With the same-candle retouch ignored (Entry rules menu), out of sample falls to +0.03R. A tick-data check of the retouch decides whether the edge is real.</p>`;
+  const la = $('vwapF').checked ? D.layer[INSTR[0].sym]?.rules?.[v]?.['z2.0'] : null, lb = la ? D.layer[INSTR[0].sym].rules[v].base.stats : null;
+  const lline = la ? `<p><b>VWAP filter ON</b> (layer under test, prereg <a href="forge/GOLD_LINE_VWAP_STRETCH_FILTER_PREREG.md">GOLD_LINE_VWAP_STRETCH_FILTER_PREREG.md</a>): fills less than 2σ from VWAP are skipped (${f(100 * la.oos_skip_share, 0)}% of fills out of sample). Out of sample ${fs(la.stats.OOS.mean, 3)}R a trade (without the filter ${fs(lb.OOS.mean, 3)}), ${fs(la.stats.OOS.tot, 0)}R; in sample ${fs(la.stats.IS.mean, 3)} (without ${fs(lb.IS.mean, 3)}). Against skipping the same share at random: improvement ${fs(la.improve, 3)} vs placebo 95th percentile ${fs(la.placebo_p95, 3)}. ${la.verdict === 'descriptive' ? 'Descriptive for this entry setting.' : 'Verdict on 2021–26: <b>' + la.verdict + '</b> (found on this data, so it is confirmed only on the held-back data or forward).'}</p>` : '';
+  $('verdict').innerHTML = `<h2>What this is</h2><p>The gold line system on <b>Jordan's 8 shadow lines</b> (HL projection up / down, Close+, Close−, at P75 and P90) → <b>Jordan's gold entry</b> (arm then retest) → <b>target VWAP ± 0.5σ</b> fixed at the fill → <b>rolling-MAE stop</b> (3 months per line). Every trade 2021 → 21 Aug 2026, with the standard backtest read-outs. More instruments join the book once each has its own result.</p>${parts}${vline}${lline}<p class="warn">Read it carefully: 2023–26 is strong and well above fake lines, but 2021–22 lost (shorts at Close+ and HL up lost then; longs made money). The 2023–26 period was partly seen when this line set was picked, so the clean test is the held-back data after 21 Aug 2026, used once at the end. <b>Most of the profit comes from same-candle fills</b> (poke and retouch inside one minute: +0.64R a trade, +210R of the +226R out of sample). The sim only takes those when the minute closes back through the line, which it can't know at the moment of the fill, so it favours them. With the same-candle retouch ignored (Entry rules menu), out of sample falls to +0.03R. A tick-data check of the retouch decides whether the edge is real.</p>`;
 }
 function renderHow() {
   const m = D.meta.GOLD;

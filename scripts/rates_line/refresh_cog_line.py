@@ -28,6 +28,26 @@ BASE = 'https://macrofxmodel-production.up.railway.app'; KV_KEY = 'cog_line_live
 # segment in build_cog_line.LEGS (strip contracts never roll; they are ranked), so only the lookup moved: with the registry's trading class.
 sys.path.insert(0, str(ROOT / 'scripts' / 'ibkr'))
 import contracts as K
+
+
+def _push_auth(headers: dict) -> dict:
+    """PUSH-SECRET READINESS: add X-Auth-Token from env KV_WRITE_SECRET, else from a git-ignored push_secret.txt (the repo root or jarvis_broadcast/), when one exists.
+    With neither the headers go out unchanged, so today's pushes behave exactly as before."""
+    import os
+    from pathlib import Path as _P
+    s = os.environ.get('KV_WRITE_SECRET', '').strip()
+    if not s:
+        for d in _P(__file__).resolve().parents:
+            for f in (d / 'push_secret.txt', d / 'jarvis_broadcast' / 'push_secret.txt'):
+                try:
+                    if f.is_file():
+                        s = f.read_text(encoding='utf-8').strip()
+                        break
+                except OSError:
+                    pass
+            if s or (d / '.git').exists():
+                break
+    return {**headers, 'X-Auth-Token': s} if s else dict(headers)
 _FILES = ['SR3U6', 'SR3Z6', 'SR3H7', 'IH7', 'IM7']
 IB_SPEC = {K.stem_for(K.alias(n)['root'], K.alias(n)['year'], K.alias(n)['month']): K.legacy_spec(n) for n in _FILES}
 _ROOT_OF = {K.stem_for(K.alias(n)['root'], K.alias(n)['year'], K.alias(n)['month']): K.alias(n)['root'] for n in _FILES}
@@ -47,7 +67,7 @@ def newest_bar(names):
     return t
 def kv_set(obj):
     body = json.dumps({'key': KV_KEY, 'data': obj, 'timestamp': int(datetime.now(timezone.utc).timestamp() * 1000)}).encode()
-    req = urllib.request.Request(f'{BASE}/api/kv/set', data=body, headers={'Content-Type': 'application/json'}, method='POST')
+    req = urllib.request.Request(f'{BASE}/api/kv/set', data=body, headers=_push_auth({'Content-Type': 'application/json'}), method='POST')
     with urllib.request.urlopen(req, timeout=60) as r: return r.getcode(), r.read().decode()[:160]
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(); ap.add_argument('--days', default='auto'); ap.add_argument('--push', action='store_true'); ap.add_argument('--push-days', type=int, default=5)

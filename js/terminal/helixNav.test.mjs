@@ -58,6 +58,13 @@ test('STYLE groups: every member is a real nav view; collapse keeps one item per
   // every grouped view stays reachable: by STYLE from its lead, and directly by id
   for (const x of Object.values(STYLE_GROUPS)) { let v = x.members[0]; const seen = new Set([v]); for (let i = 0; i < 10; i++) { v = nextStyle(v); seen.add(v); } assert.equal(seen.size, x.members.length); }
 });
+test('mergeInbox: QLIKE level alerts join the inbox, held ones say so', () => {
+  const rows = mergeInbox({ qlike: [{ at: '2026-11-30T09:01:00Z', text: 'EURUSD reached its upper QLIKE level (1.09120)', send: true }, { at: '2026-11-30T06:00:00Z', text: 'GOLD reached its lower QLIKE level (3601.3)', send: false }, { at: 'bad', text: 'x' }],
+    desk: [{ name: 'r', firedAt: '2026-11-30T08:00:00Z' }] });
+  assert.deepEqual(rows.map(r => r.src), ['qlike', 'desk', 'qlike']);
+  assert.match(rows[2].text, /logged, not sent/); assert.doesNotMatch(rows[0].text, /not sent/);
+});
+
 test('mergeInbox: tab, phone and desk in one list, newest first; the same sentence twice is one row', () => {
   const t0 = Date.parse('2026-11-27T09:00:00Z');
   const rows = mergeInbox({

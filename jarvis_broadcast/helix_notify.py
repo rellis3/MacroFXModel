@@ -34,7 +34,7 @@ def push_secret() -> str:
         return ''
 
 
-def _ssl_context():
+def ssl_context():
     """certifi's CA bundle when it is installed. On 2026-11-28 the recorder's own venv (JarvisBroadcast/.venv-local) rejected
     the server's certificate as expired with its default store while certifi's bundle verified it, so the first Telegram note never left."""
     try:
@@ -44,11 +44,17 @@ def _ssl_context():
         return None
 
 
-_CTX = _ssl_context()
+_CTX = ssl_context()
+_ssl_context = ssl_context            # the old private name
 
 
-def _open(req, timeout):
+def urlopen(req, timeout: float = 30):
+    """THE one way the broadcast scripts open a URL: urllib with certifi's CA bundle when it is installed (see ssl_context). Every other urllib call in jarvis_broadcast/ goes
+    through here (test_helix_extras checks that no other file calls urllib.request.urlopen itself)."""
     return urllib.request.urlopen(req, timeout=timeout, context=_CTX) if _CTX else urllib.request.urlopen(req, timeout=timeout)
+
+
+_open = urlopen
 
 
 def call(base: str, path: str, *, body=None, data: bytes | None = None, ctype: str = 'application/json', method: str | None = None, retries: int = 4,

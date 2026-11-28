@@ -216,7 +216,7 @@ async function qlikeExportText(track = 'fut') {
 }
 
 // Today's per-line levels for every instrument (the vol-forecast-v3 charts overlay them); same stored board as the export.
-async function qlikeTodayLevels(track = 'fut') {
+export async function qlikeTodayLevels(track = 'fut') {   // exported for the QLIKE level alerts (js/qlikeAlertRoutes.js), read only
   const c = await qlikeBoard(track);
   return { ok: true, track, session: c.session, levels: c.lv ?? {} };
 }

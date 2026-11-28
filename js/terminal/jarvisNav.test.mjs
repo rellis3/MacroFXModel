@@ -13,7 +13,7 @@ test('sections: six, unique ids, every item belongs to exactly one section, ever
 });
 test('every picture and panel the HUD ships is reachable from some section', () => {
   const views = ['globe', 'candles', 'bubbles', 'skyline', 'orbit', 'session', 'wx', 'net', 'chainfly', 'yields', 'ccy', 'vol', 'gamma', 'book'];
-  const tools = ['broadcast', 'news', 'film', 'markets', 'radar', 'brief', 'precedent', 'ask', 'explain', 'papers', 'alerts', 'system'];
+  const tools = ['broadcast', 'news', 'film', 'media', 'markets', 'radar', 'brief', 'precedent', 'ask', 'explain', 'papers', 'alerts', 'system'];
   for (const v of views) assert.ok(sectionOf('view', v), `view ${v} has no section`);
   for (const t of tools) assert.ok(sectionOf('tool', t), `tool ${t} has no section`);
 });
