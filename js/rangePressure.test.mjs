@@ -7,11 +7,11 @@ const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e 
 const flat = (n, v) => Array(n).fill(v);
 const base = { vix: [17], vix3m: [19], vix9d: [15], spx: [...flat(30, 100)], nq: flat(10, 100), dspx: [...Array.from({ length: 400 }, (_, i) => 100 + (i % 50)), 110] };
 const calm = rangePressure(base);
-ok('on a calm day none of the counted signals is on; five rows shown, four counted (nq-down-week is context since 2026-11-28)', calm.n === 4 && calm.on === 0 && calm.rows.length === 5);
-ok('the ratio 15/17 = 0.88 is on the calm side, which is named', calm.calmFront === true && /None of the 4 validated range signals is on/.test(pressureWords(calm)) && /narrower days/.test(pressureWords(calm)));
+ok('on a calm day none of the counted signals is on; five rows shown, three counted (nq-down-week context and mv-dispersion-range underpowered since 2026-11-28)', calm.n === 3 && calm.on === 0 && calm.rows.length === 5);
+ok('the ratio 15/17 = 0.88 is on the calm side, which is named', calm.calmFront === true && /None of the 3 validated range signals is on/.test(pressureWords(calm)) && /narrower days/.test(pressureWords(calm)));
 const busy = rangePressure({ vix: [24], vix3m: [22], vix9d: [25], spx: [...flat(10, 100), ...Array.from({ length: 21 }, (_, i) => 100 - i * 0.2)], nq: [100, 100, 99, 98.5, 98.2, 97.5], dspx: [...Array.from({ length: 400 }, (_, i) => 100 + (i % 50)), 160] });
-ok('an inverted curve, a dear front, an S&P fall over 2%, a Nasdaq down-week and a crowded market are each detected', busy.on === 4 && busy.rows.every(r => r.on === true), JSON.stringify(busy.rows.map(r => [r.key, r.on])));
-ok('the count is stated in plain words', /4 of 4 validated range signals are on today/.test(pressureWords(busy)) && /never with a direction/.test(pressureWords(busy)));
+ok('an inverted curve, a dear front, an S&P fall over 2%, a Nasdaq down-week and a crowded market are each detected', busy.on === 3 && busy.rows.every(r => r.on === true), JSON.stringify(busy.rows.map(r => [r.key, r.on])));
+ok('the count is stated in plain words', /3 of 3 validated range signals are on today/.test(pressureWords(busy)) && /never with a direction/.test(pressureWords(busy)));
 ok('thresholds sit exactly where the ledger says: VIX equal to VIX3M is on; ratio 0.9669 is on, 0.9668 is not; S&P exactly -2% is on', rangePressure({ ...base, vix: [20], vix3m: [20] }).rows[0].on === true && rangePressure({ ...base, vix: [100], vix9d: [96.69] }).rows[1].on === true && rangePressure({ ...base, vix: [100], vix9d: [96.68] }).rows[1].on === false && rangePressure({ ...base, spx: [...flat(30, 100), 98] }).rows[2].on === true && rangePressure({ ...base, spx: [...flat(30, 100), 98.1] }).rows[2].on === false);
 const missing = rangePressure({ vix: [17], vix3m: [19] });
 ok('missing series are reported as not measurable, never as off', missing.n === 1 && missing.rows.filter(r => r.on === null).length === 4 && /None of the 1/.test(pressureWords(missing)));

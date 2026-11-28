@@ -51,7 +51,7 @@ export const DERIVED = {
     {
      "id": "surprise-size",
      "known": true,
-     "verdict": "validated"
+     "verdict": "underpowered"
     }
    ],
    "packSkills": [
@@ -118,7 +118,7 @@ export const DERIVED = {
     {
      "id": "surprise-size",
      "known": true,
-     "verdict": "validated"
+     "verdict": "underpowered"
     }
    ],
    "packSkills": [
@@ -634,7 +634,7 @@ export const DERIVED = {
     {
      "id": "surprise-size",
      "known": true,
-     "verdict": "validated"
+     "verdict": "underpowered"
     },
     {
      "id": "news-asymmetry",
@@ -1507,6 +1507,7 @@ export const DERIVED = {
      "js/terminal/cotHoloCore.js",
      "js/terminal/deepDive.js",
      "js/terminal/fedPathYieldsView.js",
+     "js/terminal/helixGuides.js",
      "js/terminal/insightSeries.js",
      "js/terminal/jarvisViewG10.js",
      "js/terminal/jarvisViewMoneyGlobe.js",
@@ -1648,7 +1649,7 @@ export const DERIVED = {
     {
      "id": "nonus-yield-gap-range",
      "known": true,
-     "verdict": "null"
+     "verdict": "context"
     }
    ],
    "packSkills": [
@@ -1682,6 +1683,7 @@ export const DERIVED = {
     "terminal": [
      "desk-terminal.html",
      "js/terminal/fedPathYieldsView.js",
+     "js/terminal/helixGuides.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/terminalTabs.js"
     ],
@@ -2643,7 +2645,7 @@ export const DERIVED = {
     {
      "id": "mv-vixterm-range",
      "known": true,
-     "verdict": "validated"
+     "verdict": "underpowered"
     },
     {
      "id": "iv-over-rv-wider",
@@ -2731,12 +2733,12 @@ export const DERIVED = {
     {
      "id": "vix-beta-change",
      "known": true,
-     "verdict": "validated"
+     "verdict": "underpowered"
     },
     {
      "id": "vvix-ratio-range",
      "known": true,
-     "verdict": "validated"
+     "verdict": "underpowered"
     },
     {
      "id": "vix-beta-level",
@@ -2861,7 +2863,7 @@ export const DERIVED = {
     {
      "id": "crack-blowout-range",
      "known": true,
-     "verdict": "null"
+     "verdict": "underpowered"
     }
    ],
    "packSkills": [
@@ -2906,12 +2908,12 @@ export const DERIVED = {
     {
      "id": "surprise-size",
      "known": true,
-     "verdict": "validated"
+     "verdict": "underpowered"
     },
     {
      "id": "nq-down-week",
      "known": true,
-     "verdict": "validated"
+     "verdict": "context"
     }
    ],
    "packSkills": [
@@ -3681,7 +3683,7 @@ export const DERIVED = {
     {
      "id": "surprise-size",
      "known": true,
-     "verdict": "validated"
+     "verdict": "underpowered"
     }
    ],
    "packSkills": [],
@@ -4011,6 +4013,8 @@ export const DERIVED = {
      "desk-terminal.html",
      "js/terminal/broadcastPanels.js",
      "js/terminal/dataAge.js",
+     "js/terminal/jarvisSkewCore.js",
+     "js/terminal/jarvisViewSkew.js",
      "js/terminal/macroSubtabs.js",
      "js/terminal/moreBoards.js",
      "js/terminal/optionsView.js",
@@ -4116,7 +4120,7 @@ export const DERIVED = {
     {
      "id": "mv-vixterm-range",
      "known": true,
-     "verdict": "validated"
+     "verdict": "underpowered"
     },
     {
      "id": "mv-creditstack-range",
@@ -4236,7 +4240,7 @@ export const DERIVED = {
     {
      "id": "mv-dislocation-forward",
      "known": true,
-     "verdict": "null"
+     "verdict": "underpowered"
     },
     {
      "id": "funding-stress",
@@ -4355,7 +4359,7 @@ export const DERIVED = {
     {
      "id": "vix-second-derivative",
      "known": true,
-     "verdict": "validated"
+     "verdict": "underpowered"
     }
    ],
    "packSkills": [],
@@ -5544,7 +5548,7 @@ export const DERIVED = {
     {
      "id": "surprise-size",
      "known": true,
-     "verdict": "validated"
+     "verdict": "underpowered"
     }
    ],
    "packSkills": [],
@@ -5602,7 +5606,7 @@ export const DERIVED = {
   }
  },
  "unclassified": [],
- "rootPageCount": 270,
+ "rootPageCount": 271,
  "packFeeds": 115,
  "generatedAt": "2026-11-28"
 };

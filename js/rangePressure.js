@@ -3,13 +3,14 @@
  *
  * Every trigger below is a finding in the evidence ledger (js/deskEvidence.js) with a range verdict of validated, and each is worded as exactly what was
  * tested: the SIZE of the coming move, never its direction. Together they answer one question a reader of the daily issue cares about: is today set up
- * to be a bigger day than the forecast ranges assume? Five triggers (four counted), each with its ledger id:
+ * to be a bigger day than the forecast ranges assume? Five triggers (three counted), each with its ledger id:
  *
  *   vix-inversion        VIX at or above the 3-month VIX: the next five sessions ran wider (SPX +0.76 ATR, NAS100 +0.82 on 86 entries since 2008)
  *   vol-curve-front      VIX9D / VIX at or above 0.9669 (cut-offs fixed in advance; below 0.8858 is the calm side): the production index lines are too tight today
  *   drawdown-forecast-*  S&P 500 down more than 2% over the last 20 sessions: FX and index ranges ran about 7% above the forecast
  *   nq-down-week         Nasdaq down 1% or more over the last 5 sessions: CONTEXT since 2026-11-28 (+0.10 ATR beyond the vol state), shown, not counted
- *   mv-dispersion-range  CBOE dispersion at or above its 95th percentile: the next month ran wider (+0.5 ATR, 9 firings)
+ *   mv-dispersion-range  CBOE dispersion at or above its 95th percentile: UNDERPOWERED since 2026-11-28 (re-run with the fixed event bootstrap:
+ *                        +0.5 ATR on 8 firings, SPX interval barely clears zero, NQ does not), shown as watch-only, not counted
  *
  * What it does not do: it does not say which way, it does not size anything, and a zero count means "no validated reason to expect more than the
  * usual", not "a quiet day". Two caveats travel with the rows: inversions are brief and the effect is documented for the FIRST day; dispersion is
@@ -41,8 +42,9 @@ export function rangePressure(s) {
   // still shown, no longer counted among the validated signals.
   add('nqWeek', 'nq-down-week', 'Nasdaq down 1% or more over 5 sessions (context, not counted)', nq5 != null ? `Nasdaq ${nq5 >= 0 ? '+' : ''}${nq5.toFixed(1)}% over 5 sessions` : null, nq5 != null ? nq5 <= -1 : null,
     'After a down week for the Nasdaq, the next session has run a little wider than the vol state alone says (about +0.1 ATR). Context only: not counted as a validated signal.', { context: true });
-  add('dispersion', 'mv-dispersion-range', 'Crowded market (dispersion index very high)', dspPct != null ? `Dispersion ${dsp.toFixed(1)}, higher than ${Math.round(dspPct * 100)}% of the last six years` : null, dspPct != null ? dspPct >= 0.95 : null,
-    'When money crowds into a few names, the next month has run wider than usual. Measured over six years here; the original test used data back to 2014.');
+  // mv-dispersion-range was re-banked UNDERPOWERED on 2026-11-28 (rerun-2026-11-28, fault #14 bootstrap): watch only, not counted.
+  add('dispersion', 'mv-dispersion-range', 'Crowded market (dispersion index very high; underpowered, not counted)', dspPct != null ? `Dispersion ${dsp.toFixed(1)}, higher than ${Math.round(dspPct * 100)}% of the last six years` : null, dspPct != null ? dspPct >= 0.95 : null,
+    'When money crowds into a few names, the next month has leaned wider in the record, but on 8 firings that is not established (underpowered). Watch only: not counted as a validated signal.', { context: true });
   const known = rows.filter(r => r.on != null && !r.context);   // context rows are shown, never counted
   return { n: known.length, on: known.filter(r => r.on).length, calmFront: !!rows.find(r => r.key === 'frontDear')?.calm, rows };
 }

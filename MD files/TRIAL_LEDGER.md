@@ -10,50 +10,16 @@ Generated 2026-11-28.
 
 | | n |
 |---|---|
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-| claims tested (validated + null + underpowered) | **651** |
-| validated | 201 |
-=======
-| claims tested (validated + null + underpowered) | **653** |
-| validated | 203 |
->>>>>>> origin/wf2/surprise-pooled
-| null | 260 |
-=======
-| claims tested (validated + null + underpowered) | **652** |
-| validated | 201 |
+| claims tested (validated + null + underpowered) | **682** |
+| validated | 196 |
 | null | 261 |
->>>>>>> origin/wf2/fred-untested
-| underpowered | 190 |
-| context (base rates, descriptions: not counted as tests) | 87 |
-| pre-registrations with no banked verdict (below) | 91 |
+| underpowered | 225 |
+| context (base rates, descriptions: not counted as tests) | 90 |
+| pre-registrations with no banked verdict (below) | 92 |
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-**What the count says (Lesson 02 §05).** If none of the 651 claims were real, tests at the usual 5% size would still pass
-=======
-**What the count says (Lesson 02 §05).** If none of the 652 claims were real, tests at the usual 5% size would still pass
->>>>>>> origin/wf2/fred-untested
-about **32.6** of them by luck. 201 passed, so most passes are unlikely to be luck alone, but
-**roughly 33 of the 201 could be**. Which ones cannot be told from the backtest.
-=======
-| claims tested (validated + null + underpowered) | **650** |
-| validated | 200 |
-| null | 259 |
-| underpowered | 191 |
-| context (base rates, descriptions: not counted as tests) | 87 |
-| pre-registrations with no banked verdict (below) | 91 |
-
-**What the count says (Lesson 02 §05).** If none of the 650 claims were real, tests at the usual 5% size would still pass
-about **32.5** of them by luck. 200 passed, so most passes are unlikely to be luck alone, but
-**roughly 33 of the 200 could be**. Which ones cannot be told from the backtest.
->>>>>>> origin/wf2/rerun-b
-=======
-**What the count says (Lesson 02 §05).** If none of the 653 claims were real, tests at the usual 5% size would still pass
-about **32.7** of them by luck. 203 passed, so most passes are unlikely to be luck alone, but
-**roughly 33 of the 203 could be**. Which ones cannot be told from the backtest.
->>>>>>> origin/wf2/surprise-pooled
+**What the count says (Lesson 02 §05).** If none of the 682 claims were real, tests at the usual 5% size would still pass
+about **34.1** of them by luck. 196 passed, so most passes are unlikely to be luck alone, but
+**roughly 34 of the 196 could be**. Which ones cannot be told from the backtest.
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -85,14 +51,14 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-17 | fed-two-moves | events | context | MD files/MARKET_SENSE_TESTS.md#S9 |
 | 2026-09-17 | fomc-leadup-surprise-table | events | context | MD files/MARKET_SENSE_TESTS.md#S12 |
 | 2026-09-17 | front-end-shock | macro | null | MD files/MARKET_SENSE_TESTS.md#S3 |
-| 2026-09-17 | nq-down-week | price | validated | MD files/GROWTH_VS_YIELDS_TEST.md |
+| 2026-09-17 | nq-down-week | price | context | MD files/GROWTH_VS_YIELDS_TEST.md |
 | 2026-09-17 | oil-to-breakevens | macro | null | MD files/MARKET_SENSE_TESTS.md#S4 |
 | 2026-09-17 | price-vs-spread-divergence | macro | null | MD files/MARKET_SENSE_TESTS.md#S11 |
 | 2026-09-17 | priced-in | events | null | MD files/MARKET_SENSE_TESTS.md#S6 |
 | 2026-09-17 | priced-in-direction | events | null | MD files/EVENT_RESPONSE_BOOK.md#§6-§7 |
 | 2026-09-17 | rotation-extreme | price | null | MD files/MARKET_SENSE_TESTS.md#S8 |
 | 2026-09-17 | stock-bond-flip | macro | context | MD files/MARKET_SENSE_TESTS.md#S2 |
-| 2026-09-17 | surprise-size | events | validated | MD files/MARKET_SENSE_TESTS.md#S7 |
+| 2026-09-17 | surprise-size | events | underpowered | MD files/MARKET_SENSE_TESTS.md#S7 |
 | 2026-09-17 | vix-inversion | volatility | validated | MD files/MARKET_SENSE_TESTS.md#S1 |
 | 2026-09-18 | asia-range-london | price | context | MD files/TECHNICAL_RANGE_TESTS.md#T7 |
 | 2026-09-18 | band-reach-from-here | price | validated | MD files/TECHNICAL_RANGE_TESTS.md#T7 |
@@ -112,21 +78,16 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-19 | spread-leads-fx-hours | macro | null | MD files/LEAD_LAG_TESTS.md#L1 |
 | 2026-09-20 | analogue-weeks | macro | null | MD files/WEEK_MAP.md#W1 |
 | 2026-09-20 | multi-spread-sleeve | macro | context | MD files/MULTI_SPREAD_SLEEVE.md |
-| 2026-09-20 | nonus-yield-gap-direction | macro | null | MD files/NONUS_YIELDS.md |
 | 2026-09-20 | nonus-yield-gap-label | macro | context | MD files/NONUS_YIELDS.md |
-| 2026-09-20 | nonus-yield-gap-range | macro | null | MD files/NONUS_YIELDS.md |
 | 2026-09-20 | regime-divergence-fx | macro | null | MD files/REGIME.md#R2 |
 | 2026-09-20 | repo-stress-range | macro | context | MD files/PLUMBING.md#P1 |
 | 2026-09-20 | residual-reversion-fx | macro | null | MD files/RESIDUAL_REVERSION_FX_TEST.md |
-| 2026-09-21 | crack-blowout-range | macro | null | MD files/CRACK_SPREAD.md |
 | 2026-09-21 | crack-disagreement-direction | macro | null | MD files/CRACK_SPREAD.md |
 | 2026-09-21 | crack-inflation-channel | macro | context | MD files/CRACK_SPREAD.md |
-| 2026-09-21 | fear-gold | macro | null | MD files/FOUR_GOLDS.md#G1 |
 | 2026-09-21 | which-gold | macro | context | MD files/FOUR_GOLDS.md#G2 |
 | 2026-09-22 | spread-sleeve-factor-audit | macro | context | MD files/MVE_BOOK_FACTOR_AUDIT.md |
 | 2026-09-23 | breadth-narrowing | price | null | MD files/BREADTH_NARROWING_PREREG.md |
 | 2026-09-23 | daily-band-fade | price | null | MD files/BAND_FADE_DAILY.md |
-| 2026-09-23 | dispersion-crowded-week | volatility | null | MD files/DISPERSION.md#D1 |
 | 2026-09-23 | gamma-real-iv | positioning | null | oi_research_book/GAMMA_REAL_IV_PREREG.md |
 | 2026-09-23 | iv-forecast | volatility | validated | oi_research_book/IV_FORECAST_PREREG.md |
 | 2026-09-23 | iv-ladder | volatility | validated | forge/IV_LADDER_PREREG.md |
@@ -134,16 +95,13 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-09-23 | iv-sizing-filter | volatility | null | forge/IV_SIZING_FILTER_PREREG.md |
 | 2026-09-23 | mv-creditstack-range | macro | context | MD files/OUTCOME_LOOP.md |
 | 2026-09-23 | mv-extreme-forward | price | null | MD files/OUTCOME_LOOP.md |
-| 2026-09-23 | mv-vixterm-range | volatility | validated | MD files/OUTCOME_LOOP.md |
 | 2026-09-25 | dr-copper | macro | null | MD files/DR_COPPER_PREREG.md |
 | 2026-09-25 | driver-roundtrip | price | null | MD files/ROUNDTRIP_PREREG.md |
 | 2026-09-25 | rates-pivot-lead | macro | null | MD files/RATES_PIVOT_LEAD_PREREG.md |
-| 2026-09-27 | dispersion-reset | volatility | validated | MD files/DISPERSION.md#D2 |
 | 2026-09-27 | fx-factor-book-v2 | macro | underpowered | MD files/FX_FACTOR_V2_TEST.md |
 | 2026-09-27 | iv-ladder-gold | volatility | validated | forge/IV_LADDER_GOLD_PREREG.md |
 | 2026-09-27 | ou-bands-fx-crosses | price | underpowered | MD files/FX_FACTOR_V2_TEST.md#9 |
 | 2026-09-27 | spread-divergence-range | volatility | null | MD files/SPREAD_DIVERGENCE_RANGE_PREREG.md |
-| 2026-09-27 | yield-move-fx-range | volatility | null | MD files/YIELD_MOVE_FX_RANGE_PREREG.md |
 | 2026-09-28 | news-asymmetry | events | null | MD files/NEWS_ASYMMETRY_PREREG.md |
 | 2026-09-29 | v4-dirtag | price | null | forge/V4_EURUSD_DIRTAG_PREREG.md |
 | 2026-09-29 | v4-stage0 | price | null | forge/V4_STAGE0_PREREG.md |
@@ -272,14 +230,14 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-23 | basis-yearend-jpy | events | underpowered | forge/BASIS_STRESS_JPYCHF_PREREG.md |
 | 2026-10-23 | garin-vix-intraday-oos | price | underpowered | forge/VIX_CALCULUS_PREREG.md |
 | 2026-10-23 | short-vx-rule | volatility | underpowered | forge/SHORT_VX_RULE_PREREG.md |
-| 2026-10-23 | vix-beta-change | price | validated | forge/VIX_NASDAQ_BETA_PREREG.md |
+| 2026-10-23 | vix-beta-change | price | underpowered | forge/VIX_NASDAQ_BETA_PREREG.md |
 | 2026-10-23 | vix-beta-level | volatility | underpowered | forge/VIX_NASDAQ_BETA_PREREG.md |
 | 2026-10-23 | vix-brownian-scaling | volatility | context | forge/VIX_CALCULUS_PREREG.md |
 | 2026-10-23 | vix-integral-gaps | volatility | underpowered | forge/VIX_CALCULUS_PREREG.md |
-| 2026-10-23 | vix-ratio-vx-futures | volatility | validated | forge/VIX_CALCULUS_PREREG.md |
-| 2026-10-23 | vix-second-derivative | price | validated | forge/VIX_CALCULUS_PREREG.md |
+| 2026-10-23 | vix-ratio-vx-futures | volatility | underpowered | forge/VIX_CALCULUS_PREREG.md |
+| 2026-10-23 | vix-second-derivative | price | underpowered | forge/VIX_CALCULUS_PREREG.md |
 | 2026-10-23 | vvix-ratio-direction | volatility | underpowered | forge/VVIX_NASDAQ_RATIO_PREREG.md |
-| 2026-10-23 | vvix-ratio-range | volatility | validated | forge/VVIX_NASDAQ_RATIO_PREREG.md |
+| 2026-10-23 | vvix-ratio-range | volatility | underpowered | forge/VVIX_NASDAQ_RATIO_PREREG.md |
 | 2026-10-24 | cot-crowding-a1 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
 | 2026-10-24 | cot-crowding-a2 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
 | 2026-10-24 | cot-crowding-a3 | positioning | null | forge/COT_CROWDING_PROGRAMME_PREREG.md |
@@ -344,7 +302,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-10-30 | vmc-nq-cipher-direction | price | null | forge/VMC_NQ_CIPHER_PREREG.md |
 | 2026-10-30 | vmc-nq-cipher-interaction | price | null | forge/VMC_NQ_CIPHER_PREREG.md |
 | 2026-10-30 | vmc-nq-cipher-sequencing | price | validated | forge/VMC_NQ_CIPHER_PREREG.md |
-| 2026-10-30 | vmc-nq-cipher-volatility | price | validated | forge/VMC_NQ_CIPHER_PREREG.md |
+| 2026-10-30 | vmc-nq-cipher-volatility | price | context | forge/VMC_NQ_CIPHER_PREREG.md |
 | 2026-10-31 | direction-bar | macro | context | forge/DIRECTION_BAR_PREREG.md |
 | 2026-10-31 | hedge-flow | volatility | null | oi_research_book/HEDGE_FLOW_PREREG.md |
 | 2026-10-31 | hedge-flow-side | volatility | underpowered | oi_research_book/HEDGE_FLOW_PREREG.md |
@@ -790,26 +748,57 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-27 | gold-rolling-mae-trade | volatility | null | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |
 | 2026-11-27 | gold-rolling-mae-window | volatility | context | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |
 | 2026-11-27 | rolling-mae-window-nq-eur | volatility | context | forge/GOLD_ROLLING_MAE_WINDOW_PREREG.md |
+| 2026-11-28 | cboe-vol-range-ovx-brent-1d | volatility | validated | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-ovx-usdcad-1d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-ovx-usdcad-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-ovx-wti-1d | volatility | validated | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-ovx-wti-5d | volatility | validated | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-rvx-us2000-1d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-rvx-us2000-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-skew-nq-1d | volatility | null | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-skew-nq-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-skew-spx500-1d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-skew-spx500-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxapl-nq-1d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxapl-nq-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxazn-nq-1d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxazn-nq-5d | volatility | null | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxd-us30-1d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxd-us30-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxeem-audusd-1d | volatility | null | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxeem-audusd-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxfxi-audusd-1d | volatility | null | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxfxi-audusd-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxgdx-gold-1d | volatility | null | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxgdx-gold-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxslv-silver-1d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxslv-silver-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxtlt-zb-1d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxtlt-zb-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxtlt-zn-1d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | cboe-vol-range-vxtlt-zn-5d | volatility | underpowered | forge/CBOE_VOL_INDICES_RANGE_PREREG.md |
+| 2026-11-28 | crack-blowout-range | macro | underpowered | MD files/CRACK_SPREAD.md |
+| 2026-11-28 | dispersion-crowded-week | volatility | null | MD files/DISPERSION.md#D1 |
+| 2026-11-28 | dispersion-reset | volatility | underpowered | MD files/DISPERSION.md#D2 |
+| 2026-11-28 | fear-gold | macro | underpowered | MD files/FOUR_GOLDS.md#G1 |
 | 2026-11-28 | fred-untested-range | volatility | null | forge/FRED_UNTESTED_RANGE_PREREG.md |
 | 2026-11-28 | fred-untested-range-inst | volatility | underpowered | forge/FRED_UNTESTED_RANGE_PREREG.md |
 | 2026-11-28 | g10-2y-gap-l20h20 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
 | 2026-11-28 | g10-2y-gap-l20h5 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
 | 2026-11-28 | g10-2y-gap-l5h20 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
 | 2026-11-28 | g10-2y-gap-l5h5 | macro | underpowered | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
-<<<<<<< HEAD
-<<<<<<< HEAD
 | 2026-11-28 | gold-line-vwap-stretch-filter | volatility | underpowered | forge/GOLD_LINE_VWAP_STRETCH_FILTER_PREREG.md |
-=======
 | 2026-11-28 | mv-dislocation-forward | macro | underpowered | MD files/OUTCOME_LOOP.md |
 | 2026-11-28 | mv-dispersion-range | volatility | underpowered | MD files/OUTCOME_LOOP.md |
+| 2026-11-28 | mv-vixterm-range | volatility | underpowered | MD files/OUTCOME_LOOP.md |
+| 2026-11-28 | nonus-yield-gap-direction | macro | null | MD files/NONUS_YIELDS.md |
+| 2026-11-28 | nonus-yield-gap-range | macro | context | MD files/NONUS_YIELDS.md |
 | 2026-11-28 | residual-pca-cot | positioning | underpowered | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
-| 2026-11-28 | yields-to-fx-direction | macro | null | analysis/output/rerun-2026-11-28/RESULTS.md |
->>>>>>> origin/wf2/rerun-b
-=======
 | 2026-11-28 | surprise-size-pooled-fx | events | validated | forge/SURPRISE_SIZE_POOLED_PREREG.md |
 | 2026-11-28 | surprise-size-pooled-us-indices | events | underpowered | forge/SURPRISE_SIZE_POOLED_PREREG.md |
 | 2026-11-28 | surprise-size-pooled-us-risk | events | validated | forge/SURPRISE_SIZE_POOLED_PREREG.md |
->>>>>>> origin/wf2/surprise-pooled
+| 2026-11-28 | yield-move-fx-range | volatility | underpowered | MD files/YIELD_MOVE_FX_RANGE_PREREG.md |
+| 2026-11-28 | yields-to-fx-direction | macro | null | analysis/output/rerun-2026-11-28/RESULTS.md |
 
 ## Pre-registered, but no banked verdict
 
@@ -877,6 +866,7 @@ These were designed as tests but never reached the Evidence Book. Each is either
 - `forge/RANGE_BOOK_EURUSD_PREREG.md`: EURUSD Range Book — pre-registration
 - `forge/REACTION_TRADES_PREREG.md`: Trading the reaction after the touch — pre-registration
 - `forge/REMAINING_TRAVEL_PREREG.md`: Layer 5 — REMAINING TRAVEL: from here, with the time left, how far can price still go?
+- `forge/REOPENED_AUDIT_RERUN_PREREG.md`: reopened-audit-rerun — do the 11 validated entries the 2026-10-31 code audit REOPENED stand once their specifi
 - `forge/RESIDUAL_FX8_FORWARD_PREREG.md`: residual-fx8-forward — does the frozen FX8 residual threshold book keep its edge on new data?
 - `forge/RESIDUAL_INTRADAY_PREREG.md`: Study 3 — intraday relative value: does a lagging market catch up? (pre-registration)
 - `forge/RUBBER_BAND_PREREG.md`: Study 2 — the rubber band: stretch from fair value at three speeds (pre-registration)

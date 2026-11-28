@@ -102,7 +102,7 @@ export function liveCalls(panel, slot, { targets = TARGETS } = {}) {
 /** OANDA instrument for each panel key (the local H1 history came from the same instruments). */
 export const OANDA = { GOLD: 'XAU_USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD', US30: 'US30_USD', DE30: 'DE30_EUR', EURUSD: 'EUR_USD', GBPUSD: 'GBP_USD',
   AUDUSD: 'AUD_USD', NZDUSD: 'NZD_USD', USDJPY: 'USD_JPY', USDCAD: 'USD_CAD', USDCHF: 'USD_CHF', US02Y: 'USB02Y_USD' };
-/** The markets where the lag flag was validated (bias-fast-lag): the dollar pairs. Gold and indices get no flag. */
+/** The markets where the lag flag was tested (bias-fast-lag; reopened by the 2026-11-28 code audit, unconfirmed): the dollar pairs. Gold and indices get no flag. */
 export const LAG_FLAG = new Set(['EURUSD', 'GBPUSD', 'AUDUSD', 'NZDUSD', 'USDJPY', 'USDCAD', 'USDCHF']);
 const _bst = {}, lastSun = (y, m) => { const d = new Date(Date.UTC(y, m + 1, 0)); return Date.UTC(y, m, d.getUTCDate() - d.getUTCDay(), 1) / 1000; };
 const offset = t => { const y = new Date(t * 1000).getUTCFullYear(), [a, b] = (_bst[y] ??= [lastSun(y, 2), lastSun(y, 9)]); return t >= a && t < b ? 3600 : 0; };

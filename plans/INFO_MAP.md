@@ -24,8 +24,8 @@ Not included: backtests, bots, systems, shadows, research pages and the per-asse
 
 | Family | Status | Tab | Use | Pages | Tested | Visual idea |
 | --- | --- | --- | --- | --- | --- | --- |
-| Labour market | DRAWN | macro | FEEDS | labor-market.html | surprise-size: validated | Per-currency macro strip on the Currency card: last print vs prior, direction chip, next release date, 12m sparkline; click opens the read |
-| CPI and inflation | DRAWN | macro | FEEDS | cpi.html | nowcast-gap-cpi: null; surprise-size: validated | Per-currency macro strip on the Currency card: last print vs prior, direction chip, next release date, 12m sparkline; click opens the read |
+| Labour market | DRAWN | macro | FEEDS | labor-market.html | surprise-size: underpowered | Per-currency macro strip on the Currency card: last print vs prior, direction chip, next release date, 12m sparkline; click opens the read |
+| CPI and inflation | DRAWN | macro | FEEDS | cpi.html | nowcast-gap-cpi: null; surprise-size: underpowered | Per-currency macro strip on the Currency card: last print vs prior, direction chip, next release date, 12m sparkline; click opens the read |
 | GDP and growth | DRAWN | macro | FEEDS | gdp.html | nowcast-gap-gdp: context | Per-currency macro strip on the Currency card: last print vs prior, direction chip, next release date, 12m sparkline; click opens the read |
 | Business activity (ISM) | DRAWN | macro | FEEDS | ism.html | none | Per-currency macro strip on the Currency card: last print vs prior, direction chip, next release date, 12m sparkline; click opens the read |
 | PPI | DRAWN | macro | FEEDS | ppi.html | none | Per-currency macro strip on the Currency card: last print vs prior, direction chip, next release date, 12m sparkline; click opens the read |
@@ -36,7 +36,7 @@ Not included: backtests, bots, systems, shadows, research pages and the per-asse
 | World economies | DRAWN | insight | FEEDS | world-economies.html | none | already drawn: country tiles with growth, prices, jobs and spending arrows on the Insight tab (preview); not yet on the Currencies map layer |
 | Nowcasts | DRAWN | macro | FEEDS |  | nowcast-gap-cpi: null; nowcast-gap-gdp: context | drawn (preview): the nowcast gap sits in the drill of the matching US Calendar row, with its evidence grade |
 | OECD leading indicators | DRAWN | macro | FEEDS |  | none | already drawn |
-| Release surprises | DRAWN | cal | FEEDS | state.html | surprise-size: validated; news-asymmetry: null; fx-factor-surprise: underpowered | already drawn: the history drawer; next: a per-currency surprise z strip (rolling 3m) on the Currency card |
+| Release surprises | DRAWN | cal | FEEDS | state.html | surprise-size: underpowered; news-asymmetry: null; fx-factor-surprise: underpowered | already drawn: the history drawer; next: a per-currency surprise z strip (rolling 3m) on the Currency card |
 | Growth and inflation regime | DRAWN |  | FEEDS | regime.html | regime-divergence-fx: null; stock-bond-flip: context | Regime chip with transition matrix on the Overview map; what each asset did in this regime |
 | Market State page | DRAWN | macro | FEEDS | state.html | none | the quadrant with the live cell glowing, a lens table, indicator lights for the risk flags |
 | Economic and trade policy uncertainty | DRAWN | macro | CONTEXT |  | none | percentile rails against five years and a glowing daily line |
@@ -66,7 +66,7 @@ Not included: backtests, bots, systems, shadows, research pages and the per-asse
 | Yield curve by country | DRAWN | macro | FEEDS | yield-curve.html | curve-inversion: null; yield-slope-magnitude: null | ridgeline of 36 month-end curves with today glowing in front; percentile rails; 3-year weekly curve-memory strip |
 | Rates and Policy page | DRAWN | macro | FEEDS | rates.html | stir-curve-map: context; rates-spread-asset-lead: null; stir-composite-nq: null | Slopes panel (2s10s, 2s30s, 10s30s with history) and 10Y real/breakeven/term-premium stack under the Macro boards |
 | Global yields | DRAWN | macro | FEEDS |  | nonus-yield-gap-label: context | already drawn |
-| Gilt, Bund, JGB gaps to the Treasury | DRAWN | today | FEEDS | flow-chain.html, market-view.html | spread-leads-fx-hours: null; nonus-yield-gap-range: null | Leader/follower lag chart as a link drill from the chain node |
+| Gilt, Bund, JGB gaps to the Treasury | DRAWN | today | FEEDS | flow-chain.html, market-view.html | spread-leads-fx-hours: null; nonus-yield-gap-range: context | Leader/follower lag chart as a link drill from the chain node |
 | US term premium | DRAWN | macro | FEEDS | rates.html | none | already drawn |
 | Real yield | DRAWN | ccy | FEEDS | real-yield.html | broken-link-resolution: context | already drawn on cards |
 | Yield coupling | DRAWN | macro | FEEDS | yield-coupling.html | yields-to-fx-direction: null | table of 5-day and 60-bar correlations with a coupled / decoupled / divergent chip |
@@ -95,11 +95,11 @@ Not included: backtests, bots, systems, shadows, research pages and the per-asse
 | Risk state | DRAWN | overview | FEEDS |  | none | already drawn including the history strip; next: replay the lights over the day with the shared player |
 | World stress line | DRAWN |  | FEEDS |  | none | already drawn |
 | Wider market | DRAWN | assets | FEEDS |  | rates-vol-gap-move: null | already drawn |
-| Vol forecast family | DRAWN | assets | FEEDS | vol-forecast-v2.html, vol-forecast-v3.html, volatility-intelligence.html, forecast-path.html, expected-moves.html, live-range.html, forecaster.html, exhaustion-surface.html, path-map.html | iv-forecast: validated; iv-ladder: validated; iv-ladder-gold: validated; vix-inversion: validated; vol-curve-front: validated; mv-vixterm-range: validated; iv-over-rv-wider: validated; iv-sizing-filter: null; forecast-persistence-fix: validated | already drawn: a vol-clock dial per market and the cross-asset vol ranking table |
-| VIX complex and Surface Lab | DRAWN | macro | FEEDS | vix-calculus.html, surface-lab.html | vix-beta-change: validated; vvix-ratio-range: validated; vix-beta-level: underpowered; vvix-ratio-direction: underpowered; short-vx-rule: underpowered | percentile radar with a median ring, VIX-curve half-dial, a year of closes per reading, realised-vol heat strip |
+| Vol forecast family | DRAWN | assets | FEEDS | vol-forecast-v2.html, vol-forecast-v3.html, volatility-intelligence.html, forecast-path.html, expected-moves.html, live-range.html, forecaster.html, exhaustion-surface.html, path-map.html | iv-forecast: validated; iv-ladder: validated; iv-ladder-gold: validated; vix-inversion: validated; vol-curve-front: validated; mv-vixterm-range: underpowered; iv-over-rv-wider: validated; iv-sizing-filter: null; forecast-persistence-fix: validated | already drawn: a vol-clock dial per market and the cross-asset vol ranking table |
+| VIX complex and Surface Lab | DRAWN | macro | FEEDS | vix-calculus.html, surface-lab.html | vix-beta-change: underpowered; vvix-ratio-range: underpowered; vix-beta-level: underpowered; vvix-ratio-direction: underpowered; short-vx-rule: underpowered | percentile radar with a median ring, VIX-curve half-dial, a year of closes per reading, realised-vol heat strip |
 | HMM market state | DRAWN | macro | FEEDS | index.html | none | markets by days matrix, quiet cells purple and active cells gold |
-| GPR and crack spread | DRAWN | today | FEEDS |  | crack-inflation-channel: context; crack-blowout-range: null | already drawn |
-| Market Sense log | PACK |  | NO | market-sense.html | vix-inversion: validated; surprise-size: validated; nq-down-week: validated | no tile of its own: the live flags and their history strip live on risk-state; keep this log analysts-only |
+| GPR and crack spread | DRAWN | today | FEEDS |  | crack-inflation-channel: context; crack-blowout-range: underpowered | already drawn |
+| Market Sense log | PACK |  | NO | market-sense.html | vix-inversion: validated; surprise-size: underpowered; nq-down-week: context | no tile of its own: the live flags and their history strip live on risk-state; keep this log analysts-only |
 | Trend basket | DRAWN | macro | CONTEXT | trend-basket.html, econ-trend.html | none | equity curve, current trend signs and the out-of-sample record next to the trend-following-fx null chip |
 | Range-line coverage by state | DRAWN | macro | FEEDS | forecast-coverage.html | vol-curve-front: validated | coverage rails per market with the binomial noise band and the stress and calm splits |
 | SKEW index and the 2022 break | DRAWN | macro | CONTEXT |  | skew-fade: null | a glowing line with the break and the two period means |
@@ -124,7 +124,7 @@ Not included: backtests, bots, systems, shadows, research pages and the per-asse
 | Earnings ahead | DRAWN | cal | FEEDS |  | none | already drawn (preview) |
 | Release scorecard | DRAWN | cal | FEEDS |  | none | already drawn (preview) |
 | The wire (news) | DRAWN | news | FEEDS |  | news-asymmetry: null | next: a day strip of headlines by hour on the Calendar tab, with each headline's first 30-minute move |
-| Evening edition: the day in order | STANDALONE |  | LINK |  | surprise-size: validated | already drawn (the issue itself); next: the same day-shape chart as a replay in the terminal |
+| Evening edition: the day in order | STANDALONE |  | LINK |  | surprise-size: underpowered | already drawn (the issue itself); next: the same day-shape chart as a replay in the terminal |
 
 ## fiscal
 
@@ -152,9 +152,9 @@ Not included: backtests, bots, systems, shadows, research pages and the per-asse
 
 | Family | Status | Tab | Use | Pages | Tested | Visual idea |
 | --- | --- | --- | --- | --- | --- | --- |
-| Market View | DRAWN | insight | FEEDS | market-view.html | mv-vixterm-range: validated; mv-creditstack-range: context | already drawn: every series ranked by percentile against its own history, on the Insight tab (preview); sector landing and options book still on the page |
-| Spreads and ratios | DRAWN | insight | FEEDS |  | breadth-narrowing: null; dr-copper: null; curve-inversion: null; credit-leads-equities: null; vix-inversion: validated; mv-extreme-forward: null; mv-dislocation-forward: null; funding-stress: null; repo-stress-range: context; stock-bond-flip: context; relationship-map: underpowered; rates-spread-asset-lead: null | already drawn: a percentile ladder with glowing markers, a hero line with percentile bands and ghosts, a wall of small multiples and an X-versus-Y scatter that plays through time |
-| Momentum and rate of change | DRAWN | insight | FEEDS |  | roc-stall-50d-top20: underpowered; roc-stall-50d-top60: null; roc-stall-50d-topvol: null; roc-stall-50d-bottom20: underpowered; roc-accel-down-20: underpowered; roc-accel-down-vol: underpowered; live-range-features: null; vix-second-derivative: validated | already drawn: a percentile ladder with a ghost tick for where each series stood 50 sessions ago, a hero chart with the stall episodes shaded |
+| Market View | DRAWN | insight | FEEDS | market-view.html | mv-vixterm-range: underpowered; mv-creditstack-range: context | already drawn: every series ranked by percentile against its own history, on the Insight tab (preview); sector landing and options book still on the page |
+| Spreads and ratios | DRAWN | insight | FEEDS |  | breadth-narrowing: null; dr-copper: null; curve-inversion: null; credit-leads-equities: null; vix-inversion: validated; mv-extreme-forward: null; mv-dislocation-forward: underpowered; funding-stress: null; repo-stress-range: context; stock-bond-flip: context; relationship-map: underpowered; rates-spread-asset-lead: null | already drawn: a percentile ladder with glowing markers, a hero line with percentile bands and ghosts, a wall of small multiples and an X-versus-Y scatter that plays through time |
+| Momentum and rate of change | DRAWN | insight | FEEDS |  | roc-stall-50d-top20: underpowered; roc-stall-50d-top60: null; roc-stall-50d-topvol: null; roc-stall-50d-bottom20: underpowered; roc-accel-down-20: underpowered; roc-accel-down-vol: underpowered; live-range-features: null; vix-second-derivative: underpowered | already drawn: a percentile ladder with a ghost tick for where each series stood 50 sessions ago, a hero chart with the stall episodes shaded |
 | Original terminal | DRAWN | insight | FEEDS | terminal.html | none | already drawn: cross-asset matrix and sector rotation on the Insight tab (preview) |
 | Currency strength, price-based | DRAWN | overview | FEEDS |  | none | diverging bars that slide on update, a ghost of the last refresh, glow on leader and laggard |
 | Commodity currency coupling | DRAWN | macro | CONTEXT |  | none | three half-dials with the usual band and a year of coupling |
@@ -165,5 +165,5 @@ Not included: backtests, bots, systems, shadows, research pages and the per-asse
 | Running build and CI status | DRAWN |  | FEEDS |  | none | next: a deploy history strip (commit, time, green or red) on the Info map tab |
 | FX fair value | DRAWN | overview | FEEDS |  | residual-reversion-fx: null | already drawn |
 | Daily Read and Weekmap | DRAWN | assets | FEEDS | daily-read.html, weekmap.html | iv-over-rv-wider: validated | Week-so-far analog strip on Overview (the tags and forward record are drawn in the vol clock) |
-| Terminal newsletter v2 | STANDALONE |  | LINK | atlas.html | band-reach-from-here: validated; surprise-size: validated | already drawn (the issue itself); next: the pictogram setups panel is built but off (owner decision) |
+| Terminal newsletter v2 | STANDALONE |  | LINK | atlas.html | band-reach-from-here: validated; surprise-size: underpowered | already drawn (the issue itself); next: the pictogram setups panel is built but off (owner decision) |
 | Commodity FX, copper-gold, session heat | DRAWN | assets | FEEDS |  | dr-copper: null | already drawn |
