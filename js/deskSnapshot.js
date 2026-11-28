@@ -226,6 +226,8 @@ export const FULL_EXCLUDED = [
   { path: 'helix/scores', why: 'owner-only: a reader of helix/scores/<date>.json, written once a day by the helixScore job; the file is the record' },
   { path: 'helix/scorecard', why: 'owner-only: a reader of helix/scores/_summary.json, the rolling calibration the helixScore job rewrites; the file is the record' },
   { path: 'helix/score', why: 'owner-only POST that runs the evening scorer now; it writes helix/scores/<date>.json, nothing to snapshot' },
+  { path: 'helix/media', why: 'owner-only list of the H.E.L.I.X. videos and podcast episodes (the Media tab); the archive itself is the record, in R2 helix/media/videos.json and helix/podcast/index.json' },
+  { path: 'helix/broadcasts', why: 'owner-only: the last published broadcasts, already kept in KV helix_published_v1; the Media tab reads the fuller R2 archive' },
 ];
 /** Feeds that carry trade levels or the owner's own record: stored in FULL for the owner, removed from a desk viewer's copy. */
 export const OWNER_ONLY_FEEDS = ['trade-watch', 'pair-select', 'desk-alerts', 'desk-score/record', 'desk-quality'];

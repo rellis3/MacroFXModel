@@ -17,6 +17,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { KV_KEY, readStore, addItem, addFailure, validatePublished, validateFailed, publishedText, failedText, specialsDue, validateEpisode, podcastRss } from './helixBroadcastCore.js';
 import { weekDates, buildDigest, digestText, digestHtml } from './helixDigestCore.js';
+import { byteRange } from './helixMediaCore.js';
 
 const R2_PREFIX = 'helix/podcast/';
 const origin = req => { const h = String(req.get('host') ?? ''); return `${/^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(h) ? 'http' : 'https'}://${h}`; };      // Railway terminates TLS in front of us
@@ -147,12 +148,9 @@ export async function mount(app, deps) {
     try {
       const buf = await deps.r2.getBuffer(`${R2_PREFIX}${m[1]}.mp3`); if (!buf) return res.status(404).end();
       res.set({ 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, max-age=86400', 'Accept-Ranges': 'bytes', 'X-Robots-Tag': 'noindex' });
-      const rg = /^bytes=(\d*)-(\d*)$/.exec(req.get('range') ?? '');
-      if (rg && (rg[1] || rg[2])) {
-        const size = buf.length, a = rg[1] ? +rg[1] : Math.max(0, size - +rg[2]), b = rg[1] && rg[2] ? Math.min(size - 1, +rg[2]) : size - 1;
-        if (a > b || a >= size) return res.status(416).set('Content-Range', `bytes */${size}`).end();
-        return res.status(206).set('Content-Range', `bytes ${a}-${b}/${size}`).send(buf.subarray(a, b + 1));
-      }
+      const rg = byteRange(req.get('range'), buf.length);           // a player's scrubber sends Range (the rule and its tests: js/jarvis/helixMediaCore.js)
+      if (rg?.unsatisfiable) return res.status(416).set('Content-Range', `bytes */${buf.length}`).end();
+      if (rg) return res.status(206).set('Content-Range', `bytes ${rg.start}-${rg.end}/${buf.length}`).send(buf.subarray(rg.start, rg.end + 1));
       res.send(buf);
     } catch (e) { res.status(500).end(); }
   });
