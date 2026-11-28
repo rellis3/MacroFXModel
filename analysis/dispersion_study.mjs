@@ -9,6 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { fetchD1Aligned } from '../js/volBacktestEngine.js';
+import { fredCsv } from './lib/fredCsv.mjs';
 import { bootDiff as _bootDiff, circularBlock } from './lib/eventBootstrap.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, 'output', 'dispersion.json');
@@ -24,7 +25,7 @@ const bootDiff = (a, b, block = 10) => _bootDiff(a, b, { block, reps: REPS, rnd,
 const wilson = (k, n) => { if (!n) return null; const p = k / n, z = 1.96; const d = 1 + z * z / n; const c = (p + z * z / (2 * n)) / d; const h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d; return { n, k, share: r3(p), lo: r3(c - h), hi: r3(c + h) }; };
 const corr = (a, b) => { const ma = mean(a), mb = mean(b); let sab = 0, saa = 0, sbb = 0; for (let i = 0; i < a.length; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2; } return r3(sab / Math.sqrt(saa * sbb)); };
 
-async function fredCsv(id) { const t = await (await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`)).text(); return t.trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; }).filter(o => Number.isFinite(o.value)); }
+// fredCsv: shared helper with a named user-agent (FRED 503s the default node UA, faults-log 2026-11-01)
 async function dspx() { const t = await (await fetch('https://cdn.cboe.com/api/global/us_indices/daily_prices/DSPX_History.csv')).text(); return t.trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); const m = String(d).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? { date: `${m[3]}-${m[1]}-${m[2]}`, value: parseFloat(v) } : null; }).filter(o => o && Number.isFinite(o.value)); }
 
 const [D, vix] = await Promise.all([dspx(), fredCsv('VIXCLS')]);

@@ -1,0 +1,12 @@
+{ "id": "rerun-2026-11-28", "ranAt": "2026-11-28T07:53:00Z", "branch": "wf2/rerun-a", "lockbox": "2026-08-21",
+  "faults": ["DATA_SPEC#13", "DATA_SPEC#14", "faults-log 2026-11-01 FRED user-agent"],
+  "studies": [
+    { "id": "yield-move-fx-range", "was": "null", "verdict": "underpowered", "seed": 20260927, "B": 1000, "doc": "MD files/YIELD_MOVE_FX_RANGE_PREREG.md", "out": "yield_move_fx_range.json" },
+    { "id": "nonus-yield-gap-range", "was": "null", "verdict": "context", "seed": 20260920, "B": 1000, "doc": "MD files/NONUS_YIELDS.md", "out": "nonus_yields.json" },
+    { "id": "nonus-yield-gap-direction", "was": "null", "verdict": "null", "seed": 20260920, "B": 1000, "doc": "MD files/NONUS_YIELDS.md", "out": "nonus_yields.json" },
+    { "id": "fear-gold", "was": "null", "verdict": "underpowered", "seed": 20260921, "B": 1000, "doc": "MD files/FOUR_GOLDS.md#G1", "out": "four_golds.json" },
+    { "id": "crack-blowout-range", "was": "null", "verdict": "underpowered", "seed": 20260921, "B": 1000, "doc": "MD files/CRACK_SPREAD.md", "out": "crack_spread.json" },
+    { "id": "dispersion-crowded-week", "was": "null", "verdict": "null", "seed": 20260923, "B": 1000, "doc": "MD files/DISPERSION.md#D1", "out": "dispersion.json" },
+    { "id": "dispersion-reset", "was": "validated", "verdict": "underpowered", "seed": 20260923, "B": 1000, "doc": "MD files/DISPERSION.md#D2", "out": "dispersion.json" },
+    { "id": "mv-vixterm-range", "was": "validated", "verdict": "underpowered", "seed": 20260923, "B": 1000, "doc": "MD files/OUTCOME_LOOP.md", "out": "outcome_loop.json" }
+  ] }

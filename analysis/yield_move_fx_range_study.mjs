@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchD1Aligned } from '../js/volBacktestEngine.js';
+import { fredCsv } from './lib/fredCsv.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, 'output', 'yield_move_fx_range.json');
@@ -30,7 +31,9 @@ const PAIRS = [['EURUSD', 'EUR_USD'], ['USDJPY', 'USD_JPY'], ['GBPUSD', 'GBP_USD
 const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
 const median = a => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const r3 = v => v == null || !Number.isFinite(v) ? null : +v.toFixed(3);
-const draw = (x, b) => { const o = []; while (o.length < x.length) { const i = Math.floor(Math.random() * x.length); for (let k = 0; k < b && o.length < x.length; k++) o.push(x[(i + k) % x.length]); } return o; };
+// Re-run 2026-11-28: seeded (prereg date) so the interval is reproducible; same 5-block bootstrap as preregistered.
+let seed = 20260927; const rnd = () => { seed += 0x6D2B79F5; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+const draw = (x, b) => { const o = []; while (o.length < x.length) { const i = Math.floor(rnd() * x.length); for (let k = 0; k < b && o.length < x.length; k++) o.push(x[(i + k) % x.length]); } return o; };
 function bootDiff(a, b) {
   if (a.length < MIN_EVENTS || b.length < MIN_EVENTS) return { untestable: true, nA: a.length, nB: b.length };
   const d = []; for (let r = 0; r < REPS; r++) d.push(mean(draw(a, BLOCK)) - mean(draw(b, BLOCK)));
@@ -41,11 +44,8 @@ function bootDiff(a, b) {
 }
 
 // ═══ 1. DATA ═════════════════════════════════════════════════════════════════
-async function fred(id) {
-  const t = await (await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`, { signal: AbortSignal.timeout(30_000) })).text();
-  return t.trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; })
-    .filter(o => Number.isFinite(o.value));
-}
+// FRED via the shared helper: named user-agent (FRED 503s the default node UA, faults-log 2026-11-01)
+const fred = id => fredCsv(id);
 const dgs10 = await fred('DGS10');
 console.log(`DGS10 ${dgs10[0].date} -> ${dgs10.at(-1).date} (${dgs10.length} prints)`);
 

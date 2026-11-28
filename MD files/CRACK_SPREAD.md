@@ -100,3 +100,24 @@ disagreement window 62% of the time [48–75] (n=45), after an agreement window
 - A chain node **Crack spread** with the link **crack → inflation pricing**
   (+1), judged like every other link; the card carries the C2 figure.
 - No range trigger; C3 written as the base rate.
+
+---
+
+## RE-RUN — 2026-11-28 (data faults #13, #14; FRED user-agent)
+
+Inputs fixed, nothing else: London-dated OANDA D1 bars from the fixed `fetchD1Aligned` (DATA_SPEC §5 #13: London
+calendar date, weekends dropped, cut at the lockbox 2026-08-21), the shared event bootstrap
+`analysis/lib/eventBootstrap.mjs` where the script used the copied `drawBlock` (§5 #14), and FRED fetched with a
+named user-agent (`analysis/lib/fredCsv.mjs`; FRED 503s the default node UA, faults-log 2026-11-01). Same
+definitions, thresholds, seeds and gates as the original. Branch `wf2/rerun-a`; outputs and logs in
+`analysis/output/rerun-2026-11-28/`. Post-hoc data re-run: it can only describe or demote. Output `analysis/output/rerun-2026-11-28/crack_spread.json`.
+
+**C1 — range.** 61 blow-out episodes, 25–26 with OANDA history. Next-20-session mean daily range vs control: WTI
+**+0.126 ATR [−0.085, +0.466]** (n 26), USD/CAD −0.014 [−0.092, +0.063], gold −0.049 [−0.155, +0.069]. With a
+per-episode bootstrap the WTI interval is about three times as wide as reported; the gold "hair narrower" is gone.
+A 12% wider month in crude is neither ruled out nor shown. **Verdict crack-blowout-range: UNDERPOWERED** (was
+NULL). Caveat kept from the audit: the FRED EIA spot series lags about a week, so the signal is not live-timed.
+
+C2 and C3 (not re-run rows) are essentially unchanged: partial corr(crack | oil) 0.184 [0.105, 0.266]; disagreement
+minus agreement Δbreakeven +14.5bp [+4.8, +25.5]; crude higher 20 sessions after disagreement 62% [48–75] n 45,
+after agreement 47% [32–63] n 34, unconditional 52%.

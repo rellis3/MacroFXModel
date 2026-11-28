@@ -107,3 +107,28 @@ cannot be confirmed from here.
   18%, both 16%, neither 45%".
 - Ledger: G1 as null (no fear bid; a month later gold lags, a base rate);
   G2 as context.
+
+---
+
+## RE-RUN — 2026-11-28 (data faults #13, #14; FRED user-agent)
+
+Inputs fixed, nothing else: London-dated OANDA D1 bars from the fixed `fetchD1Aligned` (DATA_SPEC §5 #13: London
+calendar date, weekends dropped, cut at the lockbox 2026-08-21), the shared event bootstrap
+`analysis/lib/eventBootstrap.mjs` where the script used the copied `drawBlock` (§5 #14), and FRED fetched with a
+named user-agent (`analysis/lib/fredCsv.mjs`; FRED 503s the default node UA, faults-log 2026-11-01). Same
+definitions, thresholds, seeds and gates as the original. Branch `wf2/rerun-a`; outputs and logs in
+`analysis/output/rerun-2026-11-28/`. Post-hoc data re-run: it can only describe or demote. Output `analysis/output/rerun-2026-11-28/four_golds.json`.
+
+Sessions 2010-12 → 2026-08-21 (3,967 with a VIX close; as run 3,588, summer Fridays were dropped).
+
+**G1 — fear gold.** 63 VIX spikes. Five sessions on gold +0.39% vs +0.20% ordinary: excess **+0.19% [−0.46, +0.87]**;
+higher at +5 in 49% [37–61]. Twenty sessions on +0.70% vs +0.78%: excess **−0.08% [−1.48, +1.26]**. Spiked then
+gave back half by +20: 13% [7–23]. The 20-session "gold lagged −1.19% [−2.30, −0.48]" is gone: it came from the
+mis-dated bars and the collapsed bootstrap. The registered bar (the +5 excess interval excludes zero) is not met,
+but the honest interval is ±0.66%, wide enough to hold a real fear bid of half a percent. **Verdict fear-gold:
+UNDERPOWERED** (was NULL). Not added: the audit's suggested spike-week gold move (days i−5..i) is a new
+question, not a data fix.
+
+**G2 (which-gold, context, not one of the re-run rows):** 765 windows: rates gold 21%, dollar gold 25%, both 48%,
+neither 7%, wrong sign 0% (as run 19 / 18 / 16 / 45 / 3). The "neither 45%" and "2025 neither 96%" (now 50%) were
+largely the date mis-join between OANDA gold and FRED real yields / dollar. The which-gold entry needs updating.

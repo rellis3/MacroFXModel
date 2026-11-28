@@ -203,3 +203,35 @@ they fire is the next step, and it takes a year to say anything.
   `mv-extreme-forward` as null.
 - No Desk Watch trigger. Range-only claims with 9–17 firings on revised data earn
   a re-run, not an alert.
+
+---
+
+## RE-RUN — 2026-11-28 (data fault #14; lockbox)
+
+Inputs fixed: the shared event bootstrap `analysis/lib/eventBootstrap.mjs` (§5 #14; per-firing resampling for the
+de-clustered firings, circular blocks for the controls; it was already wired into `outcome_loop.mjs` on main) and a
+lockbox cut: the bundle is sliced at 2026-08-21 before the replay (`LOCKBOX_TO`, 70 sessions dropped). Same seed
+(20260923), horizon, warm-up, floors. Branch `wf2/rerun-a`; the bundle used is saved as
+`analysis/output/rerun-2026-11-28/drill_series_bundle_2026-11-28.json`; output `outcome_loop.json` beside it.
+
+Not a pure re-run, stated plainly: `/api/drill-series` is a rolling six-year bundle, so it now starts 2020-11-27
+(as run 2020-09-22) and has 77 series (as run 59), and `js/marketScan.js` is today's code. After the 800-session
+warm-up the replay covers 2024-02 → 2026-07 (as run 2023-09 → 2026-08). The September 2023 – January 2024 firings
+cannot be re-scored from this endpoint.
+
+| kind | firings | SPX range diff | NQ range diff | halves (SPX) | up vs ctrl |
+|---|---|---|---|---|---|
+| **vixterm** | 10 | +0.337 [+0.001, +0.726] | +0.070 [−0.258, +0.450] | early +0.324 [−0.139, +0.910] (n 5), late +0.350 [−0.086, +0.799] (n 5) | 80% vs 78% |
+| dispersion | 8 | +0.482 [+0.007, +1.024] | +0.530 [−0.070, +1.062] | early +0.726 [−0.138, +1.672], late +0.238 [−0.187, +0.612] | 63% vs 84% |
+| creditstack | 12 | +0.140 [−0.217, +0.516] | +0.173 [−0.306, +0.683] | — | 67% vs 79% |
+| extreme | 15 | +0.117 [−0.189, +0.493] | +0.031 [−0.452, +0.514] | — | 73% vs 81% |
+| dislocation | 17 | +0.115 [−0.257, +0.590] | +0.061 [−0.312, +0.438] | early +0.422, late −0.158 | 71% vs 79% |
+| quiet | 29 | untestable (fires 55% of sessions, 0 controls) | | | |
+| narrowing | 5 | too few | | | |
+
+**mv-vixterm-range: UNDERPOWERED** (was VALIDATED). With intervals that resample firings, the SPX cell clears zero by
+0.001, NQ does not, and neither half clears on 5 firings each. The point estimates still lean wider (+0.34 SPX)
+and the separate `vix-inversion` study (86 inversions) is untouched by this; this harness no longer independently
+reproduces it. Not addressed: the audit's "matched controls" note (a design question). The mv-dispersion-range,
+mv-creditstack-range, mv-dislocation-forward and mv-extreme-forward entries are not re-banked on this branch; their
+numbers are in the table for whoever closes those rows. Direction null everywhere, as pre-registered.

@@ -1,0 +1,15 @@
+fetching the bundle...
+lockbox cut at 2026-08-21: dropped 70 sessions
+1512 sessions, 2020-11-27 -> 2026-08-21, 77 series
+replaying the scan at every index (this is the slow part)...
+  100/692  200/692  300/692  400/692  500/692  600/692
+replay done.
+quiet           29 firings |  55% of days | ctrl   0 | fires on  55% of sessions | control 0 — UNTESTABLE, and that is the finding
+dislocation     17 firings | range SPX +0.115 [-0.257, 0.59] NQ +0.061 [-0.312, 0.438] | up 71% [47-87] vs ctrl 79% | null — the hedge is correct
+creditstack     12 firings | range SPX +0.14 [-0.217, 0.516] NQ +0.173 [-0.306, 0.683] | up 67% [39-86] vs ctrl 79% | null — the hedge is correct
+extreme         15 firings | range SPX +0.117 [-0.189, 0.493] NQ +0.031 [-0.452, 0.514] | up 73% [48-89] vs ctrl 81% | null — the hedge is correct
+narrowing        5 firings — too few to judge (pre-registered floor 8)
+dispersion       8 firings | range SPX +0.482 [0.007, 1.024] NQ +0.53 [-0.07, 1.062] | up 63% [31-86] vs ctrl 84% | something survives
+vixterm         10 firings | range SPX +0.337 [0.001, 0.726] NQ +0.07 [-0.258, 0.45] | up 80% [49-94] vs ctrl 78% | something survives
+
+written analysis/output/rerun-2026-11-28/outcome_loop.json

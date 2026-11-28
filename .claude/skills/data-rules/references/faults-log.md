@@ -54,6 +54,8 @@ contradictions found between docs and code. Add new entries at the bottom of the
 21. 2026-10-31: `cot_weekly.csv` is in pair terms for JPY/CAD/CHF; read `analysis/output/cot-crowding-programme/COT_WEEKLY_README.md` (#16). `FeatureStore.at()` now returns the newest period, not the newest publication (#17). GlobalLiquidity units and monthly lags fixed (#19). Weekend London keys are not sessions anywhere (#20).
 - 2026-11-01: **FRED's public CSV (fredgraph.csv) returns HTTP 503 to the default `node` user-agent.** Every keyless
   FRED read on the server failed silently. Fixed with a named user-agent (`_FRED_CSV_HEADERS` in server.js).
+  2026-11-28: the research scripts in `analysis/*.mjs` had their own header-less `fredCsv` copies; use
+  `analysis/lib/fredCsv.mjs` (named UA, throws on non-200 or empty) instead of copying one.
 - 2026-11-01: **FRED serves the ICE BofA HY OAS (BAMLH0A0HYM2) from 2023-10 only**, through both the API and the CSV
   (ICE licensing). For a long credit regime, use BAA10Y (committed in `analysis/output/cog_yield_dir/fred/`, feature
   `credit_baa10y`).

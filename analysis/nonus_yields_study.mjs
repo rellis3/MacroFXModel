@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { fetchD1Aligned } from '../js/volBacktestEngine.js';
+import { fredCsv } from './lib/fredCsv.mjs';
 import { INTL_YIELDS } from '../js/intlYields.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, 'output', 'nonus_yields.json');
@@ -29,7 +30,7 @@ const bootShare = (flags, base) => { const n = flags.length; if (!n) return null
 const bootBlockMean = (x, block = 10) => { const n = x.length; if (n < block) return null; const out = []; const nb = Math.ceil(n / block); for (let k = 0; k < REPS; k++) { const s = []; for (let b = 0; b < nb; b++) { const st = Math.floor(rnd() * (n - block + 1)); for (let i = 0; i < block && s.length < n; i++) s.push(x[st + i]); } out.push(mean(s)); } out.sort((a, b) => a - b); return { n, mean: r3(mean(x)), lo: r3(out[Math.floor(REPS * 0.025)]), hi: r3(out[Math.floor(REPS * 0.975)]) }; };
 const wilson = (k, n) => { if (!n) return null; const p = k / n, z = 1.96; const d = 1 + z * z / n; const c = (p + z * z / (2 * n)) / d; const h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d; return { n, share: r3(p), lo: r3(c - h), hi: r3(c + h) }; };
 
-async function fredCsv(id) { const t = await (await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`)).text(); return t.trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; }).filter(o => Number.isFinite(o.value)); }
+// fredCsv: shared helper with a named user-agent (FRED 503s the default node UA, faults-log 2026-11-01)
 
 const ust = await fredCsv('DGS10'); const ustBy = new Map(ust.map(o => [o.date, o.value]));
 console.log(`DGS10 ${ust[0].date} -> ${ust.at(-1).date} (${ust.length})`);

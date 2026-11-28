@@ -83,7 +83,7 @@ console.log('[claim triggers via the drill bundle]');
   ok('idle → approaching is reported once as approaching', d.approaching.map(x => x.id).join() === 'claim-fear-spike' && !d.started.length);
   ok('approaching → approaching is silent', diffStates(t2, t2).approaching.length === 0);
   const msg = formatTelegram(diffStates(t2, t), new Date('2026-10-18T09:05:00Z'));
-  ok('a claim start is tagged ◌, carries the verdict and an eye line, and the legend explains it', /◌ <b>Setup watch · Fear spike/.test(msg) && /This desk: TESTED NULL/.test(msg) && /👁/.test(msg) && /educator’s setup/.test(msg));
+  ok('a claim start is tagged ◌, carries the verdict and an eye line, and the legend explains it', /◌ <b>Setup watch · Fear spike/.test(msg) && /This desk: UNDERPOWERED/.test(msg) && /👁/.test(msg) && /educator’s setup/.test(msg));
   const msg2 = formatTelegram(d, new Date('2026-10-18T09:05:00Z'));
   const vix3 = vix.slice(); vix3[N - 1] = vix3[N - 6] + 4.6;            // 92% of the way: holds only if it was firing
   const heldT = evaluateTriggers({ now: NOW, drill: { dates, series: { vix: vix3 } }, prevStates: t }).find(x => x.id === 'claim-fear-spike');
