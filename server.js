@@ -37650,7 +37650,7 @@ _mountGhostWalk(app, {
     svcInterval, svcTimeout, svcEnabled, londonDate: _dpLondonDate,
     selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { signal: AbortSignal.timeout(60_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
   };
-  for (const name of ['jarvisWatch', 'jarvisExplain', 'jarvisPrecedent', 'jarvisPapers', 'jarvisMorning', 'jarvisVoice', 'helixBroadcast']) {
+  for (const name of ['jarvisWatch', 'jarvisExplain', 'jarvisPrecedent', 'jarvisPapers', 'jarvisMorning', 'jarvisVoice', 'helixBroadcast', 'helixMedia']) {
     try { const m = await import(`./js/jarvis/${name}.js`); await m.mount?.(app, deps); }
     catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') console.warn(`[jarvis] ${name} not mounted:`, e.message); }
   }
