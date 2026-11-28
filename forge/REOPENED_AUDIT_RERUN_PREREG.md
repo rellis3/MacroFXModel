@@ -153,7 +153,15 @@ demoted entry is listed in the results for the owner to relabel.
 
 ## Amendments
 
-(none yet)
+### A1 — 2026-11-28 — PRE-RESULTS (for 3B)
+3B (dispersion-reset) is dropped from this study: register row `dispersion-reset` is already RUNNING on branch
+`wf2/rerun-a` (shared-code bootstrap re-run), and the protocol forbids editing another session's in-flight study. The
+residual defect found here (the D2b gate resamples the falling EVENT arm in circular blocks of 10 via the control-arm
+path of `bootDiff`) is handed over in the results file instead. No 3B outcome was computed on this branch.
+
+### A2 — 2026-11-28 — note on a smoke run (3A)
+3A was first run with B = 50 as a smoke test of the code (82/82 betas reproduce the registered ones). Its output was
+printed before the B = 2000 run. Nothing in the design was changed after it; the B = 2000 run is the scored one.
 
 ## RESULTS
 
