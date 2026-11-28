@@ -826,3 +826,6 @@ analysis/output/level-*/**/*.parquet
 analysis/output/**/*.npy
 analysis/output/**/forward_cache/
 analysis/output/*calc-upgrades*/**/*.parquet
+
+# PUSH-SECRET READINESS: the laptop push secret (X-Auth-Token) for scripts that POST to the server; never committed
+/push_secret.txt

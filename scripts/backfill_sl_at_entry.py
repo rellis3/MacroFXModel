@@ -39,6 +39,26 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from pylego.broker.stops import entry_stop_from_orders, r_multiple  # noqa: E402
 
+
+def _push_auth(headers: dict) -> dict:
+    """PUSH-SECRET READINESS: add X-Auth-Token from env KV_WRITE_SECRET, else from a git-ignored push_secret.txt (the repo root or jarvis_broadcast/), when one exists.
+    With neither the headers go out unchanged, so today's pushes behave exactly as before."""
+    import os
+    from pathlib import Path as _P
+    s = os.environ.get('KV_WRITE_SECRET', '').strip()
+    if not s:
+        for d in _P(__file__).resolve().parents:
+            for f in (d / 'push_secret.txt', d / 'jarvis_broadcast' / 'push_secret.txt'):
+                try:
+                    if f.is_file():
+                        s = f.read_text(encoding='utf-8').strip()
+                        break
+                except OSError:
+                    pass
+            if s or (d / '.git').exists():
+                break
+    return {**headers, 'X-Auth-Token': s} if s else dict(headers)
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 log = logging.getLogger('backfill_sl')
 
@@ -56,7 +76,7 @@ def _get(url: str, timeout: int = 30):
 
 def _post(url: str, payload: dict, timeout: int = 120):
     req = urllib.request.Request(url, data=json.dumps(payload).encode(),
-                                 headers={'Content-Type': 'application/json'}, method='POST')
+                                 headers=_push_auth({'Content-Type': 'application/json'}), method='POST')
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return json.loads(resp.read())
 

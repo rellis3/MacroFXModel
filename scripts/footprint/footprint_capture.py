@@ -21,6 +21,26 @@ import argparse, gzip, json, os, shutil, socket, sys, threading, time, urllib.er
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+
+def _push_auth(headers: dict) -> dict:
+    """PUSH-SECRET READINESS: add X-Auth-Token from env KV_WRITE_SECRET, else from a git-ignored push_secret.txt (the repo root or jarvis_broadcast/), when one exists.
+    With neither the headers go out unchanged, so today's pushes behave exactly as before."""
+    import os
+    from pathlib import Path as _P
+    s = os.environ.get('KV_WRITE_SECRET', '').strip()
+    if not s:
+        for d in _P(__file__).resolve().parents:
+            for f in (d / 'push_secret.txt', d / 'jarvis_broadcast' / 'push_secret.txt'):
+                try:
+                    if f.is_file():
+                        s = f.read_text(encoding='utf-8').strip()
+                        break
+                except OSError:
+                    pass
+            if s or (d / '.git').exists():
+                break
+    return {**headers, 'X-Auth-Token': s} if s else dict(headers)
+
 BASE_URL = os.environ.get("MACROFX_BASE", "https://macrofxmodel-production.up.railway.app")
 LIVE_DIR = Path(os.environ.get("FOOTPRINT_LIVE_DIR") or (Path(os.environ.get("LOCALAPPDATA", Path.home())) / "MacroFXModel" / "nt8_live"))
 # The futures that match the owner's markets: indices, gold, crude and the FX majors. SI, ZN and ZB can be added with --roots.
@@ -198,7 +218,7 @@ def push(doc, final=False, base=None):
     hdr = {"Content-Type": "application/json", "Content-Encoding": "gzip"}
     if os.environ.get("KV_WRITE_SECRET"):
         hdr["X-Auth-Token"] = os.environ["KV_WRITE_SECRET"]
-    req = urllib.request.Request(f"{base or BASE_URL}/api/footprint/push", data=body, headers=hdr, method="POST")
+    req = urllib.request.Request(f"{base or BASE_URL}/api/footprint/push", data=body, headers=_push_auth(hdr), method="POST")
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             return r.getcode(), len(body)
