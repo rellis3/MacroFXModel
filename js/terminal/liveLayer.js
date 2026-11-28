@@ -93,10 +93,11 @@ export function retailHtml(r) {
 export function tapeChip(tape, backdrop) {
   if (!tape) return { text: 'tape –', cls: '', title: 'The live risk tape: no read yet.' };
   const L = tape.legs ?? {}, on = (backdrop?.flags ?? []).filter(f => f.on === true).map(f => f.label);
-  const since = tape.since ? ` since ${hhmm(tape.since)}` : '';
+  // "since at least": the server came up mid-day with no saved history, so the label may be older than the first time it saw it
+  const since = tape.since ? ` since ${tape.sinceAtLeast ? 'at least ' : ''}${hhmm(tape.since)}` : '';
   // "live tape:" so it is never read against the regime card's morning call (review 2026-11-27: "RISK-ON since 18:31" beside "RISK-OFF")
   return { text: `live tape: ${tape.label}${since}`, cls: tape.label === 'risk-on' ? 'up' : tape.label === 'risk-off' ? 'dn' : '',
-    title: `Live risk tape ${sg(tape.score)}u: equities ${sg(L.equities)}u, havens JPY/CHF ${sg(L.havens)}u (counted against), AUD/NZD ${sg(L.commodityFx)}u; gold ${sg(L.gold)}u (shown, not scored). Risk-on above +0.25, risk-off below -0.25. ${(tape.history ?? []).length > 1 ? `Today: ${tape.history.map(h => `${hhmm(h.at)} ${h.label}`).join(' → ')}. ` : ''}Morning backdrop (end-of-day data): ${on.length ? on.join(', ') : 'no risk flags on'}. What the tape is doing, not a call.` };
+    title: `Live risk tape ${sg(tape.score)}u: equities ${sg(L.equities)}u, havens JPY/CHF ${sg(L.havens)}u (counted against), AUD/NZD ${sg(L.commodityFx)}u; gold ${sg(L.gold)}u (shown, not scored). Risk-on above +0.25, risk-off below -0.25. ${tape.sinceAtLeast ? `The live layer started at ${hhmm(tape.since)} with no earlier record for today, so the label may have held before that. ` : ''}${(tape.history ?? []).length > 1 ? `Today: ${tape.history.map(h => `${hhmm(h.at)} ${h.label}`).join(' → ')}. ` : ''}Morning backdrop (end-of-day data): ${on.length ? on.join(', ') : 'no risk flags on'}. What the tape is doing, not a call.` };
 }
 /** The Overview line: which morning calls the day is against. rows: [{ n, label, why: [] }]. */
 export function againstHtml(rows, total) {

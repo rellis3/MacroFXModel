@@ -5,7 +5,7 @@
 // The library is loaded on first visit from a pinned jsDelivr URL with an integrity hash (KLINE in kchartCore.js): nothing downloads for a session that never opens the tab, and a
 // changed file would not run. Colours are theme tokens read at draw time and repainted on 'themechange'. The linked selection (js/terminal/selectionCore.js) drives the market and
 // the candle size when linking is on. A PREVIEW feature (registry id tab.kchart): js/terminal/terminalFeel.js only loads this file when the session may see that surface.
-import { KLINE, INDICATORS, TOKENS, toKline, periodFor, precisionFor, newerThan, levelsFromDay, styleFor, indicatorById, cleanSymbol, validateSettings, defaultSettings, describeSettings, loadSettings, saveSettings, settingsFor } from './kchartCore.js';
+import { KLINE, INDICATORS, TOKENS, toKline, periodFor, precisionFor, newerThan, levelsFromDay, mergeNearLines, styleFor, indicatorById, cleanSymbol, validateSettings, defaultSettings, describeSettings, loadSettings, saveSettings, settingsFor } from './kchartCore.js';
 import { mountTfBar } from './timeframePills.js';
 import { ALL_INSTRUMENTS, instLabel } from './commandCore.js';
 import { INSTRUMENTS as REPLAY_INSTRUMENTS, londonDate } from '../replayCore.js';
@@ -157,7 +157,9 @@ export function mountKChart({ doc = document, win = window, fetchJson = null, lo
     lvNote = L.note; dawn = L.dawn ?? ''; drawInfo();
     if (!L.ok) return;
     const ts = pending.at(-1)?.timestamp ?? Date.now();
-    for (const l of L.lines) chart.createOverlay({ name: 'deskLevel', groupId: 'lv', lock: true, points: [{ timestamp: ts, value: l.price }], extendData: { label: `${l.label} ${l.price}`, color: tc(l.tone) || tc('tx2') } });
+    // labels at the market's precision, and lines closer than about one label height (1/40 of the lines' span) share one label so they do not overprint
+    const ps = L.lines.map(l => l.price).filter(Number.isFinite), tol = ps.length > 1 ? (Math.max(...ps) - Math.min(...ps)) / 40 : 0;
+    for (const l of mergeNearLines(L.lines, tol)) chart.createOverlay({ name: 'deskLevel', groupId: 'lv', lock: true, points: [{ timestamp: ts, value: l.price }], extendData: { label: l.text, color: tc(l.tone) || tc('tx2') } });
     lvTimer = win.setInterval(() => { if (open && doc.visibilityState !== 'hidden') loadLevels(); }, 5 * 60_000);
   }
 
@@ -172,7 +174,9 @@ export function mountKChart({ doc = document, win = window, fetchJson = null, lo
     if (chart) mountTf();
     return true;
   }
-  const startInst = () => { let w = null; try { w = ls?.getItem(LAST_KEY); } catch { /* */ } const s = sel(); return (s?.linked?.() && s.get().inst && known(s.get().inst) ? s.get().inst : null) ?? (known(w) ? w : 'EURUSD'); };
+  // the market the Pair page is on, so the chart opens on it when nothing is picked (review 2026-11-27: Chart on EURUSD while Pair showed USDCAD)
+  const pairNow = () => doc.getElementById('tt-sel')?.value || null;
+  const startInst = () => { let w = null; try { w = ls?.getItem(LAST_KEY); } catch { /* */ } const s = sel(); return (s?.linked?.() && s.get().inst && known(s.get().inst) ? s.get().inst : null) ?? (known(pairNow()) ? pairNow() : null) ?? (known(w) ? w : 'EURUSD'); };
 
   // ── the page ──
   async function enter() {

@@ -48,7 +48,9 @@ export function cardHtml(state) {
 export function mountSinceLast({ doc = document, win = window, fetchJson = J, now = () => Date.now(), store = win.localStorage } = {}) {
   if (!doc.body || doc.body.dataset?.slMounted) return null;
   if (doc.body.dataset) doc.body.dataset.slMounted = '1';
-  const lastLook = readLastLook(store), st = { ranges: ranges(now(), lastLook), range: null, res: null, loading: false, error: null }; st.range = st.ranges[0].id;
+  // the morning range starts at the book's own publication time (the page sets deskBookAt once the desk run has loaded)
+  const bookAt = () => { const v = Date.parse(win.deskBookAt?.() ?? ''); return Number.isFinite(v) ? v : null; };
+  const lastLook = readLastLook(store), st = { ranges: ranges(now(), lastLook, bookAt()), range: null, res: null, loading: false, error: null }; st.range = st.ranges[0].id;
   const stamp = () => writeLastLook(now(), store);
   win.addEventListener?.('pagehide', stamp); doc.addEventListener?.('visibilitychange', () => { if (doc.visibilityState === 'hidden') stamp(); });
   let rows = null;
@@ -63,6 +65,7 @@ export function mountSinceLast({ doc = document, win = window, fetchJson = J, no
   }
   function decorate() {
     const root = doc.getElementById('changed'); if (!root || root.hidden || root.querySelector('[data-sl-card]')) return;
+    if (!st.res) { const r = ranges(now(), lastLook, bookAt()); if (r.some(x => x.id === st.range)) st.ranges = r; }
     root.insertAdjacentHTML('afterbegin', cardHtml({ ...st, loading: !st.res && !st.error }));
     if (!st.res && !st.error && !st.loading) run(st.range);
   }

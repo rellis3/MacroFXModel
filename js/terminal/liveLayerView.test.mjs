@@ -66,7 +66,7 @@ test('live figures inside the existing boards are empty until data lands, then e
   assert.match(liveWiderChip('nq'), /data-lv="wm:nq"/);
   _state.payload = payload;
   assert.match(liveEmCell('USDMXN'), /\+2\.00% live/);
-  assert.match(liveWiderChip('nq'), /\+1\.00% live/);
+  assert.match(liveWiderChip('nq'), /live .*\+1\.00% since the close/);
   assert.match(liveWiderChip('smallVsBig'), /−0\.90pp live/);
   _state.payload = null;
 });

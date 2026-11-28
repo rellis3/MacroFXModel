@@ -26,7 +26,7 @@ async function mounted({ fail = false } = {}) {
   const doc = makePage();
   doc.querySelector('main').innerHTML += '<section id="monitor" hidden></section>';
   doc.getElementById('tabs').innerHTML += '<button data-t="monitor" aria-selected="false">Monitor</button>';
-  const f = fetchStub(fail), win = makeWin(doc, { fetch: f, setInterval: () => 1, clearInterval: () => {}, deskSelection: { set(p, s) { this.last = [p, s]; }, subscribe: () => () => {} } });
+  const f = fetchStub(fail), win = makeWin(doc, { fetch: f, setInterval: () => 1, clearInterval: () => {}, deskCardsAll: () => ({ EURUSD: { rating: 'LONG', conviction: 'B+', size: 1 } }), deskSelection: { set(p, s) { this.last = [p, s]; }, subscribe: () => () => {} } });
   const api = { list: async () => ({ ok: true, lists: [] }), post: async () => ({ ok: true, lists: [] }) };
   const m = mountMonitor({ doc, win, api, store: memStore(), now: () => nowMs, ask: () => null, sure: () => true });
   await new Promise(r => setTimeout(r, 5));
@@ -63,7 +63,7 @@ test('opening the tab draws a row per market with the joined columns (price, cha
   const html = doc.getElementById('mon-t').innerHTML;
   assert.ok(html.includes('data-inst="EURUSD"'), 'the first starter is FX majors');
   assert.ok(html.includes('1.10000'), 'last price from the bars'); assert.ok(html.includes('60%'), 'range used from the vol clock');
-  assert.ok(html.includes('1.30'), 'IV over sigma'); assert.ok(/Up 70%/.test(html), 'the morning read'); assert.ok(html.includes('CPI'), 'next release');
+  assert.ok(html.includes('1.30'), 'IV over sigma'); assert.ok(/Long, B\+ · size 1/.test(html), 'the desk call from the book'); assert.ok(/no card/.test(html), 'a market with no card says so'); assert.ok(html.includes('CPI'), 'next release');
   assert.ok(f.calls.some(u => u === '/api/vol-clock') && f.calls.some(u => u === '/api/calendar-ahead'));
   assert.match(html, /Direction is context only/, 'the morning read says what it is');
 });

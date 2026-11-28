@@ -103,16 +103,41 @@ export function newerThan(data, lastTs) {
 /** The QLIKE per-line ladder's lines (ladder-qlike-per-line-cfd, the CFD board the vol-forecast-v3 export and overlay use, /api/vol-forecast/ladder-v2/qlike-today?track=cfd):
  *  owner 26 Nov 2026, "the strongest levels": each line is its own best-QLIKE calc. O-H / O-L p50 p75 p90 and Close+ / Close- p50 p75 off the 00:00 London open, and the
  *  projected high / low (low so far + the High-to-Low p50, high so far - it), exactly as the v3 chart draws them. q = that board's levels for this market (% of the open). */
+// plain names on the chart (review 2026-11-27: "Close+ p75", "Proj H (Lo+HL)"): high/low lines are how far the day reaches from the open, close lines
+// where it settles
 export const QLIKE_LINES = [
-  ['oh_p50', 1, 'O-H p50'], ['oh_p75', 1, 'O-H p75'], ['oh_p90', 1, 'O-H p90'], ['ol_p50', -1, 'O-L p50'], ['ol_p75', -1, 'O-L p75'], ['ol_p90', -1, 'O-L p90'],
-  ['cup_p50', 1, 'Close+ p50'], ['cup_p75', 1, 'Close+ p75'], ['cdn_p50', -1, 'Close- p50'], ['cdn_p75', -1, 'Close- p75'],
+  ['oh_p50', 1, 'high p50'], ['oh_p75', 1, 'high p75'], ['oh_p90', 1, 'high p90'], ['ol_p50', -1, 'low p50'], ['ol_p75', -1, 'low p75'], ['ol_p90', -1, 'low p90'],
+  ['cup_p50', 1, 'close up p50'], ['cup_p75', 1, 'close up p75'], ['cdn_p50', -1, 'close down p50'], ['cdn_p75', -1, 'close down p75'],
 ];
+/** A price as the market quotes it: 1.10110, 159.62, 3613.2 (review 2026-11-27: labels printed "1.1010995440687975"). */
+export function fmtLevel(v, ref = v) {
+  if (!fin(v)) return '';
+  const a = Math.abs(fin(ref) ? ref : v), d = a >= 1000 ? 1 : a >= 100 ? 2 : a >= 10 ? 3 : 5;
+  return Number(v).toFixed(d);
+}
+/**
+ * Lines whose prices sit closer than `tol` are one label ("high p50 · close up p75 1.10110"), so labels drawn at the same height do not print over each
+ * other. Each merged line keeps its own price in the label when it differs at the market's precision. Returns new lines, highest first.
+ */
+export function mergeNearLines(lines, tol) {
+  const xs = (lines ?? []).filter(l => fin(l.price)).slice().sort((a, b) => b.price - a.price), out = [];
+  for (const l of xs) {
+    const prev = out.at(-1);
+    if (prev && fin(tol) && tol > 0 && Math.abs(prev.price - l.price) <= tol) { prev.parts.push(l); continue; }
+    out.push({ ...l, parts: [l] });
+  }
+  return out.map(g => {
+    if (g.parts.length === 1) return { ...g, text: `${g.label} ${fmtLevel(g.price)}` };
+    const same = g.parts.every(p => fmtLevel(p.price, g.price) === fmtLevel(g.price));
+    return { ...g, id: g.parts.map(p => p.id).join('+'), text: same ? `${g.parts.map(p => p.label).join(' · ')} ${fmtLevel(g.price)}` : g.parts.map(p => `${p.label} ${fmtLevel(p.price, g.price)}`).join(' · ') };
+  });
+}
 export function qlikeLines(q, openPrice, hi = null, lo = null) {
   if (!q || !fin(openPrice)) return [];
   const out = QLIKE_LINES.filter(([k]) => fin(q[k])).map(([k, side, label]) => ({ id: `ql:${k}`, label, price: openPrice * (1 + side * q[k] / 100), tone: k.startsWith('c') ? 'tx' : 'gold', kind: 'ql' }));
   if (fin(q.hl_p50) && fin(hi) && fin(lo)) {
     const r = openPrice * q.hl_p50 / 100;
-    out.push({ id: 'ql:projH', label: 'Proj H (Lo+HL)', price: lo + r, tone: 'gold', kind: 'ql' }, { id: 'ql:projL', label: 'Proj L (Hi-HL)', price: hi - r, tone: 'gold', kind: 'ql' });
+    out.push({ id: 'ql:projH', label: 'projected high (low so far + a usual day)', price: lo + r, tone: 'gold', kind: 'ql' }, { id: 'ql:projL', label: 'projected low (high so far − a usual day)', price: hi - r, tone: 'gold', kind: 'ql' });
   }
   return out;
 }
@@ -142,9 +167,9 @@ export function levelsFromDay(day, now, qb = null) {
     lines.push({ id: 'sess:hi', label: 'Session high', price: hi, tone: 'tx2', kind: 'range' }, { id: 'sess:lo', label: 'Session low', price: lo, tone: 'tx2', kind: 'range' });
   }
   const d = day.dawn;
-  const dawn = d && (d.tone || d.rating) ? `Dawn read: ${[d.tone, d.rating].filter(Boolean).join(', ')}${fin(d.finishedMs) ? `, written ${londonHM(d.finishedMs)} London` : ''}. A description of the morning's view, not a tested signal.` : null;
+  const dawn = d && (d.tone || d.rating) ? `Morning read: ${[d.tone, d.rating].filter(Boolean).map(x => String(x).replace(/_/g, '-').toLowerCase()).join(', ')}${fin(d.finishedMs) ? `, written ${londonHM(d.finishedMs)} London` : ''}. A description of the morning's view, not a tested signal.` : null;
   const calc = lines.some(l => l.kind === 'ql') ? 'qlike' : lines.some(l => l.kind === 'fc') ? 'forecast' : null;
-  const notes = [calc === 'qlike' ? 'Forecast lines: QLIKE per-line (each line its own best calc, the v3 CFD export).' : calc === 'forecast' ? 'Forecast lines: the plain forecast (median, p75); the QLIKE per-line board is not ready for this session.' : '', lines.some(l => l.stale) ? 'Option walls are from an older capture (marked).' : ''];
+  const notes = [calc === 'qlike' ? 'Forecast lines: each line from the forecast method that has scored best for that line.' : calc === 'forecast' ? 'Forecast lines: the plain forecast (median, p75); the best-per-line set is not ready for this session.' : '', lines.some(l => l.stale) ? 'Option walls are from an older capture (marked).' : ''];
   return { ok: true, lines, dawn, price, calc, note: notes.filter(Boolean).join(' ') };
 }
 

@@ -59,11 +59,12 @@ export function compactHtml(m) {
   if (!m.ok) return '';
   const everOn = m.rows.filter(r => r.sum.on > 0), quiet = m.rows.filter(r => !(r.sum.on > 0)), n = m.rows[0]?.series?.length ?? 0;
   const since = new Date(m.t0).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-  const summary = `${everOn.length} of ${m.rows.length} stress lights ${everOn.length === 1 ? 'has' : 'have'} been on since ${since}, ${n} hourly captures`;
+  // each count says what it counts (review 2026-11-27: "3 of 5 readable flags", "3 of 6 stress lights" and the world-stress "3 red" read as one number)
+  const summary = `Since ${since}, ${everOn.length} of the ${m.rows.length} risk flags ${everOn.length === 1 ? 'has' : 'have'} been on at some point (${n} hourly captures)`;
   const ribbons = everOn.map(r => `<div class="rfs-mini"><span class="rfs-ml">${esc(r.label)}</span>${ribbonSvg(r, m, { h: 10, id: `rfsm${++uid}` })}<span class="rfs-mn ${r.sum.now === 1 ? 'on' : ''}">${r.sum.now === 1 ? 'ON' : r.sum.now === 0 ? 'off' : 'n/a'}</span></div>`).join('');
   const dots = `<div class="rfs-dots">${(everOn.length ? quiet : m.rows).map(dotHtml).join('')}</div>`;
   const quietNote = everOn.length && quiet.length ? `<div class="rfs-note muted">Never on since ${esc(since)}:</div>` : '';
-  return `<div class="card rfs-compact" data-rfs-compact data-noexport data-surface="panel.risk.strip"><div class="ch"><span class="lbl">Risk flags over time</span><span class="r muted">${m.nowOn} of ${m.rows.filter(r => r.sum.now !== null).length} readable flags on now</span></div><p class="rfs-sum">${esc(summary)}.</p>${ribbons}${quietNote}${dots}</div>`;
+  return `<div class="card rfs-compact" data-rfs-compact data-noexport data-surface="panel.risk.strip"><div class="ch"><span class="lbl">Risk flags over time</span><span class="r muted">${(() => { const rd = m.rows.filter(r => r.sum.now !== null).length, un = m.rows.length - rd; return `on now: ${m.nowOn} of the ${m.rows.length} risk flags${un ? ` (${un} could not be read)` : ''}`; })()}</span></div><p class="rfs-sum">${esc(summary)}.</p>${ribbons}${quietNote}${dots}</div>`;
 }
 
 function ensureCss(doc) {

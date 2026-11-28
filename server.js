@@ -308,7 +308,7 @@ import { BOT_BASIS as _RK_BASIS } from './js/rulesKeeper.js';
 import { realisedDays as _vcRealised, compare as _vcCompare } from './js/volCheck.js';   // the terminal's vol chart
 import { morningText as _cosMorning, eveningText as _cosEvening } from './js/chiefOfStaff.js';   // agent 22
 import { numberCheck as _ccNumbers, claimsSections as _ccSections, validateClaims as _ccValidate } from './js/claimsCheck.js';   // Phase 16
-import { watchPlan as _twPlan, check as _twCheck, message as _twMessage } from './js/tradeWatch.js';   // agent 18: the trade watcher
+import { watchPlan as _twPlan, check as _twCheck, message as _twMessage, invalidAtIssue as _twInvalidAtIssue, markInvalidAtIssue as _twMarkAtIssue } from './js/tradeWatch.js';   // agent 18: the trade watcher
 import { tradeRows as _jcRows, coach as _jcCoach, execution as _jcExec } from './js/deskJournal.js';   // Phases 8 and 13
 import { parseRegister as _tdParseRegister, opsReport as _tdOps, outline as _tdOutline, section as _tdSection, readingList as _tdReadingList, registerText as _tdRegisterText, screen as _tdScreen, validateTheories as _tdValidate } from './js/theoryDesk.js';   // Phases 9 and 12
 import { upcoming as _rpUpcoming, playbookText as _rpPlaybookText } from './js/releasePlaybook.js';
@@ -5378,7 +5378,7 @@ async function _dsScore(date, { reflect = true } = {}) {
   const idx = (await _dsLoadIndex()).filter(r => r.date !== date); idx.push(row); idx.sort((a, b) => a.date.localeCompare(b.date));
   await kv.put(_DS_INDEX_KV, JSON.stringify(idx.slice(-800)));
   // the morning thesis laid against the day, from the same bars (descriptive; prereg amendment A15)
-  try { await _trBuildDay(date, bars); } catch (e) { console.warn('[desk-score] thesis vs reality:', e.message); }
+  try { const t = await _trBuildDay(date, bars); if (!t?.ok) await _trNoteError(date, t?.error ?? 'not built'); } catch (e) { console.warn('[desk-score] thesis vs reality:', e.message); await _trNoteError(date, e.message); }
   // paper trades on the watcher's own rules, from the same bars (description, not the scored test; prereg H1)
   try { await _dppBuildDay(date, bars); } catch (e) { console.warn('[desk-score] paper trades:', e.message); }
   let reflection = null, evening = null;
@@ -5500,6 +5500,10 @@ app.post('/api/analyst-scorecard/backfill', async (req, res) => {
 const _TR_KV = 'thesis_reality_v1';
 const _TR_DAY_KEY = date => `desk_run_reality_${date}`;
 let _trJob = null;
+// Review 2026-11-27: 25 and 26 Nov were scored but never laid against their day, and nothing said why (the failure was only a log line).
+// The last failure is kept (KV) and shown by GET /api/thesis-reality; the boot catch-up below rebuilds scored days the store is missing.
+const _TR_ERR_KV = 'thesis_reality_last_error';
+const _trNoteError = (date, error) => kv.put(_TR_ERR_KV, JSON.stringify({ date, error: String(error ?? '').slice(0, 300), at: new Date().toISOString() }), { expirationTtl: 30 * 86400 }).catch(() => {});
 async function _trLoad() { try { const raw = await kv.get(_TR_KV); const st = raw ? JSON.parse(raw) : null; return st && Array.isArray(st.days) ? st : { days: [] }; } catch { return { days: [] }; } }
 // the day's vol forecast (London-day high-to-low p50/p75, % of the open) and the realised range from H1 bars (js/volCheck.js)
 async function _trVol(date, insts) {
@@ -5563,7 +5567,8 @@ app.get('/api/thesis-reality', async (req, res) => {
     const raw = date ? await kv.get(_TR_DAY_KEY(date)).catch(() => null) : null, day = raw ? JSON.parse(raw) : null;
     if (req.query.brief === '1') return res.json(TR.briefFeed(day, t));
     if (!day) return res.status(date && req.query.date ? 404 : 200).json({ ok: false, error: date ? `no thesis-vs-reality record for ${date}` : 'no morning has been laid against its evening yet: the first is built after the evening score (21:10 London)', tally: t, dates: st.days.map(d => d.date), job: _trJob });
-    res.json({ ok: true, day, tally: t, dates: st.days.map(d => d.date), job: _trJob });
+    const lastError = await kv.get(_TR_ERR_KV).then(x => (x ? JSON.parse(x) : null)).catch(() => null);
+    res.json({ ok: true, day, tally: t, dates: st.days.map(d => d.date), job: _trJob, lastError });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // POST /api/thesis-reality/backfill: build every stored day that has an evening score (?force=1 rebuilds days already
@@ -5585,11 +5590,13 @@ app.post('/api/thesis-reality/backfill', async (req, res) => {
   } catch (e) { job.status = 'error'; job.error = e.message; console.error('[thesis-reality] backfill:', e.message); }
   finally { job.finishedAt = Date.now(); console.log(`[thesis-reality] backfill: ${job.done.length} built, ${job.failed.length} failed, ${job.skipped} already done`); }
 });
-// Backfill once after boot when the store is empty: every stored day with an evening score is laid against its day.
+// Backfill once after boot: every stored day with an evening score that the store is missing is laid against its day (all of them when the
+// store is empty; otherwise the last 10 scored days, so a day whose evening build failed is caught up on the next boot).
 setTimeout(async () => {
   try {
-    if ((await _trLoad()).days.length || _trJob) return;
-    for (const r of await _dsLoadIndex()) { const x = await _trBuildDay(r.date).catch(e => ({ ok: false, error: e.message })); console.log(`[thesis-reality] boot backfill ${r.date}: ${x.ok ? 'built' : x.error}`); }
+    if (_trJob) return;
+    const have = new Set((await _trLoad()).days.map(d => d.date)), idx = await _dsLoadIndex(), todo = (have.size ? idx.slice(-10) : idx).filter(r => !have.has(r.date));
+    for (const r of todo) { const x = await _trBuildDay(r.date).catch(e => ({ ok: false, error: e.message })); if (!x.ok) await _trNoteError(r.date, x.error); console.log(`[thesis-reality] boot backfill ${r.date}: ${x.ok ? 'built' : x.error}`); }
   } catch (e) { console.warn('[thesis-reality] boot backfill:', e.message); }
 }, 5 * 60_000).unref?.();
 // ── Paper trades on the trade watcher's own rules (js/deskPaperTrades.js; owner request 2026-11-05) ──────────────
@@ -8363,12 +8370,21 @@ app.post('/api/desk-dayfc/run', async (req, res) => {
 // card's entry zone, first target and invalidation fire once a day, on Telegram (tgMaster.tradeWatch) and in
 // desk_trade_watch_<date>. No model call, never an order.
 const _TW_KEY = d => `desk_trade_watch_${d}`;
-let _tw = { date: null, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false };
+// Review 2026-11-27: after a restart the first check found every state already true and stamped them all with the restart time (five
+// events at 18:32:56). The first check of a process that starts after the watch began (a record exists, or it is past 07:05) is a catch-up:
+// what it finds is stamped "seen at" with the last check before the restart, and not sent on Telegram as new.
+let _tw = { date: null, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false, catchUp: null, checkedAt: null };
+const _twSave = date => kv.put(_TW_KEY(date), JSON.stringify({ date, fired: _tw.state.fired, entry: _tw.state.entry ?? {}, events: _tw.events, checkedAt: _tw.checkedAt, issueRunAt: _tw.issueRunAt ?? null }), { expirationTtl: 40 * 86400 }).catch(e => console.warn('[trade-watch] save:', e.message));
 async function _twTick() {
   const now = Date.now(), date = _dpLondonDate(now), dow = new Date(_dsLondonMs(date, 12)).getUTCDay();
   if (dow === 0 || dow === 6 || now < _dsLondonMs(date, 7) || now > _dsLondonMs(date, 21)) return { ok: false, why: 'outside the watch hours' };
-  if (_tw.date !== date) _tw = { date, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false };
-  if (!_tw.loaded) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); if (raw) { const j = JSON.parse(raw); _tw.state.fired = j.fired ?? {}; _tw.state.entry = j.entry ?? {}; _tw.events = j.events ?? []; } _tw.loaded = true; }
+  if (_tw.date !== date) _tw = { date, runAt: null, upd: null, plan: {}, cards: {}, state: { fired: {}, last: {} }, events: [], loaded: false, catchUp: null, checkedAt: null };
+  if (!_tw.loaded) {
+    const raw = await kv.get(_TW_KEY(date)).catch(() => null), j = raw ? JSON.parse(raw) : null;
+    if (j) { _tw.state.fired = j.fired ?? {}; _tw.state.entry = j.entry ?? {}; _tw.events = j.events ?? []; _tw.issueRunAt = j.issueRunAt ?? null; }
+    if (j || now > _dsLondonMs(date, 7, 5)) _tw.catchUp = { since: j?.checkedAt ?? null };
+    _tw.loaded = true;
+  }
   const run = await _drLoad(date);
   if (!run?.head?.ok) return { ok: false, why: 'no book today' };
   const updates = await _duLoad(date), updKey = JSON.stringify(Object.keys(updates.slots ?? {}));
@@ -8376,6 +8392,18 @@ async function _twTick() {
     const view = _duLiveView(run.head.book, updates), cards = {};
     for (const [n, c] of Object.entries(run.head.book.instruments)) { const v = view[n]; if (!v) continue; const d0 = Math.sign({ STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 }[c.rating] ?? 0), d1 = Math.sign({ STRONG_LONG: 1, LONG: 1, SHORT: -1, STRONG_SHORT: -1 }[v.rating] ?? 0); if (d0 && d0 === d1) cards[n] = { ...c, rating: v.rating, size: v.size ?? c.size }; }
     _tw.cards = cards; _tw.plan = _twPlan(cards); _tw.runAt = run.finishedAt; _tw.upd = updKey;
+    // a plan already through its invalidation when the book came out is off from the start ("invalid at issue"), not "invalidated" later
+    if (_tw.issueRunAt !== run.finishedAt && Number.isFinite(Date.parse(run.finishedAt))) {
+      const issueMs = Date.parse(run.finishedAt), watched = Object.keys(_tw.plan).filter(n => _dsOanda[n] && _tw.plan[n].invalid != null);
+      const bars = await _dsBars(watched, date, { entryMs: issueMs - 3 * 3600e3, exitMs: issueMs + 60e3 }).catch(() => null);
+      if (bars && Object.values(bars).some(x => x?.length)) {   // no bars at all (the broker call failed): try again next tick
+        const evs = _twMarkAtIssue(_tw.plan, _twInvalidAtIssue(_tw.plan, bars, issueMs), _tw.state);
+        _tw.events.push(...evs.map(e => ({ ...e, at: run.finishedAt })));
+        _tw.issueRunAt = run.finishedAt;
+        await _twSave(date);
+        if (evs.length && tgOn('tradeWatch') && state.tg?.token && state.tg?.chatId) for (const e of evs) await sendTelegram(state.tg.token, state.tg.chatId, _twMessage(e, _tw.cards[e.inst], { date }));
+      }
+    }
   }
   const insts = Object.keys(_tw.plan).filter(n => _dsOanda[n]);
   if (!insts.length) return { ok: true, watching: 0 };
@@ -8383,14 +8411,17 @@ async function _twTick() {
   if (!q.ok) return { ok: false, why: q.reason };
   const prices = {};
   for (const n of insts) { const p = q.pairs[_dsOanda[n]]; if (p?.tradeable !== false && Number.isFinite(p?.bid) && Number.isFinite(p?.ask)) prices[n] = (p.bid + p.ask) / 2; }
-  const evs = _twCheck(_tw.plan, prices, _tw.state);
+  const evs = _twCheck(_tw.plan, prices, _tw.state), catchUp = _tw.catchUp;
+  _tw.checkedAt = new Date(now).toISOString(); _tw.catchUp = null;
   if (evs.length) {
-    const at = new Date().toISOString();
-    _tw.events.push(...evs.map(e => ({ ...e, at })));
-    await kv.put(_TW_KEY(date), JSON.stringify({ date, fired: _tw.state.fired, entry: _tw.state.entry ?? {}, events: _tw.events }), { expirationTtl: 40 * 86400 }).catch(e => console.warn('[trade-watch] save:', e.message));
-    if (tgOn('tradeWatch') && state.tg?.token && state.tg?.chatId) for (const e of evs) await sendTelegram(state.tg.token, state.tg.chatId, _twMessage(e, _tw.cards[e.inst], { date }));
-    console.log(`[trade-watch] ${evs.map(e => `${e.inst} ${e.kind}`).join(', ')}`);
-  }
+    const at = _tw.checkedAt;
+    // found already true on a catch-up check: "seen at", with the last check before the restart when there was one; never sent as new
+    const tagged = evs.map(e => ({ ...e, at, ...(catchUp && e.firstSeen ? { afterRestart: true, since: catchUp.since } : {}) }));
+    _tw.events.push(...tagged);
+    await _twSave(date);
+    if (tgOn('tradeWatch') && state.tg?.token && state.tg?.chatId) for (const e of tagged) if (!e.afterRestart) await sendTelegram(state.tg.token, state.tg.chatId, _twMessage(e, _tw.cards[e.inst], { date }));
+    console.log(`[trade-watch] ${tagged.map(e => `${e.inst} ${e.kind}${e.afterRestart ? ' (catch-up)' : ''}`).join(', ')}`);
+  } else if (catchUp || now - (_tw.savedAt ? Date.parse(_tw.savedAt) : 0) > 10 * 60_000) { _tw.savedAt = _tw.checkedAt; await _twSave(date); }   // keep "last check" fresh enough to bound a restart gap
   return { ok: true, watching: insts.length, events: evs.length };
 }
 svcInterval('tradeWatch', () => _twTick().catch(e => console.warn('[trade-watch]', e.message)), 2 * 60_000);
@@ -8400,7 +8431,7 @@ app.get('/api/trade-watch', async (_req, res) => {
     res.set('Cache-Control', 'no-store');
     const date = _dpLondonDate(Date.now());
     if (_tw.date !== date) { const raw = await kv.get(_TW_KEY(date)).catch(() => null); const j = raw ? JSON.parse(raw) : {}; return res.json({ ok: true, date, live: false, events: j.events ?? [], fired: j.fired ?? {}, plan: {} }); }
-    res.json({ ok: true, date, live: true, events: _tw.events, fired: _tw.state.fired, last: _tw.state.last, plan: _tw.plan });
+    res.json({ ok: true, date, live: true, events: _tw.events, fired: _tw.state.fired, last: _tw.state.last, plan: _tw.plan, checkedAt: _tw.checkedAt });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // ── The live layer (js/marketLive.js; owner 2026-11-23: the terminal should move with the day) ──
@@ -8418,6 +8449,8 @@ app.get('/api/trade-watch', async (_req, res) => {
 const _ML_DAY_KEY = date => `market_live_day_${date}`;
 const _ML_EXTRA = ['NQ', 'SPX500', 'DE30', 'US30', 'GOLD'];
 let _ml = { date: null, runKey: null, cards: {}, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: null };
+// the risk tape's label history for the day, kept in KV so a restart does not reset "since" to the restart time (review 2026-11-27)
+const _ML_TAPE_KEY = date => `market_live_tape_${date}`;
 let _mlBusy = false;
 async function _mlBook(date) {
   for (let i = 0; i < 6; i++) {   // today's book, else the latest within the week (a Monday before the morning run reads Friday's)
@@ -8472,7 +8505,8 @@ async function _mlTick() {
       const { unitOf } = await import('./js/deskScore.js'), cards = {};
       for (const [n, c] of Object.entries(b.run.head.book.instruments ?? {})) cards[n] = b.runDate === date ? { levels: c.levels ?? null } : { unit: unitOf(c.levels) };   // an earlier day's lines do not apply today
       for (const n of _ML_EXTRA) if (!cards[n] && _dsOanda[n]) cards[n] = { unit: null, extra: true };
-      const keep = _ml.date === date ? { tapeHist: _ml.tapeHist, fired: _ml.fired, saved: _ml.saved } : {};
+      let keep = _ml.date === date ? { tapeHist: _ml.tapeHist, tapeFrom: _ml.tapeFrom, fired: _ml.fired, saved: _ml.saved } : null;
+      if (!keep) { const raw = await kv.get(_ML_TAPE_KEY(date)).catch(() => null), j = raw ? JSON.parse(raw) : null; keep = Array.isArray(j?.hist) ? { tapeHist: j.hist, tapeFrom: j.from ?? j.hist[0]?.at ?? now } : { tapeFrom: now }; }
       _ml = { date, runKey, cards, state: null, seededAt: 0, view: {}, ccy: [], at: null, runDate: b.runDate, tapeHist: [], fired: new Set(), saved: false, retail: null, retailAt: 0, reactions: [], tiltAt: 0, ...keep };
       await _mlExtraUnits(_ml.cards);
       await _mlRefs(ML, _ml.cards, date);
@@ -8490,7 +8524,10 @@ async function _mlTick() {
     }
     const prev = _ml.at ? { markets: _ml.view, ccy: _ml.ccy, tape: _ml.tape } : null;
     _ml.view = ML.view(_ml.state, _ml.cards); _ml.ccy = ML.ccyStrength(Object.fromEntries(Object.entries(_ml.view).filter(([n]) => !_ml.cards[n]?.extra)));
+    const nHist = _ml.tapeHist.length;
     _ml.tape = ML.riskTape(_ml.view, _ml.ccy); ML.tapeHistory(_ml.tapeHist, _ml.tape, now);
+    _ml.tapeSince = ML.tapeSince(_ml.tapeHist, _ml.tapeFrom, _dsLondonMs(date, 0));
+    if (_ml.tapeHist.length !== nHist) await kv.put(_ML_TAPE_KEY(date), JSON.stringify({ hist: _ml.tapeHist, from: _ml.tapeFrom }), { expirationTtl: 3 * 86400 }).catch(e => console.warn('[market-live] tape history', e.message));
     _ml.at = new Date(now).toISOString();
     try { _ml.reactions = await _mlReactions(ML, date, now); } catch (e) { console.warn('[market-live] reactions', e.message); }
     if (now - _ml.retailAt > 20 * 60_000) { _ml.retailAt = now; try { _ml.retail = await _mlRetail(ML, date); } catch (e) { console.warn('[market-live] retail', e.message); } }
@@ -8508,7 +8545,7 @@ async function _mlTick() {
   } finally { _mlBusy = false; }
 }
 const _mlPayload = () => ({ ok: !!_ml.at, date: _ml.date, runDate: _ml.runDate, at: _ml.at, open: _fxWeekOpen(Date.now()), markets: _ml.view, ccy: _ml.ccy,
-  tape: _ml.tape ? { ..._ml.tape, since: _ml.tapeHist?.at(-1)?.at ? new Date(_ml.tapeHist.at(-1).at).toISOString() : null, history: (_ml.tapeHist ?? []).map(h => ({ at: new Date(h.at).toISOString(), label: h.label })) } : null,
+  tape: _ml.tape ? { ..._ml.tape, since: _ml.tapeHist?.at(-1)?.at ? new Date(_ml.tapeHist.at(-1).at).toISOString() : null, sinceAtLeast: !!_ml.tapeSince?.atLeast, history: (_ml.tapeHist ?? []).map(h => ({ at: new Date(h.at).toISOString(), label: h.label })) } : null,
   reactions: _ml.reactions ?? [], retail: _ml.retail ?? null, extra: Object.keys(_ml.cards ?? {}).filter(n => _ml.cards[n]?.extra),
   note: 'Where each market is now against the open, in u (the day\'s p50 distance; for the equity indices and gold off the book, half the median daily range). A description, not a forecast or a call.' });
 svcInterval('marketLive', () => _mlTick().catch(e => console.warn('[market-live]', e.message)), 60_000);
