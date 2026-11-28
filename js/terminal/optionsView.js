@@ -100,9 +100,11 @@ export function dedupeHist(rows = []) {
   }
   return { rows: out, repeat, repeatDate: repeat ? rows.at(-1)?.date ?? null : null };
 }
-export function pcStats(rows = []) {
+// `now` = the ratio the card prints, when it comes from a fresher pull than the history's last row: the percentile is then of that number
+//   (review 2026-11-27: "1.56 puts per call" printed beside "calls much heavier than usual", the reading of an older row).
+export function pcStats(rows = [], now = null) {
   const dd = dedupeHist(rows), rs = dd.rows.filter(r => fin(r.pc)), v = rs.map(r => r.pc); if (!v.length) return null;
-  const last = v.at(-1), pct = Math.round((v.filter(x => x < last).length + 0.5 * (v.filter(x => x === last).length - 1)) / Math.max(1, v.length - 1) * 100);
+  const last = fin(now) ? +now : v.at(-1), pct = Math.round((v.filter(x => x < last).length + 0.5 * Math.max(0, v.filter(x => x === last).length - 1)) / Math.max(1, v.length - 1) * 100);
   const tot = r => (fin(r.calls) && fin(r.puts) ? r.calls + r.puts : null);
   let roll = null;
   for (let i = Math.max(1, rs.length - ROLL_DAYS); i < rs.length; i++) { const a = tot(rs[i - 1]), b = tot(rs[i]); if (a > 0 && b != null && Math.abs(b / a - 1) > ROLL_JUMP) roll = { date: rs[i].date, from: a, to: b }; }
@@ -550,7 +552,7 @@ export function pairCard(inst, { oi, hist, hs } = {}) {
   const id = String(inst ?? '').toUpperCase(), row = (oi?.pairs ?? []).find(p => idOf(p.pair) === id), dm = (hs?.markets ?? []).find(m => idOf(m.pair) === id);
   const hd = '<div class="ch"><span class="lbl">Options · positioning and lines</span></div>';
   if (!row && !dm) return `${hd}<div class="muted">No listed options book for this market in the CME open-interest feed.</div>`;
-  const st = row ? pcStats(hist?.markets?.[row.pair]) : null, rd = pcRead(st);
+  const st = row ? pcStats(hist?.markets?.[row.pair], row.pcRatio) : null, rd = pcRead(st);
   return `${hd}${row ? `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${gaugeSvg(row.pcRatio, { w: 130, pct: st?.pct })}<div><div class="mono" style="font-size:18px">${fin(row.pcRatio) ? (+row.pcRatio).toFixed(2) : '–'} <span class="muted" style="font-size:11px">puts per call</span></div><div class="${rd.cls}">${esc(rd.word)}${st?.pct != null ? ` (${ordinal(st.pct)} pct)` : ''}</div>${evChip('pc')}</div></div>` : ''}
 ${dm ? `<p style="margin:8px 0 0"><span class="chip ${dm.state === 'calms' ? 'up' : 'gold'}">${dm.state === 'calms' ? 'hedging calms moves' : 'hedging speeds moves'}</span> switch point ${pxf(dm.switchPoint)} (${sg(dm.switchDistPct, 2)}%). ${esc(dm.lines?.[4] ?? '')}</p>` : ''}
 ${row ? `<div class="mono" style="font-size:12px;margin-top:6px">call wall ${fin(row.callWall) ? (+row.callWall).toPrecision(6) : '–'} · put wall ${fin(row.putWall) ? (+row.putWall).toPrecision(6) : '–'} · max pain ${fin(row.maxPain) ? (+row.maxPain).toPrecision(6) : '–'} ${evChip('call_wall')}</div>` : ''}

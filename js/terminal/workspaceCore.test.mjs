@@ -1,6 +1,6 @@
 // node js/terminal/workspaceCore.test.mjs: the layout model (shape, unknown surfaces dropped safely, no overlap, starters, files).
 import assert from 'node:assert/strict';
-import { COLS, MAX_TILES, STARTERS, PANELS, sanitizeLayout, resolve, addTile, removeTile, moveTile, resizeTile, exportLayout, parseImport, uniqueName, sanitizeStore, homeSection, cleanName, snap, isPanel } from './workspaceCore.js';
+import { COLS, MAX_TILES, STARTERS, PANELS, sanitizeLayout, resolve, addTile, removeTile, moveTile, resizeTile, exportLayout, parseImport, uniqueName, sanitizeStore, homeSection, cleanName, snap, isPanel, tileLabel } from './workspaceCore.js';
 let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
 const noOverlap = tiles => tiles.every((a, i) => tiles.every((b, j) => i === j || !(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h)));
 const inGrid = tiles => tiles.every(t => t.x >= 0 && t.w >= 1 && t.x + t.w <= COLS && t.y >= 0 && t.h >= 1 && Number.isInteger(t.x + t.y + t.w + t.h));
@@ -69,4 +69,8 @@ ok(uniqueName('Rates', ['rates', 'Rates 2']) === 'Rates 3' && uniqueName('', [])
 const st = sanitizeStore({ layouts: [{ name: 'A', tiles: STARTERS[0].tiles }, { name: 'a', tiles: STARTERS[0].tiles }, { name: 'B', tiles: [] }, 7, { name: 'C', tiles: [{ id: 'panel.nope', x: 0, y: 0, w: 4, h: 4 }] }] });
 ok(st.layouts.length === 1 && st.layouts[0].name === 'A', 'store: duplicates, empty and all-unknown layouts dropped');
 ok(isPanel('panel.macro.curve') && !isPanel('tab.macro'), 'isPanel');
+// review 2026-11-27: the Add-a-panel list held controls and repeated each group's name
+ok(!isPanel('panel.ana.pills'), 'the Analytics section pills are a control, not a tile');
+ok(tileLabel('panel.ov.wire') === 'The wire' && tileLabel('panel.deep.news') === 'News' && tileLabel('panel.macro.copper') === 'Growth against fear', 'labels drop the prefix their group already says');
+ok(tileLabel('panel.changed.since') === 'Changed: since you last looked', 'a preview-group panel keeps the name of its tab');
 console.log(`workspaceCore: ${n} checks OK`);

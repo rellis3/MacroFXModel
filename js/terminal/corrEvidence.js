@@ -59,7 +59,15 @@ export function chipFor(id, why = '', list = DESK_EVIDENCE) {
   const e = list.find(x => x.id === id); if (!e) return '';
   const c = citable(e), unconf = c.audit && c.audit.status !== 'stands' ? ' · unconfirmed' : '';
   const title = `${e.id} (${e.date}): ${e.claim}. ${why ? why + ' ' : ''}${c.tag}. USE: ${e.use ?? ''}`;
-  return `<span class="chip ${CLS[e.verdict] ?? ''} ct-ev" title="${esc(title)}" data-ev="${esc(e.id)}">${esc(WORD[e.verdict] ?? String(e.verdict).toUpperCase())}${esc(unconf)} · ${esc(e.id)}</span>`;
+  // the pill reads the test in plain words (its id stays in the tooltip and data-ev): review 2026-11-27, "Evidence Book ids on every pill"
+  return `<span class="chip ${CLS[e.verdict] ?? ''} ct-ev" title="${esc(title)}" data-ev="${esc(e.id)}">${esc(WORD[e.verdict] ?? String(e.verdict).toUpperCase())}${esc(unconf)} · ${esc(plainName(e.id, why))}</span>`;
+}
+/** A short plain name for a test: the lead of its why line up to a colon ("Sizing the hedge"), else its first words, else its id in words. */
+export function plainName(id, why = '') {
+  const w = String(why ?? '').trim(), lead = w.split(/:\s/)[0];
+  if (w && lead.length <= 40 && lead !== w) return lead;
+  if (w) { const words = w.replace(/[(:;,.].*$/, '').split(/\s+/).slice(0, 5).join(' '); if (words.length >= 8) return `${words}…`; }
+  return String(id ?? '').replace(/-/g, ' ');
 }
 export const untestedChip = line => `<span class="chip ct-ev" title="${esc(line)}">UNTESTED</span>`;
 

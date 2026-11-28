@@ -38,7 +38,7 @@ test('the card: direction chip and dots, by, reason, six layer rows, invalidatio
   assert.match(h, /by AI accept/); assert.match(h, /Macro and D1 agree/);
   for (const l of ['Event', 'Regime', 'Macro', 'Structure', 'Positioning', 'Day range']) assert.match(h, new RegExp(`<b>${l}</b>`));
   assert.match(h, /−0\.42 · USD Policy path −0\.30, Data momentum −0\.10/, 'the top two drivers only'); assert.doesNotMatch(h, /third/);
-  assert.match(h, /W1 ▼ D1 ▼ H4 ▲ · swing H 4135\.2 · swing L 3990\.5 · inside swings/);
+  assert.match(h, /W1 ▼ D1 ▼ H4 ▲ · swing H 4135\.2 \(12 Nov\) · swing L 3990\.5 \(5 Nov\) · inside swings/);
   assert.match(h, /p50 1\.21% · p75 1\.60%/); assert.match(h, /crowded long/);
   assert.match(h, /<div class="bp-inv" data-surface="panel\.bp\.invalid">Invalidation <b class="mono">4135\.2<\/b>/);
   assert.doesNotMatch(h, /system said/);
@@ -48,6 +48,26 @@ test('the card: direction chip and dots, by, reason, six layer rows, invalidatio
   assert.match(n, /▸?– Neutral/); assert.doesNotMatch(n, /bp-dots/); assert.doesNotMatch(n, /bp-inv/); assert.match(n, /Rules: macro and structure agree/);
   assert.equal(V.regimeSide(card('GOLD', 'BEARISH', 3)), -1, 'risk-off pushes a pro-risk market (role +1) down');
   assert.match(V.cardHtml({ market: 'X', call: { dir: 'BULLISH', conviction: 1 }, layers: {} }), /unknown/, 'missing layers say so, never crash');
+});
+
+// review 2026-11-27: raw field names, the drivers against the score, a broken swing, whose side is crowded, the book beside the card
+test('the card in plain words: field names, the score own drivers first, broken swings, the book call beside it', () => {
+  assert.equal(V.plainReason('Macro (scoreExTrend -0.3824, side -1); range usedOfP50 at 0.966; macro.side is null; crowded long CHF-side (crowdedSide 1), w1 -1'),
+    'Macro (macro score -0.3824, side down); share of the usual day range used at 0.966; no macro side; crowded long CHF-side, W1 -1');
+  const a = card('AUDUSD', 'BEARISH', 3);
+  a.layers.macro = { score: -0.38, side: -1, drivers: [{ leg: 'AUD', label: 'Rate differential trend', contrib: 0.22 }, { leg: 'USD', label: 'Rate differential trend', contrib: -0.22 }, { leg: 'USD', label: 'Data momentum', contrib: -0.11 }] };
+  a.layers.structure = { w1: -1, d1: -1, h4: 1, swingHigh: { level: 0.70246, date: '2026-11-05' }, swingLow: { level: 0.68544, date: '2026-11-06' }, bos: -1, side: -1, price: 0.66718 };
+  a.layers.positioning = { crowded: true, crowdedSide: 1, readings: ['AUD: speculators at the 9th percentile, net short 15.6% of OI'] };
+  const h = V.cardHtml(a, null, { rating: 'LONG', size: 1 });
+  assert.match(h, /−0\.38 · USD Rate differential trend −0\.22, USD Data momentum −0\.11 · against: AUD Rate differential trend \+0\.22/);
+  assert.match(h, /swing L 0\.68544 \(6 Nov, broken\)/); assert.doesNotMatch(h, /swing H 0\.70246 \([^)]*broken/);
+  assert.match(h, /crowded long AUDUSD \(AUD: speculators at the 9th percentile/);
+  assert.match(h, /<span class="muted">Book<\/span> <span class="chip up">long 1<\/span> <span class="chip gold">the process calls the other way<\/span>/);
+  assert.match(V.bookCallHtml('NEUTRAL', { rating: 'LONG', size: 1.5 }), /the process stands aside/);
+  assert.match(V.bookCallHtml('BULLISH', { rating: 'LONG', size: 1 }), /same side/);
+  assert.match(V.bookCallHtml('BULLISH', { rating: 'FLAT', size: 0 }), /flat/);
+  assert.equal(V.bookCallHtml('BULLISH', null), '');
+  assert.equal(V.slotLabel('review'), 'Evening review');
 });
 
 test('the cards block: only groups that have a market get a pill; the head says live reads are rules only', () => {
@@ -80,7 +100,10 @@ test('head to head: the empty state names the first issue day; a table has every
   assert.equal(V.judgement({ days: 130, sharedDays: 125 }).points.every(p => p.reached), true);
   const html = V.h2hHtml({ ok: true, h2h: H });
   assert.match(html, /Override record \(process-ai\):<\/b> 2 overrides; the AI was better on 2/);
-  assert.match(html, /Process \(AI\)/); assert.match(html, /FundaBias/); assert.match(html, /H4 trend/);
+  assert.match(html, /Process \(AI\)/); assert.match(html, /No record yet \(left out of the table\): [^<]*FundaBias/); assert.doesNotMatch(html, /<th>FundaBias<\/th>/);
+  assert.equal(V.sameRows(rows, 'process-ai', 'process-system'), false);
+  const twin = rows.map(r => (r.key === 'process-system' ? { ...rows[0], key: r.key, label: r.label } : r));
+  assert.equal(V.sameRows(twin, 'process-ai', 'process-system'), true);
   assert.equal(V.calibText({ 3: { n: 4, hit: 0.5 }, 1: { n: 2, hit: 1 }, none: { n: 1, hit: 0 } }), '1: 100% (2) · 3: 50% (4) · n/a: 0% (1)');
 });
 
@@ -97,10 +120,11 @@ test('weekly review: wrong calls with the layer that pointed the wrong way, over
   assert.deepEqual(R.overrides, { n: 2, helped: 1, hurt: 1, same: 0 });
   assert.deepEqual(R.rows.map(r => `${r.date} ${r.market}`), ['2026-11-16 EURUSD', '2026-11-16 GOLD']);
   const g = R.rows.find(r => r.market === 'GOLD');
-  assert.deepEqual(g.wrongLayers, ['macro', 'structure', 'W1 trend', 'D1 trend', 'regime', 'positioning (contrarian)']); assert.deepEqual(g.eventAfter, ['USD Fed Chair speaks']); assert.equal(g.override, null);
+  assert.deepEqual(g.wrongLayers, ['macro', 'structure', 'W1 trend', 'D1 trend', 'regime', 'positioning (contrarian)']); assert.deepEqual(g.rightLayers, ['H4 trend'], 'the layer that pointed the way the market moved'); assert.deepEqual(g.eventAfter, ['USD Fed Chair speaks']); assert.equal(g.override, null);
   assert.equal(R.rows.find(r => r.market === 'EURUSD').override, 'hurt');
   const h = V.reviewHtml({ ok: true, review: R });
   assert.match(h, /2 wrong/); assert.match(h, /helped 1, hurt 1/); assert.match(h, /Fed Chair speaks/);
+  assert.match(h, /Layers that pointed the right way/); assert.match(h, /H4 trend <span class="muted">\(6 backed the call\)<\/span>/);
   assert.match(V.reviewHtml({ ok: true, empty: true }, { nowMs: Date.parse('2026-11-17T09:00:00Z') }), /first issue is 2026-11-18/);
   assert.equal(V.weeklyReview([], {}).rows.length, 0);
 });

@@ -70,7 +70,12 @@ export function shiftBar(now, base, w = 120) {
 const LCLS = { strengthening: 'pur', weakening: '', flipped: 'gold', steady: '' };
 export function changesHtml(list, w) {
   if (!list.length) return '<p class="muted">Not enough history for the comparison.</p>';
-  return `<div class="ct-chg">${list.map(c => `<div class="ct-chgrow ct-click" data-a="${esc(c.a)}" data-b="${esc(c.b)}" tabindex="0"><b class="mono">${name(c.a)} · ${name(c.b)}</b><span class="mono">${sg(c.base)} → <b>${sg(c.now)}</b></span>${shiftBar(c.now, c.base)}<span class="chip ${LCLS[c.label] ?? ''}">${esc(c.label)}</span></div>`).join('')}</div><p class="tt-note">${esc(w)}-day against 120-day correlation. Strengthening / weakening = the size moved by 0.15 or more; flipped = the sign changed with both at least 0.2. Hollow dot = 120-day, filled = ${esc(w)}-day.</p>`;
+  return `<div class="ct-chg">${list.map(c => `<div class="ct-chgrow ct-click" data-a="${esc(c.a)}" data-b="${esc(c.b)}" tabindex="0"><b class="mono">${name(c.a)} · ${name(c.b)}</b><span class="mono">${sg(c.base)} → <b>${sg(c.now)}</b></span>${shiftBar(c.now, c.base)}<span class="chip ${LCLS[c.label] ?? ''}">${esc(c.label)}</span></div>`).join('')}</div><p class="tt-note">${esc(w)}-day against 120-day correlation. Flipped = the sign changed with both at least 0.2; otherwise strengthening / weakening = it moved by 0.15 or more and is now larger / smaller in size; steady = it moved less than 0.15. Hollow dot = 120-day, filled = ${esc(w)}-day.</p>`;
+}
+/** Pairs at an extreme against their own year (corrMath.extremes): the 60-day outside its 1-year p10-p90 band. */
+export function extremesHtml(list, w = 60) {
+  if (!list.length) return `<p class="muted">No pair's ${esc(w)}-day correlation is outside its own 1-year p10–p90 band.</p>`;
+  return `<div class="ct-chg">${list.map(c => `<div class="ct-chgrow ct-click" data-a="${esc(c.a)}" data-b="${esc(c.b)}" tabindex="0"><b class="mono">${name(c.a)} · ${name(c.b)}</b><span class="mono"><b>${sg(c.now)}</b></span><span class="mono muted">1y p10–p90 ${sg(c.p10)} to ${sg(c.p90)}</span><span class="chip ${c.side === 'below' ? 'gold' : 'pur'}">${c.side === 'below' ? 'below its p10' : 'above its p90'}</span></div>`).join('')}</div><p class="tt-note">The ${esc(w)}-day correlation now against where its own ${esc(w)}-day correlation sat over the last year (every 5 days). Outside the band = unusual for this pair, not a forecast that it reverts.</p>`;
 }
 
 // ═════════════════════ ROLLING (d3) ═════════════════════
@@ -99,7 +104,7 @@ export function spark(pts, { w = 110, h = 22, col = 'var(--pur2)' } = {}) {
   return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true"><line x1="0" x2="${w}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line2)"/><polyline points="${v.map((p, k) => `${X(k).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${col}" stroke-width="1.3"/></svg>`;
 }
 export function factorTile(S, row, w, from) {
-  const F = M.FACTORS, dom = row.dom ? F.find(f => f.k === row.dom) : null, self = F.find(f => row.f[f.k]?.self);
+  const F = M.factorsOf(S), dom = row.dom ? F.find(f => f.k === row.dom) : null, self = F.find(f => row.f[f.k]?.self);
   const bar = F.map(f => (row.shares[f.k] ? `<i style="flex:${(row.shares[f.k] * 100).toFixed(1)};background:${FCOL[f.k]}" title="${esc(f.label)} ${Math.round(row.shares[f.k] * 100)}% of the explained variance"></i>` : '')).join('');
   return `<div class="ct-ftile"><div class="ch" style="margin-bottom:6px"><b class="mono">${name(row.id)}</b><span class="r">${self ? `<span class="chip" style="color:${FCOL[self.k]};border-color:${FCOL[self.k]}66" title="this market is the factor; the bar splits the other factors">is the ${esc(self.k.toLowerCase())} factor</span>` : dom ? `<span class="chip" style="color:${FCOL[dom.k]};border-color:${FCOL[dom.k]}66">${esc(dom.label)}</span>` : '<span class="muted">no data</span>'}</span></div>
 <div class="gauge ct-share">${bar}</div>
@@ -125,7 +130,7 @@ export const allIds = S => [...M.SETS.ccy, 'DXY', ...S.ids].filter((id, i, a) =>
 
 function load(getJson, force = false) {
   if (force) ST.loading = null;
-  return (ST.loading ??= getJson('/api/corr-terminal').then(r => { ST.resp = r; ST.S = r?.ok && r.panel ? M.series(r.panel) : null; if (!ST.S) ST.loading = null; return r; }));
+  return (ST.loading ??= getJson('/api/corr-terminal').then(r => { ST.resp = r; ST.S = r?.ok && r.panel ? M.series(r.panel, { yields: r.yields }) : null; if (!ST.S) ST.loading = null; return r; }));
 }
 
 export async function render(root, { getJson, book = () => ({}) } = {}) {
@@ -194,7 +199,8 @@ function draw(root, getJson, book) {
     const ch = M.changes(S, ids, { w: cw, base: 120, top: 10 }), marks = Object.fromEntries(ch.filter(c => c.label !== 'steady').map(c => [`${c.a}|${c.b}`, c.label]));
     body.innerHTML = `<div class="ct-bar">${pills('set', [['ccy', 'Currencies'], ['key', 'Key markets'], ['all', 'All']], ST.set)}${winPills(ST.win)}</div>
 <div class="ct-grid"><div class="card"><div class="ch"><span class="lbl">Correlation matrix · ${esc(ST.win)}-day</span><span class="r muted">purple = move together · gold = move against · dashed = changed most vs 120d · tap a cell for its history</span></div><div class="ct-scroll">${heatmapSvg(mx, { marks, cell: ids.length > 16 || window.innerWidth < 600 ? 28 : 34 })}</div>${ST.set === 'ccy' ? '<p class="tt-note">Currencies = each currency against an equal-weighted basket of the other seven, built from the USD legs. The eight baskets sum to zero, so they lean negative together.</p>' : ''}${chipsFor('matrix')}</div>
-<div class="card"><div class="ch"><span class="lbl">Changed most vs 120d</span><span class="r muted">${esc(cw)}-day now against the 120-day</span></div>${changesHtml(ch, cw)}</div></div>`;
+<div class="card"><div class="ch"><span class="lbl">Changed most vs 120d</span><span class="r muted">${esc(cw)}-day now against the 120-day</span></div>${changesHtml(ch, cw)}</div>
+<div class="card"><div class="ch"><span class="lbl">At an extreme for the pair</span><span class="r muted">60-day now against its own last year</span></div>${extremesHtml(M.extremes(S, ids, { w: 60 }))}</div></div>`;
   } else if (v === 'rolling') {
     const ids = allIds(S), from = Math.max(0, S.n - ST.range), regs = ST.shade === 'none' ? null : M.regimeOf(S, ST.shade);
     const opts = cur => ids.map(id => `<option value="${esc(id)}"${id === cur ? ' selected' : ''}>${name(id)}</option>`).join('');
@@ -209,8 +215,8 @@ function draw(root, getJson, book) {
     const ids = ST.fset === 'ccy' ? M.SETS.ccy.filter(id => M.has(S, id)) : idsFor(S, ST.fset), rows = M.factorBoard(S, ids, { w: ST.win }), from = Math.max(0, S.n - 250);
     const domCount = {}; for (const r of rows) if (r.dom) domCount[r.dom] = (domCount[r.dom] ?? 0) + 1;
     body.innerHTML = `<div class="ct-bar">${pills('fset', [['key', 'Key markets'], ['ccy', 'Currencies'], ['all', 'All']], ST.fset)}${winPills(ST.win)}</div>
-<div class="card"><div class="ch"><span class="lbl">Factor betas · ${esc(ST.win)}-day</span><span class="r">${M.FACTORS.map(f => `<span class="chip" style="color:${FCOL[f.k]};border-color:${FCOL[f.k]}66" title="${esc(f.note)}">${esc(f.label)} ${esc(domCount[f.k] ?? 0)}</span>`).join('')}</span></div>
-<p class="tt-note" style="margin-top:0">Each tile: beta of the market's daily return to each factor (one factor at a time), its correlation, and the beta over the last year (every 5 days). The bar splits the explained variance (r²) between the factors; the chip is the factor that explains most now. Factors: ${M.FACTORS.map(f => `${esc(f.label)} = ${esc(f.note)}`).join('; ')}.</p>
+<div class="card"><div class="ch"><span class="lbl">Factor betas · ${esc(ST.win)}-day</span><span class="r">${M.factorsOf(S).map(f => `<span class="chip" style="color:${FCOL[f.k]};border-color:${FCOL[f.k]}66" title="${esc(f.note)}">${esc(f.label)} ${esc(domCount[f.k] ?? 0)}</span>`).join('')}</span></div>
+<p class="tt-note" style="margin-top:0">Each tile: beta of the market's daily return to each factor (one factor at a time), its correlation, and the beta over the last year (every 5 days). The bar splits the explained variance (r²) between the factors; the chip is the factor that explains most now. Factors: ${M.factorsOf(S).map(f => `${esc(f.label)} = ${esc(f.note)}`).join('; ')}.</p>
 <div class="ct-ftiles">${rows.map(r => factorTile(S, r, ST.win, from)).join('')}</div>${chipsFor('factors')}</div>`;
   } else if (v === 'hedges') {
     body.innerHTML = `<div class="ct-hedges">${HV.html(S, { win: ST.win, book: book(), getJson, winPills })}</div>`;

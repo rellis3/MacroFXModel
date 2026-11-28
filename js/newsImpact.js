@@ -51,11 +51,56 @@ export function stance(rating, dir) {
 }
 
 /**
+ * Which of the read's keys a headline's TITLE names. The model reads a story about one currency as a move in another
+ * (review 2026-11-27: "India swaps ... outsized RBI rate hike" read as USD down and fanned to EURUSD and USDJPY;
+ * "Canadian Dollar draws support from BoC rate hike bets" read as USD down and shown on 15 cards).
+ */
+export const TITLE_RX = {
+  USD: /\b(USD|US dollar|U\.S\. dollar|greenback|dollar index|DXY|Fed|FOMC|Powell|Treasur(y|ies)|US (yields?|data|CPI|PCE|jobs|payrolls|economy|inflation|GDP|retail))\b/i,
+  EUR: /\b(EUR|euro|ECB|Lagarde|eurozone|euro area|German|Bunds?)\b/i,
+  GBP: /\b(GBP|pound|sterling|cable|BoE|Bank of England|UK|Britain|British|gilts?)\b/i,
+  JPY: /\b(JPY|yen|BoJ|Bank of Japan|Japan|Japanese|JGBs?|Ueda|Tokyo)\b/i,
+  AUD: /\b(AUD|Aussie|Australian?|RBA)\b/i,
+  NZD: /\b(NZD|kiwi|New Zealand|RBNZ)\b/i,
+  CAD: /\b(CAD|loonie|Canadian|Canada|BoC|Bank of Canada)\b/i,
+  CHF: /\b(CHF|franc|SNB|Swiss|Switzerland)\b/i,
+  EQUITIES: /\b(stocks?|equit(y|ies)|S&P|Nasdaq|Dow|Wall Street|shares|Russell|DAX|FTSE)\b/i,
+  GOLD: /\b(gold|XAU|bullion|precious)\b/i,
+  OIL: /\b(oil|crude|WTI|Brent|OPEC)\b/i,
+};
+const FX_KEYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
+// a currency the desk does not read (currency and central-bank words only, not country names): a story about it names a currency, just not one of ours
+const OTHER_CCY_RX = /\b(INR|rupee|RBI|CNY|CNH|yuan|renminbi|PBoC|KRW|ZAR|rand|SARB|MXN|peso|Banxico|TRY|lira|BRL|NOK|krone|Norges|SEK|krona|Riksbank|SGD|HKD|IDR|rupiah|PHP|THB|baht|PLN|zloty|HUF|forint|CZK)\b/i;
+/** The desk's currencies (and assets) a title names. */
+export const namedKeys = title => Object.keys(TITLE_RX).filter(k => TITLE_RX[k].test(String(title ?? '')));
+/**
+ * The read restricted to the currencies its title names. When the title names any currency (ours or another), a
+ * currency key it does not name is dropped: the Canadian dollar story keeps CAD and loses its USD read; the rupee story
+ * keeps nothing. A title that names no currency at all (a risk-off or equities story) keeps its read whole. Asset keys
+ * (equities, gold, oil, crypto) are kept as read.
+ */
+export function titledImpact(impact, title) {
+  const im = impact ?? {};
+  if (title == null) return { ...im };
+  const t = String(title), named = new Set(namedKeys(t));
+  const anyCcy = FX_KEYS.some(k => named.has(k)) || OTHER_CCY_RX.test(t);
+  if (!anyCcy) return { ...im };
+  return Object.fromEntries(Object.entries(im).filter(([k]) => !FX_KEYS.includes(k) || named.has(k)));
+}
+/** A preview, forecast or bank-research piece: no event to react to, so no 5m / 30m verdict. */
+const PREVIEW_RX = /\b(weekly forecast|week ahead|weekly outlook|forecast|preview|outlook|price prediction|technical analysis|what to expect|chart of the (day|week)|elliott wave)\b|\s[–-]\s(MUFG|ING|Commerzbank|Danske|Rabobank|UOB|OCBC|BBH|Scotiabank|SocGen|Société Générale|BofA|Goldman Sachs|Morgan Stanley|Citi|HSBC|Nomura|Wells Fargo|TDS|TD Securities|ANZ|Westpac|NAB|CBA|Credit Agricole|BNP Paribas|Natixis|Deutsche Bank|Barclays|Standard Chartered|Julius Baer|ABN Amro|Nordea|SEB|Swissquote|MUFG Research)\s*$/i;
+export const isPreview = title => PREVIEW_RX.test(String(title ?? ''));
+/** Keep every market with a live card and at most `extra` others (in their order). */
+export const capPairs = (pairs, extra = 3) => { let n = 0; return (pairs ?? []).filter(p => p.card || p.stance || n++ < extra); };
+
+/**
  * The markets a read impacts: [{ inst, dir, card, stance }], strongest first, then markets with a live card, then
  * the universe's order. `book` = { INST: rating } for today's live cards (size > 0); omitted = no stances.
+ * `title` restricts the read to the currencies the headline names (titledImpact); `extra` keeps the book's markets
+ * and at most that many others (capPairs).
  */
-export function pairImpacts(impact, { book = {}, universe = DESK_UNIVERSE, max = 16 } = {}) {
-  const im = impact ?? {}, out = [];
+export function pairImpacts(impact, { book = {}, universe = DESK_UNIVERSE, max = 16, title, extra } = {}) {
+  const im = title != null ? titledImpact(impact, title) : (impact ?? {}), out = [];
   const names = Object.values(universe).flat();
   names.forEach((inst, order) => {
     const k = marketKeys(inst); if (!k) return;
@@ -66,7 +111,8 @@ export function pairImpacts(impact, { book = {}, universe = DESK_UNIVERSE, max =
     out.push({ inst, dir, card, stance: stance(card, dir), order });
   });
   out.sort((a, b) => Math.abs(b.dir) - Math.abs(a.dir) || (b.card ? 1 : 0) - (a.card ? 1 : 0) || a.order - b.order);
-  return out.slice(0, max).map(({ order, ...r }) => r);
+  const kept = Number.isFinite(extra) ? capPairs(out, extra) : out;
+  return kept.slice(0, max).map(({ order, ...r }) => r);
 }
 
 /** The markets to price for the reaction check: the strongest few, cards first among equals. */

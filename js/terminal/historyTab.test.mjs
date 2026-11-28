@@ -9,10 +9,10 @@ import { TAB_LABELS } from '../infoMap.js';
 const html = fs.readFileSync(new URL('../../desk-terminal.html', import.meta.url), 'utf8');
 const byId = id => REGISTRY.find(r => r.id === id);
 
-test('the tab button says History, keeps data-t="charts" and the surface id tab.charts', () => {
-  assert.match(html, /data-t="charts" data-surface="tab\.charts">History<\/button>/);
-  assert.equal(byId('tab.charts').label, 'History');
-  assert.equal(TAB_LABELS.charts, 'History');
+test('the tab button says Book & history (it opens on how the book was built), keeps data-t="charts" and the surface id tab.charts', () => {
+  assert.match(html, /data-t="charts" data-surface="tab\.charts">Book &amp; history<\/button>/);
+  assert.equal(byId('tab.charts').label, 'Book & history');
+  assert.equal(TAB_LABELS.charts, 'Book & history');
 });
 test('Positioning history is gone from the History tab and drawn by the Positioning tab, in its own switchable block', () => {
   const charts = html.slice(html.indexOf('async function charts()'), html.indexOf('const REG_COL'));

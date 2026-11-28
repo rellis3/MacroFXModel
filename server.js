@@ -282,7 +282,7 @@ import { DAY_MARKETS as _DF_MARKETS, realisedShape as _dfRealised, validateDayFo
 import { policyRates as _prRates, spreadsToUsd as _prSpreads } from './js/policyRates.js';   // each central bank's policy rate, from its own series
 import { expectations as _cbExpect } from './js/cbExpectations.js';   // what the futures price for each bank
 import { parseFeed as _nwParse, fromFinnhub as _nwFinnhub, mergeWire as _nwMerge, validateRead as _nwValidate, pick as _nwPick, wireText as _nwText } from './js/newsAnalyst.js';   // agent 21
-import { pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
+import { isPreview as _nwIsPreview, pairImpacts as _nwPairs, reactionMarkets as _nwReactMarkets, reactionStart as _nwReactStart, scoreMarket as _nwScoreMarket, headlineReaction as _nwHeadReact, recordRow as _nwRecordRow, appendRecord as _nwAppendRecord, aggregateRecord as _nwAggregate } from './js/newsImpact.js';
 import { CHANNEL_KV_KEY as _NC_KEY, MAX_PER_TICK as _NC_MAX_PER_TICK, channelMessage as _ncMessage, channelCandidates as _ncCandidates, allowChannel as _ncAllow, validateConfig as _ncValidate, publicView as _ncPublic, parseConfig as _ncParse, explainTelegramError as _ncExplain, persistConfig as _ncPersist, removeConfig as _ncRemove } from './js/newsChannel.js';   // the shared news channel: its own bot, tier 1-2, no book lines
 import { NEWS_SOURCES as _NW_SOURCES, POLL_MIN as _NW_POLL_MIN, backoff as _nwBackoff, dueSources as _nwDue, allowAlert as _nwAllowAlert, breakingCandidates as _nwBreaking, breakingMessage as _nwBreakingMsg } from './js/newsOps.js';
 import { parseRegistry as _rkParseRegistry, rulesReport as _rkReport } from './js/rulesKeeper.js';   // agent 20
@@ -8071,7 +8071,7 @@ async function _nwFetchSource(src, url, incoming, health) {
 async function _nwReactPass(wire, now) {
   const final = []; let fetches = 0;
   for (const h of wire) {
-    if (!h.pairs?.length || (h.read?.tier ?? h.tier) > 2 || h.react?.done) continue;
+    if (!h.pairs?.length || (h.read?.tier ?? h.tier) > 2 || h.react?.done || _nwIsPreview(h.title)) continue;   // a preview / forecast / bank note has no event to react to
     const st = _nwReactStart(h); if (!st) continue;
     const age = now - st.t0;
     if (age > 6 * 3600e3) { h.react = { ...(h.react ?? { markets: [], m5: null, m30: null }), t0: st.t0, basis: st.basis, done: true }; if (h.react.m5 || h.react.m30) final.push(h); continue; }
@@ -8129,7 +8129,7 @@ async function _nwTick() {
       } catch (e) { console.warn('[news] read:', e.message); }
     }
     // the desk's markets each read touches, against today's book (pure JS, no model)
-    for (const h of wire) if (h.read && !h.pairs && Object.keys(h.read.impact ?? {}).length) h.pairs = _nwPairs(h.read.impact, { book });
+    for (const h of wire) if (h.read && !h.pairs && Object.keys(h.read.impact ?? {}).length) h.pairs = _nwPairs(h.read.impact, { book, title: h.title, extra: 3 });   // only the currencies the title names; the book's markets + 3
     // did the market react? (+5 / +30 min) and the record
     let react = { final: [], fetches: 0 };
     if (process.env.OANDA_KEY) { try { react = await _nwReactPass(wire, now); } catch (e) { console.warn('[news] react:', e.message); } }
@@ -8227,7 +8227,7 @@ app.get('/api/desk-news', async (req, res) => {
     const ccy = req.query.ccy ? String(req.query.ccy).toUpperCase() : null;
     const { book } = await _nwBook().catch(() => ({ book: {} }));
     const items = _nwPick(store.wire, { sinceMs: Date.now() - hours * 3600e3, tier, ccy, limit: 200 })
-      .map(h => (Object.keys(h.read?.impact ?? {}).length ? { ...h, pairs: _nwPairs(h.read.impact, { book }) } : h));
+      .map(h => (Object.keys(h.read?.impact ?? {}).length ? { ...h, pairs: _nwPairs(h.read.impact, { book, title: h.title, extra: 3 }) } : h));
     res.json({ ok: true, updatedAt: store.updatedAt ?? null, health: store.health ?? _nwState.health, backoff: store.backoff ?? {}, label: 'headlines and their read: context, never a signal', items });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -45103,9 +45103,23 @@ app.get('/api/corr-terminal', async (_req, res) => {
       error: corrRunning ? 'The correlation build is running now (about 3 minutes).' : 'No correlation panel yet: the scheduled build has not run on this server.' });
   }
   const ageH = (Date.now() - Date.parse(p.generated)) / 3600_000;
+  const yields = await _corrYields().catch(() => null);
   res.setHeader('Content-Type', 'application/json');
-  res.send(`{"ok":true,"refreshEveryH":${CORR_STALE_MS / 3600_000},"ageH":${Number.isFinite(ageH) ? +ageH.toFixed(2) : null},"stale":${ageH > CORR_STALE_MS / 3600_000 * 2},"building":${corrRunning},"src":"${p.src}","panel":${p.body}}`);
+  res.send(`{"ok":true,"refreshEveryH":${CORR_STALE_MS / 3600_000},"ageH":${Number.isFinite(ageH) ? +ageH.toFixed(2) : null},"stale":${ageH > CORR_STALE_MS / 3600_000 * 2},"building":${corrRunning},"src":"${p.src}","yields":${JSON.stringify(yields)},"panel":${p.body}}`);
 });
+// The tab's rates factor (js/terminal/corrMath.js factorsOf): FRED's US 2y and 10y daily yields over the panel's ~3 years, as
+// [[date, %], ...], cached 12 h (a failed fetch keeps the last good copy). Without them the tab falls back to USD/JPY, labelled the proxy.
+let _corrYieldsMem = null;
+async function _corrYields() {
+  if (_corrYieldsMem && Date.now() - _corrYieldsMem.at < 12 * 3600_000) return _corrYieldsMem.body;
+  if (!process.env.FRED_KEY) return _corrYieldsMem?.body ?? null;
+  try {
+    const [y2, y10] = await Promise.all([_mbFred('DGS2', 4), _mbFred('DGS10', 4)]);
+    const body = { US2Y: y2.map(o => [o.date, o.value]), US10Y: y10.map(o => [o.date, o.value]) };
+    if (body.US2Y.length) _corrYieldsMem = { at: Date.now(), body };
+  } catch (e) { console.warn('[corr-terminal] yields', e.message); if (_corrYieldsMem) _corrYieldsMem.at = Date.now() - 11 * 3600_000; }   // retry in an hour
+  return _corrYieldsMem?.body ?? null;
+}
 
 // Hedge for today (Desk Terminal Hedges tab, "Today" card; js/hedgeTodayCore.js; evidence forge/HEDGE_TODAY_PREREG.md):
 // the 08:00-17:00 London price at each hour for the last 200 completed sessions of the correlation build's markets, from

@@ -1,6 +1,6 @@
 // Tests for js/newsImpact.js.   node js/newsImpact.test.mjs
 import assert from 'node:assert/strict';
-import { marketKeys, stance, pairImpacts, reactionMarkets, reactionStart, priceAt, typicalMove, scoreMove, scoreMarket, headlineReaction, recordRow, appendRecord, aggregateRecord } from './newsImpact.js';
+import { titledImpact, namedKeys, capPairs, isPreview, marketKeys, stance, pairImpacts, reactionMarkets, reactionStart, priceAt, typicalMove, scoreMove, scoreMarket, headlineReaction, recordRow, appendRecord, aggregateRecord } from './newsImpact.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
@@ -112,6 +112,20 @@ t('record: rows, append by id, aggregate by source and topic', () => {
   assert.ok(rec.bySource.some(x => x.key === 'Finnhub'), 'Finnhub/<outlet> counts under Finnhub');
   assert.deepEqual(rec.byTopic.map(x => x.key), ['central bank', 'data']);
   assert.equal(aggregateRecord([]).overall.m5.n, 0);
+});
+
+t('the read cut to the currencies the title names; the book + 3; previews (review 2026-11-27)', () => {
+  assert.deepEqual(titledImpact({ USD: -1 }, 'India swaps price in outsized RBI rate hike - Reuters'), {});
+  assert.deepEqual(titledImpact({ CAD: 1, USD: -1 }, 'Canadian Dollar draws support from BoC rate hike bets'), { CAD: 1 });
+  assert.deepEqual(titledImpact({ USD: 1, GOLD: -1 }, 'Gold capped as hawkish Fed lifts yields'), { USD: 1, GOLD: -1 });
+  assert.deepEqual(titledImpact({ JPY: 1, CHF: 1 }, 'Stocks slide as risk-off grips markets'), { JPY: 1, CHF: 1 }, 'names no currency: kept');
+  assert.deepEqual(titledImpact({ USD: 1 }, undefined), { USD: 1 });
+  assert.deepEqual(namedKeys('Japanese Yen weakens as Fed holds'), ['USD', 'JPY']);
+  const p = pairImpacts({ CAD: 1, USD: -1 }, { title: 'Canadian Dollar draws support from BoC rate hike bets', book: { USDCAD: 'LONG', EURUSD: 'SHORT' }, extra: 3 });
+  assert.equal(p[0].inst, 'USDCAD'); assert.equal(p[0].dir, -1); assert.ok(!p.some(x => x.inst === 'EURUSD')); assert.equal(p.length, 4);
+  assert.deepEqual(capPairs([{ inst: 'A' }, { inst: 'B', card: 'LONG' }, { inst: 'C' }, { inst: 'D' }], 2).map(x => x.inst), ['A', 'B', 'C']);
+  assert.equal(isPreview('EUR/USD Weekly Forecast: Eurozone inflation'), true); assert.equal(isPreview('Japanese Yen: Inflation supports cautious BoJ hiking path – MUFG'), true);
+  assert.equal(isPreview('ECB holds rates'), false); assert.equal(isPreview('Oil outlook darkens as OPEC adds supply'), true);
 });
 
 console.log(`newsImpact: ${n} tests passed`);

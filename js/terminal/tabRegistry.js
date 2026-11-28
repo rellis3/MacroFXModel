@@ -57,7 +57,7 @@ export const SURFACES = [
   mk('tab.pos', 'tab', 'Positioning', 'Tabs', null, 'COT, futures positioning, options positioning, positioning history'),
   mk('tab.cal', 'tab', 'Calendar', 'Tabs', null, 'events, live surprises, expectations against reality'),
   mk('tab.ana', 'tab', 'Analytics', 'Tabs', null, 'the book\'s correlation web, factor risk and scenarios, currency strength over time, vol forecast vs realised, release reactions; the desk\'s record panels are separate switches'),
-  mk('tab.charts', 'tab', 'History', 'Tabs', null, 'was Charts: macro regime, data surprises, seasonality, how the book was built; ranking vs realised is a separate switch. Positioning history moved to the Positioning tab'),
+  mk('tab.charts', 'tab', 'Book & history', 'Tabs', null, 'was Charts, then History (review 2026-11-27: it opens on how today\'s book was built, so the name says so): macro regime, data surprises, seasonality, how the book was built; ranking vs realised is a separate switch. Positioning history moved to the Positioning tab'),
   mk('tab.today', 'tab', 'Chain', 'Tabs', null, 'the macro chain (Live/1D/5D/20D) and its read; reads are shared once a day'),
   mk('tab.read', 'tab', 'Trader\'s read', 'Tabs', T, 'the owner\'s own read of the day: marking up a trade'),
   mk('tab.deep', 'tab', 'Deep dive', 'Tabs', P, 'the 13 reference cards that sit under a market on the Pair page (rates, fair value, positioning, options, hours, lead-lag, news, precedent, research), in four sections, one market at a time. While this is off, the Pair page keeps all 13 cards exactly as before; switched on, the Pair page is slim and the cards live here'),
