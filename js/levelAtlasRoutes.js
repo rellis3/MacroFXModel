@@ -27,6 +27,7 @@
 import { loadM1ForPair, loadM1WindowForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext, splitAt } from './levelAtlasReport.js';
+import { isAtlasBook } from './atlasBooks.js';
 import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, causalInverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, DEFAULT_GRADED_THROTTLE_TIERS, applyFadeStopTightening, applyCurrencyLossGate, computeIntradayMAE, priceAtTighterStop, applyMaeStopGate, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
@@ -99,7 +100,12 @@ export const DEFAULT_REARM = 0.3;
 // `/vote-portfolio` select between the two via `?ladder=v2`.
 export const PREFIX_V2 = 'level-atlas-v2';
 const VOTE_TRADES_DIR_V2 = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'analysis', 'output', 'level-atlas-vote-trades-v2');
+// `?book=honest|gonogo|retest` (2026-11-27) reads the bid/ask Atlas books instead
+// (js/atlasBooks.js, built by scripts/atlas-books/build.mjs). Takes precedence over
+// `?ladder=`, since each book fixes its own ladder.
+const ATLAS_BOOKS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'analysis', 'output', 'atlas-books');
 function ladderSource(req) {
+  if (isAtlasBook(req.query.book)) return { prefix: `atlas-books/${req.query.book}/vote`, dir: path.join(ATLAS_BOOKS_DIR, req.query.book, 'vote'), book: req.query.book };
   return req.query.ladder === 'v2' ? { prefix: PREFIX_V2, dir: VOTE_TRADES_DIR_V2 } : { prefix: PREFIX, dir: VOTE_TRADES_DIR };
 }
 // 2026-09-11 — see runOne's own comment for why this exists. 10 years:
@@ -1618,7 +1624,8 @@ export function mountLevelAtlasRoutes(app, express) {
       ).sort((a, b) => a.time - b.time);
 
       res.json({
-        ok: true, pairs: Object.keys(perPairTradesForStats), missing, staleSchema, minMargin, maxConcurrent, perDirection, weighting,
+        ok: true, book: req.query.book && isAtlasBook(req.query.book) ? req.query.book : null,
+        pairs: Object.keys(perPairTradesForStats), missing, staleSchema, minMargin, maxConcurrent, perDirection, weighting,
         sizing, riskPct, heatCap, targetVol, throttle,
         fadeStopTighten, fadeStopInfo,
         slFraction, slInfo,

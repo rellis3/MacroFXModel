@@ -147,9 +147,11 @@ It never prints a mean.
 
 | Cell | Planned n | Outcome SD (control) | Design effect | **MDE** | Pass bar | Verdict |
 |---|---|---|---|---|---|---|
-| vote | A1 | A1 | A1 | A1 | +0.05R | A1 |
-| asia | A1 | A1 | A1 | A1 | +0.05R | A1 |
-| monday | A1 | A1 | A1 | A1 | +0.05R | A1 |
+| vote | 27,480 | 0.888 | 0.633 | **+0.013R** | +0.05R | powered: scored |
+| asia | 4,100 | 0.984 | 68.06 | **+0.377R** | +0.05R | UNDERPOWERED by design |
+| monday | 650 | 1.021 | 42.41 | **+0.775R** | +0.05R | UNDERPOWERED by design |
+
+(Filled by amendment A1, 2026-11-27, from `run.mjs --mode count`; see Amendments.)
 
 **Rule.** A system whose MDE exceeds +0.05R is UNDERPOWERED by design: it is still run, but only as description,
 and cannot be VALIDATED or NULL from this sample. Monday trades about once per pair per week and is the likeliest
@@ -211,5 +213,27 @@ to land here.
   not describe the system as either working or not working.
 
 ## Amendments
+
+### A1 — power table (2026-11-27, before any `--mode score` run)
+
+Source: `node scripts/atlas-honest-gonogo/run.mjs --mode count` on the laptop, bid/ask M1 extracted by
+`extract.py` (34 keys, 2016-10 → 2026-08-20 23:59 UTC, lockbox cut). Count mode prints no means; none has been seen.
+Output saved at `analysis/output/atlas-honest-gonogo/count.json`.
+
+| System | Instruments (missing) | OOS touches | Voted at margin | Traded at margin | SD (control) | Design effect | MDE | Powered |
+|---|---|---|---|---|---|---|---|---|
+| vote (m ≥ 3) | 17 (none) | 58,161 | 28,232 | 27,480 | 0.8876 | 0.6330 | 0.0127 | yes |
+| asia (m ≥ 2) | 16 (none) | 380,980 | 4,985 | 4,100 | 0.9841 | 68.056 | 0.3765 | no |
+| monday (m ≥ 2) | 16 (none) | 120,200 | 670 | 650 | 1.0214 | 42.414 | 0.7748 | no |
+
+Under the §5 rule, Asia and Monday are UNDERPOWERED by design: they are scored as description only. Vote is
+the one scored cell that can be VALIDATED or NULL. Holm still runs across all three p-values as §6 fixes.
+
+**Note, not a change.** The design effect is measured on the control sample: every OOS touch, priced both
+ways, which means many rows per session date. It is then applied to the much sparser voted sample. For Asia
+that is the whole difference: at deff = 1 the MDE would be ≈ 0.046 (under the bar), and at 68 it is 0.377. The
+vote's deff < 1 probably comes from each touch's fade and follow, which are close to mirror images, entering
+the control together. Any change to how deff is estimated would be a separate amendment (A2), made before
+scoring and without seeing a mean. A1 records the registered machinery's output as it stands.
 
 ## RESULTS — not run

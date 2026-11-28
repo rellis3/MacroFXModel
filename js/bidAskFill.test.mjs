@@ -1,7 +1,7 @@
 // Tests for js/bidAskFill.js: each fill rule on hand-built bars, then a
 // statistical check on random-walk bid/ask (no edge: mean R about 0 with no
 // spread, and about minus one spread per trade, in stop units, with a spread).
-import { priceBracketBidAsk } from './bidAskFill.js';
+import { priceBracketBidAsk, priceRetestFadeBidAsk } from './bidAskFill.js';
 import { randomWalkPacked } from './atlasNullCheck.js';
 
 let failures = 0;
@@ -55,6 +55,31 @@ const P = { dir: 1, level: 1.1000, stopDist: 0.0010, targetDist: 0.0010 };
   ok('unresolved short flattened at the ask close', r.why === 'close' && near(r.exitPx, 1.0998 + 0.0001), JSON.stringify(r));
 }
 ok('invalid geometry is refused, not priced', priceBracketBidAsk(bars([[1, 1, 1, 1]]), { ...P, stopDist: 0, entryType: 'limit', startIdx: 0, endIdx: 0 }).invalid === true);
+
+// Retest fade (owner's ForecastBandFade sheet): arm on overshoot, stop entry back through the line.
+{
+  const R = { dir: -1, level: 1.1000, stopDist: 0.0010, targetDist: 0.0020 };
+  let d = bars([[1.0998, 1.1003, 1.0997, 1.1002], [1.1002, 1.1002, 1.0995, 1.0996], [1.0996, 1.0997, 1.0975, 1.0978]]);
+  let r = priceRetestFadeBidAsk(d, { ...R, startIdx: 0, endIdx: 2 });
+  ok('retest short: arm on 10% overshoot, fill at the line on the way back, target hit', r.filled && r.armIdx === 0 && r.fillIdx === 1 && near(r.entryPx, 1.1000) && r.why === 'target' && near(r.r, 2), JSON.stringify(r));
+  d = bars([[1.0998, 1.10005, 1.0997, 1.0999], [1.0999, 1.0999, 1.0980, 1.0985]]);
+  ok('overshoot under 10% of the stop never arms', !priceRetestFadeBidAsk(d, { ...R, startIdx: 0, endIdx: 1 }).armed);
+  d = bars([[1.0998, 1.1003, 1.0990, 1.0992]]);
+  r = priceRetestFadeBidAsk(d, { ...R, startIdx: 0, endIdx: 0 });
+  ok('the arm bar itself never fills', r.armed && !r.filled, JSON.stringify(r));
+  d = bars([[1.0998, 1.1003, 1.0997, 1.1002], [1.1002, 1.1015, 1.1005, 1.1014], [1.1014, 1.1014, 1.0970, 1.0975]]);
+  r = priceRetestFadeBidAsk(d, { ...R, startIdx: 0, endIdx: 2 });
+  ok('run past 1.2x the stop cancels the order: no trade even if price later falls', !r.filled && r.cancelled, JSON.stringify(r));
+  d = bars([[1.0998, 1.1003, 1.0997, 1.1002], [1.1002, 1.10105, 1.1004, 1.1005], [1.1005, 1.1005, 1.0975, 1.0978]]);
+  ok('chase: cancel at the next line out when it is nearer than 1.2x', priceRetestFadeBidAsk(d, { ...R, startIdx: 0, endIdx: 2, cancelDist: 0.0010 }).cancelled === true
+    && priceRetestFadeBidAsk(d, { ...R, startIdx: 0, endIdx: 2 }).filled === true);
+  d = bars([[1.0998, 1.1003, 1.0997, 1.1002], [1.1002, 1.1015, 1.0995, 1.0996]]);
+  r = priceRetestFadeBidAsk(d, { ...R, startIdx: 0, endIdx: 1 });
+  ok('a bar reaching both the cancel and the line is booked as filled and stopped', r.filled && r.why === 'stop' && near(r.r, -1), JSON.stringify(r));
+  d = bars([[1.1002, 1.1003, 1.0997, 1.0998], [1.0998, 1.1005, 1.0998, 1.1004], [1.1004, 1.1025, 1.1003, 1.1022]]);
+  r = priceRetestFadeBidAsk(d, { ...R, dir: 1, startIdx: 0, endIdx: 2 });
+  ok('retest long mirrors: buy stop at a lower line after an undershoot', r.filled && r.fillIdx === 1 && near(r.entryPx, 1.1000) && r.why === 'target', JSON.stringify(r));
+}
 
 // Statistical: random-walk mid, brackets at levels set off the previous close.
 function statRun(half) {

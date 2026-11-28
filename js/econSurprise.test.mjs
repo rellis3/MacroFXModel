@@ -207,3 +207,22 @@ test('recency guard', async t => {
     assert.equal(rows.length, 10, 'an 11-year window must keep 5-year-old releases');
   });
 });
+
+// review 2026-11-27: ForexFactory's 2025 rename stored each central-bank decision twice; the old-name copy of the BoC 28 Oct hike was wrong
+import { canonicalReleases, SERIES_ALIASES } from './econSurprise.js';
+test('canonicalReleases folds renamed series and keeps the current-name row', () => {
+  const ms = Date.parse('2026-10-28T13:45:00Z');
+  const rows = [
+    { country: 'CA', event: 'Overnight Rate', ms, actual: '2.25%', estimate: '2.50%' },
+    { country: 'CA', event: 'BOC Interest Rate Decision', ms, actual: '2.50%', estimate: '2.50%' },
+    { country: 'CA', event: 'Overnight Rate', ms: ms - 90 * 864e5, actual: '2.25%', estimate: '2.25%' },
+    { country: 'JP', event: 'BOJ Interest Rate Decision', ms: ms + 2 * 864e5, actual: '1.25%', estimate: '1.25%' },
+  ];
+  const out = canonicalReleases(rows);
+  assert.equal(out.length, 3, 'one row per decision');
+  const boc = out.find(r => r.ms === ms);
+  assert.equal(boc.actual, '2.50%'); assert.equal(boc.event, 'Overnight Rate'); assert.equal(boc.aliasOf, 'BOC Interest Rate Decision');
+  assert.equal(out.find(r => r.country === 'JP').event, 'BOJ Policy Rate', 'the BoJ continues its stored history');
+  assert.equal(rows[1].event, 'BOC Interest Rate Decision', 'input rows are not mutated');
+  assert.ok(Object.keys(SERIES_ALIASES).every(k => /^[A-Z]{2}\|[a-z]/.test(k)));
+});

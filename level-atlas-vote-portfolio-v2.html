@@ -64,6 +64,12 @@
   </div>
   <div class="controls" id="pairChecks"></div>
   <div class="controls">
+    <label title="Which trade book to read. The three bid/ask books (2026-11-27, scripts/atlas-books/build.mjs) are built from an in-sample-only vote book and priced on real OANDA bid/ask with the spread in R. v2 honest: v2 (HAR-RV) lines, fade = resting limit at the line, follow = stop entry. Go/no-go: the pre-registered atlas-honest-gonogo configuration (v1 lines, production pairs). Retest: v2 lines and vote, but a fade arms a stop at the line after a 10% overshoot and fills only on the retest, cancelling at the next line out. Original files = the older mid-priced files this page used before. Exploratory: none of these is a verdict. p90 and early-exit levers read the original files only.">Book <select id="bookSel">
+      <option value="honest" selected>v2 honest (bid/ask)</option>
+      <option value="gonogo">Go/no-go (bid/ask)</option>
+      <option value="retest">Retest entry (bid/ask)</option>
+      <option value="">Original files (mid)</option>
+    </select></label>
     <label title="Only trades where the vote-margin (supporting minus challenging dimensions) meets this bar are taken. Higher = fewer, higher-conviction trades — this is the primary edge filter everything else builds on top of.">Min margin <select id="marginSel">
       <option value="1">≥1</option><option value="2">≥2</option><option value="3" selected>≥3</option><option value="4">≥4</option>
     </select></label>
@@ -430,6 +436,7 @@ document.getElementById('selectRecommendedBtn').addEventListener('click', () => 
 });
 
 const marginSel = document.getElementById('marginSel');
+const bookSel = document.getElementById('bookSel');
 const capSel = document.getElementById('capSel');
 const perDirChk = document.getElementById('perDirChk');
 const sizingSel = document.getElementById('sizingSel');
@@ -976,18 +983,19 @@ async function loadData() {
     params.set('maxDailyLossPct', maxDailyLossPctInput.value);
   }
   params.set('ladder', 'v2');   // the ONE difference from level-atlas-vote-portfolio.html — selects forecastLadderParamsV2.js's HAR-RV(log) trade files instead of v1's
+  if (bookSel.value) params.set('book', bookSel.value);   // a bid/ask Atlas book (js/atlasBooks.js); overrides ?ladder
   try {
     const res = await fetch(`/api/level-atlas/vote-portfolio?${params}`);
     const j = await res.json();
     if (mySeq !== loadSeq) return; // a newer request has since started — drop this stale response
-    if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
+    if (!j.ok) { headerSub.textContent = bookSel.value && /no vote-backtest data/i.test(j.error ?? '') ? `the ${bookSel.selectedOptions[0].text} book is not built yet: run node scripts/atlas-books/build.mjs --upload on the laptop (${j.error})` : `error: ${j.error}`; return; }
     const sizingDesc = (j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`)
       + (j.throttle ? (j.throttle.throttleMode === 'graded'
           ? `, graded throttle (-4/-6/-8%→.65/.40/.25×, restore ${j.throttle.restoreDD}%)`
           : `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)`) : '')
       + (j.fadeStopTighten ? `, fade-stop tightened (${Object.keys(j.fadeStopInfo ?? {}).length} pairs)` : '')
       + (j.ccyGateInfo ? `, currency loss gate ${j.ccyGateInfo.maxDailyLossPct}%` : '');
-    headerSub.textContent = `${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
+    headerSub.textContent = `${j.book ? `book: ${bookSel.selectedOptions[0].text} · ` : ''}${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
     // Keep the CSV export panel's own risk% input in sync with the sizing
     // model's riskPct by default (fixed-risk mode) — same knob, avoids the
     // chart and the $ export silently disagreeing on what "risk %" means.
@@ -1637,6 +1645,7 @@ document.getElementById('perfSummaryOverlay').addEventListener('click', (e) => {
 
 pairChecksEl.addEventListener('change', loadData);
 marginSel.addEventListener('change', loadData);
+bookSel.addEventListener('change', loadData);
 capSel.addEventListener('change', loadData);
 perDirChk.addEventListener('change', loadData);
 sizingSel.addEventListener('change', loadData);

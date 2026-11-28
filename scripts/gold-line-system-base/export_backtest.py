@@ -1,4 +1,4 @@
-"""Export the validated gold line system (S2 | VWAP + 0.5 sigma_v | BE off, forge/GOLD_LINE_SYSTEM_BASE_PREREG.md) as a
+"""Export the gold line system on Jordan's 8 lines (S2 | VWAP + 0.5 sigma_v | BE off, forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md) as a
 full trade list + per-trade candles for the standard backtest page (line-system-backtest.html).
 
 No new test: the same engine and arm as run.py's primary. Every trade 2021-01-01 -> 2026-08-21 (lockbox untouched).
@@ -27,6 +27,7 @@ def _imp(name, rel):
 
 
 S = _imp("lsb", "scripts/gold-line-system-base/run.py")
+J = _imp("lsj", "scripts/gold-line-system-jordan/run.py")
 LEVELS, SHORT_V, IS_END = S.LEVELS, S.SHORT_V, S.IS_END
 OCN = ["target", "stop", "break-even", "time"]
 FAM = {"oh": "OH", "ol": "OL", "cup": "Close+", "cdn": "Close-", "hlH": "HL up", "hlL": "HL down"}
@@ -65,7 +66,7 @@ def main(sym="GOLD"):
     T = S.R.touches(Dold, W)
     stops = S.R.rolling_stops(T, nsess, "usd", wins=["3m"])
     sess = S.prep(DV, W)
-    X, cnt = S.run(sess, "S2", 1, 0, stops, None, costs, floor)
+    X, cnt = J.run_mask(sess, "S2", 1, 0, stops, costs, floor, J.MASK8)   # Jordan's 8 lines (gold-line-system-jordan)
     MI = minute_index(sym)
     smap = {s[1]: s for s in sess}
     rnd = lambda v: None if v is None or not np.isfinite(v) else round(float(v), dp)
@@ -118,11 +119,11 @@ def main(sym="GOLD"):
         json.dump(c, open(out / f"candles_{y}.json", "w"), separators=(",", ":"))
     meta = dict(sym=sym, name=spec["name"], point_value=spec["point_value"], tick=round(tick, 8), dp=dp,
                 costs=dict(slip_in=costs[0], slip_out=costs[1], commission=costs[2]),
-                system="18 shadow lines (N7_ALL walk-forward widths) + Jordan's gold entry (arm 0.10 x stop through, "
+                system="Jordan's 8 shadow lines (HL projection up/down, Close+, Close-, at P75/P90; N7_ALL walk-forward widths) + Jordan's gold entry (arm 0.10 x stop through, "
                        "fill on the retest, cancel 1.2 x stop, chase outward) + target VWAP +/- 0.5 sigma_v fixed at the "
                        "fill + rolling-MAE stop (3-month median line-to-line MAE per line, 5-tick floor), BE off, "
                        "one trade at a time, flat 22:00 London",
-                prereg="forge/GOLD_LINE_SYSTEM_BASE_PREREG.md", results="analysis/output/gold-line-system-base/RESULTS.md",
+                prereg="forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md", results="analysis/output/gold-line-system-jordan/RESULTS.md",
                 is_end=IS_END, start=str(X["date"].min().date()), end=str(X["date"].max().date()),
                 n=len(trades), counts=cnt, years=sorted(int(y) for y in candles))
     json.dump(meta, open(out / "meta.json", "w"), indent=1)

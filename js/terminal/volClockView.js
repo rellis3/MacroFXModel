@@ -9,6 +9,7 @@
  * after implied sat far above realised (iv-over-rv-wider, VALIDATED); neither says which way. The Daily Read's tags are worded as "lines likely too
  * tight / about right / too wide", never as a trade, and its forward record is small, so it is shown with its interval and the design share.
  */
+import { ordinal } from './ordinal.js';
 import { esc, fin } from './boardViz.js';
 import { chipFor } from './corrEvidence.js';
 import { describeVolClock, TAGS, DIAL_MAX, DESIGN_P75 } from '../volClockCore.js';
@@ -68,7 +69,7 @@ function ratioRail(r) {
   const e = r.edges;
   return `<svg viewBox="0 0 ${RAIL.w} ${RAIL.h}" width="${RAIL.w}" height="${RAIL.h}" class="vc-rail" role="img" aria-label="IV over sigma ${r.ratio.toFixed(2)}"><rect x="0" y="5" width="${RAIL.w}" height="4" rx="2" class="vc-rl"/>${e ? `<rect x="${x(e[0]).toFixed(1)}" y="3" width="${(x(e[1]) - x(e[0])).toFixed(1)}" height="8" rx="2" class="vc-rb"/>` : ''}<circle cx="${x(r.ratio).toFixed(1)}" cy="7" r="3.4" fill="${TAG_VAR[r.tag] ?? 'var(--tx2)'}" class="vc-rd"/></svg> <span class="mono">${r.ratio.toFixed(2)}</span>`;
 }
-const volBar = p => (!fin(p) ? '<span class="muted">–</span>' : `<div class="vc-vb${p >= 90 ? ' hot' : ''}" title="realised vol at the ${p}th percentile of its own history"><i style="width:${Math.min(100, Math.max(0, p))}%"></i></div> <span class="mono">${p}</span>`);
+const volBar = p => (!fin(p) ? '<span class="muted">–</span>' : `<div class="vc-vb${p >= 90 ? ' hot' : ''}" title="realised vol at the ${ordinal(p)} percentile of its own history"><i style="width:${Math.min(100, Math.max(0, p))}%"></i></div> <span class="mono">${p}</span>`);
 const SHAPE = { upward: 'rising', downward: 'falling', flat: 'flat' };
 
 export function rankHtml(vc) {

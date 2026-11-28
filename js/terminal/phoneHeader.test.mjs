@@ -65,6 +65,6 @@ test('the world clocks keep their full names and gain a 3-letter label for the p
   assert.ok(html.includes('<b data-ab="${ab}">${n.toUpperCase()}</b>'), 'the full name stays in the markup (desktop)');
 });
 
-test('the time bar starts folded on a phone and open elsewhere', () => {
-  assert.ok(/saved == null \? !\(\(win\.innerWidth \|\| 1024\) <= 700\) : saved !== '0'/.test(asof), 'phone default is the folded tab; a saved choice still wins');
+test('the time bar starts folded on every screen until opened; a saved choice still wins', () => {
+  assert.ok(/saved == null \? false : saved !== '0'/.test(asof), 'default is the folded tab everywhere (review 2026-11-27); a saved choice still wins');
 });

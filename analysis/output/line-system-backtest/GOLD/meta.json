@@ -9,18 +9,18 @@
   "slip_out": 0.1,
   "commission": 0.12
  },
- "system": "18 shadow lines (N7_ALL walk-forward widths) + Jordan's gold entry (arm 0.10 x stop through, fill on the retest, cancel 1.2 x stop, chase outward) + target VWAP +/- 0.5 sigma_v fixed at the fill + rolling-MAE stop (3-month median line-to-line MAE per line, 5-tick floor), BE off, one trade at a time, flat 22:00 London",
- "prereg": "forge/GOLD_LINE_SYSTEM_BASE_PREREG.md",
- "results": "analysis/output/gold-line-system-base/RESULTS.md",
+ "system": "Jordan's 8 shadow lines (HL projection up/down, Close+, Close-, at P75/P90; N7_ALL walk-forward widths) + Jordan's gold entry (arm 0.10 x stop through, fill on the retest, cancel 1.2 x stop, chase outward) + target VWAP +/- 0.5 sigma_v fixed at the fill + rolling-MAE stop (3-month median line-to-line MAE per line, 5-tick floor), BE off, one trade at a time, flat 22:00 London",
+ "prereg": "forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md",
+ "results": "analysis/output/gold-line-system-jordan/RESULTS.md",
  "is_end": 2022,
  "start": "2021-01-04",
  "end": "2026-08-21",
- "n": 3189,
+ "n": 1082,
  "counts": {
-  "armed": 4975,
-  "chased": 596,
-  "cancelled": 653,
-  "filled": 3709
+  "armed": 1593,
+  "chased": 41,
+  "cancelled": 297,
+  "filled": 1248
  },
  "years": [
   2021,

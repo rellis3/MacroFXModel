@@ -66,13 +66,22 @@ import tags as T  # noqa: E402
 OUT = os.path.join(T.ROOT, "analysis/output/residual-fx8-paper-layers")
 SEED, B, BLOCK = 20261123, 2000, 21
 RATE_IDS = {"USD": "US", "EUR": "EZ", "GBP": "GB", "AUD": "AU", "NZD": "NZ", "JPY": "JP", "CAD": "CA", "CHF": "CH"}
+RATE_DIR = os.path.join(T.ROOT, "analysis/output/cot-crowding-programme")
+
+
+def fx8_config():
+    """The original study: FX8, OANDA 17:00 NY panel. Other universes (residual-g10-layers) pass their own."""
+    pairs = T.load_panel()[[v[0] for v in T.CCY_PAIR.values()]].dropna()
+    return {"r": T.universe("fx8"), "pair_lr": np.log(pairs).diff().dropna(), "cost": T.COST,
+            "rate_paths": {c: os.path.join(RATE_DIR, f"macro_IR3TIB01{k}M156N.csv") for c, k in RATE_IDS.items()},
+            "out": OUT, "universe": "FX8 (NOK, SEK not in panel)", "repro": (0.432, 0.378)}
 
 
 # ---------------------------------------------------------------- inputs
-def rates(index):
-    out = pd.DataFrame(index=index, columns=T.FX8, dtype=float)
-    for c, k in RATE_IDS.items():
-        d = pd.read_csv(os.path.join(T.ROOT, f"analysis/output/cot-crowding-programme/macro_IR3TIB01{k}M156N.csv"))
+def rates(index, cfg):
+    out = pd.DataFrame(index=index, columns=list(cfg["rate_paths"]), dtype=float)
+    for c, path in cfg["rate_paths"].items():
+        d = pd.read_csv(path)
         d.columns = ["date", "v"]
         s = pd.Series(pd.to_numeric(d.v, errors="coerce").values, index=pd.to_datetime(d.date)).dropna()
         s.index = s.index + pd.DateOffset(months=2)          # month M usable from day 1 of M+2
@@ -80,23 +89,22 @@ def rates(index):
     return out
 
 
-def gates(x, r, disp_index):
+def gates(x, r, disp_index, cfg):
     idx = disp_index
-    pairs = T.load_panel()[[v[0] for v in T.CCY_PAIR.values()]].dropna()
-    lr = np.log(pairs).diff().dropna()
+    lr = cfg["pair_lr"]
     gv = lr.rolling(20).std().mean(axis=1)
     pct = gv.rolling(253).apply(lambda a: (a[:-1] < a[-1]).mean() if np.isfinite(a).all() else np.nan, raw=True)
     V = (pct.reindex(idx) < 0.80).fillna(True)                 # True = entries allowed
 
     mom = x.rolling(63).sum().reindex(idx)
     rk = mom.rank(axis=1)
-    extreme = (rk <= 2) | (rk >= 7)
+    extreme = (rk <= 2) | (rk >= x.shape[1] - 1)          # top 2 / bottom 2 of the universe
     msign = np.sign(mom)
 
     val = -x.rolling(756).sum().reindex(idx)
     vsign = np.sign(val.sub(val.median(axis=1), axis=0))
 
-    rt = rates(idx)
+    rt = rates(idx, cfg)[list(x.columns)]
     cd = rt.sub(rt.mean(axis=1), axis=0)
     return {"V": V, "msign": msign, "extreme": extreme, "vsign": vsign, "cd": cd, "rates": rt, "gv_pct": pct}
 
@@ -146,12 +154,12 @@ def trade_mask(disp, allow, entry=1.5, exit_abs=None, episodes=None):
     return pd.DataFrame(mask, index=disp.index, columns=disp.columns), trades
 
 
-def walk_w(x, r, K, mask, neutral=True):
+def walk_w(x, r, K, mask, cost, neutral=True):
     """engine.walk with the mask, also returning the weights (for carry) and allowing NN."""
     X, R = x.values, r.values
     n, m = X.shape
     ones = np.ones(m)
-    cvec = np.array([T.COST[c] / 100.0 / 2.0 for c in x.columns])
+    cvec = np.array([cost[c] / 100.0 / 2.0 for c in x.columns])
     M = mask.reindex(index=x.index, columns=x.columns).fillna(False).values
     w_prev = np.zeros(m)
     recs, W, sig = [], [], []
@@ -225,15 +233,17 @@ def diff_boot(a, b, rng):
             "call": "better" if better else "worse" if worse else "no clear change"}
 
 
-def main():
-    os.makedirs(OUT, exist_ok=True)
+def main(cfg=None):
+    cfg = cfg or fx8_config()
+    out_dir = cfg["out"]
+    os.makedirs(out_dir, exist_ok=True)
     rng = np.random.default_rng(SEED)
-    r = T.universe("fx8")
+    r = cfg["r"]
     x = E.basket(r)
     n_is = E.WINDOW + (len(x) - E.WINDOW) // 2
     K, _, _ = E.choose_k(x, n_is)
-    disp, _, _ = E.walk(x, r, K, T.COST)
-    G = gates(x, r, disp.index)
+    disp, _, _ = E.walk(x, r, K, cfg["cost"])
+    G = gates(x, r, disp.index, cfg)
 
     variants = {
         "base": ([], 1.5, None, True),
@@ -252,16 +262,16 @@ def main():
     for name, (lay, ent, ex, neu) in variants.items():
         eps = []
         mask, ntr = trade_mask(disp, allow_fn(G, lay), entry=ent, exit_abs=ex, episodes=eps)
-        rec, Wd = walk_w(x, r, K, mask, neutral=neu)
+        rec, Wd = walk_w(x, r, K, mask, cfg["cost"], neutral=neu)
         rec = add_carry(rec, Wd, G["rates"])
         recs[name] = rec
         site_trades[name] = trade_records(eps, disp, Wd, xnext, G)
         res[name] = {"net": summary(rec, ntr, mask, "net"), "net_carry": summary(rec, ntr, mask, "net_carry"),
                      "carry_ann_pct": round(float(rec.carry.mean() * 252 * 100), 3)}
-        if name == "base":
+        if name == "base" and cfg.get("repro"):
             # reproduction check against residual-pca-stops threshold book
-            n_ = res[name]["net"]
-            assert abs(n_["IS"]["sharpe"] - 0.432) < 0.002 and abs(n_["OOS"]["sharpe"] - 0.378) < 0.002, n_
+            n_, (a_, b_) = res[name]["net"], cfg["repro"]
+            assert abs(n_["IS"]["sharpe"] - a_) < 0.002 and abs(n_["OOS"]["sharpe"] - b_) < 0.002, n_
         print(f"{name:32s} net IS {res[name]['net']['IS']['sharpe']:+.3f} OOS {res[name]['net']['OOS']['sharpe']:+.3f}"
               f" | +carry IS {res[name]['net_carry']['IS']['sharpe']:+.3f} OOS {res[name]['net_carry']['OOS']['sharpe']:+.3f}"
               f" | trades {ntr}")
@@ -277,13 +287,14 @@ def main():
 
     meta = {"label": "EXPLORATORY, not pre-registered", "seed": SEED, "B": B, "block": BLOCK, "K": K,
             "first_pnl_day": str(base.index[0].date()), "oos_start": str(base.index[len(base) // 2].date()),
-            "last_pnl_day": str(base.index[-1].date()), "universe": "FX8 (NOK, SEK not in panel)"}
-    json.dump({"meta": meta, "variants": res}, open(os.path.join(OUT, "results.json"), "w"), indent=1)
-    pd.DataFrame({k: v.net_carry for k, v in recs.items()}).to_csv(os.path.join(OUT, "daily_net_carry.csv"),
+            "last_pnl_day": str(base.index[-1].date()), "universe": cfg["universe"]}
+    json.dump({"meta": meta, "variants": res}, open(os.path.join(out_dir, "results.json"), "w"), indent=1)
+    pd.DataFrame({k: v.net_carry for k, v in recs.items()}).to_csv(os.path.join(out_dir, "daily_net_carry.csv"),
                                                                    float_format="%.7f")
-    pd.DataFrame({k: v.net for k, v in recs.items()}).to_csv(os.path.join(OUT, "daily_net.csv"), float_format="%.7f")
-    write_site(meta, res, recs, site_trades, disp, x, G, variants)
+    pd.DataFrame({k: v.net for k, v in recs.items()}).to_csv(os.path.join(out_dir, "daily_net.csv"), float_format="%.7f")
+    write_site(meta, res, recs, site_trades, disp, x, G, variants, out_dir)
     print(json.dumps(meta))
+    return res
 
 
 # ---------------------------------------------------------------- site export (residual-fx8-paper-layers.html)
@@ -316,7 +327,7 @@ def trade_records(eps, disp, Wd, xnext, G):
     return out
 
 
-def write_site(meta, res, recs, site_trades, disp, x, G, variants):
+def write_site(meta, res, recs, site_trades, disp, x, G, variants, out_dir):
     dates = [str(d.date()) for d in recs["base"].index]
     series = {k: {"net": [round(v * 1e4, 3) for v in rec.net.values],
                   "net_carry": [round(v * 1e4, 3) for v in rec.net_carry.values],
@@ -332,7 +343,7 @@ def write_site(meta, res, recs, site_trades, disp, x, G, variants):
     site = {"meta": meta, "variants": res, "defs": defs, "dates": dates, "series_bp": series,
             "trades": site_trades, "sig_dates": [str(d.date()) for d in idx], "ccy": ccy,
             "gv_pct": [None if not np.isfinite(v) else round(float(v), 3) for v in gv.values]}
-    with open(os.path.join(OUT, "site.json"), "w") as f:
+    with open(os.path.join(out_dir, "site.json"), "w") as f:
         json.dump(site, f, separators=(",", ":"))
 
 

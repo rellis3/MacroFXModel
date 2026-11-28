@@ -45,10 +45,16 @@ svg text{font:11.5px var(--mono);fill:var(--text2)}
   <span class="ctl" style="margin:0 0 0 auto">Instrument <select id="sym"><option>GOLD</option><option>NQ</option><option>EURUSD</option></select></span>
 </div>
 <div class="wrap">
+  <div class="box verdict" id="jordan" style="border-left-color:var(--blue)">Loading the 8-line system…</div>
+
+  <div class="box" style="background:transparent;border-style:dashed">
+    <p><b>Below: the earlier 18-line run (superseded).</b> It traded all 18 lines (OH, OL and P50 too) by mistake; the system trades Jordan's 8 lines above. Kept for the record and for the NQ / EURUSD comparison.</p>
+  </div>
+
   <div class="box verdict" id="verdict">Loading…</div>
 
   <div class="box">
-    <h2>The system</h2>
+    <h2>The 18-line run (superseded)</h2>
     <ol>
       <li><b>Lines:</b> the 18 shadow lines (OH, OL, Close+, Close−, HL projection up and down × P50 / P75 / P90).</li>
       <li><b>Entry (Jordan's gold entry):</b> price goes through a line by 10% of the stop, a stop order arms at the line, and it fills when price comes back through. Cancel if price runs 1.2× the stop past the line; chase to a further line on the same side. One trade at a time.</li>
@@ -202,6 +208,40 @@ document.querySelectorAll('button.seg').forEach(b => b.addEventListener('click',
 }));
 $('sym').addEventListener('change', e => load(e.target.value));
 load('GOLD');
+
+// ---- the system on Jordan's 8 lines (gold-line-system-jordan); trades from the backtest page's export ----
+async function loadJordan() {
+  const el = $('jordan');
+  try {
+    const [res, arms, tr] = await Promise.all([
+      fetch('analysis/output/gold-line-system-jordan/results.json', { cache: 'no-store' }).then(r => r.json()),
+      fetch('analysis/output/gold-line-system-jordan/arms.csv', { cache: 'no-store' }).then(r => r.text()).then(csv),
+      fetch('analysis/output/line-system-backtest/GOLD/trades.json', { cache: 'no-store' }).then(r => r.json())]);
+    const a = res.primary.S2;
+    const grp = (key, order) => { const g = {}; for (const t of tr) { const k = key(t); (g[k] ??= { IS: [0, 0], OOS: [0, 0] })[t.split][0]++; g[k][t.split][1] += t.R; }
+      return (order || Object.keys(g).sort()).filter(k => g[k]).map(k => { const c = g[k], f2 = ([n, s]) => n ? `<span class="${cls(s)}">${sgn(s / n)}</span> <span class="note">(${n})</span>` : '–';
+        return `<tr><td>${k}</td><td>${f2(c.IS)}</td><td>${f2(c.OOS)}</td><td class="${cls(c.IS[1] + c.OOS[1])}">${(c.IS[1] + c.OOS[1]).toFixed(0)}R</td></tr>`; }).join(''); };
+    const th = '<tr><th></th><th>2021–22 R/trade (n)</th><th>2023 → Aug 2026 R/trade (n)</th><th>Total</th></tr>';
+    const name = { 'J8|S2|BEoff': "<b>Jordan's 8 lines (the system)</b>", 'J8|S2|BEon': '8 lines, break-even on', 'J8|S1|BEoff': '8 lines, 0.15 × P90 stop', 'J12|S2|BEoff': 'adds the P50 lines (12)', 'All18|S2|BEoff': 'all 18 lines (the earlier run)' };
+    const armRows = arms.map(r => `<tr class="${r.arm === 'J8|S2|BEoff' ? 'hl' : ''}"><td>${name[r.arm] || r.arm}</td><td class="${cls(r.IS_R)}">${sgn(r.IS_R)}</td><td class="${cls(r.OOS_R)}">${sgn(r.OOS_R)} [${sgn(r.OOS_lo)}, ${sgn(r.OOS_hi)}]</td><td>${r.OOS_n}</td><td class="${cls(r.OOS_totR)}">${r.OOS_totR.toFixed(0)}R</td><td class="${cls(r.OOS_tot_wo_top1)}">${r.OOS_tot_wo_top1.toFixed(0)}R</td></tr>`).join('');
+    el.innerHTML = `<h2>The system: Jordan's 8 lines → gold entry → VWAP target <span class="tag">${a.verdict}</span></h2>
+      <p><b>Lines:</b> HL projection up, HL projection down, Close+, Close−, at P75 and P90 (shadow calc). <b>Entry:</b> Jordan's gold entry (arm then retest, cancel 1.2×, chase). <b>Target:</b> VWAP ± 0.5σ<sub>v</sub>, fixed at the fill. <b>Stop:</b> rolling MAE, 3 months per line. BE off, flat 22:00 London, costs on, pessimistic fills.</p>
+      <div class="kpis">
+        <div class="kpi"><div class="l">Out of sample 2023 → Aug 2026</div><div class="v ${cls(a.OOS_R)}">${sgn(a.OOS_R)}R</div><div class="s">[${sgn(a.OOS_lo)}, ${sgn(a.OOS_hi)}] · ${a.OOS_n} trades · ${a.OOS_totR.toFixed(0)}R · PF ${a.OOS_pf.toFixed(2)}</div></div>
+        <div class="kpi"><div class="l">Without the best 1% of trades</div><div class="v ${cls(a.OOS_tot_wo_top1)}">${a.OOS_tot_wo_top1.toFixed(0)}R</div><div class="s">the 18-line run was −65R</div></div>
+        <div class="kpi"><div class="l">Fake lines (100 shuffles)</div><div class="v">${sgn(a.pl1_mean)}R</div><div class="s">p95 ${sgn(a.pl1_p95)} · real lines beat ${(100 * a.pl1_rank).toFixed(0)}% · p ${a.p_one_sided.toFixed(3)}</div></div>
+        <div class="kpi"><div class="l">In sample 2021–22</div><div class="v ${cls(a.IS_R)}">${sgn(a.IS_R)}R</div><div class="s">${a.IS_n} trades · the gate it fails (shorts lost)</div></div>
+      </div>
+      <p class="note">Graded: a strong lead, not validated. 2023–26 was partly seen when the line set was picked, so the clean test is the held-back data after 21 Aug 2026, once, at the end. Full trade list, candles and CSV exports: <a href="line-system-backtest.html">📒 Line system backtest</a> · prereg <a href="forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md">GOLD_LINE_SYSTEM_JORDAN_PREREG.md</a> · <a href="analysis/output/gold-line-system-jordan/RESULTS.md">RESULTS.md</a></p>
+      <h2 style="margin-top:10px">Variants</h2>
+      <div class="scroll"><table><tr><th></th><th>2021–22 R</th><th>2023 → Aug 2026 R [90%]</th><th>Trades</th><th>Total</th><th>Without best 1%</th></tr>${armRows}</table></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:10px">
+        <div><h2>By year</h2><div class="scroll"><table><tr><th>Year</th><th>Trades</th><th>R/trade</th><th>Total</th></tr>${[...new Set(tr.map(t => t.yr))].sort().map(y => { const x = tr.filter(t => t.yr === y), s = x.reduce((q, t) => q + t.R, 0); return `<tr><td>${y}${y <= 2022 ? ' <span class="note">IS</span>' : ''}</td><td>${x.length}</td><td class="${cls(s)}">${sgn(s / x.length)}</td><td class="${cls(s)}">${s.toFixed(0)}R</td></tr>`; }).join('')}</table></div></div>
+        <div><h2>By line</h2><div class="scroll"><table>${th}${grp(t => lvlName(t.level), ['hlH75', 'hlH90', 'hlL75', 'hlL90', 'cup75', 'cup90', 'cdn75', 'cdn90'].map(lvlName))}${grp(t => t.side, ['long', 'short'])}</table></div></div>
+      </div>`;
+  } catch (e) { el.innerHTML = `<p class="note">8-line results not available (${e.message}).</p>`; }
+}
+loadJordan();
 </script>
 </body>
 </html>

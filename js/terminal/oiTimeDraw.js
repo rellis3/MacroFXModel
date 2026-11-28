@@ -2,6 +2,7 @@
  * OI over time: one frame as one HTML string for each of the three views (terrain, level walk, gauge). Pure; every colour is a theme token. Description only: it shows where
  * price was against the stored option-OI, not where it will go. The pictures use the same colours as the ghost walk: calls green, puts red, max pain gold, the flip plain.
  */
+import { ordinal } from './ordinal.js';
 import { esc, fin } from './boardViz.js';
 import { gaugeSvg } from './optionsView.js';
 import { recentCandles } from '../oiTimeCore.js';
@@ -94,5 +95,5 @@ export function gaugeStage(frames, k, extra, { w = 520 } = {}) {
   return `<div class="oit-gauge" style="border-color:${tone}"><div class="oit-g-dial">${gaugeSvg(d.pc, { w: 300, pct })}</div>
 <div class="oit-g-read"><b class="mono">${d.pc.toFixed(2)}</b> puts per call<br><span class="muted">${d.callOI != null ? `${Number(d.callOI).toLocaleString('en-GB')} calls · ${Number(d.putOI).toLocaleString('en-GB')} puts` : ''}</span><br><span style="color:${tone}">${d.chg == null ? 'price change not held' : `price ${d.chg >= 0 ? '+' : '−'}${Math.abs(d.chg).toFixed(2)}% that day`}</span></div>
 <svg class="rpv-svg oit-strip" viewBox="0 0 320 ${base * 2}" width="320" height="${base * 2}" role="img" aria-label="daily price change over the last ${rows.length} days"><line x1="10" x2="310" y1="${base}" y2="${base}" stroke="var(--line2)"/>${strip}</svg>
-<p class="muted oit-g-note">Strip: daily price change over the last ${rows.length} days (green up, red down). Tick on the dial: where this day's ratio sits among the days so far (${pct}th percentile).</p></div>`;
+<p class="muted oit-g-note">Strip: daily price change over the last ${rows.length} days (green up, red down). Tick on the dial: where this day's ratio sits among the days so far (${ordinal(pct)} percentile).</p></div>`;
 }

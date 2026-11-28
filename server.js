@@ -5050,7 +5050,7 @@ async function _deskRun(trigger, job, mode = 'full') {
   try {
     const { rows } = await _rlRows();
     const [ev, ca] = await Promise.all(['events', 'calendar-ahead'].map(p => _dpFetchFeed({ id: p, path: p, timeoutMs: 60_000 })));
-    releases = _rpUpcoming([...(Array.isArray(ev.json) ? ev.json : ev.json?.events ?? []), ...(ca.json?.rows ?? [])], rows, Date.now());
+    releases = _rpUpcoming(_calDedupe([...(Array.isArray(ev.json) ? ev.json : ev.json?.events ?? []), ...(ca.json?.rows ?? [])]), rows, Date.now());
   } catch (e) { console.warn('[desk-run] releases ahead:', e.message); }
   const run = await _runDesk({
     pack, roles, ledger: DESK_EVIDENCE, now: Date.now, concurrency: 4, mode, checkpoint, releases,
@@ -7963,7 +7963,7 @@ async function _wkRun() {
   try {
     const { rows } = await _rlRows();
     const [ev, ca] = await Promise.all(['events', 'calendar-ahead'].map(p => _dpFetchFeed({ id: p, path: p, timeoutMs: 60_000 })));
-    const all = [...(Array.isArray(ev.json) ? ev.json : ev.json?.events ?? []), ...(ca.json?.rows ?? [])];
+    const all = _calDedupe([...(Array.isArray(ev.json) ? ev.json : ev.json?.events ?? []), ...(ca.json?.rows ?? [])]);
     cal = _wkCalendar(all, now); releases = _rpUpcoming(all, rows, now, { hours: 24 * 8 });
   } catch (e) { console.warn('[desk-weekly] calendar:', e.message); }
   const { DESK_EVIDENCE } = await import('./js/deskEvidence.js');
@@ -8437,7 +8437,7 @@ async function _mlExtraUnits(cards) {   // half the median daily range of 20 day
   }));
 }
 async function _mlReactions(ML, date, now) {
-  if (!_lsr0.loaded && !_lsr0.log.length) { const raw = await kv.get(_LSR_KV).catch(() => null); if (raw) { try { _lsr0.log = JSON.parse(raw).log ?? []; } catch { /* the reader owns it */ } } }
+  await _lsrEnsureLog();
   const from = _dsLondonMs(date, 0), out = [];
   for (const r of _lsr0.log ?? []) {
     const ms = Number(r.ms ?? Date.parse(r.at)); if (!(ms >= from && ms <= now) || !ML.CCYS.includes(r.country)) continue;
@@ -8548,7 +8548,7 @@ app.get('/api/terminal-bundle', async (req, res) => {
 });
 // GET /api/policy-rates: each central bank's policy rate from its own published series (js/policyRates.js), with its as-of
 // date and source. Cached 6 hours. (The rate-diff engine's latestRate is a 3-month interbank rate, not the policy rate.)
-let _prCache = { at: 0, data: null };
+let _prCache = { at: 0, data: null }, _prLastGood = {};
 async function _policyRatesNow() {
   if (_prCache.data && Date.now() - _prCache.at < 6 * 3600e3) return _prCache.data;
   const UA = { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' };
@@ -8558,8 +8558,13 @@ async function _policyRatesNow() {
     getJson: u => fetch(u, { headers: UA, signal: AbortSignal.timeout(20_000) }).then(x => { if (!x.ok) throw new Error(`HTTP ${x.status}`); return x.json(); }),
     rbnz: () => _dpFetchFeed({ id: 'rbnz-decisions', path: 'rbnz/decisions', timeoutMs: 30_000 }).then(f => f.json),
   });
+  // One bank's source failing (the BoJ API returned HTTP 500 once on 2026-11-27) used to blank that bank for the whole 6-hour cache: the Macro
+  // tab showed the BoJ rate as "–" all evening. Now a failed bank keeps its last good rate (its own asOf says how old), marked `carried`, and a
+  // result with any failure is cached for 30 minutes, not 6 hours, so the source is asked again soon.
+  for (const [ccy, why] of Object.entries(r.errors ?? {})) if (!r.rates[ccy] && _prLastGood[ccy]) r.rates[ccy] = { ..._prLastGood[ccy], carried: true, error: why };
+  for (const [ccy, v] of Object.entries(r.rates)) if (!v.carried) _prLastGood[ccy] = v;
   const data = { ok: Object.keys(r.rates).length > 0, fetchedAt: new Date().toISOString(), ...r };
-  if (data.ok) _prCache = { at: Date.now(), data };
+  if (data.ok) _prCache = { at: Object.keys(r.errors ?? {}).length ? Date.now() - (6 * 3600e3 - 30 * 60e3) : Date.now(), data };
   return data;
 }
 // §9af: the world's policy rates (BIS WS_CBPOL, ~39 banks, monthly) for the terminal's map and the rates analyst.
@@ -11828,7 +11833,10 @@ app.get('/api/events', async (_req, res) => {
   try {
     const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
     if (!r.ok) return res.json({ ok: false, reason: r.error || 'calendar feed unavailable', events: [] });
-    res.json(r.events);
+    // ForexFactory lists only the current week: from Thursday nothing ahead showed anywhere (the Calendar tab, the Overview's next release, the
+    // Trader's read). The rated forward rows past ForexFactory's last event are appended, marked source 'nasdaq' (review 2026-11-27).
+    let ahead = []; try { const last = Math.max(0, ...r.events.map(e => Number(e.ms) || 0)); ahead = (await _calAheadRows()).rows.filter(e => e.ms > last); } catch (e) { console.warn('[events] ahead:', e.message); }
+    res.json([...r.events, ...ahead]);
   } catch (e) { res.json({ ok: false, reason: e.message, events: [] }); }
 });
 
@@ -23523,7 +23531,10 @@ async function _fillActualsFromFred(events, stored) {
   if (!key) { if (!_fredFillWarned) { console.warn('[surprise] FRED_KEY not set -- live actuals cannot be filled'); _fredFillWarned = true; } return { filled: 0, tried: 0 }; }
   // srcV 2 = filled after the 2026-10-16 by-date fix for FRED gaps (Oct-2025 CPI missing made y/y read 13 months
   // back). Older FRED-filled pct rows inside the 21-day window are refilled once so the live score is corrected.
-  const stale = x => typeof x.src === 'string' && x.src.startsWith('fred:') && !x.srcV && /%$/.test(String(x.actual));
+  const stale = x => typeof x.src === 'string' && x.src.startsWith('fred:') && !x.srcV && /%$/.test(String(x.actual))
+    // a policy rate read off a bank's daily series in the first days after a decision can still be the OLD rate (the BoC's 2026-10-28 hike was
+    // stored as 2.25%, the rate before it): ask again for six days after the decision, so the stored actual follows the series once it updates
+    || (typeof x.src === 'string' && /^(boc|rba|boe|snb|boj):/.test(x.src) && Date.now() - x.ms < 6 * 864e5);
   const have = new Set((stored ?? []).filter(x => x.actual != null && x.actual !== '' && !stale(x)).map(x => `${String(x.country).toUpperCase()}|${String(x.event).trim().toLowerCase()}|${x.ms}`));
   const pend = _fredPending((events ?? []).filter(e => !have.has(`${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`))).slice(0, _FRED_FILL_MAX);
   let filled = 0, tried = 0; const notes = [];
@@ -39572,33 +39583,35 @@ async function _refreshCalFeed() {
             printed: _calPrinted(nas ?? [], { limit: 200 }), health, today } };   // two lists now; the actuals join reads these rows
   return _calFeed;
 }
-// The week ahead PAST this week. ForexFactory only lists the current week (the next-week file 404s), so the
-// week-ahead panel went empty Thursday to Sunday. Nasdaq publishes forward lists but no impact rating, and the two
-// vendors name releases differently, so 'high impact' is the release TYPE (rate decision, CPI, jobs, GDP, retail
-// sales, PMI) on the gate countries. Cached 6h.
+// The week ahead PAST this week. ForexFactory only lists the current week (the next-week file 404s), so the week-ahead panel went empty
+// Thursday to Sunday. Nasdaq publishes forward lists but no rating. Each forward row is rated with ForexFactory's own impact for the same
+// release (js/calendarAhead.js, review 2026-11-27); the word pattern used before rated every CPI, retail or GDP row "High", Baden-Wuerttemberg
+// CPI and Japan's large-scale retail included. A row no ForexFactory release matches is left out. Index: the surprise store's live ForexFactory
+// rows (2025-04 on). Cached 6 h.
 let _calAhead = { at: 0, rows: null };
-const _AHEAD_HIGH = /rate decision|interest rate|cash rate|bank rate|\bcpi\b|consumer price|inflation|nonfarm|non-farm|payroll|employment change|unemployment rate|\bgdp\b|retail sales|\bpmi\b|\bism\b/i;
-const _AHEAD_CC = { 'United States': 'US', 'Euro Zone': 'EU', Germany: 'DE', 'United Kingdom': 'GB', Japan: 'JP', Switzerland: 'CH', Australia: 'AU', 'New Zealand': 'NZ', Canada: 'CA' };
+async function _calAheadRows() {
+  if (_calAhead.rows && Date.now() - _calAhead.at < 6 * 3600e3) return _calAhead;
+  const H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, nas = [];
+  for (let k = 0; k <= 9; k++) {
+    const d = new Date(Date.now() + k * 864e5).toISOString().slice(0, 10);
+    try {
+      const r = await fetch(`https://api.nasdaq.com/api/calendar/economicevents?date=${d}`, { headers: H, signal: AbortSignal.timeout(20_000) });
+      if (r.ok) nas.push(..._calParseNasdaq(await r.json(), d));
+    } catch (e) { console.warn('[calendar-ahead]', d, e.message); }
+    await new Promise(r => setTimeout(r, 250));
+  }
+  let index = {}; try { index = _cah.impactIndex(await _readSurpriseStore(), { since: Date.parse('2025-04-05T00:00:00Z') }); } catch (e) { console.warn('[calendar-ahead] store:', e.message); }
+  const rows = _cah.forwardEvents(nas, index, { now: Date.now() });
+  if (rows.length || !_calAhead.rows) _calAhead = { at: Date.now(), rows };   // never replace a good list with an empty one from a failed fetch
+  return _calAhead;
+}
+/** One copy of each release when /api/events (which now carries the forward rows) is merged with /api/calendar-ahead. */
+const _calDedupe = list => { const seen = new Set(); return (list ?? []).filter(e => { const k = `${e?.country}|${String(e?.event ?? '').toLowerCase()}|${Number(e?.ms ?? Date.parse(e?.time))}`; return !seen.has(k) && seen.add(k); }); };
 app.get('/api/calendar-ahead', async (_req, res) => {
   try {
-    if (!_calAhead.rows || Date.now() - _calAhead.at > 6 * 3600e3) {
-      const H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
-      const rows = [];
-      for (let k = 1; k <= 9; k++) {
-        const d = new Date(Date.now() + k * 864e5).toISOString().slice(0, 10);
-        try {
-          const r = await fetch(`https://api.nasdaq.com/api/calendar/economicevents?date=${d}`, { headers: H, signal: AbortSignal.timeout(20_000) });
-          if (r.ok) for (const x of _calParseNasdaq(await r.json(), d)) {
-            const country = _AHEAD_CC[x.country];
-            if (country && !x.released && _AHEAD_HIGH.test(x.event) && x.ms > Date.now()) rows.push({ ms: x.ms, time: new Date(x.ms).toISOString().replace('T', ' ').slice(0, 19), country, event: x.event, impact: 'High', estimate: x.raw?.consensus?.trim() || null, prev: x.raw?.previous ?? null, source: 'nasdaq' });
-          }
-        } catch (e) { console.warn('[calendar-ahead]', d, e.message); }
-        await new Promise(r => setTimeout(r, 250));
-      }
-      _calAhead = { at: Date.now(), rows: rows.sort((a, b) => a.ms - b.ms) };
-    }
+    const a = await _calAheadRows();
     res.set('Cache-Control', 'public, max-age=1800');
-    res.json({ ok: true, at: new Date(_calAhead.at).toISOString(), rows: _calAhead.rows, note: 'Nasdaq forward lists; impact = release type, not a vendor rating' });
+    res.json({ ok: true, at: new Date(a.at).toISOString(), rows: a.rows, note: 'Nasdaq forward lists, each rated with ForexFactory\'s own impact for the same release; a release ForexFactory does not list is left out' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -39793,6 +39806,7 @@ app.get('/api/fed-speakers', async (_req, res) => {
 //                   speaker drift → one Telegram line per state change (tgMaster.deskAlerts), KV desk_alerts_v1; GET /api/desk-alerts
 import * as _cbsp from './js/cbSpeeches.js';
 import * as _lsr from './js/surpriseReader.js';
+import * as _cah from './js/calendarAhead.js';
 import * as _dal from './js/deskAlerts.js';
 import { pageText as _cbspPageText } from './js/cbPageText.js';
 
@@ -39910,8 +39924,8 @@ app.get('/api/speech-drift', async (_req, res) => {
 // ── Live surprise reader ──
 const _LSR_KV = 'release_surprise_log_v1';
 let _lsr0 = { loaded: false, sent: {}, log: [], lastRun: null, nas: { at: 0, rows: [] }, store: { at: 0, rows: [] } };
-async function _lsrNasdaq() {
-  if (Date.now() - _lsr0.nas.at < 40_000) return _lsr0.nas.rows;
+async function _lsrNasdaq(ttlMs = 40_000) {   // every 40 s while a print is fresh; the server asks every 4 min once all are older than 45 min
+  if (Date.now() - _lsr0.nas.at < ttlMs) return _lsr0.nas.rows;
   const today = new Date().toISOString().slice(0, 10), tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10), rows = [];
   for (const d of [today, tomorrow]) {   // Nasdaq's list for date D is New York's D-1 (js/calendarFeed.js parseNasdaq)
     try {
@@ -39928,14 +39942,24 @@ async function _lsrStore() {   // read-only use of the surprise store (econ_surp
   catch (e) { _lsr0.store = { at: Date.now() - 5 * 3600e3, rows: _lsr0.store.rows }; console.warn('[surprise-reader] store:', e.message); }
   return _lsr0.store.rows;
 }
+// The log as the reader keeps it, loaded once and re-checked against the current matching rules (js/surpriseReader.js recheckLog): rows stored
+// before the 2026-11-27 fix with a different release's value (U6 unemployment, Canada's y/y CPI) are held back, not served as surprises.
+async function _lsrEnsureLog() {
+  if (!_lsr0.loaded && !_lsr0.log.length && !_lsr0.checked) {
+    const raw = await kv.get(_LSR_KV).catch(() => null);
+    if (raw) { try { _lsr0.log = _lsr.recheckLog(JSON.parse(raw).log ?? [], await _lsrStore()); } catch { /* the reader owns it */ } }
+    _lsr0.checked = true;
+  }
+  return _lsr0.log;
+}
 async function _lsrSave() { await kv.put(_LSR_KV, JSON.stringify({ sent: _lsr.pruneSent(_lsr0.sent, Date.now()), log: _lsr0.log })); }
 async function _lsrTick() {
   const now = Date.now();
-  if (!_lsr0.loaded) { const raw = await kv.getStrict(_LSR_KV); const j = raw ? JSON.parse(raw) : {}; _lsr0.sent = j.sent ?? {}; _lsr0.log = j.log ?? []; _lsr0.loaded = true; }
+  if (!_lsr0.loaded) { const raw = await kv.getStrict(_LSR_KV); const j = raw ? JSON.parse(raw) : {}; _lsr0.sent = j.sent ?? {}; _lsr0.log = _lsr.recheckLog(j.log ?? [], await _lsrStore()); _lsr0.loaded = true; }
   const feed = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
   const due = _lsr.dueReleases(feed.events ?? [], now, _lsr0.sent);
   if (!due.length) return { ok: true, due: 0 };
-  const nas = due.some(e => e.actual == null) ? await _lsrNasdaq() : [];
+  const waiting = due.filter(e => e.actual == null), nas = waiting.length ? await _lsrNasdaq(waiting.some(e => now - Number(e.ms) < 45 * 60_000) ? 40_000 : 4 * 60_000) : [];
   let studyRows = []; try { studyRows = (await _rlRows()).rows; } catch (e) { console.warn('[surprise-reader] release study:', e.message); }
   const store = await _lsrStore(), fresh = [];
   for (const ev of due) {
@@ -39966,7 +39990,7 @@ svcInterval('surpriseReader', () => _lsrTick().catch(e => { _lsr0.lastRun = { at
 app.get('/api/release-surprises', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
-    if (!_lsr0.loaded) { const raw = await kv.get(_LSR_KV).catch(() => null); if (raw) { const j = JSON.parse(raw); _lsr0.log = j.log ?? []; } }
+    await _lsrEnsureLog();
     res.json({ ok: true, lastRun: _lsr0.lastRun, muted: !tgOn('surpriseReader'), log: _lsr0.log.slice(0, Math.min(300, parseInt(req.query.n) || 30)),
       note: 'surprise = actual - consensus in the release\'s own units; z against that release\'s own past surprises (the surprise store); playbook = the release study\'s history for the family, with its count. Not a forecast.' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -40116,14 +40140,15 @@ svcInterval('releaseReactions', () => _rrxTick('poll'), 2 * 60_000);
 /** The combined record: live reactions plus the study backfill, a study row winning for the same family and minute. */
 function _rrxCombined(study) {
   const seen = new Set(study.recs.map(x => `${x.family}|${Math.round(x.ms / 60_000)}`));
-  return [..._rrx0.log.filter(x => !x.family || !seen.has(`${x.family}|${Math.round(x.ms / 60_000)}`)), ...study.recs].sort((a, b) => b.ms - a.ms);
+  const held = new Set((_lsr0.log ?? []).filter(r => r.rejected).map(r => r.key));   // a live read the reader now holds back (wrong row on the feed) is not a reaction to that print
+  return [..._rrx0.log.filter(x => !held.has(x.key) && (!x.family || !seen.has(`${x.family}|${Math.round(x.ms / 60_000)}`))), ...study.recs].sort((a, b) => b.ms - a.ms);
 }
 const _RRX_NOTE = 'Actual move at +30 min and +4 h (% of the price at the release minute; OANDA M1 live, the release study\'s futures for the backfill) against what earlier releases of the family did for a surprise of that sign and size (median move per unit of surprise z; else the median after same-side prints). Labels: priced in / in line / underreaction / overreaction / opposite. Point-in-time: each release is judged only by releases before it. Regime = the VIX close before the release (calm < 16 <= normal < 24 <= stressed). History with its count, not a forecast.';
 // GET /api/release-reactions?n=30[&pack=1]: the live reactions, the study backfill and the summary by family and regime
 app.get('/api/release-reactions', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
-    await _rrxLoad(false);
+    await _rrxLoad(false); await _lsrEnsureLog();
     const study = await _rrxStudy(), all = _rrxCombined(study), summary = _rrx.summarise(all), n = Math.min(300, Math.max(1, parseInt(req.query.n) || 30));
     if (req.query.pack) {   // the events_news analyst's feed: the summary and the latest live reads, small
       const slim = r => ({ at: r.at, country: r.country, event: r.event, family: r.family, surprise: r.surprise?.diffText ?? r.surprise?.diff, z: r.surprise?.z ?? null, regime: r.regime?.tone ?? null, label30: r.label30 ?? null, label240: r.label240 ?? null,

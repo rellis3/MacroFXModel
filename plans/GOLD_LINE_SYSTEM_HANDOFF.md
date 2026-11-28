@@ -191,3 +191,13 @@ was rebuilt from raw data to the identical figure (+0.05479R, 936 trades). Omiss
   2. The C.OG probabilistic arming layer (reach / turn odds, the clock) as a removable layer on this base.
   3. Dropping P50 lines (descriptive: P50 −0.03, P75 +0.36, P90 +0.26 on gold), only via a new prereg.
   4. The lockbox, last.
+
+## 12. Correction, 2026-11-27 (night): the system trades Jordan's 8 lines, not 18
+
+- `gold-line-system-base` used all 18 lines by mistake (carried over from the rolling-MAE window test). Per D4 and §6
+  the system trades **Jordan's lines: HL projection up / down, Close+, Close−, at P75 and P90 (8 lines)**.
+- **`gold-line-system-jordan` (banked): UNDERPOWERED.** OOS +0.302R [+0.111, +0.485], +226R, +104R without the best
+  1% of trades; fake lines average −0.004 (real above all 100). IS 2021–22 −0.085 (the shorts lost). BE on is worse.
+- **`line-system-backtest.html`** (the standard backtest page: trades, candles, % / R / $ CSVs) shows this version.
+- Next: forward record, tick-data fill check, then the lockbox once.
+

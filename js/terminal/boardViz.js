@@ -10,6 +10,7 @@
  *   glowLine     a line with a soft glow, an area wash and an emphasised endpoint (a series)
  *   stateStrip   a row of cells, one per day, coloured by a state (the regime memory)
  */
+import { ordinal } from './ordinal.js';
 
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const fin = v => v != null && Number.isFinite(+v);
@@ -116,7 +117,7 @@ ${marks.map(q => `<line x1="${f1(x(q))}" x2="${f1(x(q))}" y1="${y - 6}" y2="${y 
 ${fin(r.pct2) ? `<line x1="${f1(x(r.pct2))}" x2="${f1(x(r.pct2))}" y1="${y - 8}" y2="${y + 8}" stroke="var(--tx3)" stroke-width="1.5" stroke-dasharray="2 2"/>` : ''}
 <circle cx="${f1(x(r.pct))}" cy="${y}" r="9" fill="${col}" opacity=".35" filter="url(#${id})"/><circle cx="${f1(x(r.pct))}" cy="${y}" r="5" fill="${col}" stroke="var(--bg1)" stroke-width="1.5"/>
 <text x="${w - R + 12}" y="${y + 4}" font-size="11" fill="var(--tx)" font-family="var(--mono)">${esc(r.value ?? '')}</text>
-<text x="${w}" y="${y + 4}" text-anchor="end" font-size="10" fill="var(--tx3)" font-family="var(--mono)">${Math.round(r.pct)}th</text></g>`;
+<text x="${w}" y="${y + 4}" text-anchor="end" font-size="10" fill="var(--tx3)" font-family="var(--mono)">${ordinal(Math.round(r.pct))}</text></g>`;
   }).join('');
   return `<svg class="bv-svg" viewBox="0 0 ${w} ${H}" width="100%" role="img" aria-label="Where each reading sits in its own history"><defs><filter id="${id}"><feGaussianBlur stdDeviation="3"/></filter></defs>${body}
 <text x="${f1(x(0))}" y="${H - 4}" font-size="9.5" fill="var(--tx3)" font-family="var(--mono)">lowest in its window</text><text x="${f1(x(100))}" y="${H - 4}" text-anchor="end" font-size="9.5" fill="var(--tx3)" font-family="var(--mono)">highest</text></svg>`;

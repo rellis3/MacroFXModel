@@ -10,6 +10,7 @@
  * The daily numbers stay where they are as the reference: this layer only says how far the market has moved since, labelled price-based / implied and
  * stamped with the quote time. "Quiet" means small moves so far, not that there is no direction. The price read is a description of recent movement.
  */
+import { ordinal } from './ordinal.js';
 import { priceRead } from '../liveLayerCore.js';
 import { clockState } from '../marketClock.js';
 import { esc, fin } from './boardViz.js';
@@ -90,7 +91,7 @@ function corrCard(c) {
   const TONE = { HIGH: 'gold', LOW: 'pur', NORMAL: 'up' };
   return `<div class="card"><div class="ch"><span class="lbl">Correlation of the majors, last five days</span><span class="r"><span class="chip ${TONE[c.state] ?? ''}">${esc(c.state)}</span></span></div>
 <div class="ll-rail" aria-hidden="true"><i class="ll-z lo" style="width:20%"></i><i class="ll-z hi" style="left:80%;width:20%"></i><i class="ll-mk" style="left:${Math.max(1, Math.min(99, c.pctile))}%"></i></div>
-<div class="bv-legend"><span>mean |rho| <b class="mono">${c.value.toFixed(2)}</b> (median ${c.median.toFixed(2)})</span><span>${c.pctile}th percentile of ${c.windows} earlier 5-day windows</span></div>
+<div class="bv-legend"><span>mean |rho| <b class="mono">${c.value.toFixed(2)}</b> (median ${c.median.toFixed(2)})</span><span>${ordinal(c.pctile)} percentile of ${c.windows} earlier 5-day windows</span></div>
 <p style="margin:8px 0 0">${esc(c.line)}</p>
 <p class="muted bv-note">Hourly returns across the seven majors' ${c.pairs} pairs. A price-based, intraday rebuild of the correlation idea, not the daily regime board's reading and not the validated HMM.</p></div>`;
 }

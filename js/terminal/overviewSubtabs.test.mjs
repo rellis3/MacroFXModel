@@ -95,7 +95,7 @@ test('the map is pinned: in no section, named once; the section lists do not car
   assert.deepEqual(OV_PINNED, ['panel.ov.hero']);
   assert.ok(!ALL_BLOCKS.includes('panel.ov.hero'));
   assert.equal(surfaceById('panel.ov.hero')?.hidden ?? null, null, 'it keeps its own surface id and Access switch, shown by default');
-  assert.deepEqual(OV_SUBS.find(s => s.id === 'today').blocks, ['panel.ov.book', 'panel.ov.regime', 'panel.ov.week', 'panel.ov.riskwarn']);
+  assert.deepEqual(OV_SUBS.find(s => s.id === 'today').blocks, ['panel.ov.booktape', 'panel.ov.book', 'panel.ov.regime', 'panel.ov.week', 'panel.ov.riskwarn']);
 });
 test('the glance block and the flag-history card are Today-only: named, and hidden on the other four sections by css', async () => {
   assert.deepEqual(TODAY_ONLY_EXTRAS, ['.fl-host', '.rfs-compact']);
@@ -105,12 +105,11 @@ test('the glance block and the flag-history card are Today-only: named, and hidd
   assert.match(css, /order: 1; \}\s*\n#overview\.ovs-on > \.ovs-pills \{ order: 2/, 'the map is above the pills');
   assert.match(css, /\.fl-host \{ order: 3/); assert.match(css, /\.rfs-compact \{ order: 4/); assert.match(css, /#overview\.ovs-on > \*, #overview\.ovs-on > \.sfc > \* \{ order: 5/, "the registry wrappers are display: contents, so the order is set on their children");
 });
-test('heroFolded: open on Today, open on a laptop elsewhere, folded on a phone elsewhere unless the owner opened it; one choice for Today and one for the other four', () => {
-  assert.equal(heroFolded('today', {}, false), false); assert.equal(heroFolded('today', {}, true), false, 'Today is expanded even on a phone');
-  assert.equal(heroFolded('currencies', {}, false), false); assert.equal(heroFolded('desk', {}, true), true, 'a phone folds it on the other four');
+test('heroFolded: folded by default on every section and device; the owner\'s own open or fold choice is kept, one for Today and one for the other four', () => {
+  assert.equal(heroFolded('today', {}, false), true); assert.equal(heroFolded('today', {}, true), true);
+  assert.equal(heroFolded('currencies', {}, false), true); assert.equal(heroFolded('desk', {}, true), true);
   assert.equal(heroFolded('risk', { other: 'open' }, true), false, 'unless the owner expanded it');
   assert.equal(heroFolded('news', { other: 'folded' }, false), true, 'or folded it themselves');
-  assert.equal(heroFolded('today', { other: 'folded' }, true), false, 'the other four do not change Today'); assert.equal(heroFolded('today', { today: 'folded' }, false), true);
-  assert.equal(heroGroup('today'), 'today'); assert.equal(heroGroup('desk'), 'other'); assert.equal(HERO_LS, 'deskOverviewHero:v1');
-  assert.equal(heroFolded('today', null, false), false, 'a missing choice object is safe');
+  assert.equal(heroFolded('today', { other: 'open' }, true), true, 'the other four do not change Today'); assert.equal(heroFolded('today', { today: 'open' }, false), false);
+  assert.equal(heroFolded('today', null, false), true, 'a missing choice object is safe');
 });

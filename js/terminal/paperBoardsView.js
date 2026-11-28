@@ -7,6 +7,7 @@
  * Wording is fixed by the Evidence Book: these boards describe. Where a view touches a banked null or an underpowered result the chip says so;
  * where nothing in the book tests the thing on screen the chip says UNTESTED. Nothing here is a lean, a signal or a trade.
  */
+import { ordinal } from './ordinal.js';
 import { arcGauge, glowLine, pctRails, esc, fin, uid, clamp, smoothPath } from './boardViz.js';
 import { chipFor, untestedChip } from './corrEvidence.js';
 import { ownerLink } from './links.js';
@@ -72,10 +73,10 @@ export function jgbCard(rx) {
   const slope = j.slope2s30s;
   const body = `<div class="grid g2"><div class="card"><div class="ch"><span class="lbl">Three lights · last ${j.window} sessions</span>${ageNote(j.asOf)}</div>
 <div class="pb-lights">${light(L.short.on, 'Short-end shock', `${sg(L.short.bp, 1)}bp on the 2y`, `${fin(L.short.z) ? `${sg(L.short.z, 1)} standard deviations of its own 5-day moves` : ''}; on past 2 deviations and 3bp`)}
-${light(L.vol.on, 'High-vol state', `${L.vol.pct ?? '–'}th percentile`, `20-day realised vol of the 10y, ${fin(L.vol.realisedBp) ? L.vol.realisedBp.toFixed(1) : '–'}bp a day; on from the 80th`)}
+${light(L.vol.on, 'High-vol state', `${ordinal(L.vol.pct ?? '–')} percentile`, `20-day realised vol of the 10y, ${fin(L.vol.realisedBp) ? L.vol.realisedBp.toFixed(1) : '–'}bp a day; on from the 80th`)}
 <div class="pb-lightbox"><i class="pb-light type" aria-hidden="true"></i><div><b>Where on the curve</b><div class="mono">${esc(typeTxt)}</div><div class="muted" style="font-size:11px">2y ${sg(j.changesBp['2Y'], 1)}bp · 10y ${sg(j.changesBp['10Y'], 1)}bp · 30y ${sg(j.changesBp['30Y'], 1)}bp over ${j.window} sessions</div></div></div></div>
 <div class="bv-chips" style="margin-top:8px">${tenors}</div></div>
-<div class="card"><div class="ch"><span class="lbl">The 10y over the last year</span><span class="r muted">2s30s ${sg(slope.bp, 0)}bp${fin(slope.pct5y) ? ` · ${Math.round(slope.pct5y)}th percentile` : ''}</span></div>${glowLine(j.spark10y, { w: 360, h: 120, tone: 'var(--gold)', label: 'JGB 10-year yield over the last year' })}
+<div class="card"><div class="ch"><span class="lbl">The 10y over the last year</span><span class="r muted">2s30s ${sg(slope.bp, 0)}bp${fin(slope.pct5y) ? ` · ${ordinal(Math.round(slope.pct5y))} percentile` : ''}</span></div>${glowLine(j.spark10y, { w: 360, h: 120, tone: 'var(--gold)', label: 'JGB 10-year yield over the last year' })}
 <p class="muted bv-note">The lights state conditions; they are not a view on the yen. A short-end shock in a high-vol state is the case the research links to spillover into yen crosses, and that link has not been tested on the ranges this desk measures.${rx.jgb.fileTenors && !rx.jgb.fileTenors.includes('40Y') ? ' The source file carries no 40-year column.' : ''}</p></div></div>`;
   return wrap('panel.macro.jgb', 'Japan: the JGB shock card', '2, 10, 20, 30 and 40 year yields from the Ministry of Finance file · conditions only, never a direction', body, untestedChip('Nothing in the Evidence Book tests a JGB shock against yen-cross ranges.'));
 }
@@ -86,7 +87,7 @@ export function inflationCard(rx) {
   const f = I.fwd5y5y, p = I.corePce;
   const big = (label, v, sub, spark, tone) => `<div class="card"><div class="ch"><span class="lbl">${esc(label)}</span></div><div class="pb-big mono">${v}</div><div class="muted" style="font-size:11.5px">${sub}</div>${spark ? glowLine(spark, { w: 300, h: 70, tone, label }) : ''}</div>`;
   const cards = [
-    f ? big('5y5y forward breakeven', `${f.value.toFixed(2)}%`, `${fin(f.pct5y) ? `${Math.round(f.pct5y)}th percentile of five years · ` : ''}${sg(f.chg20, 2)} over 20 days, ${sg(f.chg60, 2)} over 60 · as of ${esc(f.asOf)}`, f.spark, 'var(--pur2)') : '',
+    f ? big('5y5y forward breakeven', `${f.value.toFixed(2)}%`, `${fin(f.pct5y) ? `${ordinal(Math.round(f.pct5y))} percentile of five years · ` : ''}${sg(f.chg20, 2)} over 20 days, ${sg(f.chg60, 2)} over 60 · as of ${esc(f.asOf)}`, f.spark, 'var(--pur2)') : '',
     p ? big('Core PCE inflation, year on year', `${p.yoy.toFixed(2)}%`, `3-month annualised ${p.ann3m.toFixed(2)}% · a year ago ${fin(p.yoy12ago) ? p.yoy12ago.toFixed(2) + '%' : '–'} · as of ${esc(p.asOf)}`, p.spark, 'var(--gold)') : '',
   ].join('');
   return wrap('panel.macro.inflation', '5y5y and core PCE', 'market-implied long-run inflation beside the Fed\'s preferred realised gauge',
@@ -176,7 +177,7 @@ export function connectedCard(mx) {
 // ── Commodity-currency coupling + uncertainty ────────────────────────────────────────────────────────────────────
 export function couplingCard(mx) {
   const rings = (mx?.coupling ?? []).filter(r => r.ok); if (!rings.length) return missing('panel.macro.coupling', 'Commodity currencies and their commodity', mx?.errors?.coupling ?? 'Coupling not computed yet.');
-  const dials = rings.map(r => `<div class="card" style="text-align:center">${arcGauge({ value: r.corr, min: -1, max: 1, label: `${r.ccy} with ${r.comLabel}`, sub: `usual ${sg(r.median, 2)} · ${Math.round(r.pct)}th percentile · ${r.window}-day`, w: 240,
+  const dials = rings.map(r => `<div class="card" style="text-align:center">${arcGauge({ value: r.corr, min: -1, max: 1, label: `${r.ccy} with ${r.comLabel}`, sub: `usual ${sg(r.median, 2)} · ${ordinal(Math.round(r.pct))} percentile · ${r.window}-day`, w: 240,
     zones: [{ from: -1, to: r.lo, tone: 'gold' }, { from: r.lo, to: r.hi, tone: 'flat' }, { from: r.hi, to: 1, tone: 'gold' }], ticks: [{ v: r.median, label: 'usual' }] })}${glowLine(r.spark, { w: 240, h: 44, tone: 'var(--pur2)', label: `${r.ccy} coupling over the last year` })}</div>`).join('');
   const st = mx.stress, g = mx.gpr, line = [st?.overall ? `world stress: <b>${esc(st.overall)}</b>` : '', g?.level != null ? `geopolitical risk ${esc(String(g.level))} (${g.z != null ? sg(g.z, 1) + ' z, ' : ''}${esc(g.trend ?? '')})` : ''].filter(Boolean).join(' · ');
   return wrap('panel.macro.coupling', 'Commodity currencies and their commodity', 'how closely the Aussie, Kiwi and Canadian dollar have moved with copper and oil lately, against their own usual',

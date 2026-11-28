@@ -1,0 +1,38 @@
+{
+  "vote": {
+    "instruments": 17,
+    "missing": [],
+    "oosTouches": 58161,
+    "votedAtMargin": 28232,
+    "tradedAtMargin": 27480,
+    "sdControl": 0.8876073537991531,
+    "deff": 0.6330162878789524,
+    "mde": 0.012651081238697298,
+    "passBar": 0.05,
+    "powered": true
+  },
+  "asia": {
+    "instruments": 16,
+    "missing": [],
+    "oosTouches": 380980,
+    "votedAtMargin": 4985,
+    "tradedAtMargin": 4100,
+    "sdControl": 0.9840925456933622,
+    "deff": 68.05611343378008,
+    "mde": 0.3765175813680371,
+    "passBar": 0.05,
+    "powered": false
+  },
+  "monday": {
+    "instruments": 16,
+    "missing": [],
+    "oosTouches": 120200,
+    "votedAtMargin": 670,
+    "tradedAtMargin": 650,
+    "sdControl": 1.0214083930146702,
+    "deff": 42.414230475950184,
+    "mde": 0.774829620049632,
+    "passBar": 0.05,
+    "powered": false
+  }
+}
