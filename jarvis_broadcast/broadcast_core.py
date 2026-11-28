@@ -332,3 +332,31 @@ def queue_done(queue: list, entry: dict) -> list:
 def podcast_id(d: date, part: str, release_key: str | None = None) -> str:
     tail = f"-{re.sub(r'[^A-Za-z0-9]+', '-', release_key).strip('-').lower()}" if release_key else ''
     return f'{d.isoformat()}-{part}{tail}'[:64]
+
+
+# ── recorder robustness (27 Nov 2026: the 21:00 run failed with Page.wait_for_function timeouts while the laptop was overloaded) ──
+MIN_FREE_MB = 1500               # under this much free RAM the 3D views and the frame capture starve (NinjaTrader's leak took ~18.5 GB on 26 Nov)
+MAX_CPU_PCT = 85.0               # over this the page cannot load its feeds and the HUD hook in time
+
+
+def machine_busy(free_mb: float | None, cpu_pct: float | None, min_free_mb: float = MIN_FREE_MB, max_cpu: float = MAX_CPU_PCT) -> str | None:
+    """Why the laptop is too busy to start a recording, or None. A reading that could not be taken (None) never blocks the run."""
+    why = []
+    if free_mb is not None and free_mb < min_free_mb:
+        why.append(f'{free_mb:,.0f} MB of RAM free (needs {min_free_mb:,.0f})')
+    if cpu_pct is not None and cpu_pct > max_cpu:
+        why.append(f'CPU at {cpu_pct:.0f}% (over {max_cpu:.0f}%)')
+    return ' and '.join(why) or None
+
+
+def backoff_s(attempt: int, base: float = 20.0, cap: float = 120.0) -> float:
+    """The wait before page-load retry number `attempt` (1, 2, ...): 20 s, 40 s, 80 s, then 120 s."""
+    return float(min(cap, base * 2 ** max(0, attempt - 1)))
+
+
+def is_page_load_error(err: BaseException | str) -> bool:
+    """A page or HUD hook that did not appear in time (worth a retry), as opposed to a logged-out profile or a voice gap (retrying would not help)."""
+    s = str(err)
+    if 'logged out' in s or 'VOICE_GAP' in s or 'lines were voiced' in s:
+        return False
+    return any(k in s for k in ('Timeout', 'timeout', 'wait_for_function', 'net::ERR', 'Navigation', 'Target closed', 'Target page, context or browser has been closed'))
