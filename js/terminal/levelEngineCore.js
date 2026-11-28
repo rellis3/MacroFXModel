@@ -22,21 +22,27 @@ const fin = v => v != null && Number.isFinite(+v);
 export const HORIZONS = ['ROS', 'EOD', 'EOW'];
 export const HORIZON_LABEL = { ROS: 'Rest of the London day (from now to 22:00)', EOD: 'At any point in today\'s session (from its open)', EOW: 'At any point this week (from Monday\'s open)' };
 const INDICES = new Set(['NQ', 'SPX500', 'US30', 'US2000', 'DE30', 'UK100']);
+/** The 34 CFD instruments Phase 2 fitted and scored M1 on (level-p2-reach `instruments`; a test checks they agree). Anything else (silver, oil, crypto, futures keys)
+ *  would be scored as a "cross" by js/levelReach.js classOfSym: outside the fitted population, so the card gives no M1 number for it. */
+export const M1_SYMS = new Set(['AUDCAD', 'AUDCHF', 'AUDJPY', 'AUDNZD', 'AUDUSD', 'CADCHF', 'CADJPY', 'CHFJPY', 'DE30', 'EURAUD', 'EURCAD', 'EURCHF', 'EURGBP', 'EURJPY', 'EURNZD',
+  'EURUSD', 'GBPAUD', 'GBPCAD', 'GBPCHF', 'GBPJPY', 'GBPNZD', 'GBPUSD', 'GOLD', 'NQ', 'NZDCAD', 'NZDJPY', 'NZDUSD', 'SPX500', 'UK100', 'US2000', 'US30', 'USDCAD', 'USDCHF', 'USDJPY']);
+/** The eight currencies of the drawdown study's FX pairs (a six-letter name such as SILVER, COPPER or NATGAS is not an FX pair). */
+const FX_CCY = new Set(['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF']);
 
 /** Every component the engine shows, with the Evidence id it rests on and that entry's verdict (the test checks both against js/deskEvidence.js). `shown` overrides the chip word
  *  when the number is not the tested thing itself (plain geometry beside a validated model is CONTEXT, never borrowed validation). */
 export const COMPONENTS = {
-  m1:         { ev: 'level-p2-reach', verdict: 'validated', note: 'The Phase 2 reach model for ANY level price (distance in sigma over the vol-time left, range used, extension side, hour, class), fitted before 2022: Brier skill +1.7% [+1.1, +2.2] over plain vol-time geometry at 22:00 (+5.4% at 30 minutes), calibration gap 5.7 -> 0.9 points, every class above 0. Starts at 03:00 London; 0.05-3 sigma.' },
+  m1:         { ev: 'level-p2-reach', verdict: 'validated', note: 'The Phase 2 reach model for ANY level price (distance in sigma over the vol-time left, range used, extension side, hour, class), fitted before 2022: Brier skill +1.7% [+1.1, +2.2] over plain vol-time geometry at 22:00 (+5.4% at 30 minutes), calibration gap 5.7 -> 0.9 points, every class above 0. Starts at 03:00 London; 0.05-3 sigma; only the 34 CFD instruments it was fitted on (FX, gold, six indices) and only levels outside the day\'s range so far. Fitted at the 03/07/10/13/16 London checkpoints; between them the hour term is the last checkpoint\'s.' },
   identity:   { ev: 'level-p2-identity', verdict: 'null', note: 'What the level is (ladder line, pivot, prior high, round number, VWAP, fib...) adds no reach information: -0.01% [-0.03, +0.02]. The chance depends on where the level is, not what it is.' },
   session:    { ev: 'ladder-calibration', verdict: 'validated', note: 'The forecast ladder: price reaches its p50 line 50%, p75 25%, p90 10% of sessions by design; off by up to ~3 points by volatility regime.' },
   p90:        { ev: 'day-recon-p90-boundary', verdict: 'context', note: 'p90 is a frequency (about one day in ten), not a ceiling: two thirds of the days that reach it go a further quarter sigma.' },
-  week:       { ev: 'horizon-reversion', verdict: 'validated', note: 'Weekly lines that let sigma fade back to its long-run level beat the square-root-of-time lines on 33 of 33 instruments.' },
+  week:       { ev: 'horizon-reversion', verdict: 'validated', shown: 'context', note: 'Weekly lines that let sigma fade back to its long-run level beat the square-root-of-time lines on 33 of 33 instruments (high-low range pinball, lines drawn before the week). Here they are read as a reach from Monday\'s open on the open-to-high / open-to-low lines, redrawn each day from that day\'s sigma: not the tested object, so the chip says context.' },
   geometry:   { ev: 'level-p2-reach', verdict: 'validated', shown: 'context', note: 'Plain random-walk geometry, not a fitted model: within the day it overstates reach by 5-9 points at the decile level (Phase 2; M1 fixes that), and the near-miss study found it under-predicts at very short range. The chip is the Phase 2 model it is scaled to (to 22:00) or compared with (to Friday): read these as approximate.' },
   race:       { ev: 'level-p2-race', verdict: 'null', note: 'Which level first: a fitted model does not beat the random walk b/(a+b) (+0.05% [-0.03, +0.12]); b/(a+b) is already calibrated within about 2 points. Within a time limit the same walk is used, scaled so the reach of each level matches M1. Real lines race like placebo lines (live-range-line-race).' },
-  drawdown:   { ev: 'drawdown-forecast-error-fx', ev2: 'drawdown-forecast-error-idx', verdict: 'validated', note: 'After a 20-day S&P fall of 2% or more, FX ranges run about 6.7% and index ranges about 2.8% wider than the shipped lines (in-sample validated; the forward shadow record is research only).' },
+  drawdown:   { ev: 'drawdown-forecast-error-fx', ev2: 'drawdown-forecast-error-idx', verdict: 'validated', note: 'After a 20-day S&P fall of 2% or more, FX ranges run about 6.7% and index ranges about 2.8% wider than the shipped daily lines (validated on daily London sessions only, so the card never applies it to the week; the forward shadow record is research only).' },
   nextRung:   { ev: 'line-touch-reach', verdict: 'validated', note: 'After a line is touched, the odds of the next line before the close hold: p50 to p75 about 50%, p75 to p90 about 40%.' },
   exhaustion: { ev: 'exhaustion-v2-lockbox', verdict: 'validated', note: 'Out of sample (2026-08-24 to 2026-11-18, ~1,560 touches a track): next-rung odds fall through the London day, 25-27% observed after 16:00.' },
-  adverse:    { ev: 'vol-layer-stops-confirm-skill', verdict: 'validated', note: 'The vol-clock + spread model of adverse-move odds beats sigma-only on unseen data; it is not wired into the terminal yet, so the adverse-move odds here are the plain geometry.' },
+  adverse:    { ev: 'vol-layer-stops-confirm-skill', verdict: 'validated', shown: 'context', note: 'The vol-clock + spread model of adverse-move odds beats sigma-only on unseen data; it is not wired into the terminal yet, so the adverse-move odds here are the plain geometry (the chip says context: that validation is not borrowed).' },
   reaction:   { ev: 'level-context-engine', verdict: 'null', note: 'Fading or following a touch: net -0.18R / -0.15R, line minus placebo about 0 (645k futures + 1.1M CFD touches, 2020-2026). Placebo after costs.' },
   nearMiss:   { ev: 'level-near-miss-entry', verdict: 'null', note: 'Price turns before our lines no more than before placebo lines: 15.9% vs 15.8% (645k approach episodes).' },
   lineRace:   { ev: 'live-range-line-race', verdict: 'null', note: 'Continue or fade at a touch: real = placebo within 1 point pooled (92,914 real vs 96,912 placebo touches).' },
@@ -120,7 +126,7 @@ export function sessionsLeftToday(nowMs) {
 export const x7At = nowMs => { const h = checkpointAt(nowMs).hours; return X7_BUCKETS.find(b => h >= b.from && h < b.to) ?? null; };
 
 // ── helpers ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-export const drawdownClass = sym => (INDICES.has(sym) ? 'idx' : (/^[A-Z]{6}$/.test(sym) && sym !== 'BTCUSD' ? 'fx' : null));
+export const drawdownClass = sym => (INDICES.has(sym) ? 'idx' : (/^[A-Z]{6}$/.test(sym) && FX_CCY.has(sym.slice(0, 3)) && FX_CCY.has(sym.slice(3)) ? 'fx' : null));
 /** The drawdown layer for a market: { on, factor, spx20, cls } (on = the 20-day S&P fall rule fired and the market is FX or an index). */
 export function drawdownLayer(sym, spx20) {
   const cls = drawdownClass(String(sym).toUpperCase());
@@ -181,21 +187,29 @@ export function levelCard({ sym, fc, bars, weekBars = null, nowMs, level, level2
   const todayLeft = sessionsLeftToday(nowMs), londonMin = checkpointAt(nowMs).hours * 60;
   // Q1 REACH from now to 22:00 London: the frozen Phase 2 model M1 (js/levelReach.js, the S3 shadow's model): distance in sigma over the vol-time left, range used, extension side, hour, class
   const m1 = price => {
+    if (!M1_SYMS.has(sym)) return { ok: false, why: 'not fitted' };
     if (!(todayLeft > 0) || !r.started || londonMin >= END_MIN) return { ok: false, why: todayLeft > 0 ? 'the session has not started' : 'the market is shut (weekend) or the London day is over' };
     const sc = m1Scenarios({ sym, open: r.open, price: P, high: r.sessionHigh, low: r.sessionLow, sigmaDailyPct: fc.ladder?.sigma_daily_pct, londonMin }, [{ price, family: 'typed', label: 'typed' }]);
     if (!sc.ok) return { ok: false, why: sc.why };
     const x = sc.levels[0];
-    return x.eligible ? { ok: true, p: x.p, geo: x.geo, unit: sc.unit } : { ok: false, why: x.why };
+    if (!x.eligible) return { ok: false, why: x.why };
+    // the five horizons are separate logistics, so near the close a short window can come out above a longer one (at 21:30 the 30-minute window IS the rest of
+    // the day). A touch within 30 minutes is a touch within 60: a window that reaches 22:00 takes the 22:00 number, and each shorter one is capped by the next longer.
+    const p = { ...x.p }, ends = ['30', '60', '120', '240'].filter(k => londonMin + +k >= END_MIN);
+    for (const k of ends) p[k] = p.end;
+    for (const [k, k2] of [['240', 'end'], ['120', '240'], ['60', '120'], ['30', '60']]) if (p[k] != null && p[k2] != null) p[k] = Math.min(p[k], p[k2]);
+    return { ok: true, p, geo: x.geo, unit: sc.unit };
   };
   const mX = m1(level);
   if (!r.started) notes.push(todayLeft > 0 ? 'The London session of today has not started, so the session chance is its prior measured from the last price.' : 'The market is shut: the session chance is the prior of the next session measured from the last price, and "this week" is the week just ended.');
   const reachOut = { ROS: null, EOD: null, EOW: null, EOWnow: null };
   if (mX.ok) reachOut.ROS = { p: mX.p.end, by: { '30': mX.p['30'], '60': mX.p['60'], '120': mX.p['120'], '240': mX.p['240'] }, geometry: mX.geo.end, c: 'm1' };
-  else if (r.alreadyTouched) reachOut.ROS = { p: 1, touched: true, c: 'm1' };
-  else notes.push(`No from-now chance today: ${mX.why === 'beyond 3σ' ? 'the level is more than 3 sigma away (outside the range the model covers)' : mX.why === 'at price' ? 'the level is within 0.05 sigma of the price' : mX.why === 'model starts 03:00 London' ? 'the model starts at 03:00 London' : mX.why}.`);
+  else if (r.alreadyTouched) notes.push('No from-now chance today: price has already traded at this level today, and the Phase 2 model scored only levels outside the day\'s range so far (a from-now number would be outside what it was fitted on).');
+  else notes.push(`No from-now chance today: ${mX.why === 'not fitted' ? `the Phase 2 model was fitted on 34 CFD instruments (FX, gold, six indices) and ${sym} is not one of them` : mX.why === 'beyond 3σ' ? 'the level is more than 3 sigma (of the forecast ladder\'s sigma) away, outside the range the model covers' : mX.why === 'at price' ? 'the level is within 0.05 sigma of the price' : mX.why === 'model starts 03:00 London' ? 'the model starts at 03:00 London' : mX.why}.`);
+  if (mX.ok && sym === 'GOLD') notes.push('Gold is the Phase 2 model\'s weakest class: on the confirmation years it ran about 3 points above the realised touch rate on average (22.5% vs 19.6% by 22:00), with a worst-decile gap of 6.2 points. Read gold\'s from-now chance as a little high.');
   if (r.whole) {
     const withDd = dd.on ? fromAnchor(fc.ladder, side, r.open, level, dd.factor) : null;
-    reachOut.EOD = { p: r.whole.p, band: r.whole.band, tail: r.whole.tail, lines: r.whole.rungs, fromOpen: r.whole.fromOpen, c: r.whole.tail ? 'p90' : 'session', drawdown: withDd ? { p: withDd.p } : null };
+    reachOut.EOD = { p: r.alreadyTouched ? 1 : r.whole.p, touched: r.alreadyTouched, band: r.whole.band, tail: r.whole.tail, lines: r.whole.rungs, fromOpen: r.whole.fromOpen, c: r.whole.tail ? 'p90' : 'session', drawdown: withDd ? { p: withDd.p } : null };
   }
   // the week, from Monday's open on the reverting weekly ladder
   const wOpenMs = weekOpenMs(nowMs), wk = (b1.length ? b1 : b5).filter(b => b.time * 1000 >= wOpenMs), today = b5.filter(b => b.time * 1000 >= wOpenMs);
@@ -203,15 +217,15 @@ export function levelCard({ sym, fc, bars, weekBars = null, nowMs, level, level2
   const LW = ladderOf(fc, 'week');
   if (wBars.length && LW) {
     const wOpen = wBars[0].open, wHi = Math.max(...wBars.map(b => b.high)), wLo = Math.min(...wBars.map(b => b.low));
-    const w = fromAnchor(LW, side, wOpen, level), wDd = dd.on ? fromAnchor(LW, side, wOpen, level, dd.factor) : null;
+    const w = fromAnchor(LW, side, wOpen, level), wDd = null;   // the drawdown layer was validated on daily sessions only: never applied to the week
     const coversMonday = londonDate(wBars[0].time * 1000) === londonDate(wOpenMs);
-    if (w) reachOut.EOW = { p: w.p, tail: w.tail, lines: w.lines, open: wOpen, alreadyTouched: side === 'up' ? wHi >= level : wLo <= level, c: 'week', ladder: fc.ladder_weekly_rev ? 'reverting' : 'square-root', drawdown: wDd ? { p: wDd.p } : null, coversMonday };
+    if (w) { const wTouched = side === 'up' ? wHi >= level : wLo <= level; reachOut.EOW = { p: wTouched ? 1 : w.p, tail: w.tail, lines: w.lines, open: wOpen, alreadyTouched: wTouched, c: 'week', ladder: fc.ladder_weekly_rev ? 'reverting' : 'square-root', drawdown: wDd ? { p: wDd.p } : null, coversMonday }; }
     if (w && !coversMonday) notes.push('The hourly bars held do not reach back to Monday\'s open, so the week is measured from the earliest bar held: read the weekly chance loosely.');
   } else if (!LW) notes.push('No weekly ladder for this market, so no whole-week chance.');
   const weekLeft = sessionsLeftInWeek(nowMs);
   if (sigmaPrice && weekLeft > 0) {
     const s = sigmaPrice * Math.sqrt(weekLeft);
-    reachOut.EOWnow = { p: brownianReach(dist, s), s, sessionsLeft: weekLeft, c: 'geometry', drawdown: dd.on ? { p: brownianReach(dist, s * dd.factor) } : null };
+    reachOut.EOWnow = { p: brownianReach(dist, s), s, sessionsLeft: weekLeft, c: 'geometry', drawdown: null };
   }
   if (reachOut.EOW?.alreadyTouched) notes.push(`Price has already touched ${level} this week; the whole-week chance counts that touch (100% by the week's own measure from its open).`);
 
@@ -227,13 +241,33 @@ export function levelCard({ sym, fc, bars, weekBars = null, nowMs, level, level2
     const up = Math.max(level, level2), dn = Math.min(level, level2);
     if (up > P && dn < P) {
       const a = up - P, b = P - dn;
-      // the scale from each side's M1 reach (geometric mean of the two), so the race agrees with the reach numbers on the card
-      let s = null;
-      if (horizon === 'EOW') s = reachOut.EOWnow?.s ?? null;
-      else { const su = scaleAt(up), sd = scaleAt(dn); s = su && sd ? Math.sqrt(su * sd) : (su ?? sd ?? sToday); }
-      const rr = s ? race2(a, b, s) : null;
-      race = rr ? { up, down: dn, upFirst: rr.top, downFirst: rr.bottom, neither: rr.neither, upEventually: rr.top_eventually, s, end: horizonEnd, c: 'race',
-        drawdown: dd.on ? (() => { const x = race2(a, b, s * dd.factor); return { upFirst: x.top, downFirst: x.bottom, neither: x.neither }; })() : null } : { up, down: dn, error: 'No time left in this horizon (or no sigma), so the race has no answer.' };
+      // each side from the walk scaled to THAT side's M1 reach, then held to the bounds any joint law must meet: up-first <= the upper level's reach, down-first <=
+      // the lower's, and P(either) between the larger single reach and their sum. One shared scale (the geometric mean of the two) broke them: near the close it
+      // gave up-first 35% against a 5% reach of the same level.
+      let su = null, sd = null, Mu = null, Md = null;
+      if (horizon === 'EOW') su = sd = reachOut.EOWnow?.s ?? null;
+      else {
+        const mu = m1(up), md = m1(dn); Mu = mu.ok ? mu.p.end : null; Md = md.ok ? md.p.end : null;
+        su = scaleAt(up); sd = scaleAt(dn);
+        su ??= sd ?? sToday; sd ??= su ?? sToday;
+      }
+      const raceAt = f => {
+        if (!(su > 0) || !(sd > 0)) return null;
+        const ru = race2(a, b, su * f), rd = su === sd ? ru : race2(a, b, sd * f);
+        let upF = ru.top, dnF = rd.bottom;
+        const cu = f === 1 ? Mu : null, cd = f === 1 ? Md : null;
+        if (cu != null) upF = Math.min(upF, cu);
+        if (cd != null) dnF = Math.min(dnF, cd);
+        if (cu != null && cd != null) { dnF = Math.max(dnF, cd - upF); upF = Math.max(upF, cu - dnF); }
+        if (upF + dnF > 1) { const k = 1 / (upF + dnF); upF *= k; dnF *= k; }
+        return { top: upF, bottom: dnF, neither: Math.max(0, 1 - upF - dnF), top_eventually: ru.top_eventually };
+      };
+      const rr = raceAt(1);
+      race = rr ? { up, down: dn, upFirst: rr.top, downFirst: rr.bottom, neither: rr.neither, upEventually: rr.top_eventually, s: Math.sqrt(su * sd), end: horizonEnd, c: 'race',
+        drawdown: dd.on && horizon !== 'EOW' ? (() => { const x = raceAt(dd.factor); return { upFirst: x.top, downFirst: x.bottom, neither: x.neither }; })() : null } : { up, down: dn, error: 'No time left in this horizon (or no sigma), so the race has no answer.' };
+    } else if (up === P || dn === P) {
+      const at = up === P ? up : dn;
+      race = { sameSide: true, first: at, note: `${at} is at the price, so it counts as touched first; the other level's chance is its own reach.` };
     } else {
       const near = Math.abs(level - P) < Math.abs(level2 - P) ? level : level2;
       race = { sameSide: true, first: near, note: `Both levels are on the same side of the price, so ${near} (the nearer) is always touched first; the chance of the farther one is its own reach.` };
@@ -247,14 +281,15 @@ export function levelCard({ sym, fc, bars, weekBars = null, nowMs, level, level2
     for (const k of [0.25, 0.5, 1]) {
       const m = k * sigmaPrice, against = side === 'up' ? P - m : P + m;
       const x = sX ? race2(dist, m, sX) : null;    // top = X first (X is "a" above in the mirrored frame), bottom = adverse first
-      const y = sX && dd.on ? race2(dist, m, sX * dd.factor) : null;
+      const y = sX && dd.on && horizon !== 'EOW' ? race2(dist, m, sX * dd.factor) : null;
       mae.push({ k, m, price: against, againstFirst: x?.bottom ?? null, xFirst: x?.top ?? null, againstEventually: dist / (dist + m), drawdown: y ? { againstFirst: y.bottom } : null });
     }
   }
 
   // Q3 REACTION: what is known after a touch
   const L = fc.ladder, line = nearestLine(L, r.open, level, sigmaPrice);
-  const x7 = X7_MARKETS.has(sym) ? x7At(nowMs) : null;
+  // X7 was validated on touches of the forecast ladder's rungs (exhaustion-v2-lockbox), not on any price: shown only when the level sits on a ladder line today
+  const x7 = X7_MARKETS.has(sym) && line ? x7At(nowMs) : null;
   const after = {
     line,
     nextRung: line?.name === 'p50' ? { p: 0.5, from: 'p50', to: 'p75', c: 'nextRung' } : line?.name === 'p75' ? { p: 0.4, from: 'p75', to: 'p90', c: 'nextRung' } : line?.name === 'p90' ? { c: 'p90' } : null,

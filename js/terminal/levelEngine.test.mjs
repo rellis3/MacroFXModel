@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normCdf, brownianReach, impliedScale, race2, weekOpenMs, sessionsLeftInWeek, sessionsLeftToday, levelCard, ladderLevels, headline, parseReachArgs,
-  drawdownLayer, nearestLine, x7At, COMPONENTS, DRAWDOWN_RULE, X7_BUCKETS, HORIZONS } from './levelEngineCore.js';
+  drawdownLayer, drawdownClass, nearestLine, x7At, COMPONENTS, DRAWDOWN_RULE, X7_BUCKETS, HORIZONS, M1_SYMS } from './levelEngineCore.js';
 import { cardHtml, ladderHtml, footHtml, chip, clockOf } from './levelEngineView.js';
 import { DESK_EVIDENCE } from '../deskEvidence.js';
 import { RULE as DD_RULE } from '../drawdownShadowCore.js';
@@ -61,7 +61,9 @@ test('reach: M1 from now (with 30 min to 4 h), the session prior, the week and t
   assert.equal(near.reach.ROS.c, 'm1'); assert.ok(near.reach.EOD.p > far.reach.EOD.p); assert.ok(near.reach.EOW.p > near.reach.EOD.p, 'the week is wider than the day');
   assert.equal(near.reach.EOW.ladder, 'reverting'); assert.equal(near.reach.EOW.coversMonday, true); assert.ok(near.reach.EOWnow.p > 0 && near.reach.EOWnow.sessionsLeft > 2);
   const touched = levelCard({ ...base, level: 1.1002 });
-  assert.equal(touched.alreadyTouched, true); assert.equal(touched.reach.ROS.touched, true);
+  assert.equal(touched.alreadyTouched, true); assert.equal(touched.reach.ROS, null, 'traded today: M1 scored only levels outside the day\'s range, so no from-now number (never a fake 100%)');
+  assert.ok(touched.notes.some(n => /already traded at this level today/.test(n))); assert.equal(touched.reach.EOD.p, 1); assert.equal(touched.reach.EOD.touched, true);
+  assert.equal(headline(levelCard({ ...base, level: 1.1002, horizon: 'EOD' })).p, 1, 'the headline (and the clickable ladder) say 100% for a level the session already traded');
   const wk = levelCard({ ...base, level: 1.1012 }); assert.equal(wk.reach.EOW.alreadyTouched, true, 'the hourly bars reached 1.1015 earlier this week');
   assert.equal(headline(near).c, 'm1'); assert.equal(headline(levelCard({ ...base, level: 1.103, horizon: 'EOW' })).c, 'week');
 });
@@ -93,13 +95,18 @@ test('drawdown layer: on only after a 20-day S&P fall of 2% or more and only for
   assert.equal(drawdownLayer('EURUSD', -3).on, true); assert.equal(drawdownLayer('EURUSD', -1).on, false); assert.equal(drawdownLayer('GOLD', -5).on, false); assert.equal(drawdownLayer('NQ', -2).factor, 1.028);
   const off = levelCard({ ...base, level: 1.104, level2: 1.096 }), on = levelCard({ ...base, level: 1.104, level2: 1.096, spx20: -3.5 });
   assert.deepEqual(on.reach.ROS, off.reach.ROS, 'the base numbers are identical'); assert.equal(on.reach.EOD.p, off.reach.EOD.p);
-  assert.ok(on.reach.EOD.drawdown.p > on.reach.EOD.p && on.reach.EOW.drawdown.p > on.reach.EOW.p, 'wider ranges reach further'); assert.equal(off.reach.EOD.drawdown, null);
+  assert.ok(on.reach.EOD.drawdown.p > on.reach.EOD.p, 'wider ranges reach further'); assert.equal(off.reach.EOD.drawdown, null);
+  assert.equal(on.reach.EOW.drawdown, null, 'validated on daily sessions only: never applied to the week'); assert.equal(on.reach.EOWnow.drawdown, null);
+  const onW = levelCard({ ...base, level: 1.104, level2: 1.096, spx20: -3.5, horizon: 'EOW' }); assert.equal(onW.race.drawdown, null); assert.equal(onW.mae[0].drawdown, null);
   assert.ok(on.race.drawdown.neither < on.race.neither); assert.ok(on.mae[0].drawdown.againstFirst >= on.mae[0].againstFirst);
+  for (const s of ['SILVER', 'COPPER', 'NATGAS', 'BTCUSD', 'XAGUSD']) assert.equal(drawdownClass(s), null, `${s} is not an FX pair of the study`);
+  for (const s of ['EURUSD', 'GBPJPY', 'AUDNZD']) assert.equal(drawdownClass(s), 'fx'); assert.equal(drawdownLayer('SILVER', -5).on, false);
 });
 
 test('after a touch: the ladder line is named, next-line odds and the X7 window by London hour, and the reaction block is the three NULL entries', () => {
   const L = FC.ladder; assert.equal(nearestLine(L, 1.1, 1.1 * 1.0045, 0.0044).name, 'p75'); assert.equal(nearestLine(L, 1.1, 1.1 * 1.0035, 0.0044), null);
   const c = levelCard({ ...base, level: 1.1 * 1.0045 }); assert.equal(c.after.line.name, 'p75'); assert.equal(c.after.nextRung.p, 0.4); assert.equal(c.after.x7.p, 0.56, '10:18 London is the 07-12 window');
+  const off = levelCard({ ...base, level: 1.1 * 1.0035 }); assert.equal(off.after.line, null); assert.equal(off.after.x7, null, 'X7 was validated on touches of ladder rungs, not on any price');
   assert.equal(levelCard({ ...base, sym: 'GBPUSD', level: 1.104 }).after.x7, null, 'X7 is NQ, GOLD and EURUSD only');
   assert.equal(x7At(DAY + 17 * 3600e3).p, 0.28); assert.equal(X7_BUCKETS.length, 4);
   assert.deepEqual(c.after.reaction.items, ['reaction', 'nearMiss', 'lineRace']); for (const k of c.after.reaction.items) assert.equal(COMPONENTS[k].verdict, 'null');
@@ -133,7 +140,8 @@ test('the card text: every number with its chip, the reaction NULL said plainly,
   assert.ok(!/#[0-9a-f]{6}\b/i.test(h)); assert.ok(!/<1%|>99%/.test(h), 'the < and > of the edge cases are escaped');
   assert.ok(!cardHtml({ ok: false, error: '<img src=x>' }).includes('<img src=x>'));
   assert.ok(!/&amp;(lt|gt);/.test(h), 'no double escaping');
-  const t = cardHtml(levelCard({ ...base, level: 1.1002 })); assert.match(t, /le-big">touched</, 'a touched level says touched in the headline');
+  const t = cardHtml(levelCard({ ...base, level: 1.1002 })); assert.match(t, /le-big">touched today</, 'a level traded today says so in the headline, not 100%');
+  assert.match(cardHtml(levelCard({ ...base, level: 1.1002, horizon: 'EOD' })), /le-big">touched</);
   assert.equal(ladderLevels({ ...base, fc: { ladder: {} } }).length, 0);
 });
 
@@ -147,4 +155,53 @@ test('the REACH command parses market, one or two prices and a horizon, and open
   const row = surfaceById('panel.insight.reach'); assert.equal(row.hidden, 'preview'); assert.match(row.label, /level engine/);
   assert.equal(FEATURES.levelEngine.surface, 'panel.insight.reach'); assert.ok(FEATURES.levelEngine.where.join(' ').includes('REACH'));
   assert.match(PANELS.find(p => p.key === 'reach').pill, />Level engine</);
+});
+
+// ── review 2026-11-28 (wf2/level-engine-review): the claims the first tests did not pin down ─────────────────────────────────────────────────────
+const dayAt = (hr, f) => ({ ...base, bars: bars5(Math.floor(hr * 12), f), nowMs: DAY + hr * 3600e3 });
+
+test('race agrees with the two single reaches at every hour: up-first <= reach(up), down-first <= reach(down), max(reach) <= either <= sum', () => {
+  let checked = 0;
+  for (const hr of [3.5, 7.2, 10.3, 13.1, 16.2, 19.5, 21.5]) for (const [u, d] of [[1.101, 1.096], [1.1006, 1.09], [1.103, 1.0995], [1.1008, 1.0993], [1.1025, 1.0975]]) {
+    const st = dayAt(hr), c = levelCard({ ...st, level: u, level2: d }), Mu = levelCard({ ...st, level: u }).reach.ROS?.p, Md = levelCard({ ...st, level: d }).reach.ROS?.p, r = c.race;
+    if (Mu == null || Md == null || r.error) continue;
+    const either = r.upFirst + r.downFirst, at = `${hr}h ${u}/${d}`;
+    assert.ok(r.upFirst <= Mu + 1e-9, `${at} up-first ${r.upFirst} <= reach ${Mu}`); assert.ok(r.downFirst <= Md + 1e-9, `${at} down-first ${r.downFirst} <= reach ${Md}`);
+    assert.ok(either >= Math.max(Mu, Md) - 1e-9 && either <= Mu + Md + 1e-9, `${at} either ${either} in [${Math.max(Mu, Md)}, ${Mu + Md}]`);
+    close(r.upFirst + r.downFirst + r.neither, 1, 1e-9); checked++;
+  }
+  assert.ok(checked >= 25, `checked ${checked}`);
+});
+
+test('M1 from now: never down with a longer window, never up with distance, never above 1, at every hour (21:30: the 30-minute window is the rest of the day)', () => {
+  for (const hr of [3.2, 7.5, 10.3, 13.4, 16.1, 19.9, 21.5, 21.9]) {
+    const st = dayAt(hr); let prev = 1;
+    for (let k = 1; k <= 40; k++) {
+      const x = levelCard({ ...st, level: 1.1 + k * 0.0002 }).reach.ROS; if (!x) continue;
+      const seq = [x.by['30'], x.by['60'], x.by['120'], x.by['240'], x.p];
+      for (let i = 1; i < seq.length; i++) assert.ok(seq[i] >= seq[i - 1] - 1e-12, `${hr}h k ${k}: horizons ${seq.map(v => v.toFixed(4))}`);
+      assert.ok(x.p <= prev + 1e-12 && x.p >= 0 && x.p <= 1, `${hr}h k ${k}: distance`); prev = x.p;
+    }
+  }
+  const late = levelCard({ ...dayAt(21.5), level: 1.1006 }).reach.ROS; assert.equal(late.by['30'], late.p, 'a window that reaches 22:00 is the 22:00 number');
+});
+
+test('M1 only inside its fitted population: the 34 Phase 2 instruments (the Evidence entry\'s list), not silver, oil, crypto or futures keys', () => {
+  const ev = DESK_EVIDENCE.find(e => e.id === 'level-p2-reach'); assert.deepEqual([...M1_SYMS].sort(), [...ev.instruments].sort());
+  for (const sym of ['SILVER', 'WTI', 'BTCUSD', 'ES', 'ZN']) {
+    const c = levelCard({ ...base, sym, level: 1.104 }); assert.equal(c.reach.ROS, null, sym); assert.ok(c.notes.some(n => /fitted on 34 CFD instruments/.test(n)), sym);
+    assert.ok(c.reach.EOD, `${sym} keeps the session ladder number`);
+  }
+  assert.ok(levelCard({ ...base, sym: 'GOLD', level: 1.104 }).notes.some(n => /weakest class/.test(n)), 'gold carries its calibration caveat');
+});
+
+test('chips never borrow a validation: the week (redrawn lines read as a reach) and the adverse-move geometry say context', () => {
+  assert.match(chip('week'), /in-vd context/); assert.match(chip('adverse'), /in-vd context/); assert.match(chip('session'), /in-vd validated/);
+  const race = DESK_EVIDENCE.find(e => e.id === 'level-p2-race'); assert.match(race.result, /1\.7pp dev, 2\.3pp conf/, 'baseline calibration as in p2.json (1.73 dev, 2.28 conf)');
+});
+
+test('edge cases: a level at the price, two levels with one at the price, a weekend clock', () => {
+  const at = levelCard({ ...base, level: 1.1 }); assert.equal(at.ok, true); assert.equal(at.mae.length, 0); assert.match(cardHtml(at), /at the price/);
+  const one = levelCard({ ...base, level: 1.1, level2: 1.098 }); assert.equal(one.race.sameSide, true); assert.match(one.race.note, /at the price/);
+  const sat = levelCard({ ...base, nowMs: iso('2026-11-28T12:00:00Z'), level: 1.104 }); assert.equal(sat.ok, true); assert.equal(sat.reach.ROS, null); assert.equal(sat.reach.EOWnow, null);
 });
