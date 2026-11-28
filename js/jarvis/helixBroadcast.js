@@ -5,14 +5,14 @@
 //   POST /api/helix/broadcast-failed     { part, error }                                          -> a short failure note (at most FAIL_CAP a day)
 //   GET  /api/helix/broadcasts           owner only: the last published videos and podcast episodes, and the podcast feed's address
 //   GET  /api/helix/special-due          the rank-3 release (payrolls, CPI, a rate decision) printed 30-80 minutes ago that has no special yet, or none (read-only)
-//   POST /api/helix/podcast/episode?id=&title=&part=&seconds=  (audio/mpeg body) -> R2 helix/podcast/<id>.mp3, the feed, and the note. Needs the push secret.
+//   POST /api/helix/podcast/episode?id=&title=&part=&seconds=  (audio/mpeg body) -> R2 helix/podcast/<id>.mp3, the feed, and the note. The push secret when set.
 //   GET  /api/helix/podcast/<feedKey>/feed.xml | /<id>.mp3     the private podcast feed (an obscure address, not listed anywhere)
 //   GET  /api/helix/weekly-digest?week=YYYY-MM-DD[&format=text|json]  owner only: the WRITTEN weekly digest (a printable page; js/jarvis/helixDigestCore.js), read-only.
 //        Its link goes in the Friday weekly recap's Telegram note.
 //
 // AUTH (the laptop has no login cookie): the platform's laptop-push convention, the X-Auth-Token header against KV_WRITE_SECRET, the same variable /api/kv/set and the
 // footprint pushes use (read from the same env var on both sides). With KV_WRITE_SECRET set, every write here needs it. Without it, the two note routes stay usable but
-// bounded (a valid YouTube id, the link built here, deduped, capped per day); the podcast upload refuses (fails closed), since it writes files.
+// bounded (a valid YouTube id, the link built here, deduped, capped per day); the podcast upload is open but bounded too (an MP3 body, deduped, 6 episodes a day).
 // Description only: the notes say a video is up or a run failed, nothing else.
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { KV_KEY, readStore, addItem, addFailure, validatePublished, validateFailed, publishedText, failedText, specialsDue, validateEpisode, podcastRss } from './helixBroadcastCore.js';
@@ -22,6 +22,10 @@ import { byteRange } from './helixMediaCore.js';
 const R2_PREFIX = 'helix/podcast/';
 const origin = req => { const h = String(req.get('host') ?? ''); return `${/^(localhost|127\.0\.0\.1|\[::1\])(:|$)/.test(h) ? 'http' : 'https'}://${h}`; };      // Railway terminates TLS in front of us
 const londonDay = (deps, ms = Date.now()) => (deps.londonDate ? deps.londonDate(ms) : new Date(ms).toISOString().slice(0, 10));
+
+/** An MP3 body: an ID3 tag or an MPEG audio frame sync at the start. */
+export const isMp3 = b => !!b && b.length > 4 && ((b[0] === 0x49 && b[1] === 0x44 && b[2] === 0x33) || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0));
+export const OPEN_PODCAST_DAY = 6;
 
 /** The push secret check: true when the header matches KV_WRITE_SECRET, or when no secret is configured and `open` is allowed. */
 export function pushOk(header, secret, open) {
@@ -113,10 +117,17 @@ export async function mount(app, deps) {
   // ── the podcast ──
   app.post('/api/helix/podcast/episode', express.raw({ type: ['audio/mpeg', 'application/octet-stream'], limit: '60mb' }), async (req, res) => {
     res.set('Cache-Control', 'no-store');
-    if (!pushOk(req.get('X-Auth-Token'), secret(), false)) return res.status(401).json({ ok: false, error: 'the podcast upload needs KV_WRITE_SECRET set on the server and sent as X-Auth-Token' });
+    // OPT-IN like the rest of the platform (/api/kv/set, the footprint pushes): with KV_WRITE_SECRET set it is required; without it the upload is open but bounded
+    // (a real MP3 body, a valid episode id, deduped, at most OPEN_PODCAST_DAY episodes a London day). 2026-11-28: failing closed meant no episode ever published.
+    if (!pushOk(req.get('X-Auth-Token'), secret(), true)) return res.status(401).json({ ok: false, error: 'bad X-Auth-Token for KV_WRITE_SECRET' });
     if (!deps.r2?.configured?.()) return res.status(503).json({ ok: false, error: 'R2 is not configured on the server' });
     const buf = Buffer.isBuffer(req.body) ? req.body : null;
+    if (!secret() && !isMp3(buf)) return res.status(415).json({ ok: false, error: 'the body is not an MP3' });
     const v = validateEpisode(req.query, buf?.length ?? 0); if (!v.ok) return res.status(400).json(v);
+    if (!secret()) {
+      const idx0 = (await deps.r2.getJSON(`${R2_PREFIX}index.json`).catch(() => null)) ?? { episodes: [] }, today = londonDay(deps);
+      if ((idx0.episodes ?? []).filter(e => londonDay(deps, Date.parse(e.at)) === today).length >= OPEN_PODCAST_DAY) return res.status(429).json({ ok: false, error: `at most ${OPEN_PODCAST_DAY} podcast episodes a day without KV_WRITE_SECRET` });
+    }
     try {
       const fk = feedKey(), base = `${origin(req)}/api/helix/podcast/${fk}`;
       const ep = { ...v.ep, kind: 'podcast', at: new Date().toISOString() };

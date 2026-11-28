@@ -90,11 +90,12 @@ assert.ok(JSON.parse(store.get(KV_KEY)).items.length === 1);
 res = await call('GET /api/helix/special-due', { query: { now: String(nfp + 35 * 60e3) } }); assert.equal(res.body.due.length, 1);
 await call('POST /api/helix/broadcast-published', { body: { videoId: 'spcDEF12345', title: 'Special', part: 'special', releaseKey: '2026-12-04|USD|13:30' } });
 res = await call('GET /api/helix/special-due', { query: { now: String(nfp + 35 * 60e3) } }); assert.equal(res.body.due.length, 0, 'a published special closes its release');
-res = await call('POST /api/helix/podcast/episode', { query: { id: 'x12345', title: 't', part: 'morning' }, body: Buffer.alloc(5000) }); assert.equal(res.code, 401, 'podcast upload fails closed with no secret');
+res = await call('POST /api/helix/podcast/episode', { query: { id: 'x12345', title: 't', part: 'morning' }, body: Buffer.alloc(5000) }); assert.equal(res.code, 503, 'no secret: open but bounded, so it gets as far as R2 (absent here)');
 process.env.KV_WRITE_SECRET = 'top-secret-value';
 res = await call('POST /api/helix/broadcast-published', { body: { videoId: 'eveDEF12345', title: 'Evening', part: 'evening' } }); assert.equal(res.code, 401, 'with a secret set, it is required');
 res = await call('POST /api/helix/broadcast-published', { headers: { 'x-auth-token': 'top-secret-value' }, body: { videoId: 'eveDEF12345', title: 'Evening', part: 'evening' } }); assert.ok(res.body.sent);
 res = await call('POST /api/helix/podcast/episode', { headers: { 'x-auth-token': 'top-secret-value' }, query: { id: 'x12345', title: 't', part: 'morning' }, body: Buffer.alloc(5000) }); assert.equal(res.code, 503, 'no R2: refused');
 res = await call('GET /api/helix/podcast/:key/feed.xml', { params: { key: 'wrong' } }); assert.equal(res.code, 404);
 if (prevSecret == null) delete process.env.KV_WRITE_SECRET; else process.env.KV_WRITE_SECRET = prevSecret;
+{ const { isMp3 } = await import('./helixBroadcast.js'); assert.ok(isMp3(Buffer.from([0x49,0x44,0x33,4,0,0])) && isMp3(Buffer.from([0xff,0xfb,0x90,0x64,0])) && !isMp3(Buffer.alloc(10)), 'MP3 sniff'); }
 console.log('helixBroadcastCore: all tests passed');
