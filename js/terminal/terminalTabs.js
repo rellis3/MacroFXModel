@@ -55,6 +55,7 @@ import * as HDV from './humanDriversView.js';
 import { pineForCard, oandaOf } from '../deskBookPine.js';
 import * as AAV from './assetAnalysisView.js';
 import * as SR from './sharedRead.js';
+import { isLinesDefault } from '../globalReadCore.js';
 import * as RBV from './ratesBoardView.js';
 import * as FYV from './fedPathYieldsView.js';
 import * as BOEV from './boePathView.js';
@@ -186,12 +187,12 @@ function drawChain() {
   const liveLine = win === 'live' ? `<div class="tt-note" style="margin-top:0">${C.live?.frozen ? `<span class="chip gold mkt-chip">market closed</span> The last session: ${h(new Date(C.live.window.from).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }))} to ${h(new Date(C.live.window.to).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }))} London (the close before the last one to the last close), because the FX week is shut. Those are the last prints, not a forecast. It goes live by itself at the reopen. Yields, the real yield, the Bund gap and the dollar are implied; a chip with no live price keeps its last print (dashed) and its links are not judged.` : C.live ? `Live since the last daily close (${h(new Date(C.live.refAt).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }))} London), refreshed every minute; last ${h(hm(Date.parse(C.live.asOf)))}. Yields, the real yield, the Bund gap and the dollar are implied; a chip with no live price keeps its last print (dashed) and its links are not judged.` : C.liveErr ? `Live feed: ${h(C.liveErr)}` : 'Fetching live prices…'}</div>` : '';
   // the Fed path against the yields (js/fedPathYieldsCore.js): one rule-built line for this window; nothing on Live (no per-meeting strip intraday)
   const fw = T.chain.fed?.ok && win !== 'live' ? T.chain.fed.windows.find(x => x.win === win) : null;
-  const fedLine = fw?.available && fw.sentence ? `<div class="tt-note" style="margin-top:0"><b>Fed path → 2Y</b> (priced, not a forecast): ${h(fw.sentence)} <span class="muted">Detail: Macro tab.</span></div>` : '';
+  const fedLine = fw?.available && fw.sentence ? `<div class="tt-note" style="margin-top:0"><b>Fed path → 2Y</b> (priced, not a forecast): ${h(fw.sentence)} <span class="muted">Measured over ${fw.span} calendar day${fw.span === 1 ? '' : 's'}${fw.agoAsOf ? ` (${h(fw.agoAsOf)} → ${h(T.chain.fed.asOf ?? '')})` : ''}, the futures archive's own span${win === 1 ? '' : `, not the ${win} sessions the chips use, so its 2Y move can differ from the chip`}. Detail: Macro tab.</span></div>` : '';
   const watch = T.cache['/api/desk-watch'] && T._watch ? T._watch : null;
   const brokenNow = watch ? watch.states.filter(t => t.id.startsWith('chain-') && t.firing).length : null;
   box.innerHTML = `<div class="tt-head"><span class="lbl">The chain, today</span><h2 style="flex-basis:100%">Energy → inflation → yields → real yields → the dollar → gold, commodity FX and bitcoin; fear → the yen and credit</h2><span class="r" style="margin-left:0">${pills}</span></div>
 <div class="tt-sum">${h(sum.headline)}</div>
-<div class="tt-counts"><span class="vchip hold">${sum.holding} holding</span><span class="vchip broke">${sum.broken} broken</span><span class="vchip">${sum.quiet + sum.unmeasured} quiet</span>${sum.notlive ? `<span class="vchip">${sum.notlive} not live</span>` : ''}${brokenNow != null && win === 20 ? `<span class="chip" title="The desk watch judges the 20-day chain every 15 minutes and alerts on a break">watch: ${brokenNow} broken</span>` : ''}<span class="chip">${CB.winWord(win)}</span></div>
+<div class="tt-counts"><span class="vchip hold">${sum.holding} holding</span><span class="vchip broke">${sum.broken} broken</span><span class="vchip">${sum.quiet + sum.unmeasured} quiet</span>${sum.notlive ? `<span class="vchip">${sum.notlive} not live</span>` : ''}${sum.assumed ? `<span class="vchip" title="Live, the real yield is the 10Y's implied move with breakevens held flat, so its links are not judged">${sum.assumed} assumed</span>` : ''}${brokenNow != null && win === 20 ? `<span class="chip" title="The desk watch judges the 20-day chain every 15 minutes and alerts on a break">watch: ${brokenNow} broken</span>` : ''}<span class="chip">${CB.winWord(win)}</span></div>
 ${liveLine}${fedLine}
 <div class="cg-wrap" id="tt-cg">${CB.chainSvg(links, { win, nodeSel: C.nodeSel, linkSel: C.linkSel, showQuiet: C.showQuiet })}</div>
 <div class="cg-legend"><span><i class="hold"></i>holding · flows the textbook way</span><span><i class="broke"></i>broken · both moved, the wrong way round</span><span><i class="quiet"></i>quiet · an end inside its noise floor, not judged · <u data-act="quiet" role="button" tabindex="0">${C.showQuiet ? 'hide' : 'show'}</u></span><span><i class="up"></i><i class="dn" style="margin-left:-4px"></i>chip ring = which way that thing moved · gold ring = the end of a broken link</span><span>hover for what it is · tap a chip or a link for the why · scrolls sideways on a phone</span></div>
@@ -199,7 +200,7 @@ ${C.linkSel ? linkCard(links.find(l => l.id === C.linkSel)) : ''}${C.nodeSel ? n
 ${readHtml(links, now.vals)}
 ${linksList(links)}
 ${CSV.breakingHtml(C.stats, h)}
-<p class="tt-note">It explains; it does not predict: yields → FX forward coupling is a banked null here, and none of these links is a validated forward signal. Floors are set for 20 days and scaled by √(days/20) on shorter windows (an assumption, not a test).</p>`;
+<p class="tt-note">It explains; it does not predict: yields → FX forward coupling is a banked null here, and none of these links is a validated forward signal. 5D and 20D count sessions (trading days) on a daily series, and each link compares both ends over the same dates. Floors are set for 20 sessions and scaled by √(sessions/20) on shorter windows (an assumption, not a test).</p>`;
 }
 
 function endTxt(e) { return e?.delta == null ? '—' : e.text; }
@@ -207,7 +208,7 @@ function onChainHover(ev) {
   const t = ev.target.closest?.('[data-node],[data-link]'); if (!t || !el('tt-cg')?.contains(t)) return tip(null);
   const now = chainNow(); if (!now) return;
   if (t.dataset.node) {
-    const k = t.dataset.node, n = CB.CHAIN_NODES[k], e = now.links.flatMap(l => [l.a, l.b]).find(x => x?.key === k);
+    const k = t.dataset.node, n = CB.CHAIN_NODES[k], e = now.links.flatMap(l => [l.a0 ?? l.a, l.b0 ?? l.b]).find(x => x?.key === k);
     return tip(ev, `<b>${h(n.label)}</b><br>${e?.delta != null ? `${h(e.text)} ${h(CB.overWord(T.chain.win))}${e.moved ? '' : ` · inside its noise floor (${h(e.floorText ?? '')})`}${e.basis === 'last-print' && T.chain.win === 'live' ? ' · last print, not live' : ''}<br>` : 'no data<br>'}<span class="muted">${h(n.what.slice(0, 220))}</span>`);
   }
   const l = now.links.find(x => x.id === t.dataset.link); if (!l) return tip(null);
@@ -221,11 +222,11 @@ function linkCard(l) {
     : l.verdict === 'broken' ? `<b style="color:var(--gold)">Broken.</b> ${h(l.a.label)} ${h(l.a.text)} ${arr(l.a.dir)} but ${h(l.b.label)} ${h(l.b.text)} ${arr(l.b.dir)}, the wrong way round. ${h(l.read ?? '')}`
       : l.verdict === 'quiet' ? `<b>Quiet, not judged.</b> ${h(l.punch || l.read || '')}. A link is judged only when both ends move past their floors (${h(l.a.floorText ?? '')} for ${h(A.label)}, ${h(l.b.floorText ?? '')} for ${h(B.label)}).`
         : `<b>${CB.VWORD[l.verdict]}.</b> ${h(l.read ?? '')}`;
-  return `<div class="cg-card"><button class="x" data-act="close">close ✕</button><b>${h(A.label)} → ${h(B.label)}</b> <span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span><br><b>The textbook:</b> ${h(l.textbook)}. They should move ${way}.<br><b>Why:</b> ${h(A.what)} <span class="muted">→</span> ${h(B.what)}<div style="margin-top:6px">${status}</div>${l.dateGapDays > 3 ? `<div class="muted" style="margin-top:4px">The two ends printed ${l.dateGapDays} days apart (${h(l.a.asOf)} vs ${h(l.b.asOf)}).</div>` : ''}${CSV.linkStatsHtml(T.chain.stats?.links?.[l.id], h)}</div>`;
+  return `<div class="cg-card"><button class="x" data-act="close">close ✕</button><b>${h(A.label)} → ${h(B.label)}</b> <span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span><br><b>The textbook:</b> ${h(l.textbook)}. They should move ${way}.<br><b>Why:</b> ${h(A.what)} <span class="muted">→</span> ${h(B.what)}<div style="margin-top:6px">${status}</div>${l.alignedTo ? `<div class="muted" style="margin-top:4px">Both ends measured to ${h(l.alignedTo)}, the last date both have printed (${h(l.a0?.label)} last printed ${h(l.a0?.asOf)}, ${h(l.b0?.label)} ${h(l.b0?.asOf)}), so the link compares the same days. The chips show each one's own latest move.</div>` : ''}${l.dateGapDays > 3 ? `<div class="muted" style="margin-top:4px">The two ends printed ${l.dateGapDays} days apart (${h(l.a.asOf)} vs ${h(l.b.asOf)}).</div>` : ''}${CSV.linkStatsHtml(T.chain.stats?.links?.[l.id], h)}</div>`;
 }
 function nodeCard(k, links) {
   const n = CB.CHAIN_NODES[k]; if (!n) return '';
-  const e = links.flatMap(l => [l.a, l.b]).find(x => x?.key === k), outs = links.filter(l => l.a?.key === k), ins = links.filter(l => l.b?.key === k);
+  const e = links.flatMap(l => [l.a0 ?? l.a, l.b0 ?? l.b]).find(x => x?.key === k), outs = links.filter(l => l.a?.key === k), ins = links.filter(l => l.b?.key === k);
   const ways = outs.length ? `<div style="margin-top:6px"><b>What it moves</b> (textbook): when it rises, ${outs.map(l => `${h(CB.CHAIN_NODES[l.b.key]?.label)} should go <b>${l.sign > 0 ? 'up' : 'down'}</b>`).join('; ')}.</div>` : '';
   const from = ins.length ? `<div><b>What moves it:</b> ${ins.map(l => `${h(CB.CHAIN_NODES[l.a.key]?.label)} (${l.sign > 0 ? 'same way' : 'opposite'})`).join(', ')}.</div>` : '';
   const today = [...ins, ...outs].map(l => `<div><span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span> <a href="#" data-act="link" data-id="${h(l.id)}">${h(l.short)}</a>${l.punch ? ` <span class="muted">${h(l.punch)}</span>` : ''}</div>`).join('');
@@ -234,13 +235,15 @@ function nodeCard(k, links) {
   return `<div class="cg-card"><button class="x" data-act="close">close ✕</button><b>${h(n.label)}</b>${e?.delta != null ? ` · ${h(e.text)} ${h(CB.overWord(T.chain.win))}${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${h(n.what)}${split}${ways}${from}<div style="margin-top:6px">${today || 'No link touches it today.'}</div></div>`;
 }
 function linksList(links) {
-  const row = l => `<div class="tt-link"><span><span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span></span><span class="ends"><a href="#" data-act="link" data-id="${h(l.id)}" style="color:var(--tx);text-decoration:none"><b>${h(l.short)}</b></a> · ${h(l.a.label)} <b class="${l.a.moved ? (l.a.dir === 'up' ? 'up' : 'dn') : ''}">${h(endTxt(l.a))}</b> → ${h(l.b.label)} <b class="${l.b.moved ? (l.b.dir === 'up' ? 'up' : 'dn') : ''}">${h(endTxt(l.b))}</b>${l.expected && l.b.moved && l.expected !== l.b.dir ? ` <span class="chip gold" style="font-size:9px">textbook said ${l.expected === 'up' ? '↑' : '↓'}</span>` : ''}</span>${l.punch ? `<span class="p">${h(l.punch)}</span>` : ''}</div>`;
+  const row = l => `<div class="tt-link"><span><span class="vchip ${CB.VCLS[l.verdict]}">${CB.VWORD[l.verdict]}</span></span><span class="ends"><a href="#" data-act="link" data-id="${h(l.id)}" style="color:var(--tx);text-decoration:none"><b>${h(l.short)}</b></a> · ${h(l.a.label)} <b class="${l.a.moved ? (l.a.dir === 'up' ? 'up' : 'dn') : ''}">${h(endTxt(l.a))}</b> → ${h(l.b.label)} <b class="${l.b.moved ? (l.b.dir === 'up' ? 'up' : 'dn') : ''}">${h(endTxt(l.b))}</b>${l.alignedTo ? ` <span class="muted" style="font-size:10px">both to ${h(String(l.alignedTo).slice(5))}</span>` : ''}${l.expected && l.b.moved && l.expected !== l.b.dir ? ` <span class="chip gold" style="font-size:9px">textbook said ${l.expected === 'up' ? '↑' : '↓'}</span>` : ''}</span>${l.punch ? `<span class="p">${h(l.punch)}</span>` : ''}</div>`;
   const live = links.filter(l => l.verdict === 'broken' || l.verdict === 'holding').sort((a, b) => (a.verdict === 'broken' ? 0 : 1) - (b.verdict === 'broken' ? 0 : 1));
   const rest = links.filter(l => !(l.verdict === 'broken' || l.verdict === 'holding'));
   return `<div style="margin-top:14px">${live.map(row).join('') || '<div class="muted">No link has both ends moving on this window.</div>'}${rest.length ? `<details><summary>${rest.length} quiet or unmeasured links</summary>${rest.map(row).join('')}</details>` : ''}</div>`;
 }
 
 // the chain read: peeked for free on load; generated only on a click (a paid model call), as today.html does
+/** How old (minutes) a chain read may be before it is folded away as stale: about two days, half a day for the live snapshot. */
+export const CHAIN_READ_STALE_MIN = w => (w === 'live' ? 720 : 2 * 1440);
 function readHtml(links, vals) {
   const C = T.chain, w = C.win, st = (C.read[w] ??= { state: 'idle' });
   if (st.state === 'idle') { st.state = 'peek'; getJson(`/api/chain-read?window=${w}`).then(r => { C.read[w] = r?.ok ? { state: 'ready', data: r } : { state: 'none', data: r }; if (C.win === w) drawChain(); }); }
@@ -258,7 +261,14 @@ function readHtml(links, vals) {
   if (!r) return `<div class="tt-read">${head}<div class="muted" style="margin-top:6px">${st.state === 'peek' ? 'Looking for a cached read…' : st.state === 'loading' ? 'Reading the tape (usually under a minute). Everyone sees it once it is written.' : vs.state === 'generating' ? `A colleague is writing today's ${CB.winWord(w)} read now. It will appear here.` : st.state === 'error' ? `Could not build the read: ${h(st.err ?? '')}` : `No ${CB.winWord(w)} read has been written today. The board above is the measured chain; the button writes the trader's-voice explanation of it, over this window only.`}</div></div>`;
   const paras = String(r.read ?? '').split(/\n\s*\n|\n/).map(x => x.trim()).filter(Boolean);
   const stories = (r.stories ?? []).filter(x => x?.name && x.status !== 'absent');
-  const when = st.data.generatedAt ? new Date(st.data.generatedAt).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  const stale = age != null && age > CHAIN_READ_STALE_MIN(w);
+  const when = st.data.generatedAt ? new Date(st.data.generatedAt).toLocaleString('en-GB', { timeZone: 'Europe/London', weekday: 'short', ...(stale ? { day: 'numeric', month: 'short' } : {}), hour: '2-digit', minute: '2-digit' }) : '';
+  // a read older than its window can carry describes another market: it is folded away and says so, so it never sits under
+  // today's board as if it were the read of it
+  if (stale) {
+    const days = Math.round(age / 1440);
+    return `<div class="tt-read">${head}<details><summary><b>Stale read: written ${days} day${days === 1 ? '' : 's'} ago${when ? ` (${h(when)} London)` : ''}; the board above is today's.</b> <span class="muted">Its numbers are from then and can contradict the board. Open to see it anyway${vs.showGenerate ? ', or write today\'s with the button' : ''}.</span></summary>${r.hook ? `<div class="hook">“${h(r.hook)}”</div>` : ''}${paras.map(p => `<p>${h(p)}</p>`).join('')}</details></div>`;
+  }
   return `<div class="tt-read">${head}${r.hook ? `<div class="hook">“${h(r.hook)}”</div>` : ''}
 ${stories.length ? `<div class="tt-stories">${stories.map(x => `<span class="chip ${x.status === 'dominant' ? 'gold' : x.status === 'reloading' ? 'pur' : ''}" title="${h(`${x.legs ?? ''}${x.evidence ? ' — ' + x.evidence : ''}`)}">${h(x.name)} · ${h(x.status)}</span>`).join('')}</div>` : ''}
 ${paras.map(p => `<p>${h(p)}</p>`).join('')}
@@ -299,23 +309,32 @@ function onTodayClick(ev) {
 
 // ── Global Read (today.html "Global Read — full detail, every engine weighted by its evidence") ──
 const AXES = { risk: ['Risk appetite', 'risk-on', 'risk-off'], usd: ['Dollar', 'stronger', 'weaker'], rates: ['Rates', 'tightening', 'easing'], vol: ['Volatility', 'elevated', 'compressed'], credit: ['Credit', 'stress', 'easing'] };
-const stanceChip = s => { const t = String(s ?? ''); return `<span class="chip ${/fade/i.test(t) ? 'pur' : /follow|break/i.test(t) ? 'gold' : ''}" title="${h(t)}">${h(t || '—')}</span>`; };
+const stanceChip = s0 => { const s = s0 === 'NO READ' ? 'NO RANGE READ' : s0; const t = String(s ?? ''); return `<span class="chip ${/fade/i.test(t) ? 'pur' : /follow|break/i.test(t) ? 'gold' : ''}" title="${h(t)}">${h(t || '—')}</span>`; };
 const dirChip = d => { if (!d || d.pUp == null || Math.abs(d.pUp - 0.5) < 0.02) return '<span class="chip">no tested lean</span>'; const up = d.pUp > 0.5; return `<span class="chip ${up ? 'up' : 'dn'}" title="${h(d.label ?? '')}">${up ? '▲' : '▼'} ${Math.round(Math.max(d.pUp, 1 - d.pUp) * 100)}%</span>`; };
 function drawGR(g) {
   const box = el('tt-gr'); if (!box) return;
   if (!g?.cards) { box.innerHTML = `<div class="card muted">${h(g?.error ?? 'The Global Read is not available.')}</div>`; return; }
   const c = g.conviction ?? {}, dq = g.dataQuality ?? {}, probs = [...(dq.issues ?? []).map(i => `${i.problem}${i.where ? ` (${i.where})` : ''}`), ...(dq.feeds ?? []).map(f => `feed ${f.id}: ${f.state}`)];
   const tile = (l, v, s) => `<div class="tt-tile"><div class="lbl">${l}</div><div class="v">${v ?? 0}<small style="font-size:11px;color:var(--tx3)">/100</small></div><div class="s">${s}</div></div>`;
+  // every range card on the chosen lines with nothing on top: P(beyond p75) is 25% by construction, so a 0 here is a definition
+  const ranged = Object.values(g.cards).filter(k => k.range?.pAbove75 != null), allDef = ranged.length > 0 && ranged.every(k => isLinesDefault(k.range));
+  const rangeTile = allDef ? `<div class="tt-tile"><div class="lbl">Range conviction</div><div class="v">—</div><div class="s">every market's lines already carry today's vol; nothing is added on top, so there is no separate range call (the size is in the lines)</div></div>` : tile('Range conviction', c.range, 'how far today sits from a normal day');
+  const invNow = g.flags?.vixInv === true;
+  const scen = s => (invNow && /no VIX inversion/i.test(s.name)
+    ? `<div class="tt-row"><b>${h(s.name)}</b><span class="chip dn">does not apply</span><span class="muted" style="flex-basis:100%">The VIX curve is already inverted (VIX at or above VIX3M), so a base rate for a FIRST inversion within 5 sessions answers nothing today. ${h(s.text)}</span></div>`
+    : invNow && /stress transmits/i.test(s.name)
+      ? `<div class="tt-row"><b>Now: the VIX curve is inverted</b><span class="chip gold">current state</span><span class="muted" style="flex-basis:100%">${h(s.text)} The finding is for the first day of an inversion.</span></div>`
+      : `<div class="tt-row"><b>${h(s.name)}</b><span class="chip ${s.p != null ? 'gold' : ''}">${s.p != null ? pctTxt(s.p) : 'p not measured'}</span><span class="muted" style="flex-basis:100%">${h(s.text)}</span></div>`);
   const axes = Object.entries(g.axes ?? {}).map(([k, a]) => { const [name, pos, neg] = AXES[k] ?? [k, '+', '−']; const wd = Math.abs(a.score) < 0.15 ? 'neutral' : a.score > 0 ? pos : neg;
     return `<tr><td><b>${h(name)}</b></td><td class="n" style="color:${Math.abs(a.score) < 0.15 ? 'var(--tx2)' : 'var(--pur2)'}">${sg(a.score)} · ${h(wd)}</td><td class="n">${h(a.agree ?? '')}</td><td class="muted" style="font-size:12px">${h((a.inputs ?? []).map(i => i.text).join(' · '))}</td></tr>`; }).join('');
   const ccys = Object.values(g.currencies ?? {}).map(x => { const s = x.state ?? {};
     return `<tr class="tt-click" data-ccy2="${h(x.ccy)}" tabindex="0"><td><b>${FLAG[x.ccy] ?? ''} ${h(x.ccy)}</b></td><td class="n">${pctTxt(x.rangePressure)}</td><td>${h(x.directionView)}</td><td class="n ${dirCls(s.move20Pct)}">${s.move20Pct != null ? `${sg(s.move20Pct)}%` : '–'}</td><td class="n">${s.cb ? `${h(s.cb.regime)} ${s.cb.score}` : '–'}</td><td class="n">${s.cot ? `${ordinal(s.cot.specPct)}` : '–'}</td><td class="n">${s.realYield != null ? `${s.realYield}%` : '–'}</td><td class="n">${sg(s.spreadZ)}</td><td class="muted" style="font-size:12px">${h((x.notes ?? []).join(' · '))}</td></tr>`; }).join('');
   const pairs = (g.ranked ?? []).map(rk => { const k = g.cards[rk.sym]; if (!k) return '';
-    return `<tr class="tt-click" data-pair="${h(rk.sym)}" tabindex="0"><td><b>${h(nice(rk.sym))}</b></td><td>${stanceChip(k.plan?.stance)}</td><td class="n">${pctTxt(k.range?.pAbove75)}</td><td class="n">${k.range?.mult != null ? `×${k.range.mult}` : '—'}</td><td>${dirChip(k.direction)}</td><td class="muted" style="font-size:12px;min-width:220px">${h(k.plan?.lines ?? '')}</td></tr>`; }).join('');
+    return `<tr class="tt-click" data-pair="${h(rk.sym)}" tabindex="0"><td><b>${h(nice(rk.sym))}</b></td><td>${stanceChip(k.plan?.stance)}</td><td class="n"${isLinesDefault(k.range) ? ' title="The chosen lines already carry implied vol and nothing is added on top: 25% is how the p75 line is drawn, not a reading"' : ''}>${pctTxt(k.range?.pAbove75)}${isLinesDefault(k.range) ? ' <span class="muted">by def.</span>' : ''}</td><td class="n">${k.range?.mult != null ? `×${k.range.mult}` : '—'}</td><td>${dirChip(k.direction)}</td><td class="muted" style="font-size:12px;min-width:220px">${h(isLinesDefault(k.range) ? String(k.plan?.lines ?? '').replace(/^Normal day \(beyond p75 25%\)\./, 'The size is in the lines (they already carry implied vol); beyond p75 is 25% by construction, not a call.') : (k.plan?.lines ?? ''))}</td></tr>`; }).join('');
   box.innerHTML = `<div class="card glow"><div class="synth" style="font-style:normal;margin-top:0"><b>${h(g.headline)}</b>${g.meta?.asOf ? ` <span class="muted">· ${h(hm(Date.parse(g.meta.asOf)))} London · <a href="/api/global-read/record" target="_blank" rel="noopener">forward record →</a></span>` : ''}</div>
-<div class="tt-tiles">${tile('Range conviction', c.range, 'how far today sits from a normal day')}${tile('Direction conviction', c.direction, 'only tested inputs count')}${tile('Data quality', c.dataQuality, `${probs.length} problem${probs.length === 1 ? '' : 's'} flagged`)}</div>
+<div class="tt-tiles">${rangeTile}${tile('Direction conviction', c.direction, 'only tested inputs count')}${tile('Data quality', c.dataQuality, `${probs.length} problem${probs.length === 1 ? '' : 's'} flagged`)}</div>
 <div class="lbl" style="margin-top:12px">Global — the state</div><div class="scroll"><table><thead><tr><th>Axis</th><th>Reading</th><th>Agree</th><th>Made of</th></tr></thead><tbody>${axes}</tbody></table></div>
-${(g.scenarios ?? []).length ? `<div class="lbl" style="margin-top:14px">Scenarios</div>${g.scenarios.map(s => `<div class="tt-row"><b>${h(s.name)}</b><span class="chip ${s.p != null ? 'gold' : ''}">${s.p != null ? pctTxt(s.p) : 'p not measured'}</span><span class="muted" style="flex-basis:100%">${h(s.text)}</span></div>`).join('')}` : ''}
+${(g.scenarios ?? []).length ? `<div class="lbl" style="margin-top:14px">Scenarios</div>${g.scenarios.map(scen).join('')}` : ''}
 <div class="lbl" style="margin-top:14px">Currencies — pairs rolled up · tap for the currency card</div><div class="scroll"><table style="min-width:760px"><thead><tr><th>Ccy</th><th class="n">Range pressure</th><th>Direction</th><th class="n">20d</th><th class="n">CB</th><th class="n">COT</th><th class="n">Real 10Y</th><th class="n">2Y spread z</th><th>State</th></tr></thead><tbody>${ccys}</tbody></table></div>
 <div class="lbl" style="margin-top:14px">Pairs — ranked by clarity · tap for the pair page</div><div class="scroll"><table style="min-width:680px"><thead><tr><th>Market</th><th>Stance</th><th class="n" title="P(today's high-low beyond the ladder's p75); 25% is a normal day">Beyond p75</th><th class="n">Range ×</th><th>Direction</th><th>Plan</th></tr></thead><tbody>${pairs}</tbody></table></div>
 ${(g.invalidation ?? []).length ? `<div class="lbl" style="margin-top:14px">What would change this read</div>${g.invalidation.map(x => `<div class="tt-row">${h(x)}</div>`).join('')}` : ''}
@@ -327,16 +346,21 @@ const FAM = { 'macro-state': 'Macro', 'price-state': 'Trend', events: 'Events', 
 function drawDay(g) {
   const box = el('tt-day'); if (!box) return;
   if (!g?.cards) { box.innerHTML = '<div class="muted">No Global Read, so no Day Read.</div>'; return; }
-  const ch = g.meta?.chain, doms = (ch?.stories ?? []).filter(x => x.status === 'dominant').map(x => x.name);
+  // the chain read's hook and stories lead the Day Read only while the read is fresh: an 18-day-old "growth scare" is not today's thesis
+  const ch0 = g.meta?.chain, chStale = ch0?.ageMin != null && ch0.ageMin > CHAIN_READ_STALE_MIN(20), ch = chStale ? null : ch0, doms = (ch?.stories ?? []).filter(x => x.status === 'dominant').map(x => x.name);
   const rows = (g.ranked ?? []).map(rk => { const k = g.cards[rk.sym]; if (!k) return '';
     const st = k.direction?.story, pUp = st?.nLive ? st.pUp : 0.5, edge = Math.abs(pUp - 0.5);
     const lean = edge < 0.02 ? '<span class="fl mono">Two-way</span>' : `<span class="mono ${pUp > 0.5 ? 'up' : 'dn'}" title="${h(st?.label ?? '')}"><b>${pUp > 0.5 ? '▲ Up' : '▼ Down'}</b> ${Math.round(Math.max(pUp, 1 - pUp) * 100)}%</span>`;
-    const p75 = k.range?.pAbove75, day = p75 == null ? '' : p75 >= 0.32 ? '<span class="chip gold">Wide</span>' : p75 <= 0.18 ? '<span class="chip pur">Capped</span>' : '<span class="chip">Normal</span>';
+    // no range row: say so (a story lean can still show, which is why NZD read "Down" while the pairs table said no read);
+    // the chosen lines with nothing on top: the size is in the lines, the 25% is by construction
+    const p75 = k.range?.pAbove75, day = p75 == null ? '<span class="chip" title="No IV÷σ row for this market today, so no day-size read. The lean beside it is the story lean only.">no range read</span>'
+      : isLinesDefault(k.range) ? '<span class="chip" title="The chosen lines already carry implied vol and nothing is added on top, so P(beyond p75) is 25% by construction: the day\'s size is in the lines themselves (Pair tab).">In the lines</span>'
+        : p75 >= 0.32 ? '<span class="chip gold">Wide</span>' : p75 <= 0.18 ? '<span class="chip pur">Capped</span>' : '<span class="chip">Normal</span>';
     const fam = {}; for (const x of st?.reads ?? []) { const f = (fam[x.family] ??= { s: 0, notes: [] }); f.s += x.contrib ?? x.s * 0.05; f.notes.push(`${x.label}: ${x.note ?? ''}`); }
     const tot = Object.values(fam).reduce((a, f) => a + Math.abs(f.s), 0) || 1;
     const why = Object.entries(fam).filter(([, f]) => Math.abs(f.s) / tot >= 0.12).sort((a, b) => Math.abs(b[1].s) - Math.abs(a[1].s)).slice(0, 3).map(([k2, f]) => `<span class="${f.s > 0 ? 'up' : 'dn'}" title="${h(f.notes.join(' · '))}">${f.s > 0 ? '▲' : '▼'} ${h(FAM[k2] ?? k2)}</span>`).join('');
     return `<div class="tt-day tt-click" data-pair="${h(rk.sym)}" tabindex="0"><b>${h(nice(rk.sym))}</b>${lean}${day || '<span></span>'}<span class="why">${why}</span></div>`; }).join('');
-  box.innerHTML = `${ch?.hook ? `<div class="thesis" style="margin-top:0">“${h(ch.hook)}”</div>` : `<div class="thesis" style="margin-top:0">${h(g.headline ?? '')}</div>`}${doms.length ? `<div class="muted">The live stories: ${doms.map(h).join(' · ')}</div>` : ''}
+  box.innerHTML = `${ch?.hook ? `<div class="thesis" style="margin-top:0">“${h(ch.hook)}”</div>` : `<div class="thesis" style="margin-top:0">${h(g.headline ?? '')}</div>`}${doms.length ? `<div class="muted">The live stories: ${doms.map(h).join(' · ')}</div>` : chStale ? `<div class="muted">The last chain read was written ${Math.round(ch0.ageMin / 1440)} days ago, so its stories are not shown as today's.</div>` : ''}
 <div class="tt-day" style="font:600 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--tx3)"><span>Market</span><span>Story lean</span><span>Day size</span><span>Because</span></div>${rows}
 <p class="tt-note"><b>Day size</b> (wide / normal / capped, from P(range beyond p75)) is tested. <b>Up / down</b> is the story lean: every read that points a way, family-weighted, scored forward as a shadow; it is not validated.</p>`;
 }
@@ -352,7 +376,8 @@ ${(() => { const all = [...firing.map(t => row(t, 'firing')), ...chain.map(t => 
 <p class="tt-note">Telegram on change. Each condition carries this desk's verdict on it: ${ownerLink('evidence.html', 'the evidence book', { target: '_blank', suffix: ' →' })}</p>`;
 }
 function precVerdict(row) {
-  if (!row?.all?.enough) return ['too few days', ''];
+  // "enough" is judged on the INDEPENDENT count (overlapping 20-session windows): say so, with that count, beside the raw n
+  if (!row?.all?.enough) return [row?.all?.nEffective != null ? `too few independent (~${row.all.nEffective})` : 'too few days', ''];
   if (row.unstable) return ['did not hold up', 'gold'];
   const m = row.all.mean; if (m == null || Math.abs(m) < 0.05) return ['no clear tendency', ''];
   return [m > 0 ? 'drifted higher' : 'drifted lower', m > 0 ? 'up' : 'dn'];
@@ -363,12 +388,16 @@ function drawPrec(m) {
   if (!st?.ok || !now?.key) { box.innerHTML = `<div class="muted">${h(m?.error ?? 'No precedent study.')}</div>`; return; }
   const rows = (st.pairs ?? []).map(p => ({ p, row: st.regimes?.[now.key]?.[p]?.[20] })).filter(x => x.row);
   box.innerHTML = `<div style="font-size:13px">Today is <b>${h(now.describe)}</b>. That has happened on <b>${st.counts?.[now.key] ?? 0}</b> days since ${h(st.dates?.from ?? '')}.</div>
-${rows.map(({ p, row }) => { const [w, c] = precVerdict(row), a = row.all; return `<div class="tt-row tt-click" data-pair="${h(p)}" tabindex="0" title="${h(`n=${a.n} (~${a.nEffective ?? '?'} independent) · median ${a.median ?? '–'}% · earlier half ${row.is?.mean ?? '–'}%, later half ${row.oos?.mean ?? '–'}%`)}"><b style="min-width:64px">${h(nice(p))}</b><span class="chip ${c}">${h(w)}</span><span class="mono ${dirCls(a.mean)}">${a.mean != null ? `${sg(a.mean)}%` : '—'}</span><span class="w">${a.hitRate != null ? `${a.hitRate}% up · ` : ''}n=${a.n}${row.unstable ? ' ⚠' : ''}</span></div>`; }).join('') || '<div class="muted">No pair has enough history in this regime.</div>'}
-<p class="tt-note">A historical base rate over the 20 sessions after, not a forecast. ⚠ = the sign flipped between the two halves of history. Windows overlap, so no significance test is offered.</p>`;
+${rows.map(({ p, row }) => { const [w, c] = precVerdict(row), a = row.all; return `<div class="tt-row tt-click" data-pair="${h(p)}" tabindex="0" title="${h(`n=${a.n} (~${a.nEffective ?? '?'} independent) · median ${a.median ?? '–'}% · earlier half ${row.is?.mean ?? '–'}%, later half ${row.oos?.mean ?? '–'}%`)}"><b style="min-width:64px">${h(nice(p))}</b><span class="chip ${c}">${h(w)}</span><span class="mono ${dirCls(a.mean)}">${a.mean != null ? `${sg(a.mean)}%` : '—'}</span><span class="w">${a.hitRate != null ? `${a.hitRate}% up · ` : ''}n=${a.n}${a.nEffective != null ? ` (~${a.nEffective} independent)` : ''}${row.unstable ? ' ⚠' : ''}</span></div>`; }).join('') || '<div class="muted">No pair has enough history in this regime.</div>'}
+<p class="tt-note">A historical base rate over the 20 sessions after, not a forecast. ⚠ = the sign flipped between the two halves of history. Windows overlap, so n days hold only about n÷20 independent outcomes; "too few" is judged on that count. No significance test is offered.</p>`;
 }
 function drawTimeline() {
   const box = el('tt-tl'); if (!box || !T.chain.inputs || typeof D === 'undefined' || !D.ev) return;
-  const v20 = CB.chainVals(T.chain.inputs, 20), v5 = CB.chainVals(T.chain.inputs, 5), w = T._watch;
+  // "three weeks ago -> last week" is the 15 sessions that END five sessions ago, not the whole 20-session window (which is what it
+  // printed: the 20D chips' numbers): every series is cut at the date five sessions back and measured over 15 sessions from there
+  const sess = (T.chain.inputs.ohlc?.nq ?? []).map(p => p.date), cut = sess.at(-6) ?? null, from20 = sess.at(-21) ?? null, last = sess.at(-1) ?? null;
+  const v20 = cut ? CB.chainVals(trimInputs(T.chain.inputs, cut), 15) : {}, v5 = CB.chainVals(T.chain.inputs, 5), w = T._watch;
+  const md = d => (d ? new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '?');
   const bp = v => (v == null ? '?' : `${v >= 0 ? '+' : ''}${Math.round(v)}bp`);
   const rates = v => { const a = v.us2y?.delta, b = v.us10y?.delta; if (a == null && b == null) return 'No rates data.'; const big = Math.max(Math.abs(a ?? 0), Math.abs(b ?? 0)); return big < 8 ? `Rates went nowhere (2Y ${bp(a)}, 10Y ${bp(b)})` : `Rates ${(a ?? b) > 0 ? 'rose' : 'fell'}${big >= 25 ? ' hard' : ''} (2Y ${bp(a)}, 10Y ${bp(b)}), ${Math.abs(a ?? 0) > Math.abs(b ?? 0) ? 'the front end leading' : 'the long end leading'}`; };
   const dollar = v => (v.dxy?.delta == null ? '' : Math.abs(v.dxy.delta) < 0.4 ? '; the dollar barely moved' : `; the broad dollar ${v.dxy.delta > 0 ? 'up' : 'down'} ${Math.abs(v.dxy.delta).toFixed(1)}%`);
@@ -378,15 +407,14 @@ function drawTimeline() {
   const logLines = (a, b) => { const L = logIn(a, b), seen = new Set(), u = L.filter(e => !seen.has(e.id) && seen.add(e.id)); return u.length ? `<div><span class="lbl">watch</span> ${u.slice(0, 4).map(e => h(String(e.label).replace(/^Chain link broken: /, 'broke: ').replace(/^Setup watch · /, ''))).join(' · ')}${u.length > 4 ? ` +${u.length - 4}` : ''}</div>` : ''; };
   const G10 = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ']);
   // /api/events carries the rated forward rows too (review 2026-11-27): one copy of each release
-  const seenAhead = new Set();
-  const ahead = [...(D.ev ?? []), ...((T.cache['/api/calendar-ahead'] && T._calAhead) || [])].map(e => ({ ...e, ms: Number(e.ms ?? Date.parse(e.time)) })).filter(e => /high/i.test(e.impact ?? '') && G10.has(e.country) && Number.isFinite(e.ms)).filter(e => { const k = `${e.country}|${String(e.event).toLowerCase()}|${e.ms}`; return !seenAhead.has(k) && seenAhead.add(k); });
+  const ahead = CB.weekAheadRows(D.ev ?? [], (T.cache['/api/calendar-ahead'] && T._calAhead) || [], { now, days: 28, countries: G10 }).rows;
   const evIn = (a, b) => { const seen = new Set(); return ahead.filter(e => e.ms > now + a * dd && e.ms <= now + b * dd).sort((x, y) => x.ms - y.ms).filter(e => { const k = `${e.country}|${e.event}|${Math.round(e.ms / 36e5)}`; return !seen.has(k) && seen.add(k); }); };
   const evLines = L => (L.length ? L.slice(0, 5).map(e => `<div><span class="mono">${h(dayName(e.ms))}</span> ${h(e.country)} ${h(e.event)}</div>`).join('') + (L.length > 5 ? `<div class="muted">+${L.length - 5} more</div>` : '') : '<div class="muted">No high-impact release on the calendar yet.</div>');
   const chainNowN = (w?.states ?? []).filter(t => t.id.startsWith('chain-') && t.firing), firing = (w?.states ?? []).filter(t => t.firing && !t.id.startsWith('chain-'));
   const book = Object.entries(D.cards ?? {}).filter(([, c]) => (DIR[c.rating] ?? 0) !== 0).sort((a, b) => (b[1].size ?? 0) - (a[1].size ?? 0)).slice(0, 4);
   box.innerHTML = `<div class="tt-tl">
-<div class="col"><h4>Three weeks ago → last week</h4><div class="lead">${h(rates(v20) + dollar(v20))}.</div>${logLines(5, 21)}</div>
-<div class="col"><h4>This week</h4><div class="lead">${h(rates(v5) + dollar(v5) + fear(v5))}.</div>${logLines(0, 5)}</div>
+<div class="col"><h4>Three weeks ago → last week</h4><div class="muted" style="font-size:11px">20 to 5 sessions ago (${h(md(from20))} → ${h(md(cut))})</div><div class="lead">${h(rates(v20) + dollar(v20))}.</div>${logLines(5, 21)}</div>
+<div class="col"><h4>This week</h4><div class="muted" style="font-size:11px">the last 5 sessions (${h(md(cut))} → ${h(md(last))})</div><div class="lead">${h(rates(v5) + dollar(v5) + fear(v5))}.</div>${logLines(0, 5)}</div>
 <div class="col now"><h4>Today</h4><div class="lead">${chainNowN.length ? `${chainNowN.length} chain link${chainNowN.length === 1 ? '' : 's'} broken` : 'Nothing broken in the chain'}; ${firing.length ? `${firing.length} watch condition${firing.length === 1 ? '' : 's'} on` : 'no watch condition on'}.</div>${chainNowN.length ? `<div><span class="lbl">broken</span> ${chainNowN.map(t => h(String(t.label).replace('Chain link broken: ', ''))).join(' · ')}</div>` : ''}${book.length ? `<div><span class="lbl">book</span> ${book.map(([n, c]) => `<a href="#" data-pair="${h(n)}" class="${(DIR[c.rating] ?? 0) > 0 ? 'up' : 'dn'}" style="text-decoration:none">${h(n)} ${(DIR[c.rating] ?? 0) > 0 ? '▲' : '▼'}</a>`).join(' · ')}</div>` : ''}</div>
 <div class="col ahead"><h4>Next week</h4>${evLines(evIn(0, 7))}</div>
 <div class="col ahead"><h4>The month after</h4>${evLines(evIn(7, 28))}<div class="muted" style="margin-top:6px">Tested here: quiet stretches stay quiet and wild ones stay wild, more often than not.</div></div></div>
@@ -396,14 +424,16 @@ function drawWeek(ca, es) {
   const box = el('tt-week'); if (!box) return;
   T._calAhead = ca?.rows ?? [];
   const now = Date.now(), today = new Date().toISOString().slice(0, 10), hist = es?.series ?? {}, C = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
-  const ff = (D.ev ?? []).map(e => ({ ...e, ms: Number(e.ms ?? Date.parse(e.time)) })), ffLast = Math.max(0, ...ff.map(e => e.ms).filter(Number.isFinite));
-  const rows = [...ff, ...T._calAhead.filter(e => e.ms > ffLast)].filter(e => Number.isFinite(e.ms) && e.ms > now && e.ms <= now + 7 * 864e5 && /high/i.test(e.impact ?? '') && C.has(e.country) && new Date(e.ms).toISOString().slice(0, 10) !== today).sort((a, b) => a.ms - b.ms);
-  if (!rows.length) { box.innerHTML = '<div class="muted">No high-impact release left this week.</div>'; drawTimeline(); return; }
+  // one copy per release; a forward row counts only with ForexFactory's own rating (chainBoard.weekAheadRows)
+  const wk = CB.weekAheadRows(D.ev ?? [], T._calAhead, { now, days: 7, countries: C });
+  const rows = wk.rows.filter(e => new Date(e.ms).toISOString().slice(0, 10) !== today);
+  const droppedNote = wk.dropped ? ` ${wk.dropped} forward row${wk.dropped === 1 ? '' : 's'} from the Nasdaq list ${wk.dropped === 1 ? 'is' : 'are'} left out: ForexFactory does not rate ${wk.dropped === 1 ? 'it' : 'them'}, and a guessed rating is not shown.` : '';
+  if (!rows.length) { box.innerHTML = `<div class="muted">No high-impact release left this week.${h(droppedNote)}</div>`; drawTimeline(); return; }
   const byDay = {}; for (const e of rows) (byDay[dayName(e.ms)] ??= []).push(e);
   const past = e => { const p = hist[`${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}`] ?? []; if (!p.length) return '<span class="muted" style="font-size:11px">no history stored</span>';
     return `<span class="mono" title="${h(p.map(x => `${String(x.time ?? '').slice(0, 10)}: ${x.actual} vs ${x.estimate ?? '—'}`).join(' · '))}">${p.slice(0, 6).map(x => (x.beat === 'above' ? '<b class="up">▲</b>' : x.beat === 'below' ? '<b class="dn">▼</b>' : '<span class="muted">=</span>')).join(' ')}</span>`; };
   box.innerHTML = Object.entries(byDay).map(([d, es2]) => `<div class="lbl" style="margin:10px 0 2px">${h(d)}</div>${es2.map(e => `<div class="tt-row"><span class="mono" style="min-width:44px">${h(hm(e.ms))}</span><b style="min-width:26px">${h(e.country)}</b><span style="flex:1;min-width:140px">${h(e.event)}${e.estimate ? ` <span class="muted">est ${h(e.estimate)}</span>` : ''}</span>${past(e)}</div>`).join('')}`).join('')
-    + '<p class="tt-note">▲ above forecast · ▼ below · = in line, newest first. A run of beats or misses is the context that makes the next one readable; it is not a forecast of it.</p>';
+    + `<p class="tt-note">▲ above forecast · ▼ below · = in line, newest first. A run of beats or misses is the context that makes the next one readable; it is not a forecast of it.${h(droppedNote)}</p>`;
   drawTimeline();
 }
 

@@ -87,7 +87,7 @@ t('trendWord reads the 60-day correlation in the textbook direction', () => {
 t('divergenceLine says it in plain English, with the usual link\'s implied move', () => {
   const real = { label: 'US real yields', unit: 'bp' }, gold = { label: 'gold', unit: 'pct' };
   const a = divergenceLine({ win: 20, fromMove: 25, toMove: Math.log(1.012) * 100, implied: Math.log(0.97) * 100, z: 2.31 }, real, gold);
-  assert.equal(a, 'US real yields up 25bp in 20 days, but gold rose 1.2% where the usual link implies -3.0%: 2.3σ away from the usual link.');
+  assert.equal(a, 'US real yields up 25bp in 20 sessions, but gold rose 1.2% where the usual link implies -3.0%: 2.3σ away from the usual link.');
   const b = divergenceLine({ win: 1, fromMove: -10, toMove: 0.05, implied: 1.5, z: -2.6 }, real, gold);
   assert.match(b, /^US real yields down 10bp in 1 day, but gold barely moved/);
   const c = divergenceLine({ win: 5, fromMove: 10, toMove: -6, implied: -2, z: -3 }, real, gold);
@@ -121,7 +121,7 @@ t('a fresh 20-day divergence shows up in the divergence list with its line', () 
   const B = buildChainStats({ series, links: [{ id: 'real-gold', short: 'real yields → gold', from: 'real', to: 'gold', sign: -1 }], nodes: { real: { label: 'US real yields', unit: 'pt' }, gold: { label: 'gold', unit: 'pt' } } });
   const s = B.links['real-gold'];
   assert.ok(s.z >= 2.5, String(s.z)); assert.equal(s.zWin, 20);
-  assert.match(s.line, /^US real yields up 24\.0 pt in 20 days, but gold/);
+  assert.match(s.line, /^US real yields up 24\.0 pt in 20 sessions \(\d+ \w+ → \d+ \w+\), but gold/);
   assert.equal(B.divergences[0].id, 'real-gold'); assert.equal(B.divergences[0].alert, true);
 });
 

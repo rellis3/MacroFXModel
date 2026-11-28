@@ -62,3 +62,11 @@ test('unknown keys are shown under Other with their key, and the table has no du
   assert.equal(new Set(SERIES.map(s => s.key)).size, SERIES.length);
   for (const s of SERIES) { assert.ok(GROUPS[s.group], s.key); assert.ok(['rate', 'ratio'].includes(s.kind), s.key); assert.ok(s.label.length > 2 && !/_/.test(s.label), `${s.key}: a plain label`); }
 });
+
+test('review 2026-11-27: implied correlation moves in points, a credit spread level reads as a percent', () => {
+  assert.equal(fmtMove(6.3, metaFor('cor3m')), '+6.30 pts');
+  assert.equal(fmtMove(-12.4, metaFor('cor1m')), '-12.4 pts');
+  assert.ok(!/%/.test(fmtMove(9.1, metaFor('cor3m'))));
+  assert.equal(analyse('ccc', dates(3), [14.0, 14.1, 14.17]).lastFmt, '14.17%');
+  assert.equal(analyse('cor3m', dates(3), [12, 15, 19.1]).lastFmt, '19.10 pts');
+});
