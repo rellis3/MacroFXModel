@@ -11,13 +11,19 @@ Generated 2026-11-28.
 | | n |
 |---|---|
 <<<<<<< HEAD
+<<<<<<< HEAD
 | claims tested (validated + null + underpowered) | **651** |
 | validated | 201 |
+=======
+| claims tested (validated + null + underpowered) | **653** |
+| validated | 203 |
+>>>>>>> origin/wf2/surprise-pooled
 | null | 260 |
 | underpowered | 190 |
 | context (base rates, descriptions: not counted as tests) | 87 |
 | pre-registrations with no banked verdict (below) | 91 |
 
+<<<<<<< HEAD
 **What the count says (Lesson 02 §05).** If none of the 651 claims were real, tests at the usual 5% size would still pass
 about **32.6** of them by luck. 201 passed, so most passes are unlikely to be luck alone, but
 **roughly 33 of the 201 could be**. Which ones cannot be told from the backtest.
@@ -33,6 +39,11 @@ about **32.6** of them by luck. 201 passed, so most passes are unlikely to be lu
 about **32.5** of them by luck. 200 passed, so most passes are unlikely to be luck alone, but
 **roughly 33 of the 200 could be**. Which ones cannot be told from the backtest.
 >>>>>>> origin/wf2/rerun-b
+=======
+**What the count says (Lesson 02 §05).** If none of the 653 claims were real, tests at the usual 5% size would still pass
+about **32.7** of them by luck. 203 passed, so most passes are unlikely to be luck alone, but
+**roughly 33 of the 203 could be**. Which ones cannot be told from the backtest.
+>>>>>>> origin/wf2/surprise-pooled
 An independent second test is what separates them: a confirmation on untouched data (as US-EXTRAS-CONFIRM did) or the
 forward record (the nightly forecast scorecard). Until then, treat a single-test pass as probable, not proven.
 
@@ -774,6 +785,7 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-28 | g10-2y-gap-l5h20 | macro | null | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
 | 2026-11-28 | g10-2y-gap-l5h5 | macro | underpowered | forge/G10_2Y_GAP_MOMENTUM_PREREG.md |
 <<<<<<< HEAD
+<<<<<<< HEAD
 | 2026-11-28 | gold-line-vwap-stretch-filter | volatility | underpowered | forge/GOLD_LINE_VWAP_STRETCH_FILTER_PREREG.md |
 =======
 | 2026-11-28 | mv-dislocation-forward | macro | underpowered | MD files/OUTCOME_LOOP.md |
@@ -781,6 +793,11 @@ forward record (the nightly forecast scorecard). Until then, treat a single-test
 | 2026-11-28 | residual-pca-cot | positioning | underpowered | forge/RESIDUAL_PCA_FAMILY_PREREG.md |
 | 2026-11-28 | yields-to-fx-direction | macro | null | analysis/output/rerun-2026-11-28/RESULTS.md |
 >>>>>>> origin/wf2/rerun-b
+=======
+| 2026-11-28 | surprise-size-pooled-fx | events | validated | forge/SURPRISE_SIZE_POOLED_PREREG.md |
+| 2026-11-28 | surprise-size-pooled-us-indices | events | underpowered | forge/SURPRISE_SIZE_POOLED_PREREG.md |
+| 2026-11-28 | surprise-size-pooled-us-risk | events | validated | forge/SURPRISE_SIZE_POOLED_PREREG.md |
+>>>>>>> origin/wf2/surprise-pooled
 
 ## Pre-registered, but no banked verdict
 

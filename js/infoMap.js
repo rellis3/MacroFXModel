@@ -153,6 +153,7 @@ export const EXCLUDED_PAGES = {
   'tpo-research.html': 'research view: TPO / initial-balance study (tpo-initial-balance)',
   'desk-admin.html': 'owner admin: which Desk Terminal surfaces the desk login sees (js/terminal/tabRegistry.js)',
   'daily-open-fib.html': 'tool: fib tracker',
+  'surprise-size.html': 'research view: does a bigger data surprise mean a bigger release-window range beyond the production forecast (surprise-size-pooled, 8 economies, reads analysis/output/surprise-size-pooled/results.json)',
   'bias-evidence.html': 'research view: the evidence behind the bias card (built from analysis/output/bias-evidence/manifest.json)',
   'drift.html': 'research view',
   'noise-area-build.html': 'research tool: the noise-area strategy builder (study noise-area-build); not an information feed',
