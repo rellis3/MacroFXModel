@@ -134,7 +134,8 @@ const WM = { spx: 'SPX', nq: 'NQ', r2k: 'RUT' };
 const wmInner = key => {
   const ix = LL.payload?.indices; if (!ix?.ok) return '';
   if (key === 'smallVsBig') { const a = ix.rows?.RUT?.chgPct, b = ix.rows?.NQ?.chgPct; return fin(a) && fin(b) ? `<span class="ll-live"><i class="ll-pulse"></i>${sg(a - b, 2)}pp live</span>` : ''; }
-  const r = ix.rows?.[WM[key]]; return r && fin(r.chgPct) ? `<span class="ll-live ${tone(r.chgPct)}"><i class="ll-pulse"></i>${sg(r.chgPct, 2)}% live</span>` : '';
+  // the live price beside its move, against the close it is measured from, so it is not read against the tile's older close (review 2026-11-27)
+  const r = ix.rows?.[WM[key]]; return r && fin(r.chgPct) ? `<span class="ll-live ${tone(r.chgPct)}" title="live ${r.live} against the daily close ${r.ref}${r.refDate ? ` of ${r.refDate}` : ''}"><i class="ll-pulse"></i>live ${fin(r.live) ? `${(+r.live).toLocaleString('en-GB', { maximumFractionDigits: 1 })}, ` : ''}${sg(r.chgPct, 2)}% since the close</span>` : '';
 };
 export const liveWiderChip = key => (WM[key] || key === 'smallVsBig' ? ` <span data-lv="wm:${esc(key)}">${wmInner(key)}</span>` : '');
 
