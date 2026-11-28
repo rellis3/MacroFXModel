@@ -136,8 +136,8 @@ test('planBroadcast QUICK: cold open, the lead, one scene per segment (first ava
   const all = P.items.filter(x => x.kind === 'scene'), scenes = [...all.slice(1), all[0]];      // indices below as before: the outlook (played first) is last here
   assert.match(scenes[0].text, /^Starting with the markets\. Of 5 on the board, 2 are up, 2 down, 1 barely moving\. Beyond the lead, /, 'the lead already named gold and the yen');
   assert.equal(scenes[1].text, 'The chain: 5 links holding, 2 broken.', 'the chain is one line: the counts, no body');
-  assert.equal(scenes[2].text, 'Rates. The headline number: 65 basis points. The Fed has about 65 basis points of cuts priced.', 'QUICK drops the picture-naming opener and keeps the number');
-  assert.match(scenes[3].text, /^Currencies\. All 2 pairs are on the move\. The franc/); assert.match(scenes[5].text, /^Positioning, and where the options sit: 5,813, the gamma flip\./);
+  assert.equal(scenes[2].text, 'Rates. The Fed has about 65 basis points of cuts priced.', 'QUICK drops the picture-naming opener and keeps the number; the segue never speaks a bare figure (Helix 27 Nov 2026)');
+  assert.match(scenes[3].text, /^Currencies\. All 2 pairs are on the move\. The franc/); assert.match(scenes[5].text, /^Positioning, and where the options sit\. Spot is 0\.1 percent below the flip\./, 'the figure stays on screen, not in the segue');
   assert.match(scenes[6].text, /^The outlook for today: three high-impact releases on the clock\./);
   assert.deepEqual(scenes[2].figure, { value: '65 bp', label: '' }); assert.deepEqual(scenes[5].figure, { value: '5,813', label: 'gamma flip' }, 'a scene may give its own key number');
   assert.equal(scenes[6].view, 'ahead');
@@ -152,7 +152,7 @@ test('planBroadcast FULL plays every available scene of a tier; missing views fa
   const full = planBroadcast(inp, { hooks: HOOKS, have: new Set(['reactor', 'cbpaths', 'yields', 'gpillar', 'gterrain', 'ahead']), mode: 'full' });
   assert.deepEqual(full.segments.map(s => s.scenes.join()), ['dayahead', 'candles', 'reactor', 'cbpaths,yields', 'gpillar,gterrain']);
   assert.match(full.items.find(x => x.scene?.id === 'yields').text, /^The curve/, 'only the first scene of a segment carries the segue');
-  assert.match(full.items.find(x => x.scene?.id === 'cbpaths').text, /^Rates\. The headline number: 65 basis points\. Rate paths: what futures price\./, 'FULL keeps the whole line');
+  assert.match(full.items.find(x => x.scene?.id === 'cbpaths').text, /^Rates\. Rate paths: what futures price\. The Fed has about 65/, 'FULL keeps the whole line');
   // nothing new is registered: the HUD's own views carry the programme
   const bare = planBroadcast(inp, { hooks: [], have: new Set(), mode: 'quick' });
   assert.deepEqual(bare.segments.map(s => `${s.num}/${s.total} ${s.name}:${s.scenes}`), ['1/4 The Outlook:ahead', '2/4 Markets:candles', '3/4 The Chain:chain']);
@@ -184,7 +184,7 @@ test('the anchor script: one "First", every segue carries a number, no sentence 
       assert.doesNotMatch(spoken, /That is where the story is/);
       const sents = spoken.split(/(?<=[.!?])\s+/).map(x => x.toLowerCase()); assert.equal(new Set(sents).size, sents.length, `a sentence repeats: ${sents.filter((x, i) => sents.indexOf(x) !== i)}`);
       for (const x of P.items.filter(y => y.kind === 'scene' && P.items.find(z => z.kind === 'scene' && z.seg.id === y.seg.id) === y)) {
-        const head = x.text.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ');
+        const head = x.text.split(/(?<=[.!?])\s+/).slice(0, 3).join(' ');      // the segue, a picture-naming sentence, then the number (a bare figure is never a segue: Helix 27 Nov 2026)
         assert.match(head, /\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/i, `segue without a number: ${x.text}`);
       }
     }
@@ -211,9 +211,9 @@ test('wantedSceneIds: every hook scene the programme may ask for, no built-ins',
   const w = wantedSceneIds();
   for (const id of ['reactor', 'chainfly', 'moneyglobe', 'surprise', 'cycle', 'cbpaths', 'yields', 'fxgrid', 'ccy', 'ivsurf', 'vol', 'gpillar', 'gterrain', 'cot', 'gamma', 'dayahead', 'shockwave', 'wx', 'daymove', 'dayreview', 'shocktoday', 'tomorrow']) assert.ok(w.includes(id), id);
   assert.ok(!w.includes('candles') && !w.includes('chain') && !w.includes('ahead') && !w.includes('rangeused'));
-  assert.equal(SEGMENTS.length, 18);
-  assert.equal(SEGMENTS.filter(x => x.evening).length, 4);
-  assert.equal(SEGMENTS.filter(x => x.wide).length, 7, 'the wide programme market-wide sections');
+  assert.equal(SEGMENTS.length, 17, 'the scored-calls segment (biasday) is out of the broadcast: description only (Helix 27 Nov 2026)');
+  assert.equal(SEGMENTS.filter(x => x.evening).length, 3);
+  assert.equal(SEGMENTS.filter(x => x.wide).length, 6, 'the wide programme market-wide sections');
 });
 
 test('the ticker: biggest against its usual move first, arrows and signs, quiet markets marked, junk dropped', () => {
