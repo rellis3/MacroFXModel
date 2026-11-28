@@ -100,6 +100,13 @@ def write_table(fid, df):
     pq.write_table(pa.Table.from_pandas(df, preserve_index=False), OUT / f"{fid}.parquet", compression="snappy")
     return df
 
+def drop_weekend_rows(rows):
+    """DATA_SPEC §5 #9 (fixed 2026-11-28): OANDA D candles 2002-2013 carry Saturday (a copy of Friday) and
+    Sunday (a short evening stub) rows for FX and gold. Rows are closes, so dropping the weekend dates folds
+    their move into Monday's close-to-close change; nothing else moves. Anything that counts rows as trading
+    days (252 annualisation, EWMA, horizonDays, daily rebalances) was off before this."""
+    return [r for r in rows if datetime.strptime(r["date"], "%Y-%m-%d").weekday() < 5]
+
 # ── builders ──────────────────────────────────────────────────────────────────
 def build_oanda_d1(e):
     key, base = oanda_key()
@@ -122,7 +129,7 @@ def build_oanda_d1(e):
             break
         frm = last
         time.sleep(0.2)
-    return write_series(e["id"], rows)
+    return write_series(e["id"], drop_weekend_rows(rows))
 
 def _fred_vintages(series_id, key, obs_start="2000-01-01", yearly=False):
     """Every ALFRED vintage. Monthly series fit one call (≈310 vintage dates < the 2,000 cap);

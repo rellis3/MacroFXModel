@@ -1,0 +1,52 @@
+{
+ "px_d1_audusd": {
+  "rows_before": 7111,
+  "rows_after": 6348,
+  "dropped": 763
+ },
+ "px_d1_eurusd": {
+  "rows_before": 7172,
+  "rows_after": 6350,
+  "dropped": 822
+ },
+ "px_d1_gbpusd": {
+  "rows_before": 7148,
+  "rows_after": 6351,
+  "dropped": 797
+ },
+ "px_d1_nas100": {
+  "rows_before": 6131,
+  "rows_after": 6088,
+  "dropped": 43
+ },
+ "px_d1_nzdusd": {
+  "rows_before": 6989,
+  "rows_after": 6251,
+  "dropped": 738
+ },
+ "px_d1_spx500": {
+  "rows_before": 6133,
+  "rows_after": 6088,
+  "dropped": 45
+ },
+ "px_d1_usdcad": {
+  "rows_before": 7134,
+  "rows_after": 6347,
+  "dropped": 787
+ },
+ "px_d1_usdchf": {
+  "rows_before": 7155,
+  "rows_after": 6347,
+  "dropped": 808
+ },
+ "px_d1_usdjpy": {
+  "rows_before": 7172,
+  "rows_after": 6350,
+  "dropped": 822
+ },
+ "px_d1_xauusd": {
+  "rows_before": 5692,
+  "rows_after": 5331,
+  "dropped": 361
+ }
+}
