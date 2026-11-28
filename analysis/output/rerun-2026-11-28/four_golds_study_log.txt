@@ -7,4 +7,4 @@ G2: 765 60-session windows 2010-12-30->2026-08-21: rates gold 0.21, dollar gold 
   2024: {"rates":0.3,"dollar":0.38,"both":0.2,"neither":0.12,"wrongSign":0}
   2025: {"rates":0,"dollar":0.48,"both":0.02,"neither":0.5,"wrongSign":0}
   2026: {"rates":0.031,"dollar":0.563,"both":0.344,"neither":0.063,"wrongSign":0}
-written C:\Users\relli\AppData\Local\Temp\claude\181f22e54fe44b96\ba057ee6-408e-4750-b791-01b9637fe5de\scratchpad\wf2-rerun-a\analysis\output\four_golds.json
+written analysis\output\four_golds.json

@@ -20,4 +20,4 @@ JPY: jp10y 2008-01-04 -> 2026-11-26 (4621); vs FRED monthly: 2026-03 -10bp, 2026
   Y2 next range: big gap x1.201 [1.142, 1.261] n=1121 | led-rise x1.216 [1.107, 1.272] n=104 | led-fall x1.365 [1.188, 1.561] n=88 | control x1.117 [1.084, 1.151] n=2533
   Y2 post-hoc: big gap - control +0.084 [0.025, 0.149] (n 1121 vs 2533) | led-rise - control +0.099 [-0.018, 0.163] (n 104 vs 2533) | led-fall - control +0.248 [0.075, 0.426] (n 88 vs 2533) | US-led x1.146 [1.047, 1.286] n=175 | big gap - US-led +0.055 [-0.095, 0.174] (n 1121 vs 175)
   Y3 next-day textbook: after led-rise 51% [42-61] n=105 | after led-fall 49% [39-60] n=89 | 20d windows agree 75% [65-82] n=102
-written C:\Users\relli\AppData\Local\Temp\claude\181f22e54fe44b96\ba057ee6-408e-4750-b791-01b9637fe5de\scratchpad\wf2-rerun-a\analysis\output\nonus_yields.json
+written analysis\output\nonus_yields.json

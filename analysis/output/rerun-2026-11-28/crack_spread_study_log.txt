@@ -5,4 +5,4 @@ blow-outs: 61 episodes; disagreement windows 174, agreement 221
   C1 XAUUSD: after 25 blow-outs mean daily range 1.012 ATR vs control 1.062; diff {"nA":25,"nB":3079,"diff":-0.049,"lo":-0.155,"hi":0.069}
   C2: corr(oil,bei) 0.403, corr(crack,bei) 0.19, partial(crack|oil) 0.184 [0.105, 0.266]; disagreement windows dBei median -4bp (n=165) vs agreement -14bp (n=211); diff {"nA":165,"nB":211,"diff":14.548,"lo":4.771,"hi":25.469}
   C3 crude higher 20 sessions on: after disagreement 62% [48-75] n=45 | after agreement 47% [32-63] n=34 | after any -5% 54% [47-61] n=184 | unconditional 52% [47-57] n=370
-written C:\Users\relli\AppData\Local\Temp\claude\181f22e54fe44b96\ba057ee6-408e-4750-b791-01b9637fe5de\scratchpad\wf2-rerun-a\analysis\output\crack_spread.json
+written analysis\output\crack_spread.json

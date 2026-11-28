@@ -30,4 +30,4 @@ VERDICT: NULL — no horizon clears the gate of all three instruments plus both 
   mirror at 1d: up real on 1/3, down real on 3/3
   mirror at 5d: up real on 0/3, down real on 3/3
 
-written ..\..\..\..\..\..\AppData\Local\Temp\claude\181f22e54fe44b96\ba057ee6-408e-4750-b791-01b9637fe5de\scratchpad\wf2-rerun-a\analysis\output\yield_move_fx_range.json
+written analysis\output\yield_move_fx_range.json

@@ -18,4 +18,4 @@ corr(DSPX, VIX) = 0.474 on 3129 common days
     D2a  crowded+FALLING vs control:  5d -0.028 [-0.145, 0.103] (n 31 vs 1858) | 20d -0.096 [-0.214, 0.029] (n 30 vs 1858)
     D2b  GATE rising MINUS falling:   5d +0.115 [-0.008, 0.267] (n 67 vs 31) | 20d +0.271 [0.112, 0.465] (n 67 vs 30)
     D2c  direction 20d (return):  falling +0.007 [-0.017, 0.03] (n 30 vs 1858) | rising -0.007 [-0.024, 0.008] (n 67 vs 1858)
-written C:\Users\relli\AppData\Local\Temp\claude\181f22e54fe44b96\ba057ee6-408e-4750-b791-01b9637fe5de\scratchpad\wf2-rerun-a\analysis\output\dispersion.json
+written analysis\output\dispersion.json
