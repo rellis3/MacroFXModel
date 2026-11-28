@@ -28,7 +28,7 @@ test('news wire: tier 1-2 since the cut-off, tier first then newest, no repeats;
 
 test('the curve: spread, weekly change, percentile and the 2-year; an old print says its day', () => {
   const rb = { tenors: [{ k: '2y', level: 4.63, chg5d: -17 }], slopes: [{ k: '2s10s', bp: 29, asOf: '2026-11-23', ageDays: 2, chg5d: 2, pct1y: 8 }] };
-  assert.equal(curveText(rb), "The Treasury curve as of Monday's close: the two-to-ten year spread is 29 basis points, steeper by 2 over the week. That is the 8th percentile of the past year. The two-year yield is 4.63 percent, down 17 basis points on the week.");
+  assert.equal(curveText(rb), "The Treasury curve at the latest published close, Monday's: the two-to-ten year spread is 29 basis points, steeper by 2 over the week. That is the 8th percentile of the past year. The two-year yield is 4.63 percent, down 17 basis points on the week.");
   assert.equal(curveText({}), '');
 });
 
