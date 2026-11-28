@@ -71,6 +71,40 @@ def config(ccys, name, universe):
             "out": os.path.join(OUT, name), "universe": universe, "repro": None}, audit
 
 
+OANDA_CSV = os.path.join(OUT, "oanda", "daily_1700ny.csv")
+OANDA_PAIR = {"EUR": ("EURUSD", 1), "GBP": ("GBPUSD", 1), "AUD": ("AUDUSD", 1), "NZD": ("NZDUSD", 1),
+              "JPY": ("USDJPY", -1), "CAD": ("USDCAD", -1), "CHF": ("USDCHF", -1), "NOK": ("USDNOK", -1), "SEK": ("USDSEK", -1)}
+
+
+def config_oanda(ccys, name, universe, repro=None):
+    """Same model on OANDA 17:00 NY daily closes (scripts/residual-g10-layers/fetch_oanda_daily.py, run where
+    OANDA is reachable). Rows: days with every pair of this universe present, 2016-01-04 -> 2026-08-20."""
+    px = pd.read_csv(OANDA_CSV, index_col=0, parse_dates=True)
+    p = px[[OANDA_PAIR[c][0] for c in ccys]]
+    p = p[(p.index >= START) & (p.index <= END) & (p.index.dayofweek < 5)].dropna()
+    lr = np.log(p).diff().dropna()
+    r = pd.DataFrame(0.0, index=lr.index, columns=["USD"] + ccys)
+    for c in ccys:
+        r[c] = OANDA_PAIR[c][1] * lr[OANDA_PAIR[c][0]]
+    audit = {"rows": int(len(p)), "first": str(p.index[0].date()), "last": str(p.index[-1].date())}
+    return {"r": r, "pair_lr": lr, "cost": COST, "rate_paths": {c: RATE_PATHS[c] for c in ["USD"] + ccys},
+            "out": os.path.join(OUT, name), "universe": universe, "repro": repro}, audit
+
+
+def main_oanda():
+    """Step 1 asserts that the 7 FX8 pairs from the new download reproduce the FX8 study (0.432 / 0.378); if they
+    do not, the download differs from the panel and nothing else runs. Step 2 is G10 at the 17:00 close."""
+    fx8 = ["EUR", "GBP", "AUD", "NZD", "JPY", "CAD", "CHF"]
+    runs = {}
+    for name, ccys, uni, repro in [("fx8_oanda", fx8, "FX8 on OANDA 17:00 NY (reproduction check)", (0.432, 0.378)),
+                                   ("g10_oanda", fx8 + ["NOK", "SEK"], "G10 on OANDA 17:00 NY", None)]:
+        cfg, audit = config_oanda(ccys, name, uni, repro)
+        print(f"== {name}: {uni}  {audit}")
+        res = Ly.main(cfg)
+        runs[name] = {"audit": audit, "base_net": res["base"]["net"], "base_net_carry": res["base"]["net_carry"]}
+    json.dump(runs, open(os.path.join(OUT, "runs_summary_oanda.json"), "w"), indent=1)
+
+
 def main():
     fx8 = ["EUR", "GBP", "AUD", "NZD", "JPY", "CAD", "CHF"]
     runs = {}
@@ -84,4 +118,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main_oanda() if len(sys.argv) > 1 and sys.argv[1] == "oanda" else main()
