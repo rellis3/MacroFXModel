@@ -1,0 +1,4 @@
+fill_any     IS -0.085 (n 333) | OOS +0.302 [+0.111,+0.485] n 749 total +226.1R w/o top1% +104.3R gross +0.416 PF 1.40 | fake -0.004 p95 +0.114 rank 100% | p 0.003 | armed 1593 chased 41 cancelled 297 filled 1248
+ignore_any   IS -0.188 (n 260) | OOS +0.032 [-0.134,+0.217] n 620 total +20.0R w/o top1% -71.0R gross +0.134 PF 1.04 | fake -0.135 p95 -0.023 rank 98% | p 0.374 | armed 1526 chased 56 cancelled 452 filled 1012
+fill_same    IS -0.107 (n 328) | OOS +0.293 [+0.107,+0.468] n 741 total +216.7R w/o top1% +94.9R gross +0.406 PF 1.39 | fake -0.009 p95 +0.116 rank 100% | p 0.003 | armed 1552 chased 0 cancelled 310 filled 1235
+ignore_same  IS -0.213 (n 253) | OOS +0.023 [-0.132,+0.212] n 610 total +14.1R w/o top1% -73.8R gross +0.124 PF 1.03 | fake -0.137 p95 -0.021 rank 98% | p 0.386 | armed 1470 chased 0 cancelled 469 filled 994

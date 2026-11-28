@@ -4,24 +4,68 @@
  "point_value": 100.0,
  "tick": 0.1,
  "dp": 2,
+ "levels": [
+  "oh50",
+  "oh75",
+  "oh90",
+  "ol50",
+  "ol75",
+  "ol90",
+  "cup50",
+  "cup75",
+  "cup90",
+  "cdn50",
+  "cdn75",
+  "cdn90",
+  "hlH50",
+  "hlH75",
+  "hlH90",
+  "hlL50",
+  "hlL75",
+  "hlL90"
+ ],
  "costs": {
   "slip_in": 0.1,
   "slip_out": 0.1,
   "commission": 0.12
  },
+ "variants": {
+  "fill_any": "Same-candle retouch fills \u00b7 chase any line (the tested system)",
+  "ignore_any": "Same-candle retouch ignored \u00b7 chase any line",
+  "fill_same": "Same-candle retouch fills \u00b7 chase same line only (PDF)",
+  "ignore_same": "Same-candle retouch ignored \u00b7 chase same line only (PDF)"
+ },
+ "primary": "fill_any",
+ "counts": {
+  "fill_any": {
+   "armed": 1593,
+   "chased": 41,
+   "cancelled": 297,
+   "filled": 1248
+  },
+  "ignore_any": {
+   "armed": 1526,
+   "chased": 56,
+   "cancelled": 452,
+   "filled": 1012
+  },
+  "fill_same": {
+   "armed": 1552,
+   "chased": 0,
+   "cancelled": 310,
+   "filled": 1235
+  },
+  "ignore_same": {
+   "armed": 1470,
+   "chased": 0,
+   "cancelled": 469,
+   "filled": 994
+  }
+ },
  "system": "Jordan's 8 shadow lines (HL projection up/down, Close+, Close-, at P75/P90; N7_ALL walk-forward widths) + Jordan's gold entry (arm 0.10 x stop through, fill on the retest, cancel 1.2 x stop, chase outward) + target VWAP +/- 0.5 sigma_v fixed at the fill + rolling-MAE stop (3-month median line-to-line MAE per line, 5-tick floor), BE off, one trade at a time, flat 22:00 London",
  "prereg": "forge/GOLD_LINE_SYSTEM_JORDAN_PREREG.md",
  "results": "analysis/output/gold-line-system-jordan/RESULTS.md",
  "is_end": 2022,
- "start": "2021-01-04",
- "end": "2026-08-21",
- "n": 1082,
- "counts": {
-  "armed": 1593,
-  "chased": 41,
-  "cancelled": 297,
-  "filled": 1248
- },
  "years": [
   2021,
   2022,

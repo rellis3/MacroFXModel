@@ -64,3 +64,29 @@ Control: the same code on all 18 lines reproduces `gold-line-system-base` S2 exa
 - **Next:** the clean check is the held-back data after 2026-08-21, used once at the end; a forward paper record from
   now; a tick-data check of the small-stop fills.
 - The backtest page `line-system-backtest.html` now shows this version.
+
+## A1 (POST-HOC, descriptive): entry-rule switches, and where the profit comes from
+
+`scripts/gold-line-system-jordan/entry_rules.py`, report `entry_rules_report.txt`. The same 8 lines, target, stop and
+costs; 100 shuffles of fake lines with the same permutations for all 4.
+
+| Entry rules | IS R (n) | OOS R [90% CI] | OOS n | OOS total | Without top 1% | Fake lines (real's rank) |
+|---|---|---|---|---|---|---|
+| Same-candle retouch fills · chase any line (primary) | −0.085 (333) | +0.302 [+0.111, +0.485] | 749 | +226R | +104R | −0.004 (100%) |
+| **Same-candle retouch ignored** · chase any line | −0.188 (260) | **+0.032** [−0.134, +0.217] | 620 | +20R | −71R | −0.135 (98%) |
+| Fills · chase same line only (PDF) | −0.107 (328) | +0.293 [+0.107, +0.468] | 741 | +217R | +95R | −0.009 (100%) |
+| Ignored · chase same line only (PDF) | −0.213 (253) | +0.023 [−0.132, +0.212] | 610 | +14R | −74R | −0.137 (98%) |
+
+- **The PDF's chase (same line only) changes almost nothing.**
+- **Ignoring the same-candle retouch removes nearly all the profit.** In the primary, fills in the same minute as the
+  poke are 326 of 749 OOS trades at **+0.64R each (+210R)**; fills on a later minute are 423 trades at **+0.04R
+  (+17R)**. In IS: same-minute +0.08, later −0.29.
+- **Why this matters:** the sim fills in the poking minute only when that minute *closes* back through the line. The
+  close comes after the fill, so the sim keeps the same-minute fills that had already moved its way and skips the
+  ones that retouched and went back against it (those fill later or not at all). That is a favourable selection that
+  M1 bars cannot avoid. With the touch ignored, the fade is about breakeven (+0.03R), though still above fake lines,
+  which lose (−0.135).
+- **Reading:** the 8-line edge is mostly unverified same-minute rejections. It may be real (fast rejections are what
+  Jordan trades, with tick data), but it can't be confirmed on M1 bars. **The tick-data check of the retouch now
+  comes first**, before any forward record or the lockbox. The primary verdict (UNDERPOWERED) stands, with weight
+  lowered.
