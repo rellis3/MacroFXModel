@@ -5820,10 +5820,11 @@ export function citable(e) {
   // Code-level audit (REPO_REVIEW_2026-10-31): a reopened or unverified verdict may not be quoted as settled,
   // whatever its n. A null whose test was flawed is "not yet known", not "no effect".
   const au = EVIDENCE_AUDIT[e?.id] ?? null;
-  const audit = au ? { status: au.status, grade: au.audit, date: EVIDENCE_AUDIT_DATE } : null;
-  const auditTag = !au ? '' : au.status === 'stands' ? ` (code audit ${EVIDENCE_AUDIT_DATE}: stands)`
-    : au.status === 'reopened' ? ` — REOPENED by code audit ${EVIDENCE_AUDIT_DATE} (${au.audit}): do not cite as settled; re-run pending`
-    : ` — UNVERIFIED by code audit ${EVIDENCE_AUDIT_DATE}: not traced; cite as unconfirmed`;
+  const ad = au?.date ?? EVIDENCE_AUDIT_DATE;     // later audit batches (2026-11-28 live audit) carry their own date
+  const audit = au ? { status: au.status, grade: au.audit, date: ad } : null;
+  const auditTag = !au ? '' : au.status === 'stands' ? ` (code audit ${ad}: stands)`
+    : au.status === 'reopened' ? ` — REOPENED by code audit ${ad} (${au.audit}): do not cite as settled; re-run pending`
+    : ` — UNVERIFIED by code audit ${ad}: not traced; cite as unconfirmed`;
   const settled = !au || au.status === 'stands';
   if (pw) return { tag: `${base}, n=${pw.n}${regTag}${defl}${auditTag}`, strong: settled, power: pw, docIsStudy, deflation, audit };
   return {
