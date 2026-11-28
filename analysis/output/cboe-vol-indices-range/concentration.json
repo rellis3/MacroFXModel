@@ -1,0 +1,58 @@
+{
+ "OVX->WTI C 1d Lin": {
+  "all": 0.9401,
+  "ex2020": 0.959,
+  "ex_top1pct_days": 0.9533,
+  "2024-26": 0.9666,
+  "beta_lvl_mean": 0.0859
+ },
+ "OVX->WTI C 1d Ext": {
+  "all": 0.9518,
+  "ex2020": 0.966,
+  "ex_top1pct_days": 0.9576,
+  "2024-26": 0.9702,
+  "beta_lvl_mean": 0.0612
+ },
+ "OVX->WTI C 5d Ext": {
+  "all": 0.9507,
+  "ex2020": 0.9525,
+  "ex_top1pct_days": 0.9506,
+  "2024-26": 0.9488,
+  "beta_lvl_mean": 0.0777
+ },
+ "OVX->WTI F 1d Lin": {
+  "all": 0.8916,
+  "ex2020": 0.9276,
+  "ex_top1pct_days": 0.886,
+  "2024-26": 0.9431,
+  "beta_lvl_mean": 0.1291
+ },
+ "OVX->BRENT C 1d Lin": {
+  "all": 0.9504,
+  "ex2020": 0.9551,
+  "ex_top1pct_days": 0.9712,
+  "2024-26": 0.9587,
+  "beta_lvl_mean": 0.0888
+ },
+ "OVX->BRENT C 1d Ext": {
+  "all": 0.9622,
+  "ex2020": 0.9676,
+  "ex_top1pct_days": 0.9735,
+  "2024-26": 0.9731,
+  "beta_lvl_mean": 0.0436
+ },
+ "OVX->BRENT C 5d Lin": {
+  "all": 0.9289,
+  "ex2020": 0.9273,
+  "ex_top1pct_days": 0.9491,
+  "2024-26": 0.9319,
+  "beta_lvl_mean": 0.1245
+ },
+ "OVX->BRENT C 5d Ext": {
+  "all": 0.9388,
+  "ex2020": 0.943,
+  "ex_top1pct_days": 0.9508,
+  "2024-26": 0.938,
+  "beta_lvl_mean": 0.0585
+ }
+}

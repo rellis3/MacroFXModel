@@ -1,0 +1,808 @@
+WTI C: chosen B_har_garcht, 2746 sessions, sigma reproduction max rel err 0.0
+  OVX->WTI C 1d Lin: ratio 0.9401 [0.91676,0.96485] p=0.0005 mde=0.03724 halves={'2018-22': 0.9240667377609462, '2023-26': 0.96325201097303} placebo med 1.00021 below-real 0/20
+  OVX->WTI C 1d Ext: ratio 0.95181 [0.93475,0.97145] p=0.0005 mde=0.02808 halves={'2018-22': 0.935846904292213, '2023-26': 0.9748545710630704} placebo med 1.00077 below-real 0/20
+  OVX->WTI C 5d Lin: ratio 0.94375 [0.90141,1.0044] p=0.0340 mde=0.07893 halves={'2018-22': 0.9530100534197602, '2023-26': 0.9312518134219074} placebo med 1.01927 below-real 0/20
+  OVX->WTI C 5d Ext: ratio 0.95075 [0.92909,0.98183] p=0.0010 mde=0.03956 halves={'2018-22': 0.9501706575256579, '2023-26': 0.951528891492591} placebo med 1.00789 below-real 0/20
+WTI F: chosen G_garch, 3022 sessions, sigma reproduction max rel err 0.0
+  OVX->WTI F 1d Lin: ratio 0.8916 [0.84189,0.94108] p=0.0005 mde=0.08175 halves={'2018-22': 0.8683919371152842, '2023-26': 0.9345486780880531}
+  OVX->WTI F 1d Ext: ratio 0.92043 [0.88559,0.95966] p=0.0005 mde=0.0593 halves={'2018-22': 0.8983186626901783, '2023-26': 0.96135168608342}
+  OVX->WTI F 5d Lin: ratio 0.88833 [0.82026,0.95175] p=0.0005 mde=0.1048 halves={'2018-22': 0.8824806252714876, '2023-26': 0.8985606192067526}
+  OVX->WTI F 5d Ext: ratio 0.91179 [0.86859,0.95785] p=0.0005 mde=0.07005 halves={'2018-22': 0.9002320699018697, '2023-26': 0.9319916126506073}
+SILVER C: chosen HARCJ, 2738 sessions, sigma reproduction max rel err 0.0
+  VXSLV->SILVER C 1d Lin: ratio 0.98859 [0.97152,1.00256] p=0.0665 mde=0.02287 halves={'2018-22': 0.9762226759065944, '2023-26': 1.0002197360563831} placebo med 1.00742 below-real 0/20
+  VXSLV->SILVER C 1d Ext: ratio 0.99486 [0.98092,1.0069] p=0.2039 mde=0.01911 halves={'2018-22': 0.995291952200337, '2023-26': 0.9944486405827329} placebo med 1.00493 below-real 0/20
+  VXSLV->SILVER C 5d Lin: ratio 0.98156 [0.95364,1.0093] p=0.0960 mde=0.04117 halves={'2018-22': 0.990815714785482, '2023-26': 0.9720534622631122} placebo med 1.0121 below-real 0/20
+  VXSLV->SILVER C 5d Ext: ratio 0.98216 [0.96267,1.00182] p=0.0390 mde=0.02887 halves={'2018-22': 0.992140010169585, '2023-26': 0.971917891414135} placebo med 1.01624 below-real 0/20
+SILVER F: chosen G_gjr, 2757 sessions, sigma reproduction max rel err 0.0
+  VXSLV->SILVER F 1d Lin: ratio 0.94362 [0.91865,0.96861] p=0.0005 mde=0.03843 halves={'2018-22': 0.9223723472678705, '2023-26': 0.966054950668863}
+  VXSLV->SILVER F 1d Ext: ratio 0.96214 [0.93821,0.98446] p=0.0005 mde=0.03428 halves={'2018-22': 0.9557233621485269, '2023-26': 0.9689275570612963}
+  VXSLV->SILVER F 5d Lin: ratio 0.93629 [0.89626,0.97391] p=0.0025 mde=0.06056 halves={'2018-22': 0.9346974758311548, '2023-26': 0.9381628916023912}
+  VXSLV->SILVER F 5d Ext: ratio 0.94201 [0.91093,0.97535] p=0.0020 mde=0.0501 halves={'2018-22': 0.940282811140948, '2023-26': 0.9440396887194689}
+ZB F: chosen HARCJ, 2681 sessions, sigma reproduction max rel err 0.0
+  VXTLT->ZB F 1d Lin: ratio 0.99447 [0.97859,1.01433] p=0.2594 mde=0.02636 halves={'2018-22': 1.004422601365272, '2023-26': 0.9811464370319464} placebo med 0.9999 below-real 3/20
+  VXTLT->ZB F 1d Ext: ratio 0.98912 [0.97384,1.00231] p=0.0575 mde=0.02087 halves={'2018-22': 0.9915657139586307, '2023-26': 0.9858399237581175} placebo med 1.00086 below-real 0/20
+  VXTLT->ZB F 5d Lin: ratio 1.00127 [0.97074,1.04509] p=0.5157 mde=0.05252 halves={'2018-22': 1.0277228280650432, '2023-26': 0.9656486523309761} placebo med 1.00626 below-real 6/20
+  VXTLT->ZB F 5d Ext: ratio 0.99833 [0.97873,1.01968] p=0.4283 mde=0.02911 halves={'2018-22': 1.0104600335654779, '2023-26': 0.9819913863451905} placebo med 1.00643 below-real 2/20
+ZN F: chosen H8, 2724 sessions, sigma reproduction max rel err 0.0
+  VXTLT->ZN F 1d Lin: ratio 1.01378 [0.9796,1.06586] p=0.7381 mde=0.06042 halves={'2018-22': 1.0465048888719837, '2023-26': 0.9730756646600577} placebo med 1.00235 below-real 20/20
+  VXTLT->ZN F 1d Ext: ratio 0.98149 [0.96634,0.99894] p=0.0210 mde=0.02387 halves={'2018-22': 0.9917385846838691, '2023-26': 0.9687362728115599} placebo med 1.00263 below-real 0/20
+  VXTLT->ZN F 5d Lin: ratio 1.0748 [0.98473,1.20783] p=0.9330 mde=0.15273 halves={'2018-22': 1.1607706951229055, '2023-26': 0.9624735240801238} placebo med 1.00348 below-real 20/20
+  VXTLT->ZN F 5d Ext: ratio 1.00186 [0.96195,1.05746] p=0.5737 mde=0.06853 halves={'2018-22': 1.0404910817166935, '2023-26': 0.9513826132780814} placebo med 0.99867 below-real 13/20
+US2000 C: chosen E_ewma_090, 2740 sessions, sigma reproduction max rel err 0.0
+  RVX->US2000 C 1d Lin: ratio 0.97545 [0.95616,0.99575] p=0.0100 mde=0.02971 halves={'2018-22': 0.9866963963187263, '2023-26': 0.9626702912427366} placebo med 1.00027 below-real 0/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  RVX->US2000 C 1d Ext: ratio 0.97846 [0.96068,0.99642] p=0.0065 mde=0.02578 halves={'2018-22': 0.9870318876582098, '2023-26': 0.9687093269132802} placebo med 1.00193 below-real 0/20
+  RVX->US2000 C 5d Lin: ratio 0.99077 [0.97734,1.0044] p=0.0980 mde=0.01944 halves={'2018-22': 1.0007398882518628, '2023-26': 0.9781768915250209} placebo med 1.00085 below-real 0/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  RVX->US2000 C 5d Ext: ratio 0.99213 [0.97848,1.00438] p=0.1154 mde=0.01895 halves={'2018-22': 1.0033169136192246, '2023-26': 0.978013556830889} placebo med 1.00569 below-real 0/20
+US2000 F: chosen E_ewma_090, 2289 sessions, sigma reproduction max rel err 0.0
+  RVX->US2000 F 1d Lin: ratio 0.97415 [0.95232,0.99942] p=0.0235 mde=0.03415 halves={'2018-22': 0.9873566467146361, '2023-26': 0.9611184286454684}
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  RVX->US2000 F 1d Ext: ratio 0.97917 [0.95979,1.00037] p=0.0295 mde=0.03028 halves={'2018-22': 0.9905392043825596, '2023-26': 0.9679470531780453}
+  RVX->US2000 F 5d Lin: ratio 0.9922 [0.9775,1.01142] p=0.2509 mde=0.02469 halves={'2018-22': 1.004677738218937, '2023-26': 0.978092176548237}
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  RVX->US2000 F 5d Ext: ratio 0.99821 [0.98361,1.01252] p=0.4233 mde=0.02108 halves={'2018-22': 1.0098885344769262, '2023-26': 0.9850089220248975}
+US30 C: chosen E_har_rv_log, 2744 sessions, sigma reproduction max rel err 0.0
+  VXD->US30 C 1d Lin: ratio 0.961 [0.91545,1.00169] p=0.0360 mde=0.06768 halves={'2018-22': 0.9546647492997797, '2023-26': 0.9707472308335106} placebo med 0.99844 below-real 0/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXD->US30 C 1d Ext: ratio 0.97569 [0.94603,1.00149] p=0.0365 mde=0.04067 halves={'2018-22': 0.9708434286553483, '2023-26': 0.9831392803243354} placebo med 1.00015 below-real 0/20
+  VXD->US30 C 5d Lin: ratio 0.98243 [0.96834,1.0019] p=0.0370 mde=0.02414 halves={'2018-22': 0.9770377934041848, '2023-26': 0.9920459233345383} placebo med 1.00277 below-real 0/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXD->US30 C 5d Ext: ratio 0.98993 [0.97743,1.00602] p=0.1049 mde=0.02018 halves={'2018-22': 0.9846314477895819, '2023-26': 0.9993935915288547} placebo med 1.00223 below-real 0/20
+US30 F: chosen E_har_rv_log, 2979 sessions, sigma reproduction max rel err 0.0
+  VXD->US30 F 1d Lin: ratio 0.959 [0.92195,0.99553] p=0.0110 mde=0.05607 halves={'2018-22': 0.9527391206118915, '2023-26': 0.9716437958035682}
+  VXD->US30 F 1d Ext: ratio 0.97348 [0.94955,0.99657] p=0.0105 mde=0.0346 halves={'2018-22': 0.9680902480871998, '2023-26': 0.9843609227736628}
+  VXD->US30 F 5d Lin: ratio 0.99763 [0.97856,1.01549] p=0.3443 mde=0.02607 halves={'2018-22': 1.0000883072762852, '2023-26': 0.9918620662948947}
+  VXD->US30 F 5d Ext: ratio 0.99563 [0.98166,1.01118] p=0.3018 mde=0.0214 halves={'2018-22': 0.9924431205863008, '2023-26': 1.0031068931675895}
+SPX500 C: chosen G_garch_t, 2652 sessions, sigma reproduction max rel err 0.0
+  SKEW->SPX500 C 1d Lin: ratio 0.99034 [0.97683,1.00418] p=0.0940 mde=0.02003 halves={'2018-22': 0.9794650969377465, '2023-26': 1.0057384933468119} placebo med 1.00493 below-real 0/20
+  SKEW->SPX500 C 1d Ext: ratio 0.99399 [0.98003,1.00526] p=0.1469 mde=0.01808 halves={'2018-22': 0.9869554045020733, '2023-26': 1.0039324565207997} placebo med 1.00382 below-real 0/20
+  SKEW->SPX500 C 5d Lin: ratio 0.99974 [0.98553,1.01475] p=0.4328 mde=0.02097 halves={'2018-22': 0.9972523308451348, '2023-26': 1.003842289017469} placebo med 1.0087 below-real 0/20
+  SKEW->SPX500 C 5d Ext: ratio 1.019 [1.0029,1.03593] p=0.9910 mde=0.02314 halves={'2018-22': 1.0237336682686236, '2023-26': 1.0111983339782957} placebo med 1.00667 below-real 19/20
+SPX500 F: chosen B_har_garcht, 2985 sessions, sigma reproduction max rel err 0.0
+  SKEW->SPX500 F 1d Lin: ratio 0.98976 [0.98071,0.9992] p=0.0190 mde=0.01344 halves={'2018-22': 0.9813677906252116, '2023-26': 1.0050776480312853}
+  SKEW->SPX500 F 1d Ext: ratio 0.99112 [0.98109,1.0019] p=0.0625 mde=0.01507 halves={'2018-22': 0.9832187520649284, '2023-26': 1.0055598859643358}
+  SKEW->SPX500 F 5d Lin: ratio 0.99762 [0.99034,1.00643] p=0.2829 mde=0.01133 halves={'2018-22': 0.9955355426668898, '2023-26': 1.0020019660417279}
+  SKEW->SPX500 F 5d Ext: ratio 1.00609 [0.99284,1.01905] p=0.8476 mde=0.01844 halves={'2018-22': 1.007164303964911, '2023-26': 1.0038321336257077}
+NQ C: chosen E6, 2744 sessions, sigma reproduction max rel err 0.0
+  SKEW->NQ C 1d Lin: ratio 0.99542 [0.98832,1.00101] p=0.0540 mde=0.00901 halves={'2018-22': 0.9920984020007233, '2023-26': 0.9998226186962719} placebo med 1.00282 below-real 0/20
+  SKEW->NQ C 1d Ext: ratio 0.99643 [0.98727,1.00346] p=0.1664 mde=0.01151 halves={'2018-22': 0.9915201928037081, '2023-26': 1.002918196583219} placebo med 1.00299 below-real 1/20
+  SKEW->NQ C 5d Lin: ratio 1.00248 [0.99721,1.0076] p=0.7971 mde=0.00728 halves={'2018-22': 1.0032696629800806, '2023-26': 1.0014528522219381} placebo med 1.00462 below-real 4/20
+  SKEW->NQ C 5d Ext: ratio 1.01729 [1.00526,1.03078] p=0.9985 mde=0.01766 halves={'2018-22': 1.0261459119335203, '2023-26': 1.0056605890871044} placebo med 1.00631 below-real 20/20
+NQ F: chosen E6, 2726 sessions, sigma reproduction max rel err 0.0
+  SKEW->NQ F 1d Lin: ratio 0.99568 [0.98634,1.00347] p=0.1434 mde=0.01228 halves={'2018-22': 0.9901087421921574, '2023-26': 1.0032917118917528}
+  SKEW->NQ F 1d Ext: ratio 0.99684 [0.98697,1.00576] p=0.2354 mde=0.01333 halves={'2018-22': 0.9893786888127796, '2023-26': 1.007021798180441}
+  SKEW->NQ F 5d Lin: ratio 1.0029 [0.99627,1.00887] p=0.7351 mde=0.00901 halves={'2018-22': 1.0032170661060666, '2023-26': 1.0024778710332423}
+  SKEW->NQ F 5d Ext: ratio 1.01972 [1.00648,1.03236] p=1.0000 mde=0.01846 halves={'2018-22': 1.02870272703682, '2023-26': 1.0079895267640666}
+AUDUSD C: chosen R15, 2754 sessions, sigma reproduction max rel err 0.0
+  VXEEM->AUDUSD C 1d Lin: ratio 0.99488 [0.98754,1.00284] p=0.1479 mde=0.01124 halves={'2018-22': None, '2023-26': 0.9948775843281513} placebo med 1.00141 below-real 0/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXEEM->AUDUSD C 1d Ext: ratio 1.0044 [0.99506,1.01315] p=0.7896 mde=0.0127 halves={'2018-22': None, '2023-26': 1.0044048315885732} placebo med 1.00071 below-real 17/20
+  VXEEM->AUDUSD C 5d Lin: ratio 1.00018 [0.98768,1.01067] p=0.3908 mde=0.0168 halves={'2018-22': None, '2023-26': 1.0001840458881541} placebo med 1.00341 below-real 7/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXEEM->AUDUSD C 5d Ext: ratio 1.0086 [0.99409,1.01926] p=0.8421 mde=0.01752 halves={'2018-22': None, '2023-26': 1.0085971108819072} placebo med 1.00309 below-real 14/20
+  VXFXI->AUDUSD C 1d Lin: ratio 0.99667 [0.99303,1.00032] p=0.0400 mde=0.00522 halves={'2018-22': None, '2023-26': 0.9966700927485712} placebo med 1.00146 below-real 3/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXFXI->AUDUSD C 1d Ext: ratio 1.00278 [0.99644,1.01275] p=0.8126 mde=0.01169 halves={'2018-22': None, '2023-26': 1.002776972513587} placebo med 1.00464 below-real 9/20
+  VXFXI->AUDUSD C 5d Lin: ratio 1.00405 [0.99448,1.01615] p=0.8181 mde=0.01508 halves={'2018-22': None, '2023-26': 1.0040476587020608} placebo med 1.00584 below-real 8/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXFXI->AUDUSD C 5d Ext: ratio 1.01135 [1.00088,1.02871] p=0.9820 mde=0.01949 halves={'2018-22': None, '2023-26': 1.0113541849487349} placebo med 1.0061 below-real 14/20
+GOLD C: chosen HARCJ, 2744 sessions, sigma reproduction max rel err 0.0
+  VXGDX->GOLD C 1d Lin: ratio 0.99345 [0.98529,1.00075] p=0.0380 mde=0.01127 halves={'2018-22': 1.0002223885864987, '2023-26': 0.9870059506940828} placebo med 1.00037 below-real 0/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXGDX->GOLD C 1d Ext: ratio 0.99282 [0.98712,0.99927] p=0.0115 mde=0.0086 halves={'2018-22': 0.9945923477727414, '2023-26': 0.9911364796877925} placebo med 1.00199 below-real 1/20
+  VXGDX->GOLD C 5d Lin: ratio 1.00732 [0.99659,1.01818] p=0.9045 mde=0.01537 halves={'2018-22': 1.0035165319725605, '2023-26': 1.0107322432701145} placebo med 1.00753 below-real 10/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXGDX->GOLD C 5d Ext: ratio 0.9979 [0.98739,1.01145] p=0.3193 mde=0.01756 halves={'2018-22': 0.997229004394568, '2023-26': 0.9984981254011203} placebo med 1.00191 below-real 3/20
+  VXAPL->NQ C 1d Lin: ratio 0.97245 [0.94413,0.9981] p=0.0155 mde=0.03982 halves={'2018-22': 0.9709716100411179, '2023-26': 0.9744148793177375} placebo med 0.99703 below-real 0/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXAPL->NQ C 1d Ext: ratio 0.99127 [0.97611,1.00612] p=0.1539 mde=0.02235 halves={'2018-22': 0.9885083432820597, '2023-26': 0.9949160034128861} placebo med 1.0003 below-real 0/20
+  VXAPL->NQ C 5d Lin: ratio 0.99447 [0.98257,1.00822] p=0.2199 mde=0.01831 halves={'2018-22': 0.9993470026691929, '2023-26': 0.9880649931692257} placebo med 1.01133 below-real 0/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXAPL->NQ C 5d Ext: ratio 1.00082 [0.9889,1.0141] p=0.5817 mde=0.01808 halves={'2018-22': 1.00533789939911, '2023-26': 0.9948904619471788} placebo med 1.00878 below-real 1/20
+  VXAZN->NQ C 1d Lin: ratio 0.97693 [0.95177,0.99781] p=0.0160 mde=0.03398 halves={'2018-22': 0.9716920584015875, '2023-26': 0.9838720591265618} placebo med 0.99406 below-real 0/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXAZN->NQ C 1d Ext: ratio 0.98885 [0.97294,1.00332] p=0.0770 mde=0.02227 halves={'2018-22': 0.9833485051662663, '2023-26': 0.9961193483986771} placebo med 0.99924 below-real 0/20
+  VXAZN->NQ C 5d Lin: ratio 0.99483 [0.98766,1.00397] p=0.1354 mde=0.01157 halves={'2018-22': 0.9965140616077321, '2023-26': 0.9926190041835752} placebo med 1.00512 below-real 0/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  VXAZN->NQ C 5d Ext: ratio 0.99935 [0.99263,1.00627] p=0.4433 mde=0.00976 halves={'2018-22': 1.002084464189727, '2023-26': 0.9957542320464428} placebo med 1.00664 below-real 0/20
+USDCAD C: chosen B_har_garcht, 2757 sessions, sigma reproduction max rel err 0.0
+  OVX->USDCAD C 1d Lin: ratio 1.00416 [0.98675,1.01939] p=0.6467 mde=0.02331 halves={'2018-22': None, '2023-26': 1.0041575431987109} placebo med 1.00011 below-real 19/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  OVX->USDCAD C 1d Ext: ratio 1.00871 [0.99709,1.0203] p=0.8916 mde=0.01681 halves={'2018-22': None, '2023-26': 1.0087061841160185} placebo med 1.00094 below-real 20/20
+  OVX->USDCAD C 5d Lin: ratio 1.0017 [0.99316,1.0098] p=0.6447 mde=0.01211 halves={'2018-22': None, '2023-26': 1.0016975942361825} placebo med 1.00509 below-real 4/20
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+C:\Users\relli\OneDrive\Documents\Programming\Trading\v2 trading model\MacroFXModel\.venv\Lib\site-packages\numpy\lib\_nanfunctions_impl.py:1573: RuntimeWarning: All-NaN slice encountered
+  return _nanquantile_unchecked(
+  OVX->USDCAD C 5d Ext: ratio 1.00775 [0.99604,1.02035] p=0.9040 mde=0.01706 halves={'2018-22': None, '2023-26': 1.007748996360244} placebo med 1.00979 below-real 9/20
+BRENT C: chosen B_har_garcht, 2747 sessions, sigma reproduction max rel err 0.0
+  OVX->BRENT C 1d Lin: ratio 0.9504 [0.93464,0.97205] p=0.0005 mde=0.02798 halves={'2018-22': 0.9441785998780097, '2023-26': 0.9588985873301222} placebo med 1.00061 below-real 0/20
+  OVX->BRENT C 1d Ext: ratio 0.96216 [0.94829,0.98039] p=0.0005 mde=0.02378 halves={'2018-22': 0.9515404435322966, '2023-26': 0.9766671402748365} placebo med 1.00155 below-real 0/20
+  OVX->BRENT C 5d Lin: ratio 0.92889 [0.8965,0.96885] p=0.0010 mde=0.05564 halves={'2018-22': 0.9296573216851804, '2023-26': 0.9278426556065028} placebo med 1.01444 below-real 0/20
+  OVX->BRENT C 5d Ext: ratio 0.93881 [0.91898,0.97024] p=0.0005 mde=0.03859 halves={'2018-22': 0.9357732290201183, '2023-26': 0.9429397093846794} placebo med 1.00875 below-real 0/20
+{'id': 'cboe-vol-range-ovx-wti-1d', 'family': 'A', 'index': 'OVX', 'inst': 'WTI', 'h': 1, 'verdict': 'VALIDATED', 'cells': {'Lin': 'VALIDATED', 'Ext': 'VALIDATED'}}
+{'id': 'cboe-vol-range-ovx-wti-5d', 'family': 'A', 'index': 'OVX', 'inst': 'WTI', 'h': 5, 'verdict': 'VALIDATED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'VALIDATED'}}
+{'id': 'cboe-vol-range-vxslv-silver-1d', 'family': 'A', 'index': 'VXSLV', 'inst': 'SILVER', 'h': 1, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxslv-silver-5d', 'family': 'A', 'index': 'VXSLV', 'inst': 'SILVER', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxtlt-zb-1d', 'family': 'A', 'index': 'VXTLT', 'inst': 'ZB', 'h': 1, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxtlt-zb-5d', 'family': 'A', 'index': 'VXTLT', 'inst': 'ZB', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxtlt-zn-1d', 'family': 'A', 'index': 'VXTLT', 'inst': 'ZN', 'h': 1, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxtlt-zn-5d', 'family': 'A', 'index': 'VXTLT', 'inst': 'ZN', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-rvx-us2000-1d', 'family': 'A', 'index': 'RVX', 'inst': 'US2000', 'h': 1, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-rvx-us2000-5d', 'family': 'A', 'index': 'RVX', 'inst': 'US2000', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxd-us30-1d', 'family': 'A', 'index': 'VXD', 'inst': 'US30', 'h': 1, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxd-us30-5d', 'family': 'A', 'index': 'VXD', 'inst': 'US30', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-skew-spx500-1d', 'family': 'A', 'index': 'SKEW', 'inst': 'SPX500', 'h': 1, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-skew-spx500-5d', 'family': 'A', 'index': 'SKEW', 'inst': 'SPX500', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-skew-nq-1d', 'family': 'A', 'index': 'SKEW', 'inst': 'NQ', 'h': 1, 'verdict': 'NULL', 'cells': {'Lin': 'NULL', 'Ext': 'NULL'}}
+{'id': 'cboe-vol-range-skew-nq-5d', 'family': 'A', 'index': 'SKEW', 'inst': 'NQ', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'NULL', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxeem-audusd-1d', 'family': 'B', 'index': 'VXEEM', 'inst': 'AUDUSD', 'h': 1, 'verdict': 'NULL', 'cells': {'Lin': 'NULL', 'Ext': 'NULL'}}
+{'id': 'cboe-vol-range-vxeem-audusd-5d', 'family': 'B', 'index': 'VXEEM', 'inst': 'AUDUSD', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxfxi-audusd-1d', 'family': 'B', 'index': 'VXFXI', 'inst': 'AUDUSD', 'h': 1, 'verdict': 'NULL', 'cells': {'Lin': 'NULL', 'Ext': 'NULL'}}
+{'id': 'cboe-vol-range-vxfxi-audusd-5d', 'family': 'B', 'index': 'VXFXI', 'inst': 'AUDUSD', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxgdx-gold-1d', 'family': 'B', 'index': 'VXGDX', 'inst': 'GOLD', 'h': 1, 'verdict': 'NULL', 'cells': {'Lin': 'NULL', 'Ext': 'NULL'}}
+{'id': 'cboe-vol-range-vxgdx-gold-5d', 'family': 'B', 'index': 'VXGDX', 'inst': 'GOLD', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxapl-nq-1d', 'family': 'B', 'index': 'VXAPL', 'inst': 'NQ', 'h': 1, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxapl-nq-5d', 'family': 'B', 'index': 'VXAPL', 'inst': 'NQ', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxazn-nq-1d', 'family': 'B', 'index': 'VXAZN', 'inst': 'NQ', 'h': 1, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-vxazn-nq-5d', 'family': 'B', 'index': 'VXAZN', 'inst': 'NQ', 'h': 5, 'verdict': 'NULL', 'cells': {'Lin': 'NULL', 'Ext': 'NULL'}}
+{'id': 'cboe-vol-range-ovx-usdcad-1d', 'family': 'B', 'index': 'OVX', 'inst': 'USDCAD', 'h': 1, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'UNDERPOWERED', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-ovx-usdcad-5d', 'family': 'B', 'index': 'OVX', 'inst': 'USDCAD', 'h': 5, 'verdict': 'UNDERPOWERED', 'cells': {'Lin': 'NULL', 'Ext': 'UNDERPOWERED'}}
+{'id': 'cboe-vol-range-ovx-brent-1d', 'family': 'B', 'index': 'OVX', 'inst': 'BRENT', 'h': 1, 'verdict': 'VALIDATED', 'cells': {'Lin': 'VALIDATED', 'Ext': 'VALIDATED'}}
+{'id': 'cboe-vol-range-ovx-brent-5d', 'family': 'B', 'index': 'OVX', 'inst': 'BRENT', 'h': 5, 'verdict': 'VALIDATED', 'cells': {'Lin': 'VALIDATED', 'Ext': 'VALIDATED'}}

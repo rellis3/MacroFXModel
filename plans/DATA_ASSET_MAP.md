@@ -109,7 +109,7 @@ engine". Built from three inventories, with the key claims re-checked in code or
 - **Partial:** ◐ MOVE (the live feed stops 2026-09-21; the committed copy from 2002 is dormant).
 - **Missing:** ❌ intraday MOVE/TNX archive.
 - **Proven:** ✅ VIX family 9, CME IV 3, CVOL 1.
-- **Unused or at risk:** 15 of 21 Cboe indices never tested (OVX, VXTLT, SKEW, VXEEM…).
+- **Unused or at risk:** ~~15 of 21 Cboe indices never tested~~. Tested 2026-11-28 as range layers on the ladder-v2 benchmark (`cboe-vol-indices-range`): OVX on WTI and Brent VALIDATED (−5 to −7% pinball, 1d and 5d); SKEW (NQ 1d), VXEEM/VXFXI (AUDUSD 1d), VXGDX (gold 1d) NULL; VXSLV, VXTLT, RVX, VXD, VXAPL, VXAZN UNDERPOWERED. VXEWZ still untested (no Brazil instrument).
 
 ### Positioning
 - **Held:** ✅ CFTC legacy COT for 34 markets 2006– (point-in-time); TFF from 2006 in the feature store; CME OI by
@@ -223,7 +223,7 @@ IC ≈ 0.04 against a plausible 0.05–0.10), and they have not been run.
 - **Economies panel:**
   - the surprise backfill as each economy's surprise history (8 economies, 2007–)
   - non-US 2Y / policy rates once stored (B9)
-- **Vol layer:** the 15 untested Cboe indices as context (OVX for oil, VXTLT for bonds, VXEEM for EM, SKEW).
+- **Vol layer:** OVX as an optional range layer on WTI/Brent (validated 2026-11-28, `cboe-vol-indices-range`); the extremes-only layer for VXTLT/VXSLV is the open candidate.
 - **FX layer:** EM FX daily (19 crosses); FX skew from the OI book.
 
 ### D. Research on data already held (ranked; each a fresh pre-registration, none a banked null in new clothes)
