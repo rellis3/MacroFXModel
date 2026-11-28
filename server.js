@@ -17,6 +17,7 @@ import { dxySeries as _dxyIceSeries } from './js/dxyIce.js';
 import { archiveMacro as _archiveMacro, FRED_EXTRA as _FRED_EXTRA } from './js/macroCapture.js';
 import { createRefreshGuard } from './js/refreshGuard.js';
 import { mountHelixRoutes } from './js/helixRoutes.js';
+import { mountHelixMemory } from './js/helixMemoryRoutes.js';
 import express              from 'express';
 import zlib from 'node:zlib';
 import path                from 'path';
@@ -37671,6 +37672,15 @@ try {
     },
   });
 } catch (e) { console.warn('[helix] routes not mounted:', e.message); }
+// Helix memory (js/helixMemoryRoutes.js): the evening self-scoring of what the broadcast said (service helixScore, from 22:10 London, into helix/scores/<date>.json and the rolling
+// helix/scores/_summary.json) and the owner-only diary routes (/api/helix/{diary,diary/search,scores,scorecard,score}). Description calibration only, no P&L, no model call.
+try {
+  mountHelixMemory(app, {
+    ownerOnly: _ownerOnly, r2GetJSON: _r2GetJSON, r2PutJSON: _r2PutJSON, r2ListKeys: _r2ListKeys, r2Ok: _r2Ok, sessionStatus: () => getSessionStatus(),
+    selfJson: async p => { const r = await fetch(`http://127.0.0.1:${PORT}${p}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(30_000) }); if (!r.ok) throw new Error(`${p} ${r.status}`); return r.json(); },
+    svcInterval: fn => svcInterval('helixScore', fn, 10 * 60_000),
+  });
+} catch (e) { console.warn('[helix] memory routes not mounted:', e.message); }
 // OI over time (js/oiTimeRoutes.js): read-only, daily candles + the option-OI history; no model call, nothing is written.
 _mountOiTime(app, {
   fetchRange: (sym, gran, fromISO, toISO) => { if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured'); return fetchOandaCandleRange(_liqGateOandaSym(sym), gran, fromISO, toISO); },

@@ -5,7 +5,7 @@
 export const SECTIONS = [
   // ONE morning programme: the BROADCAST (it names itself morning / afternoon / evening by the clock). The old SHOW director is an engine only (ENGINE_TOOLS), kept for the NEWSLETTER's own scenes.
   { id: 'watch', label: 'WATCH', hint: 'Sit back and let Helix talk you through it', home: ['tool', 'broadcast'], items: [
-    ['tool', 'today', 'TODAY'], ['tool', 'broadcast', 'MORNING SHOW'], ['tool', 'news', 'NEWSLETTER'], ['tool', 'film', 'REPLAY'] ] },
+    ['tool', 'today', 'TODAY'], ['tool', 'broadcast', 'MORNING SHOW'], ['tool', 'news', 'NEWSLETTER'], ['tool', 'film', 'REPLAY'], ['tool', 'diary', 'DIARY'] ] },
   { id: 'markets', label: 'MARKETS', hint: 'What every market is doing today', home: ['view', 'candles'], items: [
     ['view', 'candles', 'MARKET BOARD'], ['view', 'session', 'CHART'], ['view', 'wx', 'WEATHER'], ['view', 'globe', 'WORLD MAP'], ['view', 'ahead', 'DAY AHEAD'], ['view', 'dayso', 'THE DAY SO FAR'], ['view', 'rangeused', 'RANGE USED'], ['view', 'net', 'LINKS'], ['view', 'bubbles', 'BUBBLES'],
     ['tool', 'radar', 'UNUSUAL MOVES'], ['tool', 'markets', 'RANKED LIST'] ] },

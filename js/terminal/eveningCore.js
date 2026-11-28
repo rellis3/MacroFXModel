@@ -101,10 +101,29 @@ export function releasedGroups(day, now) {
  * The EVENING review line: up to `max` release times (the biggest reactions and the top-ranked first, then read in clock order), each with what printed against the forecast and
  * what the currency did in the half hour after. react = { [reactKey]: reactionOf(...) }. null when nothing printed today.
  */
+/** The release groups reviewScript reads out (the biggest reactions and ranks, at most max, in clock order). */
+export function reviewPick(day, react = {}, now, max = 3) {
+  const groups = releasedGroups(day, now), score = g => (react[g.key]?.ratio ?? 0) + g.rank * 0.5;
+  return { groups, pick: [...groups].sort((a, b) => score(b) - score(a)).slice(0, max).sort((a, b) => a.ms - b.ms) };
+}
+/**
+ * HELIX MEMORY: the checkable claims in reviewScript's words (helixScoreCore.js): each printed number against its forecast (release_vs_expected) and the half-hour reaction
+ * (release_reaction), each with the cue of its own sentence so the record knows it was spoken. Same picks as reviewScript; description, checked against the close.
+ */
+export function reviewClaims(day, react = {}, now, max = 3) {
+  const { pick } = reviewPick(day, react, now, max), out = [];
+  for (const g of pick) {
+    for (const e of g.ev.slice(0, 2)) {
+      const a = sayFig(e.actual), f = sayFig(e.forecast), na = num(e.actual), nf = num(e.forecast); if (!a || f == null || na == null || nf == null) continue;
+      out.push({ kind: 'release_vs_expected', ccy: g.ccy, hm: g.hm, ms: e.ms, name: e.name ?? e.short ?? '', actual: String(e.actual), forecast: String(e.forecast), dir: na > nf ? 'above' : na < nf ? 'below' : 'inline', cue: `${sayRelease(e)} came in at` });
+    }
+    const r = react[g.key], rp = REACT_PAIR[g.ccy];
+    if (r && rp && Number.isFinite(r.movePct) && Math.abs(r.movePct) >= 0.02) out.push({ kind: 'release_reaction', ccy: g.ccy, hm: g.hm, ms: g.ms, pair: rp[0], sign: rp[1], movePct: r.movePct, cue: `In the half hour after, ${CCY_WORD[g.ccy]}` });
+  }
+  return out;
+}
 export function reviewScript(day, react = {}, now, max = 3, fam = {}) {
-  const groups = releasedGroups(day, now); if (!groups.length) return null;
-  const score = g => (react[g.key]?.ratio ?? 0) + g.rank * 0.5;
-  const pick = [...groups].sort((a, b) => score(b) - score(a)).slice(0, max).sort((a, b) => a.ms - b.ms);
+  const { groups, pick } = reviewPick(day, react, now, max); if (!groups.length) return null;
   const lines = pick.map(g => {
     const said = g.ev.slice(0, 2).map(printed).filter(Boolean); if (!said.length) return null;
     const r = react[g.key], who = CCY_WORD[g.ccy];

@@ -29,6 +29,7 @@ export const ALIASES = {
   surprises: ['view', 'surprise'], shockwave: ['view', 'shockwave'], cycle: ['view', 'cycle'], money: ['view', 'moneyglobe'], calls: ['view', 'book'], book: ['view', 'book'],
   unusual: ['tool', 'radar'], radar: ['tool', 'radar'], ranked: ['tool', 'markets'], list: ['tool', 'markets'], read: ['tool', 'brief'], brief: ['tool', 'brief'], briefing: ['tool', 'brief'],
   show: ['tool', 'broadcast'], broadcast: ['tool', 'broadcast'], morning: ['tool', 'broadcast'], newsletter: ['tool', 'news'], replay: ['tool', 'film'], precedent: ['tool', 'precedent'],
+  diary: ['tool', 'diary'], memory: ['tool', 'diary'], scorecard: ['tool', 'diary'],
   ask: ['tool', 'ask'], explain: ['tool', 'explain'], papers: ['tool', 'papers'], alerts: ['tool', 'alerts'], inbox: ['tool', 'alerts'], server: ['tool', 'system'], system: ['tool', 'system'],
 };
 /** Every item in the sections, plus TODAY. */

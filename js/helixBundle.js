@@ -8,6 +8,7 @@
 import { asOfOf, staleOf } from './terminal/helixFetch.js';
 import { dailyRanges, VOL_MARKETS } from './terminal/jarvisVolCore.js';
 import { HEAD_KEYS } from './terminal/broadcastHeadline.js';
+import { cleanClaims } from './terminal/helixScoreCore.js';
 
 const r = (v, d = 3) => (Number.isFinite(v) ? +v.toFixed(d) : null);
 const pick = (o, keys) => Object.fromEntries(keys.filter(k => o?.[k] !== undefined).map(k => [k, o[k]]));
@@ -86,7 +87,7 @@ export function cleanRun(body, { now = Date.now() } = {}) {
   const bytes = JSON.stringify(body).length; if (bytes > RECORD_MAX_BYTES) return { ok: false, error: `record too large (${Math.round(bytes / 1000)} KB, limit ${RECORD_MAX_BYTES / 1000} KB)` };
   const part = /^[a-z]{3,12}$/.test(String(body.part ?? '')) ? body.part : 'morning';
   const plan = (Array.isArray(body.plan) ? body.plan : []).slice(0, 200).map(x => ({ kind: clip(x?.kind, 24), id: clip(x?.id, 40), title: clip(x?.title, 120), view: clip(x?.view, 40), text: clip(x?.text, 2000) }));
-  return { ok: true, date, part, run: { savedAt: new Date(now).toISOString(), mode: clip(body.mode, 16), part, headline: body.headline ?? null, inputs: body.inputs ?? null, plan, sceneCount: plan.length, degraded: Array.isArray(body.degraded) ? body.degraded.slice(0, 40) : [], watcher: body.watcher ?? null } };
+  return { ok: true, date, part, run: { savedAt: new Date(now).toISOString(), mode: clip(body.mode, 16), part, headline: body.headline ?? null, inputs: body.inputs ?? null, plan, sceneCount: plan.length, claims: cleanClaims(body.claims), degraded: Array.isArray(body.degraded) ? body.degraded.slice(0, 40) : [], watcher: body.watcher ?? null } };
 }
 /** Merge one run into the day's file: { date, updatedAt, runs: { <part>: latest run }, count: { <part>: n } }. Earlier parts of the day are kept. */
 export function mergeDayRecord(prev, date, part, run) {

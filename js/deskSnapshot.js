@@ -216,6 +216,12 @@ export const FULL_EXCLUDED = [
   { path: 'helix/record', why: 'owner-only: the Helix daily record itself, written once per broadcast run to R2 helix/days/<date>.json' },
   { path: 'helix/roll-health', why: 'a reader of rates-legs/_health.json in R2, which the IBKR roll job rewrites; the file is the record' },
   { path: 'helix/stress', why: 'rebuilt from the stored 15-minute bars in R2 (archive/i15_MOVE, archive/i15_DXY)' },
+  // Helix memory (js/helixMemoryRoutes.js, 2026-11-28): owner-only readers of R2 records that are themselves the permanent record
+  { path: 'helix/diary', why: 'owner-only: a reader of the stored Helix daily records (helix/days/<date>.json) and their scores; the R2 files are the record' },
+  { path: 'helix/diary/search', why: 'owner-only: a keyword search over the stored Helix daily records in R2; nothing in it is not in those files' },
+  { path: 'helix/scores', why: 'owner-only: a reader of helix/scores/<date>.json, written once a day by the helixScore job; the file is the record' },
+  { path: 'helix/scorecard', why: 'owner-only: a reader of helix/scores/_summary.json, the rolling calibration the helixScore job rewrites; the file is the record' },
+  { path: 'helix/score', why: 'owner-only POST that runs the evening scorer now; it writes helix/scores/<date>.json, nothing to snapshot' },
 ];
 /** Feeds that carry trade levels or the owner's own record: stored in FULL for the owner, removed from a desk viewer's copy. */
 export const OWNER_ONLY_FEEDS = ['trade-watch', 'pair-select', 'desk-alerts', 'desk-score/record', 'desk-quality'];
