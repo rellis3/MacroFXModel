@@ -36,6 +36,12 @@ const triggers = [...src.matchAll(/push\(\{[\s\S]{0,400}?\}\)/g)]
     };
   });
 
+// 2026-11-28: a push longer than 400 characters (vix-inversion) was silently skipped by the block regex; only noticed
+// once nq-down-week and event-range, the two parsed 'tested' triggers, were retagged 'described'. Add every literal
+// header `push({ id: '...', kind: '...', evidenceId: '...'` the block regex missed.
+for (const m of src.matchAll(/push\(\{\s*id:\s*'([^']+)',\s*kind:\s*'([^']+)',\s*evidenceId:\s*'([^']+)'/g))
+  if (!triggers.some(x => x.id === m[1])) triggers.push({ id: m[1], kind: m[2], evidenceId: m[3] });
+
 t('the trigger list was actually parsed', () => {
   // a regex that silently matches nothing would make every test below vacuously pass
   // 9 today. The file also contains three unrelated out.push() calls in the

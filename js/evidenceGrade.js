@@ -131,7 +131,7 @@ export function gradeEntry(e, audit) {
   const iv = review ? null : read;
   const share = iv ? (iv.effHi === iv.effLo ? (iv.eff > 0 ? 1 : 0) : clamp01(iv.effHi / (iv.effHi - iv.effLo))) : null;   // share of the interval on the claimed side
   const suspect = trust === 'reopened' || trust === 'unverified';
-  const sound = trust === 'stands';
+  const sound = trust === 'stands' || trust === 'resolved';   // resolved = re-run fixed the audit's defect and re-banked
   const fmt = x => `${x >= 0 ? '+' : '−'}${Math.abs(+x.toPrecision(3))}`;
   const noteSign = iv && iv.sign < 0 ? ` (The claim points negative${iv.signInferred ? ', read from the passed test' : ''}; in the claimed direction the effect is ${fmt(iv.eff)} [${fmt(iv.effLo)}, ${fmt(iv.effHi)}].)` : '';
   const out = (grade, basis, s = share ?? 0.5) => ({ grade, weight: weightIn(grade, s), trust,

@@ -1,0 +1,6 @@
+raw (flags only) n 2733 | down {'beta': 0.143, 'lo': 0.085, 'hi': 0.208, 'se': 0.032} | up {'beta': -0.184, 'lo': -0.227, 'hi': -0.142, 'se': 0.022}
+controlled (registered 3D) n 2497 | down {'beta': 0.096, 'lo': 0.04, 'hi': 0.151, 'se': 0.029} | up {'beta': -0.12, 'lo': -0.162, 'hi': -0.077, 'se': 0.022}
+controlled, 2016-2020 n 1052 | down {'beta': 0.138, 'lo': 0.036, 'hi': 0.241, 'se': 0.052} | up {'beta': -0.105, 'lo': -0.168, 'hi': -0.04, 'se': 0.033}
+controlled, 2021-2026 n 1445 | down {'beta': 0.083, 'lo': 0.012, 'hi': 0.15, 'se': 0.035} | up {'beta': -0.128, 'lo': -0.189, 'hi': -0.068, 'se': 0.03}
+controls: {'atr_pct': -0.509, 'hl_atr': 0.207, 'rv_atr': 0.063, 'vix_pct': 0.427}
+verdict context

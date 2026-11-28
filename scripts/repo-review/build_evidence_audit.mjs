@@ -4,7 +4,9 @@
 //   stands     — code read, sound; may be cited as tested
 //   reopened   — bug, design flaw or fragile; "we don't know yet"
 //   unverified — not traced or not reproducible from the repo; "we don't know yet"
-import { readFileSync, writeFileSync } from 'node:fs';
+//   resolved   — a later re-run fixed the audit's named defect and re-banked the entry (RESOLUTIONS.csv overlay);
+//                the entry's current verdict in js/deskEvidence.js is the re-banked one and may be cited
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 function parseCsv(text) {
   const rows = []; let row = [], cell = '', q = false;
@@ -27,6 +29,17 @@ for (const r of body) {
   if (!r[ix('id')]) continue;
   out[r[ix('id')]] = { status: r[ix('status_now')].toLowerCase(), audit: r[ix('audit')], banked: r[ix('banked')] };
 }
+// Overlay: re-runs that resolved a reopened/unverified entry. Columns: id,resolved,rebanked,by,note.
+// One row per id; append rows (sessions merge by row), never edit VERDICT_AUDIT.csv.
+const RES = 'analysis/output/repo-review-2026-10-31/RESOLUTIONS.csv';
+if (existsSync(RES)) {
+  const [rh, ...rb] = parseCsv(readFileSync(RES, 'utf8'));
+  const rx = k => rh.indexOf(k);
+  for (const r of rb) {
+    const id = r[rx('id')]; if (!id || !out[id]) continue;
+    out[id] = { ...out[id], status: 'resolved', resolved: r[rx('resolved')], rebanked: r[rx('rebanked')], by: r[rx('by')] };
+  }
+}
 const ids = Object.keys(out).sort();
 const lines = ids.map(id => `  ${JSON.stringify(id)}: ${JSON.stringify(out[id])},`);
 writeFileSync('js/evidenceAudit.js', `/**
@@ -35,15 +48,20 @@ writeFileSync('js/evidenceAudit.js', `/**
  * null, underpowered and validated verdict, 2026-10-31).
  *
  * status: 'stands' (code read and sound; may be cited as tested) | 'reopened' (bug, design flaw or fragile)
- *       | 'unverified' (not traced or not reproducible). Only 'stands' may be cited as "tested null" or
- *       "validated" in prose (REPO_REVIEW_2026-10-31 §6). Context entries were not audited and are absent.
+ *       | 'unverified' (not traced or not reproducible) | 'resolved' (a later re-run fixed the named defect and
+ *       re-banked the entry: fields resolved (date), rebanked (verdict), by (study id); overlay from
+ *       analysis/output/repo-review-2026-10-31/RESOLUTIONS.csv). Only 'stands' and 'resolved' may be cited as
+ *       "tested null" or "validated" in prose (REPO_REVIEW_2026-10-31 §6). Context entries were not audited.
  */
 export const EVIDENCE_AUDIT_DATE = '2026-10-31';
 export const EVIDENCE_AUDIT = {
 ${lines.join('\n')}
 };
 
-/** Audit status for a ledger id: 'stands' | 'reopened' | 'unverified' | null (not audited, e.g. context). */
+/** Audit status for a ledger id: 'stands' | 'reopened' | 'unverified' | 'resolved' | null (not audited, e.g. context). */
 export function auditStatus(id) { return EVIDENCE_AUDIT[id]?.status ?? null; }
+
+/** True when the audit no longer blocks citing the entry's current verdict ('stands' or 'resolved'). */
+export function auditSettled(id) { const s = EVIDENCE_AUDIT[id]?.status; return s === 'stands' || s === 'resolved'; }
 `);
 console.log(`wrote js/evidenceAudit.js (${ids.length} entries)`);

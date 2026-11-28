@@ -166,8 +166,9 @@ export function evaluateTriggers(inp = {}) {
     const nq = series.nq; const last = _last(nq), ref = _nth(nq, 5);
     if (last && ref) {
       const wk = (last.value / ref.value - 1) * 100; const on = wk <= -1;
-      push({ id: 'nq-down-week', kind: 'tested', evidenceId: 'nq-down-week', label: 'Nasdaq down-week', firing: on, value: { wk }, instruments: ['NQ'], expect: on ? expectFor(atrBy, { NQ: 0.21 }, 1) : [],
-        detail: on ? `NAS100 is ${wk.toFixed(1)}% over five sessions (${ref.date} → ${last.date}). Tested here: after a down-week of 1%+ the next session has run about 20% wider (+0.19 to +0.23 ATR, n=1,232). Range, not direction; the 5-day up-share afterwards is 58%, a base rate.` : `NAS100 is ${wk.toFixed(1)}% over five sessions — no longer a down-week.` });
+      // nq-down-week re-banked CONTEXT 2026-11-28 (reopened-audit-rerun): shown as described, not tested
+      push({ id: 'nq-down-week', kind: 'described', evidenceId: 'nq-down-week', label: 'Nasdaq down-week', firing: on, value: { wk }, instruments: ['NQ'], expect: on ? expectFor(atrBy, { NQ: 0.21 }, 1) : [],
+        detail: on ? `NAS100 is ${wk.toFixed(1)}% over five sessions (${ref.date} → ${last.date}). Tested here: after a down-week of 1%+ the next session has run about 20% wider (+0.19 to +0.23 ATR, n=1,232), but with the vol state controlled only about +0.10 ATR (re-checked 2026-11-28: context, not validated). Range, not direction; the 5-day up-share afterwards is 58%, a base rate.` : `NAS100 is ${wk.toFixed(1)}% over five sessions — no longer a down-week.` });
     }
   }
   // ── tested: a release that has MOVED markets is due (two books agree) ──────
@@ -197,7 +198,8 @@ export function evaluateTriggers(inp = {}) {
        h.eff ? `release-session range ${h.eff} vs matched days (S7)` : null].filter(Boolean).join('; ') + '. Size, not direction.';
     // the S7 effect where it exists; the book's next-day multiple otherwise (next = k× an ordinary day → effect k−1)
     const effs = {}; for (const h of uniq) { const s7 = h.eff ? parseFloat(h.eff) : null; const bk = h.bk?.next != null ? h.bk.next - 1 : null; const e = s7 ?? bk; if (e != null && !(h.pair in effs)) effs[h.pair] = e; }
-    push({ id: 'event-range', kind: 'tested', evidenceId: 'surprise-size', label: 'Market-moving release in the next 24h', firing: uniq.length > 0, value: { n: uniq.length }, instruments: [...new Set(uniq.map(h => h.pair))], expect: uniq.length ? expectFor(atrBy, effs, 1) : [],
+    // surprise-size re-banked UNDERPOWERED 2026-11-28: release days run wider, the size of the surprise is not shown to matter
+    push({ id: 'event-range', kind: 'described', evidenceId: 'surprise-size', label: 'Market-moving release in the next 24h', firing: uniq.length > 0, value: { n: uniq.length }, instruments: [...new Set(uniq.map(h => h.pair))], expect: uniq.length ? expectFor(atrBy, effs, 1) : [],
       detail: uniq.length ? uniq.map(line).join('\n') : 'No release that has measurably moved a pair is due in the next 24h.' });
   }
   // ── described: front-end shock (tested: FX ran calmer after hawkish ones) ──

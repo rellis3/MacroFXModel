@@ -1,0 +1,61 @@
+EUR_USD 5000 bars 2009-01-19 -> 2026-11-27
+USD_JPY 5000 bars 2009-01-30 -> 2026-11-27
+GBP_USD 5000 bars 2009-01-11 -> 2026-11-27
+AUD_USD 5000 bars 2008-12-26 -> 2026-11-27
+USD_CAD 5000 bars 2009-01-25 -> 2026-11-27
+releases 6549; session date changed by the NY-close fix: 0; pair-releases to the lockbox 8380
+cpi           EUR_USD day0 n=437 slope +0.003 [-0.052, +0.061] t +0.103 top-bottom -0.016
+cpi           EUR_USD r1   n=437 slope +0.077 [+0.025, +0.131] t +2.942 top-bottom +0.119
+cpi           USD_JPY day0 n=257 slope +0.052 [-0.086, +0.228] t +0.629 top-bottom +0.062
+cpi           USD_JPY r1   n=257 slope +0.129 [-0.032, +0.337] t +1.278 top-bottom +0.104
+cpi           GBP_USD day0 n=107 slope +0.026 [-0.081, +0.130] t +0.487 top-bottom +0.046
+cpi           GBP_USD r1   n=107 slope -0.064 [-0.162, +0.046] t -1.225 top-bottom -0.192
+cpi           AUD_USD day0 n=107 slope +0.049 [-0.071, +0.184] t +0.754 top-bottom +0.070
+cpi           AUD_USD r1   n=107 slope -0.139 [-0.252, -0.045] t -2.652 top-bottom -0.286
+cpi           USD_CAD day0 n=198 slope -0.035 [-0.107, +0.035] t -0.957 top-bottom -0.152
+cpi           USD_CAD r1   n=198 slope +0.009 [-0.050, +0.077] t +0.289 top-bottom +0.083
+employment    EUR_USD day0 n=583 slope +0.016 [-0.016, +0.052] t +0.947 top-bottom +0.086
+employment    EUR_USD r1   n=583 slope -0.007 [-0.040, +0.027] t -0.417 top-bottom +0.017
+employment    USD_JPY day0 n=536 slope -0.023 [-0.058, +0.011] t -1.319 top-bottom +0.021
+employment    USD_JPY r1   n=536 slope -0.019 [-0.059, +0.021] t -0.929 top-bottom +0.040
+employment    GBP_USD day0 n= 55 slope -0.092 [-0.222, +0.055] t -1.332 top-bottom n/a
+employment    GBP_USD r1   n= 55 slope -0.063 [-0.197, +0.121] t -0.766 top-bottom n/a
+employment    AUD_USD day0 n=236 slope -0.026 [-0.078, +0.037] t -0.918 top-bottom -0.015
+employment    AUD_USD r1   n=236 slope -0.055 [-0.107, +0.002] t -2.004 top-bottom -0.122
+employment    USD_CAD day0 n=237 slope -0.006 [-0.055, +0.050] t -0.219 top-bottom +0.079
+employment    USD_CAD r1   n=237 slope -0.026 [-0.076, +0.028] t -1.025 top-bottom +0.024
+gdp           EUR_USD day0 n=193 slope +0.023 [-0.044, +0.094] t +0.654 top-bottom +0.012
+gdp           EUR_USD r1   n=193 slope +0.027 [-0.034, +0.088] t +0.863 top-bottom +0.034
+gdp           USD_JPY day0 n=180 slope +0.006 [-0.075, +0.092] t +0.135 top-bottom -0.047
+gdp           USD_JPY r1   n=180 slope +0.024 [-0.076, +0.130] t +0.480 top-bottom -0.020
+gdp           GBP_USD day0 n=127 slope +0.020 [-0.050, +0.078] t +0.613 top-bottom +0.006
+gdp           GBP_USD r1   n=127 slope -0.035 [-0.101, +0.025] t -1.091 top-bottom -0.060
+gdp           USD_CAD day0 n=121 slope -0.025 [-0.088, +0.041] t -0.772 top-bottom -0.001
+gdp           USD_CAD r1   n=121 slope +0.029 [-0.066, +0.134] t +0.562 top-bottom +0.065
+rate decision EUR_USD day0 n=156 slope +0.128 [+0.012, +0.518] t +0.541 top-bottom n/a
+rate decision EUR_USD r1   n=156 slope +0.066 [-0.176, +0.218] t +0.381 top-bottom n/a
+rate decision USD_JPY day0 n=117 slope +0.121 [+0.036, +0.268] t +1.631 top-bottom n/a
+rate decision USD_JPY r1   n=117 slope +0.049 [-0.140, +0.233] t +0.482 top-bottom n/a
+rate decision GBP_USD day0 n= 86 slope -0.033 [-0.134, +0.049] t -0.739 top-bottom -0.535
+rate decision GBP_USD r1   n= 86 slope +0.037 [-0.042, +0.187] t +0.629 top-bottom +0.488
+rate decision AUD_USD day0 n=107 slope +0.097 [+0.011, +0.207] t +1.900 top-bottom n/a
+rate decision AUD_USD r1   n=107 slope -0.032 [-0.084, +0.021] t -1.227 top-bottom n/a
+retail sales  EUR_USD day0 n=178 slope -0.062 [-0.109, -0.018] t -2.682 top-bottom -0.180
+retail sales  EUR_USD r1   n=178 slope -0.026 [-0.087, +0.037] t -0.826 top-bottom -0.030
+retail sales  USD_JPY day0 n=165 slope -0.018 [-0.096, +0.052] t -0.493 top-bottom -0.032
+retail sales  USD_JPY r1   n=165 slope -0.017 [-0.073, +0.040] t -0.583 top-bottom +0.013
+retail sales  GBP_USD day0 n=124 slope +0.008 [-0.063, +0.073] t +0.234 top-bottom +0.045
+retail sales  GBP_USD r1   n=124 slope -0.016 [-0.083, +0.052] t -0.446 top-bottom -0.045
+retail sales  AUD_USD day0 n= 81 slope +0.005 [-0.076, +0.116] t +0.102 top-bottom +0.021
+retail sales  AUD_USD r1   n= 81 slope +0.003 [-0.107, +0.104] t +0.050 top-bottom +0.007
+retail sales  USD_CAD day0 n=221 slope +0.018 [-0.041, +0.094] t +0.532 top-bottom +0.087
+retail sales  USD_CAD r1   n=221 slope -0.017 [-0.082, +0.053] t -0.491 top-bottom -0.062
+pmi           EUR_USD day0 n=570 slope -0.029 [-0.065, +0.010] t -1.532 top-bottom -0.028
+pmi           EUR_USD r1   n=570 slope -0.009 [-0.045, +0.028] t -0.486 top-bottom -0.019
+pmi           USD_JPY day0 n=467 slope +0.024 [-0.060, +0.137] t +0.482 top-bottom +0.028
+pmi           USD_JPY r1   n=467 slope -0.021 [-0.076, +0.036] t -0.741 top-bottom +0.000
+pmi           GBP_USD day0 n=331 slope -0.031 [-0.082, +0.017] t -1.268 top-bottom -0.029
+pmi           GBP_USD r1   n=331 slope -0.041 [-0.088, +0.008] t -1.638 top-bottom +0.004
+pmi           USD_CAD day0 n=105 slope -0.037 [-0.164, +0.092] t -0.564 top-bottom -0.194
+pmi           USD_CAD r1   n=105 slope +0.009 [-0.068, +0.095] t +0.208 top-bottom +0.045
+cells 54; Holm passes with positive slope 0; verdict underpowered

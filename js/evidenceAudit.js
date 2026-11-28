@@ -4,8 +4,10 @@
  * null, underpowered and validated verdict, 2026-10-31).
  *
  * status: 'stands' (code read and sound; may be cited as tested) | 'reopened' (bug, design flaw or fragile)
- *       | 'unverified' (not traced or not reproducible). Only 'stands' may be cited as "tested null" or
- *       "validated" in prose (REPO_REVIEW_2026-10-31 §6). Context entries were not audited and are absent.
+ *       | 'unverified' (not traced or not reproducible) | 'resolved' (a later re-run fixed the named defect and
+ *       re-banked the entry: fields resolved (date), rebanked (verdict), by (study id); overlay from
+ *       analysis/output/repo-review-2026-10-31/RESOLUTIONS.csv). Only 'stands' and 'resolved' may be cited as
+ *       "tested null" or "validated" in prose (REPO_REVIEW_2026-10-31 §6). Context entries were not audited.
  */
 export const EVIDENCE_AUDIT_DATE = '2026-10-31';
 export const EVIDENCE_AUDIT = {
@@ -118,7 +120,7 @@ export const EVIDENCE_AUDIT = {
   "gamma-regime-trades-fx": {"status":"stands","audit":"CONFIRMED","banked":"null"},
   "garin-vix-intraday-oos": {"status":"stands","audit":"CONFIRMED","banked":"underpowered"},
   "gex-range": {"status":"stands","audit":"CONFIRMED","banked":"underpowered"},
-  "gex-range-es": {"status":"reopened","audit":"FRAGILE","banked":"validated"},
+  "gex-range-es": {"status":"resolved","audit":"FRAGILE","banked":"validated","resolved":"2026-11-28","rebanked":"validated","by":"reopened-audit-rerun"},
   "horizon-reversion": {"status":"stands","audit":"PLAUSIBLE","banked":"validated"},
   "intraday-range": {"status":"unverified","audit":"SHALLOW-CHECK","banked":"validated"},
   "iv-forecast": {"status":"stands","audit":"ROBUST","banked":"validated"},
@@ -128,7 +130,7 @@ export const EVIDENCE_AUDIT = {
   "iv-regime-fade-follow": {"status":"stands","audit":"CONFIRMED","banked":"null"},
   "iv-sizing-filter": {"status":"stands","audit":"CONFIRMED","banked":"null"},
   "jump-p90-event-term": {"status":"stands","audit":"CONFIRMED","banked":"null"},
-  "ladder-calibration": {"status":"reopened","audit":"FRAGILE","banked":"validated"},
+  "ladder-calibration": {"status":"resolved","audit":"FRAGILE","banked":"validated","resolved":"2026-11-28","rebanked":"validated","by":"reopened-audit-rerun"},
   "level-touch": {"status":"stands","audit":"CONFIRMED","banked":"null"},
   "line-touch-limit-unseen": {"status":"unverified","audit":"SHALLOW-CHECK","banked":"null"},
   "line-touch-reach": {"status":"unverified","audit":"SHALLOW-CHECK","banked":"validated"},
@@ -161,7 +163,7 @@ export const EVIDENCE_AUDIT = {
   "nonus-yield-gap-range": {"status":"stands","audit":"BUG","banked":"context"},
   "nowcast-gap-cpi": {"status":"reopened","audit":"DESIGN","banked":"null"},
   "nq-continuation-execution": {"status":"unverified","audit":"SHALLOW-CHECK","banked":"null"},
-  "nq-down-week": {"status":"reopened","audit":"FRAGILE","banked":"validated"},
+  "nq-down-week": {"status":"resolved","audit":"FRAGILE","banked":"validated","resolved":"2026-11-28","rebanked":"context","by":"reopened-audit-rerun"},
   "oi-max-pain": {"status":"reopened","audit":"BUG","banked":"null"},
   "oil-to-breakevens": {"status":"reopened","audit":"DESIGN","banked":"null"},
   "one-range-forecast": {"status":"reopened","audit":"DESIGN","banked":"null"},
@@ -173,7 +175,7 @@ export const EVIDENCE_AUDIT = {
   "policy-direction-at-lines": {"status":"stands","audit":"CONFIRMED","banked":"null"},
   "positioning-into-release-direction": {"status":"stands","audit":"PLAUSIBLE","banked":"validated"},
   "positioning-into-release-range": {"status":"stands","audit":"CONFIRMED","banked":"null"},
-  "post-fomc-usd-drift": {"status":"reopened","audit":"FRAGILE","banked":"validated"},
+  "post-fomc-usd-drift": {"status":"resolved","audit":"FRAGILE","banked":"validated","resolved":"2026-11-28","rebanked":"validated","by":"reopened-audit-rerun"},
   "price-vs-spread-divergence": {"status":"reopened","audit":"DESIGN","banked":"null"},
   "priced-in": {"status":"reopened","audit":"BUG","banked":"null"},
   "priced-in-direction": {"status":"reopened","audit":"DESIGN","banked":"null"},
@@ -217,7 +219,7 @@ export const EVIDENCE_AUDIT = {
   "stir-composite-nq": {"status":"reopened","audit":"DESIGN","banked":"null"},
   "stir-residual-catchup": {"status":"reopened","audit":"DESIGN","banked":"null"},
   "stir-wide-scan": {"status":"stands","audit":"CONFIRMED","banked":"null"},
-  "surprise-size": {"status":"reopened","audit":"FRAGILE","banked":"validated"},
+  "surprise-size": {"status":"resolved","audit":"FRAGILE","banked":"validated","resolved":"2026-11-28","rebanked":"underpowered","by":"reopened-audit-rerun"},
   "tag-x-persistence": {"status":"reopened","audit":"DESIGN","banked":"null"},
   "tape-speed-persistence": {"status":"unverified","audit":"SHALLOW-CHECK","banked":"validated"},
   "tff-basis-rates-vol-build": {"status":"stands","audit":"CONFIRMED","banked":"underpowered"},
@@ -227,16 +229,16 @@ export const EVIDENCE_AUDIT = {
   "v4-dirtag": {"status":"stands","audit":"CONFIRMED","banked":"null"},
   "v4-stage0": {"status":"stands","audit":"CONFIRMED","banked":"null"},
   "v4-stage1": {"status":"stands","audit":"CONFIRMED","banked":"null"},
-  "vix-beta-change": {"status":"reopened","audit":"FRAGILE","banked":"validated"},
+  "vix-beta-change": {"status":"resolved","audit":"FRAGILE","banked":"validated","resolved":"2026-11-28","rebanked":"underpowered","by":"reopened-audit-rerun"},
   "vix-beta-level": {"status":"unverified","audit":"SHALLOW-CHECK","banked":"underpowered"},
   "vix-integral-gaps": {"status":"stands","audit":"CONFIRMED","banked":"underpowered"},
   "vix-inversion": {"status":"stands","audit":"PLAUSIBLE","banked":"validated"},
-  "vix-ratio-vx-futures": {"status":"reopened","audit":"FRAGILE","banked":"validated"},
-  "vix-second-derivative": {"status":"reopened","audit":"FRAGILE","banked":"validated"},
+  "vix-ratio-vx-futures": {"status":"resolved","audit":"FRAGILE","banked":"validated","resolved":"2026-11-28","rebanked":"underpowered","by":"reopened-audit-rerun"},
+  "vix-second-derivative": {"status":"resolved","audit":"FRAGILE","banked":"validated","resolved":"2026-11-28","rebanked":"underpowered","by":"reopened-audit-rerun"},
   "vmc-nq-cipher-direction": {"status":"stands","audit":"CONFIRMED","banked":"null"},
   "vmc-nq-cipher-interaction": {"status":"stands","audit":"CONFIRMED","banked":"null"},
   "vmc-nq-cipher-sequencing": {"status":"stands","audit":"PLAUSIBLE","banked":"validated"},
-  "vmc-nq-cipher-volatility": {"status":"reopened","audit":"FRAGILE","banked":"validated"},
+  "vmc-nq-cipher-volatility": {"status":"resolved","audit":"FRAGILE","banked":"validated","resolved":"2026-11-28","rebanked":"context","by":"reopened-audit-rerun"},
   "vmc-nq-vol-decomposition": {"status":"unverified","audit":"SHALLOW-CHECK","banked":"null"},
   "vmc-nq-vol-increment": {"status":"unverified","audit":"SHALLOW-CHECK","banked":"null"},
   "vmc-nq-vol-transition": {"status":"unverified","audit":"SHALLOW-CHECK","banked":"null"},
@@ -245,7 +247,7 @@ export const EVIDENCE_AUDIT = {
   "vol-curve-front": {"status":"stands","audit":"ROBUST","banked":"validated"},
   "vol-target": {"status":"unverified","audit":"SHALLOW-CHECK","banked":"validated"},
   "vvix-ratio-direction": {"status":"stands","audit":"CONFIRMED","banked":"underpowered"},
-  "vvix-ratio-range": {"status":"reopened","audit":"FRAGILE","banked":"validated"},
+  "vvix-ratio-range": {"status":"resolved","audit":"FRAGILE","banked":"validated","resolved":"2026-11-28","rebanked":"underpowered","by":"reopened-audit-rerun"},
   "vwap-extension-fade": {"status":"unverified","audit":"SHALLOW-CHECK","banked":"null"},
   "wall-placebo": {"status":"stands","audit":"CONFIRMED","banked":"null"},
   "yen-funding-squeeze-audjpy": {"status":"stands","audit":"CONFIRMED","banked":"underpowered"},
@@ -260,5 +262,8 @@ export const EVIDENCE_AUDIT = {
   "zone-engine": {"status":"reopened","audit":"DESIGN","banked":"null"},
 };
 
-/** Audit status for a ledger id: 'stands' | 'reopened' | 'unverified' | null (not audited, e.g. context). */
+/** Audit status for a ledger id: 'stands' | 'reopened' | 'unverified' | 'resolved' | null (not audited, e.g. context). */
 export function auditStatus(id) { return EVIDENCE_AUDIT[id]?.status ?? null; }
+
+/** True when the audit no longer blocks citing the entry's current verdict ('stands' or 'resolved'). */
+export function auditSettled(id) { const s = EVIDENCE_AUDIT[id]?.status; return s === 'stands' || s === 'resolved'; }
