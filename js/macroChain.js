@@ -582,7 +582,11 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
     const realigned = !al.mismatch && al.end != null && (al.a !== vals[l.from] || al.b !== vals[l.to]);
     const a = realigned ? end(l.from, al.a) : a0, b = realigned ? end(l.to, al.b) : b0;
     const assumed = window === 'live' && [a, b].find(e => typeof e?.basis === 'string' && /assumed/.test(e.basis));
-    let verdict, read, punch = '';
+    // Live, the real yield is the 10Y's move with breakevens held flat. Only the link from the 10Y to it is true by construction, so only that one
+    // is not judged. The other real-yield links are judged on the stand-in and marked approximate: over 2021-2026 the daily 10Y move had the
+    // same sign as the TIPS 10Y move 94% of days (correlation 0.86, FRED DGS10 vs DFII10; owner decision 2026-11-28).
+    const byConstruction = assumed && [l.from, l.to].includes('us10y');
+    let verdict, read, punch = '', approx = false;
     // What the textbook expected the TO end to do, given what the FROM end did.
     const expected = (a && a.moved) ? (l.sign > 0 ? a.dir : a.dir === 'up' ? 'down' : 'up') : null;
     if (!a || !b || a.delta == null || b.delta == null) { verdict = 'unmeasured'; read = 'A series this link needs is not loaded, so it is not judged.'; }
@@ -593,12 +597,10 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
       read = `${stale.label} has no live price (its last print is ${stale.asOf ?? 'undated'}), so this link is not judged live. Switch to 1D to judge it on closes.`;
       punch = `${stale.label}: last print, not live`;
     }
-    else if (assumed) {
-      // live, the real yield is the 10Y's implied move with breakevens held flat (no live breakeven price): nominal -> real
-      // then holds by construction and every real-yield link is really a 10Y link, so none of them is judged on it
+    else if (byConstruction) {
       verdict = 'assumed';
-      read = `${assumed.label} has no live price of its own: live it is the 10Y's move with breakevens assumed flat, so this link would be judged on an assumption (nominal → real holds by construction). Not judged live; switch to 1D to judge it on closes.`;
-      punch = `${assumed.label}: assumed, not measured`;
+      read = `${assumed.label} has no live price of its own: live it is the 10Y's move with breakevens assumed flat, so this link holds by construction. Not judged live; switch to 1D to judge it on closes.`;
+      punch = `${assumed.label}: assumed from the 10Y, not measured`;
     }
     else if (!a.moved || !b.moved) {
       verdict = 'quiet';
@@ -624,9 +626,13 @@ export function evaluateChain(vals = {}, links = CHAIN_LINKS, nodes = CHAIN_NODE
     // The two ends can print on different days (the broad dollar index lags a
     // week; OANDA closes are yesterday). A verdict across a wide gap is still a
     // verdict, but the reader should see the gap rather than assume one date.
+    if (assumed && !byConstruction && (verdict === 'holding' || verdict === 'broken')) {
+      approx = true;
+      read += ` Approximate: live, ${assumed.label} is the 10Y's move with breakevens held flat (on closes since 2021 that has the real yield's direction about 9 days in 10).`;
+    }
     const ta = Date.parse(a?.asOf ?? ''), tb = Date.parse(b?.asOf ?? '');
     const dateGapDays = (Number.isFinite(ta) && Number.isFinite(tb)) ? Math.round(Math.abs(ta - tb) / 864e5) : null;
-    return { id: l.id, short: l.short ?? l.id, textbook: l.textbook, sign: l.sign, evidence: scaled ? [] : (l.evidence ?? []), a, b, a0, b0, alignedTo: realigned ? al.end : null, expected, verdict, read, punch, dateGapDays, window };
+    return { id: l.id, short: l.short ?? l.id, textbook: l.textbook, sign: l.sign, evidence: scaled ? [] : (l.evidence ?? []), a, b, a0, b0, alignedTo: realigned ? al.end : null, expected, verdict, read, punch, approx, dateGapDays, window };
   });
 }
 
@@ -666,8 +672,10 @@ export function summariseChain(links, window = CHAIN_WINDOW_DAYS) {
   else if (n.broken === 0) headline = `${n.holding} of ${judged} testable link${judged === 1 ? '' : 's'} holding. The textbook is working — first-order reads are enough today.`;
   else headline = `${n.broken} of ${judged} testable link${judged === 1 ? '' : 's'} broken: ${brokenShort.join(', ')}. That is where the story is.`;
   if (window === 'live' && n.notlive) headline += ` ${n.notlive} link${n.notlive === 1 ? '' : 's'} need${n.notlive === 1 ? 's' : ''} a series with no live price and ${n.notlive === 1 ? 'is' : 'are'} not judged.`;
-  if (window === 'live' && n.assumed) headline += ` ${n.assumed} real-yield link${n.assumed === 1 ? '' : 's'} ${n.assumed === 1 ? 'rests' : 'rest'} on an assumed real yield (the 10Y with breakevens flat) and ${n.assumed === 1 ? 'is' : 'are'} not judged.`;
-  return { ...n, judged, brokenIds, brokenShort, headline };
+  if (window === 'live' && n.assumed) headline += ` Nominal → real is not judged live (the real yield is the 10Y with breakevens flat, so it holds by construction).`;
+  const approx = links.filter(l => l.approx).length;
+  if (window === 'live' && approx) headline += ` ${approx} real-yield verdict${approx === 1 ? ' is' : 's are'} approximate (the 10Y stands in for the real yield).`;
+  return { ...n, approx, judged, brokenIds, brokenShort, headline };
 }
 
 /** Compact text for an AI prompt: one line per judged link, broken ones with the mechanism. */

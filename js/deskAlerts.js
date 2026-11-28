@@ -31,7 +31,7 @@ export const ALERT_DEFAULTS = { minGapH: 6, maxPerHour: 6, skewLo: 5, skewHi: 95
 const r2 = x => (Number.isFinite(x) ? +x.toFixed(2) : null);
 
 /** Board payloads → { key: { state, alert (bool: is this an alerting state), text, data } }. Missing boards contribute nothing. */
-export function readStates({ stress, skew, fair, carry, cli, drift, chainstats } = {}, carryHist = {}, o = ALERT_DEFAULTS) {
+export function readStates({ stress, skew, fair, carry, cli, drift, chainstats, health } = {}, carryHist = {}, o = ALERT_DEFAULTS) {
   const out = {};
   if (stress?.overall) {
     const reds = (stress.tiles ?? []).filter(t => t.level !== 'ok').map(t => `${t.label} ${t.level}`).join(', ');
@@ -79,6 +79,16 @@ export function readStates({ stress, skew, fair, carry, cli, drift, chainstats }
     const st = Math.abs(l.z) >= (o.chainZ ?? 2.5) ? (l.z > 0 ? 'above' : 'below') : 'normal';
     out[`chainz:${id}`] = { state: st, alert: st !== 'normal', data: { z: l.z, win: l.zWin, corr60: l.corr?.[60]?.now ?? null },
       text: `Chain link <b>${l.short ?? id}</b> diverging: ${l.line ?? `z ${l.z} over ${l.zWin} days`}` };
+  }
+  // Data feeds that stop (review 2026-11-28: CPI for five economies, ISM and others died silently and were shown as current for months).
+  // /api/data-health grades each feed against its own cadence; fresh and lagging count as live (a late print is not an alert), stale and dead
+  // as stopped. Only the change from live to stopped is sent; a feed already stopped at first sight is recorded quietly (evaluate's baseline),
+  // and one that comes back is logged, not sent. Unknown and snapshot rows are left out: they have no cadence to miss.
+  for (const r of health?.rows ?? []) {
+    if (r?.kind !== 'feed' || !['fresh', 'lagging', 'stale', 'dead'].includes(r.state)) continue;
+    const stopped = r.state === 'stale' || r.state === 'dead';
+    out[`feed:${r.id}`] = { state: stopped ? 'stopped' : 'live', alert: stopped, data: { last: r.last ?? null, ageDays: r.ageDays ?? null },
+      text: `Data feed stopped: <b>${r.label ?? r.id}</b>, last ${r.last ? String(r.last).slice(0, 10) : 'unknown'}${r.why ? `. ${r.why}` : ''}` };
   }
   return out;
 }

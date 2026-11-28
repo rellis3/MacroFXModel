@@ -189,9 +189,9 @@ console.log('[live window - last completed close -> now]');
   // and real -> anything is really 10Y -> anything, so none of those links is judged live (review 2026-11-27)
   const asm = L({ us10y: lv(5, 'implied'), real: lv(5, 'implied, breakevens assumed flat'), gold: lv(1.2), nq: lv(1) });
   ok('live: nominal -> real on an assumed real yield is ASSUMED, not holding', byId(asm, 'us10y-real').verdict === 'assumed' && /by construction/.test(byId(asm, 'us10y-real').read));
-  ok('live: real -> gold on an assumed real yield is not called broken', byId(asm, 'real-gold').verdict === 'assumed' && byId(asm, 'real-nq').verdict === 'assumed');
+  ok('live: real -> gold on an assumed real yield IS judged, marked approximate (owner 2026-11-28: only nominal -> real holds by construction)', ['holding', 'broken'].includes(byId(asm, 'real-gold').verdict) && byId(asm, 'real-gold').approx === true && /Approximate/.test(byId(asm, 'real-gold').read) && byId(asm, 'us10y-real').approx === false);
   const asmSum = summariseChain(asm, 'live');
-  ok('live: assumed links are counted apart and named in the headline, not as broken', asmSum.assumed >= 3 && asmSum.broken === 0 && /assumed real yield/.test(asmSum.headline), asmSum.headline);
+  ok('live: only nominal -> real is counted apart; the approximate verdicts are counted and named in the headline', asmSum.assumed === 1 && asmSum.approx >= 2 && /holds by construction/.test(asmSum.headline) && /approximate/.test(asmSum.headline), asmSum.headline);
   ok('the same values at 1D are judged (the rule is live-only)', byId(evaluateChain({ us10y: lv(10, 'implied'), real: lv(10, 'implied, breakevens assumed flat') }, CHAIN_LINKS, CHAIN_NODES, 1), 'us10y-real').verdict === 'holding');
   // the 3bp floor on implied bp nodes only
   const small = byId(L({ real: lv(2, 'implied'), gold: lv(-1.2) }), 'real-gold');

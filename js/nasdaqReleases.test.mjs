@@ -34,3 +34,35 @@ const amb = toSurpriseRows([
 ]);
 assert.deepEqual(amb.map(r => r.event), ['Spanish CPI']);
 console.log('nasdaqReleases: ambiguity guard passed');
+
+// 2026-11-28: an ambiguous pair is NAMED from reference rows instead of dropped; the US releases FRED does not fill are taken
+{
+  const { nameAmbiguous, US_GAP } = await import('./nasdaqReleases.js');
+  const t = Date.parse('2026-11-16T13:30:00Z');
+  const pair = [{ ms: t, country: 'Canada', event: 'CPI', raw: { actual: '3.1%', consensus: '3.2%', previous: '3.1%' } },
+    { ms: t, country: 'Canada', event: 'CPI', raw: { actual: '0.2%', consensus: '0.3%', previous: '0.1%' } },
+    { ms: t, country: 'Canada', event: 'Trimmed CPI', raw: { actual: '1.8%', consensus: '1.9%', previous: '1.9%' } }];
+  const ref = [{ country: 'CA', event: 'CPI m/m', ms: t, estimate: '0.3%', prev: '0.1%' }, { country: 'CA', event: 'Trimmed CPI y/y', ms: t, estimate: '1.9%', prev: '1.8%' }];
+  assert.deepEqual(toSurpriseRows(pair).map(r => r.event), ['Trimmed CPI'], 'without a reference the pair is dropped, as before');
+  const named = toSurpriseRows(pair, { reference: ref });
+  assert.deepEqual(named.map(r => [r.event, r.actual]), [['CPI y/y', '3.1%'], ['CPI m/m', '0.2%'], ['Trimmed CPI', '1.8%']], 'm/m named by its consensus, the other is the y/y');
+  assert.equal(nameAmbiguous(pair.slice(0, 2), [{ country: 'CA', event: 'Trimmed CPI y/y', ms: t, estimate: '3.2%' }], 'CA').size, 0, 'a different release (trimmed) never names the headline pair');
+  { const n = nameAmbiguous(pair.slice(0, 2), [{ country: 'CA', event: 'CPI m/m', ms: t + 3600e3, estimate: '0.3%' }], 'CA'); assert.deepEqual([n.get(pair[0]), n.get(pair[1])], ['CPI y/y', 'CPI m/m'], 'a reference at another time does not match by consensus; the pair is named by size instead'); }
+  const us = toSurpriseRows([{ ms: t, country: 'United States', event: 'ISM Manufacturing PMI', raw: { actual: '48.2', consensus: '48.6', previous: '48.7' } },
+    { ms: t, country: 'United States', event: 'CB Consumer Confidence', raw: { actual: '101.2', consensus: '99.0', previous: '98.7' } },
+    { ms: t, country: 'United States', event: 'Nonfarm Payrolls', raw: { actual: '165K', consensus: '65K', previous: '60K' } }]);
+  assert.deepEqual(us.map(r => [r.country, r.event]), [['US', 'ISM Manufacturing PMI'], ['US', 'CB Consumer Confidence']], 'US: only what FRED does not fill');
+  assert.ok(US_GAP.test('S&P Global Manufacturing PMI') && !US_GAP.test('CPI'));
+  console.log('nasdaqReleases: named pairs and US gaps passed');
+}
+{
+  const { nameAmbiguous } = await import('./nasdaqReleases.js');
+  const t = Date.parse('2025-09-16T12:30:00Z'), old = [{ country: 'CA', event: 'CPI m/m', ms: Date.parse('2025-03-18T12:30:00Z'), estimate: '0.7%' }];
+  const ca = [{ ms: t, country: 'Canada', event: 'CPI', raw: { actual: '2.4%', previous: '1.9%' } }, { ms: t, country: 'Canada', event: 'CPI', raw: { actual: '-0.1%', previous: '0.3%' } }];
+  const n = nameAmbiguous(ca, old, 'CA');
+  assert.deepEqual([n.get(ca[0]), n.get(ca[1])], ['CPI y/y', 'CPI m/m'], 'no reference at the time: named by size, the period from the stored series');
+  const ch = [{ ms: t, country: 'Switzerland', event: 'CPI', raw: { actual: '0.2%', previous: '0.1%' } }, { ms: t, country: 'Switzerland', event: 'CPI', raw: { actual: '0.1%', previous: '0.0%' } }];
+  assert.equal(nameAmbiguous(ch, [{ country: 'CH', event: 'CPI m/m', ms: 1 }], 'CH').size, 0, 'too close to call: dropped');
+  assert.equal(nameAmbiguous(ca, [], 'CA').size, 0, 'no known short-period series: dropped');
+  console.log('nasdaqReleases: size-named pairs passed');
+}

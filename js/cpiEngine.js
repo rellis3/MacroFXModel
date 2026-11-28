@@ -98,6 +98,47 @@ export const CPI_UNIVERSE = {
   JPY: { discontinued: { since: '2021-06', was: 'CPALTT01JPM659N', reason: 'OECD MEI mirror discontinued; Eurostat is Europe-only' } },
 };
 
+// ── Live CPI from the calendar's own prints (owner decision 2026-11-28) ──────
+// Three of the five dead currencies have their headline CPI y/y printed live on the economic calendar, and the surprise store keeps every
+// print (actual vs consensus) with the release time. Those prints are the inflation read for them, with the measure named:
+//   GBP  ONS CPI y/y, monthly, stored continuously since 2016 ("CPI y/y").
+//   AUD  ABS monthly CPI indicator y/y: ForexFactory's "CPI y/y" (Oct 2022 - Mar 2025), then the same release under Nasdaq's name
+//        "Monthly CPI Indicator" (Jul 2025 on). Same measure, two vendor names; no overlap to compare, a three-month gap.
+//   JPY  national core CPI y/y (ex fresh food, Japan's standard gauge): "National Core CPI y/y" then "National Core CPI".
+// CAD and NZD were first left discontinued (only CPI m/m and q/q were stored: Nasdaq lists the m/m or q/q and the y/y under one name, and the
+// store dropped both copies). From 2026-11-28 those pairs are named (js/nasdaqReleases.js nameAmbiguous), so their headline y/y is stored too;
+// each scores once it has the 7 prints the trend needs. The Bank of Canada's core measures are NOT used for CAD: they run ~1.9% against a
+// 3.1% headline, which would misread the level.
+export const LIVE_CPI = {
+  GBP: { events: [{ country: 'GB', event: 'CPI y/y' }], measure: 'ONS CPI y/y (calendar prints)' },
+  AUD: { events: [{ country: 'AU', event: 'CPI y/y' }, { country: 'AU', event: 'Monthly CPI Indicator' }], measure: 'ABS monthly CPI indicator y/y (calendar prints)' },
+  JPY: { events: [{ country: 'JP', event: 'National Core CPI y/y' }, { country: 'JP', event: 'National Core CPI' }], measure: 'national core CPI y/y, ex fresh food (calendar prints)' },
+  // From 2026-11-28 the Nasdaq rows that list the m/m (or q/q) and the y/y under ONE name are named instead of dropped
+  // (js/nasdaqReleases.js nameAmbiguous), so Statistics Canada's headline CPI y/y and Stats NZ's quarterly CPI y/y are stored as "CPI y/y".
+  // Each scores once it holds the 7 prints the trend baseline needs; until then the currency stays discontinued (liveCpiSeries -> null).
+  CAD: { events: [{ country: 'CA', event: 'CPI y/y' }], measure: 'Statistics Canada CPI y/y (calendar prints)' },
+  NZD: { events: [{ country: 'NZ', event: 'CPI y/y' }], measure: 'Stats NZ CPI y/y, quarterly (calendar prints)', quarterly: true },
+};
+
+/**
+ * Stored release rows ({ country, event, ms, time, actual }) -> a Map(date -> y/y %) for one currency, in the shape cpiScore reads for a
+ * pre-computed y/y series (isIndex false), or null. One value per release month (the later print wins); a value outside -5..25% is not a
+ * CPI y/y and is skipped (a level or an index stored under a near name).
+ */
+export function liveCpiSeries(rows = [], ccy) {
+  const cfg = LIVE_CPI[ccy]; if (!cfg) return null;
+  const want = new Set(cfg.events.map(e => `${e.country}|${e.event.toLowerCase()}`)), byMonth = new Map();
+  for (const r of rows ?? []) {
+    if (!want.has(`${String(r?.country ?? '').toUpperCase()}|${String(r?.event ?? '').trim().toLowerCase()}`)) continue;
+    const v = parseFloat(String(r.actual ?? '').replace('%', '')), ms = Number(r.ms);
+    if (!Number.isFinite(v) || v < -5 || v > 25 || !Number.isFinite(ms)) continue;
+    const date = new Date(ms).toISOString().slice(0, 10), month = date.slice(0, 7), had = byMonth.get(month);
+    if (!had || had.ms < ms) byMonth.set(month, { date, v, ms });
+  }
+  if (byMonth.size < 7) return null;   // the trend dimension needs a 6-print baseline plus the latest
+  return new Map([...byMonth.values()].sort((a, b) => a.ms - b.ms).map(x => [x.date, x.v]));
+}
+
 // Core CPI is now USD-only. The EUR/CHF core series (CPGRLE01*) died with the rest
 // of the OECD family, and the Eurostat core IDs were NOT independently verified --
 // one candidate that appeared to resolve turned out to be fredgraph silently
@@ -205,7 +246,7 @@ export function cpiScore(data = {}, universe = {}) {
   // A currency whose source series has stopped reports WHY it has no score. Without
   // this it would be indistinguishable from a fetch that merely failed today, and
   // the page would keep implying the number is late rather than gone.
-  if (universe.discontinued) {
+  if (universe.discontinued && !(universe.live && data.headline)) {
     return {
       dims: {}, pressure: null, coverage: [], cadence: null,
       discontinued: universe.discontinued,
@@ -221,7 +262,9 @@ export function cpiScore(data = {}, universe = {}) {
 
   return { dims, pressure, coverage: Object.keys(dims),
     // AUD and NZD headline CPI is quarterly at source (ABS / Stats NZ).
-    cadence: universe.headline?.quarterly ? 'quarterly' : 'monthly' };
+    cadence: universe.headline?.quarterly ? 'quarterly' : 'monthly',
+    // a currency read from the calendar's prints says so, and which FRED series it replaces
+    ...(universe.live ? { source: universe.live.measure, replaces: universe.discontinued ?? null } : {}) };
 }
 
 // Fetch every configured series for one currency. Never throws on a single

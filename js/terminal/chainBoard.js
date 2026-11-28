@@ -128,6 +128,8 @@ export const CHAIN_ICON = {
 
 export const VCLS = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'none', notlive: 'none', assumed: 'none' };
 export const VWORD = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'no data', notlive: 'not live', assumed: 'assumed, not judged' };
+/** The verdict word for a link; a live real-yield verdict judged on the 10Y stand-in says it is approximate. */
+export const vword = l => `${VWORD[l?.verdict] ?? l?.verdict ?? ''}${l?.approx ? ' (approx.)' : ''}`;
 
 /**
  * Chips whose number rises when the thing named on the chip FALLS. The EM chip is the Fed's dollar index against EM
@@ -165,7 +167,7 @@ export function chainSvg(links, { win = 20, nodeSel = null, linkSel = null, show
       : `M${sx.toFixed(1)},${sy.toFixed(1)} L${ex.toFixed(1)},${ey.toFixed(1)}`;
     const mx = (sx + ex) / 2, my = (sy + ey) / 2, lbl = EDGE_LABEL[l.id] ?? String(l.short ?? l.id).replace(/\s*→\s*/g, '→'), lw = lbl.length * 6.3 + 12;
     const vc = VCLS[l.verdict] ?? 'none', lean = leanOf(l), sel = linkSel === l.id ? ' sel' : '';
-    return `<g class="cg-e ${vc}${lean ? ` lean-${lean}` : ''}${sel}" data-link="${esc(l.id)}" tabindex="0" role="button" aria-label="${esc(`${l.textbook}: ${VWORD[l.verdict] ?? l.verdict}`)}"><path class="cg-hit" d="${d}"/><path class="cg-glow" d="${d}"/><path class="cg-line" d="${d}" marker-end="url(#cg-ah-${vc})"/><rect class="cg-pill" x="${(mx - lw / 2).toFixed(1)}" y="${(my - 8).toFixed(1)}" width="${lw.toFixed(1)}" height="16" rx="8"/><text class="cg-pt" x="${mx.toFixed(1)}" y="${(my + 3.5).toFixed(1)}" text-anchor="middle">${esc(lbl)}</text></g>`;
+    return `<g class="cg-e ${vc}${lean ? ` lean-${lean}` : ''}${sel}" data-link="${esc(l.id)}" tabindex="0" role="button" aria-label="${esc(`${l.textbook}: ${vword(l)}`)}"><path class="cg-hit" d="${d}"/><path class="cg-glow" d="${d}"/><path class="cg-line" d="${d}" marker-end="url(#cg-ah-${vc})"/><rect class="cg-pill" x="${(mx - lw / 2).toFixed(1)}" y="${(my - 8).toFixed(1)}" width="${lw.toFixed(1)}" height="16" rx="8"/><text class="cg-pt" x="${mx.toFixed(1)}" y="${(my + 3.5).toFixed(1)}" text-anchor="middle">${esc(lbl)}</text></g>`;
   }).join('');
   const arrow = d => (d === 'up' ? '↑' : d === 'down' ? '↓' : '');
   const nodes = Object.keys(POS).map(k => {

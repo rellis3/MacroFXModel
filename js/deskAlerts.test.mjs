@@ -85,3 +85,20 @@ t('message and log', () => {
   assert.deepEqual(appendLog([{ key: 'old' }], [{ key: 'a' }, { key: 'b' }]).map(e => e.key), ['b', 'a', 'old']);
 });
 console.log(`deskAlerts: ${n} tests passed`);
+
+// a data feed that STOPS is sent once; one already stopped at first sight, and one that comes back, are not (2026-11-28)
+{
+  const { readStates: rs, evaluate: ev } = await import('./deskAlerts.js');
+  const h = rows => ({ health: { rows } });
+  const row = (id, state) => ({ id, kind: 'feed', label: id.toUpperCase(), state, last: '2026-11-20', ageDays: 8, why: '8 sessions behind' });
+  const t0 = Date.parse('2026-11-28T08:00:00Z');
+  let r = ev({}, rs(h([row('cpi', 'fresh'), row('bot', 'stale'), row('odd', 'unknown')])), t0);
+  if (Object.keys(r.state.keys).sort().join() !== 'feed:bot,feed:cpi' || r.events.length) throw new Error('first sight: baseline only, unknown left out');
+  r = ev(r.state, rs(h([row('cpi', 'lagging'), row('bot', 'stale')])), t0 + 3600e3);
+  if (r.events.length) throw new Error('lagging is still live');
+  r = ev(r.state, rs(h([row('cpi', 'stale'), row('bot', 'stale')])), t0 + 7200e3);
+  if (r.events.length !== 1 || !r.events[0].send || !/Data feed stopped: <b>CPI<\/b>/.test(r.events[0].text)) throw new Error('a feed that stops is sent once');
+  r = ev(r.state, rs(h([row('cpi', 'fresh'), row('bot', 'stale')])), t0 + 3 * 3600e3);
+  if (r.events.length !== 1 || r.events[0].send) throw new Error('a feed that comes back is logged, not sent');
+  console.log('deskAlerts: data feed stops passed');
+}
