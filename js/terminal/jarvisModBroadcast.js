@@ -15,6 +15,7 @@ import { boardSummary, topMovers } from './jarvisCandles.js';
 import { enterScene, sceneMotion, makeRecorder, voiceButton, voiceWord } from './jarvisModShow.js';
 import { buildHeadline } from './broadcastHeadline.js';
 import { PANEL_CSS } from './broadcastPanels.js';
+import { dayDelta, londonToday } from './helixDeltas.js';
 import { chartCommand } from './jarvisViewSession.js';
 import { dayRecordBody, postDayRecord } from './helixRecord.js';
 
@@ -252,6 +253,7 @@ registerJarvisModule({
     voiceButton(api, q('voice'));
 
     // the morning's data, gathered once (two minutes' cache): candles, the chain summary, the calendar, and the prepared data of every scene the programme may use
+    let prevDay = null;                             // the last stored Helix day before today (GET /api/helix/diary?before=), fetched once per London date
     async function gather(force = false) {
       if (!force && cache && Date.now() - cache.at < 120_000) return cache;
       // THE SERVER BUNDLE (/api/helix/bundle, plans/HELIX_IMPROVEMENTS.md 3.1): the morning's feeds in one request, each block { asOf, source, stale, degraded, data }. A block that
@@ -280,6 +282,8 @@ registerJarvisModule({
       const degraded = hb ? { partial: CORE.some(k => bad.includes(k)), core: CORE.filter(k => bad.includes(k)), blocks: bad, stale: Object.values(hb.blocks ?? {}).filter(b => b.stale).map(b => b.id) } : { partial: false, core: [], blocks: ['bundle'], stale: [], bundle: 'unavailable: fetched route by route' };
       let tod = null; try { tod = todShare(hourProfile(await api.jf('/api/vol-forecast/intraday-profile')), Date.now()); } catch (e) { tod = null; }      // the share of a usual day done by now (Helix wave 1.1)
       cache = { at: Date.now(), inp: { now: new Date(), rows, movers: topMovers(rows, 6), board: rows.length ? boardSummary(rows) : null, chain, events, extra, headline, helix, degraded, bundleAsOf: hb?.builtAt ?? null, todShare: tod } };
+      // HELIX MEMORY (day on day): the last stored day before today, with its scored close; at most one line from it is said (helixDeltas.js). Optional: no record, no line.
+      try { const today = londonToday(Date.now()); if (prevDay?.for !== today) { const j = await api.jf(`/api/helix/diary?before=${today}`, { timeoutMs: 8000 }); prevDay = { for: today, day: j?.ok ? j : null }; } cache.inp.dayDelta = dayDelta(cache.inp, prevDay.day, today); } catch (e) { cache.inp.dayDelta = null; }
       // THE HELIX DAILY RECORD (3.7): when the programme is about to play, what it was given and what it will say goes to R2 (helix/days/<date>.json). Fire and forget.
       if (force) { try { postDayRecord(api.jf, dayRecordBody(cache.inp, plan(cache.inp, q('len').value), { mode: q('len').value, part: partOfDay(dateWords(new Date()).hour) })); } catch (e) { /* the record never touches the broadcast */ } }
       return cache;
