@@ -105,7 +105,7 @@ const hooksReady = () => new Promise(res => {
 });
 
 /** The keys of the status object (and of what start() returns), in the order the features start. */
-export const FEEL_KEYS = ['asof', 'chart', 'insight', 'alerts', 'workspace', 'linked', 'monitor', 'newsSearches', 'calendarDrills', 'replayViz', 'ghostWalk', 'oiTime', 'eventReplay', 'sinceLast', 'riskStrip', 'oiDrill', 'smile', 'flow', 'ovSections', 'exporter', 'cmdline'];
+export const FEEL_KEYS = ['asof', 'chart', 'insight', 'levelEngine', 'alerts', 'workspace', 'linked', 'monitor', 'newsSearches', 'calendarDrills', 'replayViz', 'ghostWalk', 'oiTime', 'eventReplay', 'sinceLast', 'riskStrip', 'oiDrill', 'smile', 'flow', 'ovSections', 'exporter', 'cmdline'];
 
 export async function start() {
   // globalThis.__deskFeel is what each feature did on THIS page (js/terminal/featureStatus.js words it; the Info map tab's Preview features panel and
@@ -122,7 +122,7 @@ export async function start() {
     try { globalThis.dispatchEvent?.(new Event('deskfeel')); } catch { /* no events here */ }
     return Object.fromEntries(FEEL_KEYS.map(k => [k, !!feel.features[k]?.loaded]));
   };
-  const want = { linked: on('widget.linked'), cmdline: on('widget.cmdline'), workspace: on('tab.workspace'), alerts: on('widget.alerts'), chart: on('tab.kchart'), monitor: on('tab.monitor'), insight: on('tab.insight'), newsSearches: on('panel.news.saved'), exporter: on('widget.export'), calendarDrills: on('panel.cal.drills'), replayViz: on('widget.replayviz'), asof: on('widget.asof'), ghostWalk: on('widget.ghostwalk'), oiTime: on('widget.oitime'), eventReplay: on('widget.eventreplay'), sinceLast: on('panel.changed.since'), riskStrip: on('panel.risk.strip'), oiDrill: on('widget.oidrill'), smile: on('widget.smile'), ovSections: on('widget.ov.sections'), flow: ['panel.ov.glance', 'panel.flow.promos', 'panel.pair.driveshort', 'widget.density'].some(on) };
+  const want = { linked: on('widget.linked'), cmdline: on('widget.cmdline'), workspace: on('tab.workspace'), alerts: on('widget.alerts'), chart: on('tab.kchart'), monitor: on('tab.monitor'), insight: on('tab.insight'), levelEngine: on('tab.insight') && on('panel.insight.reach'), newsSearches: on('panel.news.saved'), exporter: on('widget.export'), calendarDrills: on('panel.cal.drills'), replayViz: on('widget.replayviz'), asof: on('widget.asof'), ghostWalk: on('widget.ghostwalk'), oiTime: on('widget.oitime'), eventReplay: on('widget.eventreplay'), sinceLast: on('panel.changed.since'), riskStrip: on('panel.risk.strip'), oiDrill: on('widget.oidrill'), smile: on('widget.smile'), ovSections: on('widget.ov.sections'), flow: ['panel.ov.glance', 'panel.flow.promos', 'panel.pair.driveshort', 'widget.density'].some(on) };
   // the as-of gate (js/terminal/asofBoot.js) holds market-data reads when the page was opened with ?asof=: a session that may not use the clock lets it go at once
   if (!want.asof && globalThis.__deskAsof?.requested) globalThis.__deskAsof.abandon('not available to this session');
   if (!Object.values(want).some(Boolean)) { for (const k of FEEL_KEYS) feel.features[k] = { requested: false, loaded: false, error: null }; return finish(); }
@@ -130,6 +130,7 @@ export async function start() {
   await rec('asof', want.asof, async () => { addAsCss(); const m = await import('./asofClock.js'); return m.mountAsof(); });   // first: it may be holding the page's reads
   await rec('chart', want.chart, async () => { addKcCss(); const m = await import('./kchartView.js'); return m.mountKChart(); });
   await rec('insight', want.insight, async () => { addInCss(); const m = await import('./insightView.js'); return m.mountInsight(); });
+  await rec('levelEngine', want.levelEngine, async () => { const m = await import('./levelEngineView.js'); return m.installLevelEngine(); });   // the REACH command bridge; the card itself mounts with its Insight pill
   await rec('alerts', want.alerts, async () => { addAlCss(); const m = await import('./alertsView.js'); return m.mountAlerts(); });
   await rec('workspace', want.workspace, async () => { addWsCss(); const m = await import('./workspaceView.js'); return m.mountWorkspace(); });
   await rec('linked', want.linked, async () => { await hooksReady(); const m = await import('./linkedSelection.js'); return m.mountLinked(); });

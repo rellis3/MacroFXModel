@@ -13,7 +13,15 @@ export const FEATURES = {
   chart:           { surface: 'tab.kchart', name: 'Chart', where: ['The Chart tab.'] },
   monitor:         { surface: 'tab.monitor', name: 'Monitor', where: ['The Monitor tab, beside Assets.'] },
   asof: { surface: 'widget.asof', name: 'Time machine', where: ['A LIVE / PAST chip and a "Time machine" button in the top bar (the button shows or hides the bar).', 'A slim time bar docked at the bottom of the page: a green LIVE pill (a big amber "Back to live" button in a past view), step buttons, play with speeds, and a track that shows what is recorded; drag it to go back or forward. Fold it to a small tab with the arrow. Keys on the track: arrows step, Home is the first record, End is back to live, Space plays.', 'In a past view a purple banner under the top bar says "Viewing ..., not live" with a Back to live button. Or type ASOF 12 nov 14:30 (or ASOF live) in the command line.'] },
-  insight:         { surface: 'tab.insight', name: 'Insight', where: ['The Insight tab (pills: Unusual now, Cross-asset, Sector rotation, Currency matrix, Gold, Level reach, Risk flags, Economies, Spreads & ratios, Momentum).'] },
+  insight:         { surface: 'tab.insight', name: 'Insight', where: ['The Insight tab (pills: Unusual now, Cross-asset, Sector rotation, Currency matrix, Gold, Level engine, Risk flags, Economies, Spreads & ratios, Momentum).'] },
+  levelEngine: {
+    surface: 'panel.insight.reach', name: 'Level engine',
+    where: [
+      'Insight tab > the "Level engine" pill (it replaced Level reach): Market, Level and Second level boxes, ROS / EOD / EOW buttons, then four cards: Reach, Race, On the way, Reaction.',
+      'Or type REACH GOLD 4200, REACH EURUSD 1.17 1.15 or REACH NQ 21000 EOW in the command line: it opens the pill filled in.',
+      'Click a price in the "Other levels" table to set the level, or its "vs" button to race against it. Every number shows its Evidence Book id and verdict; with the time machine on, the clock is the as-of time.',
+    ],
+  },
   newsSearches:    { surface: 'panel.news.saved', name: 'News saved searches', where: ['News tab: the saved-searches bar above the headlines.'] },
   calendarDrills:  { surface: 'panel.cal.drills', name: 'Calendar drills', where: ['Calendar tab: two cards above the table (earnings, scorecards) and a small ▸ button at the end of every release row.'] },
   exporter: {
@@ -61,7 +69,7 @@ export const FEATURES = {
     surface: 'panel.ov.glance', name: 'Flow features (at a glance, links, short drivers, dense mode)',
     where: [
       'Overview > the "At a glance" block at the very top (regime, stress lights, strongest and weakest currency, the most unusual reading, the next release); each tile opens the board behind it.',
-      'Small dashed links that open an Insight board from where it belongs: the gold board on Assets, level reach on the Pair page, the risk-flag evidence on the stress strip, the currency matrix on the strength card, world economies on Macro.',
+      'Small dashed links that open an Insight board from where it belongs: the gold board on Assets, the level engine on the Pair page, the risk-flag evidence on the stress strip, the currency matrix on the strength card, world economies on Macro.',
       'Pair > "What drives this" shows the net push, a one-line summary and the two strongest tailwinds and headwinds first; a "Read the full analysis" button shows the rest.',
       'Monitor > a "Density" button in the toolbar (or DENSE on the command line) tightens the rows of the Monitor and of every table in a card.',
     ],
