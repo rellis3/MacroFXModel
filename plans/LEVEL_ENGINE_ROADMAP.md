@@ -176,11 +176,11 @@ Evidence Book id and verdict chip read live from `js/deskEvidence.js`:
 |---|---|---|---|
 | Q1 reach, from now | P(touch) by 22:00 London and within 30 min / 1 h / 2 h / 4 h: the frozen Phase 2 model M1 (`js/levelReach.js`, the S3 shadow's model) | `level-p2-reach` | validated (banked 2026-11-28 from the 2026-10-11 run) |
 | Q1 reach, today | P(touch at some point in the session) from the forecast ladder, measured from the London open | `ladder-calibration`, `day-recon-p90-boundary` beyond p90 | validated / context |
-| Q1 reach, this week | from Monday's open on the reverting weekly ladder; plus from now to Friday's close as plain geometry | `horizon-reversion`; geometry shown as context | validated / context |
+| Q1 reach, this week | from Monday's open on the reverting weekly ladder; plus from now to Friday's close as plain geometry | `horizon-reversion` (chip context: tested as HL range pinball on lines drawn before the week, read here as an OH/OL reach on lines redrawn daily); geometry context | context |
 | Q1 level identity | "where it is, not what it is" | `level-p2-identity` | null |
 | Q2 race | up first / down first / neither by the horizon (two-barrier random walk scaled so each level's reach matches M1), and b/(a+b) with no time limit | `level-p2-race` (a model does not beat b/(a+b)) | null (geometry is the answer) |
 | Q4 on the way | chance of going 0.25 / 0.5 / 1 sigma the other way before the level is touched, by the horizon and with no time limit | geometry; the validated stop-odds model (`vol-layer-stops-confirm-skill`) is named but **not wired** | context |
-| Q4 drawdown layer | after a 20-day S&P fall of 2% or more, FX x1.067 / index x1.028 wider, as a separate column beside the base numbers (never replacing them); spx20 from `/api/drawdown-shadow` | `drawdown-forecast-error-fx` / `-idx` | validated (forward shadow record research-only) |
+| Q4 drawdown layer | after a 20-day S&P fall of 2% or more, FX x1.067 / index x1.028 wider, as a separate column beside the base numbers (never replacing them); spx20 from `/api/drawdown-shadow` | `drawdown-forecast-error-fx` / `-idx` | validated on daily sessions only: never applied to the week (review 2026-11-28) |
 | Q3 after a touch | next-line odds (p50 to p75 ~50%, p75 to p90 ~40%); X7 next-rung odds by London window for NQ / GOLD / EURUSD | `line-touch-reach`, `exhaustion-v2-lockbox` | validated |
 | Q3 reaction | fade or follow at the touch: placebo after costs | `level-context-engine`, `level-near-miss-entry`, `live-range-line-race` | null |
 | Q5 trade | none shown; direction never implied | (stopping rule 3 above) | n/a |
@@ -197,3 +197,7 @@ Evidence Book id and verdict chip read live from `js/deskEvidence.js`:
 5. **Weekly from-now** is geometry only; a calibrated multi-session reach model is not built.
 6. **Phase 6** (engine shadow + one confirmatory look) is not started for the card itself; the S3 shadow covers M1.
 7. **Time machine inputs:** record `/api/vol-forecast` (and `/api/drawdown-shadow`) in the desk snapshot FULL record so `?asof=` can answer; the card already uses the as-of clock.
+
+**Review 2026-11-28 (branch wf2/level-engine-review):** race now uses each side's own M1 scale and is held to the single reaches (up-first <= reach(up), max <= P(either) <= sum);
+M1 horizons are made monotone (a window reaching 22:00 is the 22:00 number); M1 only for the 34 Phase 2 CFD instruments, and never for a level already traded today
+(Phase 2 scored levels outside the day's range only); X7 only when the level is on a ladder line; drawdown layer FX = the eight study currencies only, daily only.
