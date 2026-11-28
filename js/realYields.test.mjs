@@ -2,7 +2,7 @@
 // nominal = real + breakeven split, the derived AU breakeven labelled as derived, UK shown as not available, nothing invented.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { toRows, seriesRow, diffSeries, splitMove, splitText, buildRealYields, RY_EVIDENCE, RY_NOTE } from './realYields.js';
+import { toRows, seriesRow, diffSeries, splitMove, splitText, buildRealYields, realLayerLines, RY_EVIDENCE, RY_NOTE } from './realYields.js';
 
 const NOW = Date.parse('2026-11-28T12:00:00Z');
 const dates = n => Array.from({ length: n }, (_, i) => new Date(Date.parse('2026-06-01T00:00:00Z') + i * 864e5).toISOString().slice(0, 10));
@@ -74,4 +74,14 @@ test('the terminal card: folded behind a toggle, derived and stale marked, escap
   assert.ok(h.includes('derived') && h.includes('27d old') && h.includes('not loaded') && h.includes('Nominal = real + breakeven'));
   assert.match(boardHtml(ry, { open: true }), /<details open>/);
   assert.equal(sparkSvg([1]), ''); assert.match(sparkSvg([1, 2, 3]), /<polyline/);
+});
+
+test('the Helix Yields panel lines: one per row, the splits, UK not captured, nothing when not ok', () => {
+  assert.deepEqual(realLayerLines(null), []); assert.deepEqual(realLayerLines({ ok: false }), []);
+  const ry = buildRealYields({ us: { real10: ser(i => 2 + i * 0.001), bei10: ser(() => 2.2), nom10: ser(i => 4.2 + i * 0.001) } }, { now: NOW });
+  const L = realLayerLines(ry);
+  assert.equal(L.length, 1 + 6 + 1 + 1);
+  assert.match(L[2].text, /^US 10y TIPS real yield 2\.18% · 20 prints \+2bp · 1y pct 99$/);
+  assert.match(L[1].text, /not loaded/); assert.match(L.at(-1).text, /UK linkers: not captured/);
+  for (const l of L) assert.doesNotMatch(l.text, /\b(buy|sell|long|short)\b/i);
 });

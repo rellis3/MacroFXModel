@@ -99,3 +99,16 @@ export function buildRealYields({ us = {}, au = {} } = {}, { now = Date.now() } 
     uk: { available: false, note: 'UK index-linked gilt real yields are not captured: the Bank of England publishes them in its yield-curve files, not in the database series the capture reads. Shown as not available, never filled in.' },
     evidence: RY_EVIDENCE, note: RY_NOTE };
 }
+
+/** The Helix Yields view's real-yield panel: short lines, description only. [{ text, tone: 'tx' | 'tx2' }] (no colour for direction). */
+export function realLayerLines(ry) {
+  if (!ry?.ok) return [];
+  const sg = v => (v == null ? '–' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)}bp`);
+  const out = [{ text: `REAL-YIELD LAYER · as of ${ry.asOf}`, tone: 'tx2' }];
+  for (const r of ry.rows ?? []) out.push(r.missing
+    ? { text: `${r.label}: not loaded`, tone: 'tx2' }
+    : { text: `${r.label} ${r.value.toFixed(2)}% · 20 prints ${sg(r.chg20dBp)}${r.pct1y == null ? '' : ` · 1y pct ${r.pct1y}`}${r.stale ? ` · ${r.ageDays}d old` : ''}`, tone: r.stale ? 'tx2' : 'tx' });
+  for (const s of ry.splits ?? []) if (s.text) out.push({ text: s.text, tone: 'tx2' });
+  out.push({ text: 'UK linkers: not captured · the nominal curve is unchanged · context, not a signal', tone: 'tx2' });
+  return out;
+}
